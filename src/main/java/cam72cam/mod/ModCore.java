@@ -1,6 +1,5 @@
 package cam72cam.mod;
 
-import cam72cam.Mod;
 import cam72cam.mod.entity.ModdedEntity;
 import cam72cam.mod.entity.sync.EntitySync;
 import cam72cam.mod.input.Keyboard;
@@ -25,10 +24,12 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
-@net.minecraftforge.fml.common.Mod(modid= Mod.MODID, name=Mod.NAME, version=Mod.VERSION, acceptedMinecraftVersions = "[1.12,1.13)")
+@net.minecraftforge.fml.common.Mod(modid=ModCore.MODID, name=ModCore.NAME, version=ModCore.VERSION, acceptedMinecraftVersions = "[1.12,1.13)")
 public class ModCore {
-    public static final String MODID = cam72cam.Mod.MODID;
-    private static List<Supplier<Mod>> modCtrs = new ArrayList<>();
+    public static final String MODID = "modcore";
+    public static final String NAME = "ModCore";
+    public static final String VERSION = "1.0.0";
+    static List<Supplier<Mod>> modCtrs = new ArrayList<>();
     private static List<Runnable> onInit = new ArrayList<>();
     private static List<Runnable> onReload = new ArrayList<>();
     private static List<Runnable> onServerStarting = new ArrayList<>();
@@ -74,11 +75,6 @@ public class ModCore {
         Packet.register(Keyboard.KeyPacket::new, PacketDirection.ClientToServer);
         Packet.register(ModdedEntity.PassengerPositionsPacket::new, PacketDirection.ServerToClient);
         Packet.register(MousePressPacket::new, PacketDirection.ClientToServer);
-        try {
-            Class.forName(cam72cam.Mod.MODCLASS);
-        } catch (ClassNotFoundException e) {
-            e.printStackTrace();
-        }
     }
 
     @EventHandler

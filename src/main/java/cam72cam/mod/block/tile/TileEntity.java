@@ -1,5 +1,6 @@
 package cam72cam.mod.block.tile;
 
+import cam72cam.mod.ModCore;
 import cam72cam.mod.block.BlockEntity;
 import cam72cam.mod.energy.IEnergy;
 import cam72cam.mod.entity.boundingbox.BoundingBox;
@@ -74,8 +75,7 @@ public class TileEntity extends net.minecraft.tileentity.TileEntity {
     }
 
     public Identifier getName() {
-        //TODO use MODID
-        return new Identifier("notreallyamodthismightbreak", "hack");
+        return new Identifier(ModCore.MODID, "hack");
     }
 
 

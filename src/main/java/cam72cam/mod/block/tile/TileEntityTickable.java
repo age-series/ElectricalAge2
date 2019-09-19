@@ -1,5 +1,6 @@
 package cam72cam.mod.block.tile;
 
+import cam72cam.mod.ModCore;
 import cam72cam.mod.block.BlockEntityTickable;
 import cam72cam.mod.resource.Identifier;
 import net.minecraft.util.ITickable;
@@ -24,6 +25,6 @@ public class TileEntityTickable extends TileEntity implements ITickable {
 
     @Override
     public Identifier getName() {
-        return new Identifier("notreallyamodthismightbreak", "hack_tickable");
+        return new Identifier(ModCore.MODID, "hack_tickable");
     }
 }

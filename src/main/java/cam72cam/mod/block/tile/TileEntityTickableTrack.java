@@ -1,6 +1,6 @@
 package cam72cam.mod.block.tile;
 
-import cam72cam.Mod;
+import cam72cam.mod.ModCore;
 import cam72cam.mod.resource.Identifier;
 import cam72cam.mod.util.ITrack;
 
@@ -30,6 +30,6 @@ public class TileEntityTickableTrack extends TileEntityTickable implements track
 
     @Override
     public Identifier getName() {
-        return new Identifier(Mod.MODID, "tile_track");
+        return new Identifier(ModCore.MODID, "tile_track");
     }
 }
