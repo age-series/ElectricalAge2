@@ -9,12 +9,6 @@ buildscript {
 }
 
 repositories {
-	maven {
-		name = "IGW"
-		url = "http://maven.k-4u.nl/"
-	}
-    maven { url = "http://maven.cil.li/" }
-	maven { url = "https://cc.crzd.me/maven/" }
 }
 
 apply plugin: 'net.minecraftforge.gradle.forge'
@@ -22,8 +16,8 @@ apply plugin: 'net.minecraftforge.gradle.forge'
 
 
 version = version_major + '.' + version_minor + '.' + version_patch
-group = "cam72cam.immersiverailroading" // http://maven.apache.org/guides/mini/guide-naming-conventions.html
-archivesBaseName = "ImmersiveRailroading"
+group = "cam72cam.modcore" // http://maven.apache.org/guides/mini/guide-naming-conventions.html
+archivesBaseName = "ModCore"
 
 sourceCompatibility = targetCompatibility = '1.8' // Need this here so eclipse task generates correctly.
 compileJava {
@@ -66,21 +60,12 @@ dependencies {
     // http://www.gradle.org/docs/current/userguide/dependency_management.html
 
 	compile files(
-		'ImmersiveEngineering-0.12-74-deobf.jar'
-	)
-
-	compile files(
 		'TrackAPI-1.1_1.12.jar'
 	)
 
 	compile files(
 		'InventoryTweaks-1.63-api.jar'
 	)
-
-	compile "igwmod:IGW-Mod-1.12.2:1.4.4-15:userdev"
-	compile "li.cil.oc:OpenComputers:MC1.12.2-1.7.+:api"
-	runtime "li.cil.oc:OpenComputers:MC1.12.2-1.7.+"
-	compile "dan200.computercraft:ComputerCraft:1.80pr1-build3"
 }
 
 processResources {
