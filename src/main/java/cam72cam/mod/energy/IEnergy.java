@@ -3,12 +3,6 @@ package cam72cam.mod.energy;
 import net.minecraftforge.energy.IEnergyStorage;
 
 public interface IEnergy {
-    //TODO rename fns
-    int receiveEnergy(int maxReceive, boolean simulate);
-    int extractEnergy(int maxExtract, boolean simulate);
-    int getEnergyStored();
-    int getMaxEnergyStored();
-
     static IEnergy from(IEnergyStorage internal) {
         return new IEnergy() {
             @Override
@@ -32,4 +26,13 @@ public interface IEnergy {
             }
         };
     }
+
+    //TODO rename fns
+    int receiveEnergy(int maxReceive, boolean simulate);
+
+    int extractEnergy(int maxExtract, boolean simulate);
+
+    int getEnergyStored();
+
+    int getMaxEnergyStored();
 }

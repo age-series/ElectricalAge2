@@ -22,6 +22,7 @@ public class TagCompound {
     public TagCompound() {
         this(new NBTTagCompound());
     }
+
     public boolean hasKey(String key) {
         return internal.hasKey(key);
     }
@@ -29,6 +30,7 @@ public class TagCompound {
     public boolean getBoolean(String key) {
         return internal.getBoolean(key);
     }
+
     public void setBoolean(String key, boolean value) {
         internal.setBoolean(key, value);
     }
@@ -36,6 +38,7 @@ public class TagCompound {
     public byte getByte(String key) {
         return internal.getByte(key);
     }
+
     public void setByte(String key, byte value) {
         internal.setByte(key, value);
     }
@@ -43,6 +46,7 @@ public class TagCompound {
     public int getInteger(String key) {
         return internal.getInteger(key);
     }
+
     public void setInteger(String key, int value) {
         internal.setInteger(key, value);
     }
@@ -50,6 +54,7 @@ public class TagCompound {
     public long getLong(String key) {
         return internal.getLong(key);
     }
+
     public void setLong(String key, long value) {
         internal.setLong(key, value);
     }
@@ -57,6 +62,7 @@ public class TagCompound {
     public float getFloat(String key) {
         return internal.getFloat(key);
     }
+
     public void setFloat(String key, float value) {
         internal.setFloat(key, value);
     }
@@ -64,6 +70,7 @@ public class TagCompound {
     public double getDouble(String key) {
         return internal.getDouble(key);
     }
+
     public void setDouble(String key, double value) {
         internal.setDouble(key, value);
     }
@@ -71,6 +78,7 @@ public class TagCompound {
     public String getString(String key) {
         return internal.getString(key);
     }
+
     public void setString(String key, String value) {
         if (value == null) {
             internal.removeTag(key);
@@ -85,6 +93,7 @@ public class TagCompound {
         }
         return UUID.fromString(getString(key));
     }
+
     public void setUUID(String key, UUID value) {
         internal.removeTag(key);
         if (value != null) {
@@ -96,6 +105,7 @@ public class TagCompound {
         NBTTagCompound tag = internal.getCompoundTag(key);
         return new Vec3i(tag.getInteger("X"), tag.getInteger("Y"), tag.getInteger("Z"));
     }
+
     public void setVec3i(String key, Vec3i pos) {
         NBTTagCompound tag = new NBTTagCompound();
         tag.setInteger("X", pos.x);
@@ -106,8 +116,9 @@ public class TagCompound {
 
     public Vec3d getVec3d(String key) {
         NBTTagCompound nbt = internal.getCompoundTag(key);
-        return new Vec3d(nbt.getDouble("x"),nbt.getDouble("y"),nbt.getDouble("z"));
+        return new Vec3d(nbt.getDouble("x"), nbt.getDouble("y"), nbt.getDouble("z"));
     }
+
     public void setVec3d(String key, Vec3d value) {
         NBTTagCompound nbt = new NBTTagCompound();
         if (value != null) {
@@ -121,6 +132,7 @@ public class TagCompound {
     public cam72cam.mod.entity.Entity getEntity(String key, World world) {
         return getEntity(key, world, cam72cam.mod.entity.Entity.class);
     }
+
     public <T extends cam72cam.mod.entity.Entity> T getEntity(String key, World world, Class<T> cls) {
         NBTTagCompound data = internal.getCompoundTag(key);
         UUID id = data.getUniqueId("id");
@@ -131,6 +143,7 @@ public class TagCompound {
         }
         return world.getEntity(id, cls);
     }
+
     public void setEntity(String key, cam72cam.mod.entity.Entity entity) {
         NBTTagCompound data = new NBTTagCompound();
         data.setUniqueId("id", entity.internal.getUniqueID());
@@ -141,6 +154,7 @@ public class TagCompound {
     public <T extends Enum> T getEnum(String key, Class<T> cls) {
         return cls.getEnumConstants()[internal.getInteger(key)];
     }
+
     public void setEnum(String key, Enum value) {
         internal.setInteger(key, value.ordinal());
     }
@@ -148,6 +162,7 @@ public class TagCompound {
     public void setEnumList(String key, List<? extends Enum> items) {
         internal.setIntArray(key, items.stream().map(Enum::ordinal).mapToInt(i -> i).toArray());
     }
+
     public <T extends Enum> List<T> getEnumList(String key, Class<T> cls) {
         return Arrays.stream(internal.getIntArray(key)).mapToObj((int i) -> cls.getEnumConstants()[i]).collect(Collectors.toList());
     }
@@ -155,6 +170,7 @@ public class TagCompound {
     public TagCompound get(String key) {
         return new TagCompound(internal.getCompoundTag(key));
     }
+
     public void set(String key, TagCompound value) {
         internal.setTag(key, value.internal);
     }
@@ -171,6 +187,7 @@ public class TagCompound {
         }
         return list;
     }
+
     public <T> void setList(String key, List<T> list, Function<T, TagCompound> encoder) {
         NBTTagCompound data = new NBTTagCompound();
         data.setInteger("count", list.size());
@@ -188,10 +205,11 @@ public class TagCompound {
         }
         return map;
     }
+
     public <K, V> void setMap(String key, Map<K, V> map, Function<K, String> keyFn, Function<V, TagCompound> valFn) {
         NBTTagCompound data = new NBTTagCompound();
 
-        for(K item : map.keySet()) {
+        for (K item : map.keySet()) {
             data.setTag(keyFn.apply(item), valFn.apply(map.get(item)).internal);
         }
 
@@ -201,6 +219,7 @@ public class TagCompound {
     public ItemStack getStack(String key) {
         return new ItemStack(new TagCompound(internal.getCompoundTag(key)));
     }
+
     public void setStack(String key, ItemStack stack) {
         internal.setTag(key, stack.toTag().internal);
     }
@@ -235,6 +254,6 @@ public class TagCompound {
         //TODO pull logic in here to avoid crash
         net.minecraft.tileentity.TileEntity te = net.minecraft.tileentity.TileEntity.create(world.internal, ted.get("data").internal);
         assert te instanceof TileEntity;
-        return (T) ((TileEntity)te).instance();
+        return (T) ((TileEntity) te).instance();
     }
 }

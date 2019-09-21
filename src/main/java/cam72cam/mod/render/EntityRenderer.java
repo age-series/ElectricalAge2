@@ -30,8 +30,44 @@ import java.util.Map;
 public class EntityRenderer extends Render<ModdedEntity> {
     private static Map<Class<? extends Entity>, IEntityRender> renderers = new HashMap<>();
 
+    static {
+        GlobalRender.registerRender(EntityRenderer::renderLargeEntities);
+    }
+
     public EntityRenderer(RenderManager factory) {
         super(factory);
+    }
+
+    //TODO client only
+    @SubscribeEvent
+    public static void registerEntities(RegistryEvent.Register<EntityEntry> event) {
+        RenderingRegistry.registerEntityRenderingHandler(ModdedEntity.class, manager -> new EntityRenderer(manager));
+    }
+
+    public static void register(Class<? extends Entity> type, IEntityRender render) {
+        renderers.put(type, render);
+    }
+
+    private static void renderLargeEntities(float partialTicks) {
+        if (GlobalRender.isTransparentPass()) {
+            return;
+        }
+
+        Minecraft.getMinecraft().mcProfiler.startSection("large_entity_helper");
+
+        ICamera camera = GlobalRender.getCamera(partialTicks);
+
+        World world = MinecraftClient.getPlayer().getWorld();
+        List<Entity> entities = world.getEntities(Entity.class);
+        for (Entity entity : entities) {
+            // Duplicate forge logic and render entity if the chunk is not rendered but entity is visible (MC entitysize issues/optimization)
+            AxisAlignedBB chunk = new AxisAlignedBB(entity.getBlockPosition().toChunkMin().internal, entity.getBlockPosition().toChunkMax().internal);
+            if (!camera.isBoundingBoxInFrustum(chunk) && camera.isBoundingBoxInFrustum(entity.internal.getRenderBoundingBox())) {
+                Minecraft.getMinecraft().getRenderManager().renderEntityStatic(entity.internal, partialTicks, true);
+            }
+        }
+
+        Minecraft.getMinecraft().mcProfiler.endSection();
     }
 
     @Override
@@ -75,41 +111,5 @@ public class EntityRenderer extends Render<ModdedEntity> {
     @Override
     protected ResourceLocation getEntityTexture(ModdedEntity entity) {
         return null;
-    }
-
-    //TODO client only
-    @SubscribeEvent
-    public static void registerEntities(RegistryEvent.Register<EntityEntry> event) {
-        RenderingRegistry.registerEntityRenderingHandler(ModdedEntity.class, manager -> new EntityRenderer(manager));
-    }
-
-    public static void register(Class<? extends Entity> type, IEntityRender render) {
-        renderers.put(type, render);
-    }
-
-    static {
-        GlobalRender.registerRender(EntityRenderer::renderLargeEntities);
-    }
-
-    private static void renderLargeEntities(float partialTicks) {
-        if (GlobalRender.isTransparentPass()) {
-            return;
-        }
-
-        Minecraft.getMinecraft().mcProfiler.startSection("large_entity_helper");
-
-        ICamera camera = GlobalRender.getCamera(partialTicks);
-
-        World world = MinecraftClient.getPlayer().getWorld();
-        List<Entity> entities = world.getEntities(Entity.class);
-        for (Entity entity : entities) {
-            // Duplicate forge logic and render entity if the chunk is not rendered but entity is visible (MC entitysize issues/optimization)
-            AxisAlignedBB chunk = new AxisAlignedBB(entity.getBlockPosition().toChunkMin().internal, entity.getBlockPosition().toChunkMax().internal);
-            if (!camera.isBoundingBoxInFrustum(chunk) && camera.isBoundingBoxInFrustum(entity.internal.getRenderBoundingBox())) {
-                Minecraft.getMinecraft().getRenderManager().renderEntityStatic(entity.internal, partialTicks, true);
-            }
-        }
-
-        Minecraft.getMinecraft().mcProfiler.endSection();
     }
 }

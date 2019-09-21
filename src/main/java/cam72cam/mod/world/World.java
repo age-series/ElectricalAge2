@@ -4,13 +4,13 @@ import cam72cam.mod.ModCore;
 import cam72cam.mod.block.BlockEntity;
 import cam72cam.mod.block.BlockType;
 import cam72cam.mod.block.tile.TileEntity;
-import cam72cam.mod.entity.boundingbox.BoundingBox;
-import cam72cam.mod.fluid.ITank;
 import cam72cam.mod.entity.Entity;
 import cam72cam.mod.entity.Living;
 import cam72cam.mod.entity.ModdedEntity;
 import cam72cam.mod.entity.Player;
+import cam72cam.mod.entity.boundingbox.BoundingBox;
 import cam72cam.mod.entity.boundingbox.IBoundingBox;
+import cam72cam.mod.fluid.ITank;
 import cam72cam.mod.item.IInventory;
 import cam72cam.mod.item.ItemStack;
 import cam72cam.mod.math.Vec3d;
@@ -52,6 +52,24 @@ public class World {
     private static Map<Integer, World> serverWorldsByID = new HashMap<>();
 
     private static List<Consumer<World>> onTicks = new ArrayList<>();
+    public final net.minecraft.world.World internal;
+    public final boolean isClient;
+    public final boolean isServer;
+    private final List<Entity> entities;
+    private final Map<Integer, Entity> entityByID;
+    private final Map<UUID, Entity> entityByUUID;
+    private long ticks;
+
+    /* World Initialization */
+
+    private World(net.minecraft.world.World world) {
+        internal = world;
+        isClient = world.isRemote;
+        isServer = !world.isRemote;
+        entities = new ArrayList<>();
+        entityByID = new HashMap<>();
+        entityByUUID = new HashMap<>();
+    }
 
     @SubscribeEvent
     public static void onWorldLoad(WorldEvent.Load event) {
@@ -65,6 +83,7 @@ public class World {
 
         world.addEventListener(new WorldEventListener(worldWrap));
     }
+
     @SubscribeEvent
     public static void onWorldUnload(WorldEvent.Unload event) {
         Map<net.minecraft.world.World, World> worlds = event.getWorld().isRemote ? clientWorlds : serverWorlds;
@@ -74,14 +93,16 @@ public class World {
         worlds.remove(world);
         worldsByID.remove(world.provider.getDimension());
     }
+
     @SubscribeEvent
     public static void onWorldTick(TickEvent.WorldTickEvent event) {
         if (event.phase != TickEvent.Phase.START) {
             return;
         }
         onTicks.forEach(fn -> fn.accept(get(event.world)));
-        get(event.world).ticks ++;
+        get(event.world).ticks++;
     }
+
     public static World get(net.minecraft.world.World world) {
         if (world == null) {
             return null;
@@ -90,11 +111,13 @@ public class World {
 
         return worlds.get(world);
     }
+
     public static World get(int dimID, boolean isClient) {
         Map<Integer, World> worldsByID = isClient ? clientWorldsByID : serverWorldsByID;
 
         return worldsByID.get(dimID);
     }
+
     public static void onTick(Consumer<World> fn) {
         onTicks.add(fn);
     }
@@ -102,25 +125,6 @@ public class World {
     public boolean doesBlockCollideWith(Vec3i bp, IBoundingBox bb) {
         IBoundingBox bbb = IBoundingBox.from(internal.getBlockState(bp.internal).getCollisionBoundingBox(internal, bp.internal));
         return bbb != null && bb.intersects(bbb);
-    }
-
-    /* World Initialization */
-
-    public final net.minecraft.world.World internal;
-    public final boolean isClient;
-    public final boolean isServer;
-    private final List<Entity> entities;
-    private final Map<Integer, Entity> entityByID;
-    private final Map<UUID, Entity> entityByUUID;
-    private long ticks;
-
-    private World(net.minecraft.world.World world) {
-        internal = world;
-        isClient = world.isRemote;
-        isServer = !world.isRemote;
-        entities = new ArrayList<>();
-        entityByID = new HashMap<>();
-        entityByUUID = new HashMap<>();
     }
 
     /* Event Methods */
@@ -140,6 +144,7 @@ public class World {
         entityByID.put(entityIn.getEntityId(), entity);
         entityByUUID.put(entity.getUUID(), entity);
     }
+
     void onEntityRemoved(net.minecraft.entity.Entity entity) {
         if (entityByUUID.containsKey(entity.getUniqueID())) {
             entities.remove(entityByUUID.get(entity.getUniqueID()));
@@ -159,7 +164,7 @@ public class World {
             // TODO Warning???
             return null;
         }
-        return (T)ent;
+        return (T) ent;
     }
 
     public <T extends Entity> T getEntity(UUID id, Class<T> type) {
@@ -171,7 +176,7 @@ public class World {
             // TODO Warning???
             return null;
         }
-        return (T)ent;
+        return (T) ent;
     }
 
     public <T extends Entity> List<T> getEntities(Class<T> type) {
@@ -187,41 +192,22 @@ public class World {
     }
 
 
-
-
-
-
-
-
-
     public void keepLoaded(Vec3i pos) {
         ChunkManager.flagEntityPos(this, pos);
     }
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
     public <T extends BlockEntity> List<T> getBlockEntities(Class<T> cls) {
         return internal.loadedTileEntityList.stream()
                 .filter(x -> x instanceof cam72cam.mod.block.tile.TileEntity && ((TileEntity) x).isLoaded() && cls.isInstance(((TileEntity) x).instance()))
-                .map(x -> (T)((TileEntity) x).instance())
+                .map(x -> (T) ((TileEntity) x).instance())
                 .collect(Collectors.toList());
     }
 
     public <T extends net.minecraft.tileentity.TileEntity> T getTileEntity(Vec3i pos, Class<T> cls) {
         return getTileEntity(pos, cls, true);
     }
+
     public <T extends net.minecraft.tileentity.TileEntity> T getTileEntity(Vec3i pos, Class<T> cls, boolean create) {
         net.minecraft.tileentity.TileEntity ent = internal.getChunkFromBlockCoords(pos.internal).getTileEntity(pos.internal, create ? Chunk.EnumCreateEntityType.IMMEDIATE : Chunk.EnumCreateEntityType.CHECK);
         if (cls.isInstance(ent)) {
@@ -274,6 +260,7 @@ public class World {
     public long getTime() {
         return internal.getWorldTime();
     }
+
     public long getTicks() {
         return ticks;
     }
@@ -288,7 +275,7 @@ public class World {
         sampleSize = Math.min(sampleSize, ttl.length);
         double ttus = 0;
         for (int i = 0; i < sampleSize; i++) {
-            ttus += ttl[ttl.length - 1 - i] / (double)sampleSize;
+            ttus += ttl[ttl.length - 1 - i] / (double) sampleSize;
         }
 
         if (ttus == 0) {
@@ -339,6 +326,7 @@ public class World {
     public void breakBlock(Vec3i pos) {
         this.breakBlock(pos, true);
     }
+
     public void breakBlock(Vec3i pos, boolean drop) {
         internal.destroyBlock(pos.internal, drop);
     }
@@ -346,6 +334,7 @@ public class World {
     public void dropItem(ItemStack stack, Vec3i pos) {
         dropItem(stack, new Vec3d(pos));
     }
+
     public void dropItem(ItemStack stack, Vec3d pos) {
         internal.spawnEntity(new EntityItem(internal, pos.x, pos.y, pos.z, stack.internal));
     }
@@ -353,6 +342,7 @@ public class World {
     public void setBlock(Vec3i pos, BlockType block) {
         internal.setBlockState(pos.internal, block.internal.getDefaultState());
     }
+
     public void setBlock(Vec3i pos, ItemStack stack) {
         IBlockState state = Block.getBlockFromItem(stack.internal.getItem()).getStateFromMeta(stack.internal.getMetadata());
         internal.setBlockState(pos.internal, state);
@@ -381,6 +371,7 @@ public class World {
     public boolean isRaining(Vec3i position) {
         return internal.getBiome(position.internal).canRain();
     }
+
     public boolean isSnowing(Vec3i position) {
         return internal.getBiome(position.internal).isSnowyBiome();
     }
@@ -388,7 +379,7 @@ public class World {
     public float getTemperature(Vec3i pos) {
         float mctemp = internal.getBiome(pos.internal).getTemperature(pos.internal);
         //https://www.reddit.com/r/Minecraft/comments/3eh7yu/the_rl_temperature_of_minecraft_biomes_revealed/ctex050/
-        return (13.6484805403f*mctemp)+7.0879687222f;
+        return (13.6484805403f * mctemp) + 7.0879687222f;
     }
 
     public boolean isBlock(Vec3i pos, BlockType block) {
@@ -459,6 +450,7 @@ public class World {
     public BlockInfo getBlock(Vec3i pos) {
         return new BlockInfo(internal.getBlockState(pos.internal));
     }
+
     public void setBlock(Vec3i pos, BlockInfo info) {
         internal.removeTileEntity(pos.internal);
         internal.setBlockState(pos.internal, info.internal);
@@ -467,7 +459,11 @@ public class World {
     public boolean canEntityCollideWith(Vec3i bp, String damageType) {
         Block block = internal.getBlockState(bp.internal).getBlock();
         return block instanceof IConditionalCollision &&
-            ((IConditionalCollision) block).canCollide(internal, bp.internal, internal.getBlockState(bp.internal), new DamageSource(damageType));
+                ((IConditionalCollision) block).canCollide(internal, bp.internal, internal.getBlockState(bp.internal), new DamageSource(damageType));
+    }
+
+    public void createParticle(ParticleType type, Vec3d position, Vec3d velocity) {
+        internal.spawnParticle(type.internal, position.x, position.y, position.z, velocity.x, velocity.y, velocity.z);
     }
 
     public enum ParticleType {
@@ -479,9 +475,5 @@ public class World {
         ParticleType(EnumParticleTypes internal) {
             this.internal = internal;
         }
-    }
-
-    public void createParticle(ParticleType type, Vec3d position, Vec3d velocity) {
-        internal.spawnParticle(type.internal, position.x, position.y, position.z, velocity.x, velocity.y, velocity.z);
     }
 }

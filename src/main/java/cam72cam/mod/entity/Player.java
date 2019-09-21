@@ -55,6 +55,6 @@ public class Player extends Entity {
     }
 
     public ClickResult clickBlock(Hand hand, Vec3i pos, Vec3d hit) {
-        return ClickResult.from(getHeldItem(hand).internal.onItemUse(internal, getWorld().internal, pos.internal, hand.internal, Facing.DOWN.internal, (float)hit.x, (float)hit.y, (float)hit.z));
+        return ClickResult.from(getHeldItem(hand).internal.onItemUse(internal, getWorld().internal, pos.internal, hand.internal, Facing.DOWN.internal, (float) hit.x, (float) hit.y, (float) hit.z));
     }
 }

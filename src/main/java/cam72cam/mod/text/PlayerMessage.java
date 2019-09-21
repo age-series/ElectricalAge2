@@ -7,6 +7,7 @@ import net.minecraftforge.common.ForgeHooks;
 
 public class PlayerMessage {
     public final ITextComponent internal;
+
     private PlayerMessage(ITextComponent component) {
         internal = component;
     }

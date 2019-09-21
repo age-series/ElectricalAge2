@@ -20,46 +20,23 @@ import java.util.Map;
 import java.util.function.Supplier;
 
 public abstract class Packet {
-    private static Map<String, Supplier<Packet>> types = new HashMap<>();
     private static final SimpleNetworkWrapper net = NetworkRegistry.INSTANCE.newSimpleChannel("cam72cam.mod");
+    private static Map<String, Supplier<Packet>> types = new HashMap<>();
+
     static {
         net.registerMessage(new Packet.Handler<>(), Message.class, 0, Side.CLIENT);
         net.registerMessage(new Packet.Handler<>(), Message.class, 1, Side.SERVER);
     }
+
+    protected TagCompound data = new TagCompound();
+    MessageContext ctx;
 
     public static void register(Supplier<Packet> sup, PacketDirection dir) {
         //TODO remove dir?
         types.put(sup.get().getClass().toString(), sup);
     }
 
-    public static class Message implements IMessage {
-        Packet packet;
-
-        public Message() {
-            // FORGE REFLECTION
-        }
-        public Message(Packet pkt) {
-            this.packet = pkt;
-        }
-        @Override
-        public void fromBytes(ByteBuf buf) {
-            TagCompound data = new TagCompound(ByteBufUtils.readTag(buf));
-            String cls = data.getString("cam72cam.mod.pktid");
-            packet = types.get(cls).get();
-            packet.data = data;
-        }
-
-        @Override
-        public void toBytes(ByteBuf buf) {
-            packet.data.setString("cam72cam.mod.pktid", packet.getClass().toString());
-            ByteBufUtils.writeTag(buf, packet.data.internal);
-        }
-    }
-
     protected abstract void handle();
-
-    protected TagCompound data = new TagCompound();
-    MessageContext ctx;
 
     protected final World getWorld() {
         return getPlayer().getWorld();
@@ -80,6 +57,32 @@ public abstract class Packet {
 
     public void sendToAll() {
         net.sendToAll(new Message(this));
+    }
+
+    public static class Message implements IMessage {
+        Packet packet;
+
+        public Message() {
+            // FORGE REFLECTION
+        }
+
+        public Message(Packet pkt) {
+            this.packet = pkt;
+        }
+
+        @Override
+        public void fromBytes(ByteBuf buf) {
+            TagCompound data = new TagCompound(ByteBufUtils.readTag(buf));
+            String cls = data.getString("cam72cam.mod.pktid");
+            packet = types.get(cls).get();
+            packet.data = data;
+        }
+
+        @Override
+        public void toBytes(ByteBuf buf) {
+            packet.data.setString("cam72cam.mod.pktid", packet.getClass().toString());
+            ByteBufUtils.writeTag(buf, packet.data.internal);
+        }
     }
 
     public static class Handler<T extends Message> implements IMessageHandler<T, IMessage> {

@@ -17,12 +17,13 @@ import net.minecraftforge.fml.relauncher.Side;
 
 public class Audio {
 
-    @SidedProxy(clientSide="cam72cam.mod.sound.Audio$ClientProxy", serverSide="cam72cam.mod.sound.Audio$ServerProxy", modId = ModCore.MODID)
+    @SidedProxy(clientSide = "cam72cam.mod.sound.Audio$ClientProxy", serverSide = "cam72cam.mod.sound.Audio$ServerProxy", modId = ModCore.MODID)
     public static IAudioProxy proxy;
 
     public static void playSound(Vec3d pos, StandardSound sound, SoundCategory category, float volume, float pitch) {
         proxy.playSound(pos, sound, category, volume, pitch);
     }
+
     public static void playSound(Vec3i pos, StandardSound sound, SoundCategory category, float volume, float pitch) {
         proxy.playSound(new Vec3d(pos), sound, category, volume, pitch);
     }
@@ -33,6 +34,7 @@ public class Audio {
 
     private interface IAudioProxy {
         ISound loadSound(Identifier oggLocation, boolean repeats, float attenuationDistance, float scale);
+
         void playSound(Vec3d pos, StandardSound sound, SoundCategory category, float volume, float pitch);
     }
 

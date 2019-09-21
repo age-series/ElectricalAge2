@@ -12,10 +12,6 @@ import org.lwjgl.opengl.GL11;
 import static cam72cam.mod.gui.helpers.GUIHelpers.CHEST_GUI_TEXTURE;
 
 public class ClientContainerBuilder extends GuiContainer implements IContainerBuilder {
-    private final ServerContainerBuilder server;
-    private int centerX;
-    private int centerY;
-
     public static final int slotSize = 18;
     public static final int topOffset = 17;
     public static final int bottomOffset = 7;
@@ -26,6 +22,9 @@ public class ClientContainerBuilder extends GuiContainer implements IContainerBu
     public static final int playerXSize = paddingRight + stdUiHorizSlots * slotSize + paddingLeft;
     private static final int midBarOffset = 4;
     private static final int midBarHeight = 4;
+    private final ServerContainerBuilder server;
+    private int centerX;
+    private int centerY;
 
     public ClientContainerBuilder(ServerContainerBuilder serverContainer) {
         super(serverContainer);
@@ -47,10 +46,10 @@ public class ClientContainerBuilder extends GuiContainer implements IContainerBu
 
     @Override
     public int drawTopBar(int x, int y, int slots) {
-        super.drawTexturedModalRect(centerX + x,  centerY + y, 0, 0, paddingLeft, topOffset);
+        super.drawTexturedModalRect(centerX + x, centerY + y, 0, 0, paddingLeft, topOffset);
         // Top Bar
         for (int k = 1; k <= slots; k++) {
-            super.drawTexturedModalRect(centerX + x + paddingLeft + (k-1) * slotSize, centerY + y, paddingLeft, 0, slotSize, topOffset);
+            super.drawTexturedModalRect(centerX + x + paddingLeft + (k - 1) * slotSize, centerY + y, paddingLeft, 0, slotSize, topOffset);
         }
         // Top Right Corner
         super.drawTexturedModalRect(centerX + x + paddingLeft + slots * slotSize, centerY + y, paddingLeft + stdUiHorizSlots * slotSize, 0, paddingRight, topOffset);
@@ -101,7 +100,7 @@ public class ClientContainerBuilder extends GuiContainer implements IContainerBu
         super.drawTexturedModalRect(centerX + x, centerY + y, 0, textureHeight - bottomOffset, paddingLeft, bottomOffset);
         // Middle Bottom
         for (int k = 1; k <= slots; k++) {
-            super.drawTexturedModalRect(centerX + x + paddingLeft + (k-1) * slotSize, centerY + y, paddingLeft, textureHeight - bottomOffset, slotSize, bottomOffset);
+            super.drawTexturedModalRect(centerX + x + paddingLeft + (k - 1) * slotSize, centerY + y, paddingLeft, textureHeight - bottomOffset, slotSize, bottomOffset);
         }
         // Right Bottom
         super.drawTexturedModalRect(centerX + x + paddingLeft + slots * slotSize, centerY + y, paddingLeft + 9 * slotSize, textureHeight - bottomOffset, paddingRight, bottomOffset);
@@ -124,8 +123,8 @@ public class ClientContainerBuilder extends GuiContainer implements IContainerBu
     @Override
     public int drawPlayerInventory(int y, int horizSlots) {
         int normInvOffset = (horizSlots - stdUiHorizSlots) * slotSize / 2 + paddingLeft - 7;
-        super.drawTexturedModalRect(centerX + normInvOffset, centerY + y, 0, 126+4, playerXSize, 96);
-        return y+96;
+        super.drawTexturedModalRect(centerX + normInvOffset, centerY + y, 0, 126 + 4, playerXSize, 96);
+        return y + 96;
     }
 
     @Override
@@ -137,7 +136,7 @@ public class ClientContainerBuilder extends GuiContainer implements IContainerBu
 
         if (horizSlots > 9) {
             return drawBottomBar(x, y, horizSlots);
-        } else if (horizSlots < 9){
+        } else if (horizSlots < 9) {
             return drawPlayerTopBar(x + normInvOffset, y);
         } else {
             return drawPlayerMidBar(x + normInvOffset, y);
@@ -157,7 +156,7 @@ public class ClientContainerBuilder extends GuiContainer implements IContainerBu
 
     @Override
     public void drawCenteredString(String text, int x, int y) {
-        super.drawCenteredString(this.fontRenderer, text, x + centerX + this.xSize/2, y + centerY, 14737632);
+        super.drawCenteredString(this.fontRenderer, text, x + centerX + this.xSize / 2, y + centerY, 14737632);
         this.mc.getTextureManager().bindTexture(CHEST_GUI_TEXTURE);
     }
 
@@ -174,6 +173,6 @@ public class ClientContainerBuilder extends GuiContainer implements IContainerBu
         Gui.drawRect(x, y, x + 16, y + 16, -2130706433);
         GlStateManager.enableDepth();
 
-        GL11.glColor4f(1,1,1,1);
+        GL11.glColor4f(1, 1, 1, 1);
     }
 }

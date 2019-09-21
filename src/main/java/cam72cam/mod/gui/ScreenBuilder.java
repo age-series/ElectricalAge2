@@ -60,12 +60,12 @@ class ScreenBuilder extends GuiScreen implements IScreenBuilder {
 
     @Override
     public void drawTank(double x, int y, double width, double height, Fluid fluid, float fluidPercent, boolean background, int color) {
-        GUIHelpers.drawTankBlock(this.width/2 + x, this.height/2 + y, width, height, fluid, fluidPercent, background, color);
+        GUIHelpers.drawTankBlock(this.width / 2 + x, this.height / 2 + y, width, height, fluid, fluidPercent, background, color);
     }
 
     @Override
     public void drawCenteredString(String str, int x, int y, int color) {
-        super.drawCenteredString(this.fontRenderer, str, this.width/2 + x, this.height/4 + y, color);
+        super.drawCenteredString(this.fontRenderer, str, this.width / 2 + x, this.height / 4 + y, color);
     }
 
     @Override
@@ -116,12 +116,10 @@ class ScreenBuilder extends GuiScreen implements IScreenBuilder {
     protected void mouseClicked(int mouseX, int mouseY, int mouseButton) throws IOException {
         // Copy pasta to support right / left button click
 
-        for (int i = 0; i < this.buttonList.size(); ++i)
-        {
+        for (int i = 0; i < this.buttonList.size(); ++i) {
             GuiButton guibutton = super.buttonList.get(i);
 
-            if (guibutton.mousePressed(this.mc, mouseX, mouseY))
-            {
+            if (guibutton.mousePressed(this.mc, mouseX, mouseY)) {
                 this.selectedButton = guibutton;
                 guibutton.playPressSound(this.mc.getSoundHandler());
                 buttonMap.get(guibutton).onClick(mouseButton == 0 ? Hand.PRIMARY : Hand.SECONDARY);

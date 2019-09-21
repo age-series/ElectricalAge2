@@ -21,28 +21,11 @@ public abstract class IParticle {
 
     Vec3d renderPos;
 
-    protected abstract boolean depthTestEnabled();
-    protected abstract void render(float partialTicks);
-
-    public static class ParticleData {
-        public final World world;
-        public final Vec3d pos;
-        public final Vec3d motion;
-        public final int lifespan;
-
-        public ParticleData(World world, Vec3d pos, Vec3d motion, int lifespan) {
-            this.world = world;
-            this.pos = pos;
-            this.motion = motion;
-            this.lifespan = lifespan;
-        }
-    }
-
     public static <P extends ParticleData> Consumer<P> register(Function<P, IParticle> ctr) {
         return register(ctr, null);
     }
 
-    public static <P extends ParticleData, I extends IParticle> Consumer<P> register(Function<P, I> ctr, TriConsumer<List<I>, Consumer<I>,  Float> renderer) {
+    public static <P extends ParticleData, I extends IParticle> Consumer<P> register(Function<P, I> ctr, TriConsumer<List<I>, Consumer<I>, Float> renderer) {
         List<I> particles = new ArrayList<>();
 
         return data -> {
@@ -89,5 +72,23 @@ public abstract class IParticle {
 
             Minecraft.getMinecraft().effectRenderer.addEffect(p);
         };
+    }
+
+    protected abstract boolean depthTestEnabled();
+
+    protected abstract void render(float partialTicks);
+
+    public static class ParticleData {
+        public final World world;
+        public final Vec3d pos;
+        public final Vec3d motion;
+        public final int lifespan;
+
+        public ParticleData(World world, Vec3d pos, Vec3d motion, int lifespan) {
+            this.world = world;
+            this.pos = pos;
+            this.motion = motion;
+            this.lifespan = lifespan;
+        }
     }
 }

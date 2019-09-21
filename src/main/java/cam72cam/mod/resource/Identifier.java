@@ -40,7 +40,6 @@ public class Identifier {
     }
 
 
-
     public List<InputStream> getResourceStreamAll() throws IOException {
         return Data.proxy.getResourceStreamAll(this);
     }

@@ -6,7 +6,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.OpenGlHelper;
 
 public class MinecraftClient {
-    public static Player getPlayer(){
+    public static Player getPlayer() {
         if (Minecraft.getMinecraft().player == null) {
             return null;
         }
@@ -16,6 +16,7 @@ public class MinecraftClient {
     public static void startProfiler(String section) {
         Minecraft.getMinecraft().mcProfiler.startSection(section);
     }
+
     public static void endProfiler() {
         Minecraft.getMinecraft().mcProfiler.endSection();
     }

@@ -6,8 +6,8 @@ import cam72cam.mod.item.ClickResult;
 import cam72cam.mod.math.Vec3d;
 import cam72cam.mod.math.Vec3i;
 import cam72cam.mod.net.Packet;
-import cam72cam.mod.util.Hand;
 import cam72cam.mod.resource.Identifier;
+import cam72cam.mod.util.Hand;
 import cam72cam.mod.util.TagCompound;
 import io.netty.buffer.ByteBuf;
 import net.minecraft.entity.Entity;
@@ -74,9 +74,11 @@ public class ModdedEntity extends Entity implements IEntityAdditionalSpawnData {
             iCollision = ICollision.get(self);
         }
     }
+
     private final void loadSelf(TagCompound data) {
         init(data.getString("custom_mob_type"));
     }
+
     private final void saveSelf(TagCompound data) {
         data.setString("custom_mob_type", type);
     }
@@ -91,6 +93,7 @@ public class ModdedEntity extends Entity implements IEntityAdditionalSpawnData {
     protected final void readEntityFromNBT(NBTTagCompound compound) {
         load(new TagCompound(compound));
     }
+
     private final void load(TagCompound data) {
         loadSelf(data);
         iWorldData.load(data);
@@ -101,6 +104,7 @@ public class ModdedEntity extends Entity implements IEntityAdditionalSpawnData {
     protected final void writeEntityToNBT(NBTTagCompound compound) {
         save(new TagCompound(compound));
     }
+
     private final void save(TagCompound data) {
         iWorldData.save(data);
         saveSelf(data);
@@ -117,6 +121,7 @@ public class ModdedEntity extends Entity implements IEntityAdditionalSpawnData {
         self.sync.receive(data.get("sync"));
         readPassengerData(data);
     }
+
     @Override
     public final void writeSpawnData(ByteBuf buffer) {
         TagCompound data = new TagCompound();
@@ -229,9 +234,11 @@ public class ModdedEntity extends Entity implements IEntityAdditionalSpawnData {
     public Vec3d getRidingOffset(UUID id) {
         return this.passengerPositions.get(id);
     }
+
     public Vec3d getRidingOffset(cam72cam.mod.entity.Entity ent) {
         return this.passengerPositions.get(ent.getUUID());
     }
+
     public void setRidingOffset(cam72cam.mod.entity.Entity ent, Vec3d pos) {
         this.passengerPositions.put(ent.getUUID(), pos);
         self.sendToObserving(new PassengerPositionsPacket(this));
@@ -241,6 +248,7 @@ public class ModdedEntity extends Entity implements IEntityAdditionalSpawnData {
     public final boolean shouldRiderSit() {
         return shouldRiderSit(null);
     }
+
     public boolean shouldRiderSit(Entity ent) {
         return false;
     }
@@ -266,16 +274,95 @@ public class ModdedEntity extends Entity implements IEntityAdditionalSpawnData {
         return staticPassengers;
     }
 
+    private void readPassengerData(TagCompound data) {
+        passengerPositions = data.getMap("passengers", UUID::fromString, (TagCompound tag) -> tag.getVec3d("pos"));
+        staticPassengers = data.getList("staticPassengers", StaticPassenger::new);
+    }
+
+    private void writePassengerData(TagCompound data) {
+        data.setMap("passengers", passengerPositions, UUID::toString, (Vec3d pos) -> {
+            //TODO single encoder step
+            TagCompound tmp = new TagCompound();
+            tmp.setVec3d("pos", pos);
+            return tmp;
+        });
+        data.setList("staticPassengers", staticPassengers, StaticPassenger::toTag);
+    }
+
+    /* ICollision */
+    @Override
+    public AxisAlignedBB getCollisionBoundingBox() {
+        return new BoundingBox(iCollision.getCollision());
+    }
+
+    @Override
+    public AxisAlignedBB getEntityBoundingBox() {
+        return new BoundingBox(iCollision.getCollision());
+    }
+
+    @Override
+    public AxisAlignedBB getRenderBoundingBox() {
+        AxisAlignedBB bb = this.getEntityBoundingBox();
+        return new AxisAlignedBB(bb.minX, bb.minY, bb.minZ, bb.maxX, bb.maxY, bb.maxZ);
+    }
+
+    /* Hacks */
+    @Override
+    public boolean canBeCollidedWith() {
+        // Needed for right click, probably a forge or MC bug
+        return true;
+    }
+
+    @Override
+    public boolean canBePushed() {
+        return settings.canBePushed;
+    }
+
+    @Override
+    public <T extends Entity> Collection<T> getRecursivePassengersByType(Class<T> entityClass) {
+        if (!settings.attachedToPlayer) {
+            try {
+                throw new Exception("Hack the planet");
+            } catch (Exception ex) {
+                for (StackTraceElement tl : ex.getStackTrace()) {
+                    if (tl.getFileName().contains("PlayerList.java")) {
+                        return new ArrayList<>();
+                    }
+                }
+            }
+        }
+        return super.getRecursivePassengersByType(entityClass);
+    }
+
+    @Override
+    @SideOnly(Side.CLIENT)
+    public void setPositionAndRotationDirect(double x, double y, double z, float yaw, float pitch, int posRotationIncrements, boolean teleport) {
+        if (settings.defaultMovement) {
+            super.setPositionAndRotationDirect(x, y, z, yaw, pitch, posRotationIncrements, teleport);
+        }
+    }
+
+    @Override
+    public void setVelocity(double x, double y, double z) {
+        if (settings.defaultMovement) {
+            super.setVelocity(x, y, z);
+        }
+    }
+
+    /*
+     * Disable standard entity sync
+     */
+
     public static class StaticPassenger {
         public Identifier ident;
         public TagCompound data;
         public UUID uuid;
         public float rotation;
-        private Vec3i startPos;
         public boolean isVillager;
         public Object cache;
+        private Vec3i startPos;
 
-        public StaticPassenger(cam72cam.mod.entity.Entity entityliving ) {
+        public StaticPassenger(cam72cam.mod.entity.Entity entityliving) {
             ident = new Identifier(EntityList.getKey(entityliving.internal));
             data = new TagCompound(entityliving.internal.writeToNBT(new NBTTagCompound()));
             uuid = entityliving.getUUID();
@@ -311,20 +398,6 @@ public class ModdedEntity extends Entity implements IEntityAdditionalSpawnData {
         }
     }
 
-    private void readPassengerData(TagCompound data) {
-        passengerPositions = data.getMap("passengers", UUID::fromString, (TagCompound tag) -> tag.getVec3d("pos"));
-        staticPassengers = data.getList("staticPassengers", StaticPassenger::new);
-    }
-    private void writePassengerData(TagCompound data) {
-        data.setMap("passengers", passengerPositions, UUID::toString, (Vec3d pos) -> {
-            //TODO single encoder step
-            TagCompound tmp = new TagCompound();
-            tmp.setVec3d("pos", pos);
-            return tmp;
-        });
-        data.setList("staticPassengers", staticPassengers, StaticPassenger::toTag);
-    }
-
     public static class PassengerPositionsPacket extends Packet {
         public PassengerPositionsPacket() {
             // Forge Reflection
@@ -346,70 +419,8 @@ public class ModdedEntity extends Entity implements IEntityAdditionalSpawnData {
         }
     }
 
-    /* ICollision */
-    @Override
-    public AxisAlignedBB getCollisionBoundingBox() {
-        return new BoundingBox(iCollision.getCollision());
-    }
-    @Override
-    public AxisAlignedBB getEntityBoundingBox() {
-        return new BoundingBox(iCollision.getCollision());
-    }
-    @Override
-    public AxisAlignedBB getRenderBoundingBox() {
-        AxisAlignedBB bb = this.getEntityBoundingBox();
-        return new AxisAlignedBB(bb.minX, bb.minY, bb.minZ, bb.maxX, bb.maxY, bb.maxZ);
-    }
-
-
-    /* Hacks */
-    @Override
-    public boolean canBeCollidedWith() {
-        // Needed for right click, probably a forge or MC bug
-        return true;
-    }
-
-    @Override
-    public boolean canBePushed() {
-        return settings.canBePushed;
-    }
-    @Override
-    public <T extends Entity> Collection<T> getRecursivePassengersByType(Class<T> entityClass) {
-        if (!settings.attachedToPlayer) {
-            try {
-                throw new Exception("Hack the planet");
-            } catch (Exception ex) {
-                for (StackTraceElement tl : ex.getStackTrace()) {
-                    if (tl.getFileName().contains("PlayerList.java")) {
-                        return new ArrayList<>();
-                    }
-                }
-            }
-        }
-        return super.getRecursivePassengersByType(entityClass);
-    }
-
     /*
-     * Disable standard entity sync
-     */
-
-    @Override
-    @SideOnly(Side.CLIENT)
-    public void setPositionAndRotationDirect(double x, double y, double z, float yaw, float pitch, int posRotationIncrements, boolean teleport) {
-        if (settings.defaultMovement) {
-            super.setPositionAndRotationDirect(x, y, z, yaw, pitch, posRotationIncrements, teleport);
-        }
-    }
-
-    @Override
-    public void setVelocity(double x, double y, double z) {
-        if (settings.defaultMovement) {
-            super.setVelocity(x, y, z);
-        }
-    }
-
-    /*
-    * TODO!!!
+     * TODO!!!
      */
     /*
     //@Override

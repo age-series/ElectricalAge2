@@ -5,8 +5,11 @@ import cam72cam.mod.resource.Identifier;
 
 public interface IScreenBuilder {
     void close();
+
     void addButton(Button btn);
+
     int getWidth();
+
     int getHeight();
 
     void drawImage(Identifier tex, int x, int y, int width, int height);

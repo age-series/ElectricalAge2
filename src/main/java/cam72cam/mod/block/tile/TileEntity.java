@@ -9,8 +9,8 @@ import cam72cam.mod.fluid.Fluid;
 import cam72cam.mod.fluid.ITank;
 import cam72cam.mod.item.IInventory;
 import cam72cam.mod.math.Vec3i;
-import cam72cam.mod.util.Facing;
 import cam72cam.mod.resource.Identifier;
+import cam72cam.mod.util.Facing;
 import cam72cam.mod.util.TagCompound;
 import cam72cam.mod.world.World;
 import com.google.common.collect.HashBiMap;
@@ -35,17 +35,16 @@ import java.util.Map;
 import java.util.function.Supplier;
 
 public class TileEntity extends net.minecraft.tileentity.TileEntity {
+    private static final Map<String, Supplier<BlockEntity>> registry = HashBiMap.create();
     public World world;
     public Vec3i pos;
     public boolean hasTileData;
     private String instanceId;
-    private BlockEntity instance;
 
     /*
     Tile registration
     */
-
-    private static final Map<String, Supplier<BlockEntity>> registry = HashBiMap.create();
+    private BlockEntity instance;
     private TagCompound deferredLoad;
 
     public TileEntity() {
@@ -88,11 +87,13 @@ public class TileEntity extends net.minecraft.tileentity.TileEntity {
         super.setWorld(world);
         this.world = World.get(world);
     }
+
     @Override
     protected void setWorldCreate(net.minecraft.world.World worldIn) {
         super.setWorld(worldIn);
         this.world = World.get(worldIn);
     }
+
     @Override
     public void setPos(BlockPos pos) {
         super.setPos(pos);
@@ -105,6 +106,7 @@ public class TileEntity extends net.minecraft.tileentity.TileEntity {
         hasTileData = true;
         load(new TagCompound(compound));
     }
+
     @Override
     public final NBTTagCompound writeToNBT(NBTTagCompound compound) {
         save(new TagCompound(compound));
@@ -119,6 +121,7 @@ public class TileEntity extends net.minecraft.tileentity.TileEntity {
 
         return new SPacketUpdateTileEntity(this.getPos(), 1, nbt.internal);
     }
+
     @Override
     public final void onDataPacket(NetworkManager net, SPacketUpdateTileEntity pkt) {
         hasTileData = true;
@@ -139,6 +142,7 @@ public class TileEntity extends net.minecraft.tileentity.TileEntity {
         }
         return tag;
     }
+
     @Override
     public final void handleUpdateTag(NBTTagCompound tag) {
         hasTileData = true;
@@ -149,7 +153,6 @@ public class TileEntity extends net.minecraft.tileentity.TileEntity {
             world.internal.markBlockRangeForRenderUpdate(getPos(), getPos());
         }
     }
-
 
 
     @Override
@@ -172,6 +175,7 @@ public class TileEntity extends net.minecraft.tileentity.TileEntity {
         }
         return INFINITE_EXTENT_AABB;
     }
+
     public double getMaxRenderDistanceSquared() {
         return instance() != null ? instance().getRenderDistance() * instance().getRenderDistance() : Integer.MAX_VALUE;
     }
@@ -193,39 +197,39 @@ public class TileEntity extends net.minecraft.tileentity.TileEntity {
             return CapabilityFluidHandler.FLUID_HANDLER_CAPABILITY.cast(new IFluidHandler() {
                 @Override
                 public IFluidTankProperties[] getTankProperties() {
-                    return new IFluidTankProperties[] {
-                        new IFluidTankProperties() {
-                            @Nullable
-                            @Override
-                            public FluidStack getContents() {
-                                return target.getContents().internal;
-                            }
+                    return new IFluidTankProperties[]{
+                            new IFluidTankProperties() {
+                                @Nullable
+                                @Override
+                                public FluidStack getContents() {
+                                    return target.getContents().internal;
+                                }
 
-                            @Override
-                            public int getCapacity() {
-                                return target.getCapacity();
-                            }
+                                @Override
+                                public int getCapacity() {
+                                    return target.getCapacity();
+                                }
 
-                            @Override
-                            public boolean canFill() {
-                                return true;
-                            }
+                                @Override
+                                public boolean canFill() {
+                                    return true;
+                                }
 
-                            @Override
-                            public boolean canDrain() {
-                                return true;
-                            }
+                                @Override
+                                public boolean canDrain() {
+                                    return true;
+                                }
 
-                            @Override
-                            public boolean canFillFluidType(FluidStack fluidStack) {
-                                return target.allows(Fluid.getFluid(fluidStack.getFluid()));
-                            }
+                                @Override
+                                public boolean canFillFluidType(FluidStack fluidStack) {
+                                    return target.allows(Fluid.getFluid(fluidStack.getFluid()));
+                                }
 
-                            @Override
-                            public boolean canDrainFluidType(FluidStack fluidStack) {
-                                return target.allows(Fluid.getFluid(fluidStack.getFluid()));
+                                @Override
+                                public boolean canDrainFluidType(FluidStack fluidStack) {
+                                    return target.allows(Fluid.getFluid(fluidStack.getFluid()));
+                                }
                             }
-                        }
                     };
                 }
 
@@ -335,6 +339,7 @@ public class TileEntity extends net.minecraft.tileentity.TileEntity {
     public void setWorld(World world) {
         super.setWorld(world.internal);
     }
+
     public void setPos(Vec3i pos) {
         super.setPos(pos.internal);
     }
@@ -357,6 +362,7 @@ public class TileEntity extends net.minecraft.tileentity.TileEntity {
             deferredLoad = data;
         }
     }
+
     public void save(TagCompound data) {
         super.writeToNBT(data.internal);
         data.setString("instanceId", instanceId);
@@ -370,6 +376,7 @@ public class TileEntity extends net.minecraft.tileentity.TileEntity {
             instance().writeUpdate(nbt);
         }
     }
+
     public void readUpdate(TagCompound nbt) {
         if (instance() != null) {
             instance().readUpdate(nbt);

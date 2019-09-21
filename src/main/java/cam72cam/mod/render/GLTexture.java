@@ -27,14 +27,13 @@ public class GLTexture {
     private static ExecutorService saveImage = new ThreadPoolExecutor(5, 5, 60, TimeUnit.SECONDS, queue);
     private static ExecutorService prioritySaveImage = Executors.newFixedThreadPool(1);
     private static ExecutorService readImage = Executors.newFixedThreadPool(1);
-
+    private static List<GLTexture> textures = new ArrayList<>();
     private final File texLoc;
     private final int cacheSeconds;
-    private int glTexID;
-    private long lastUsed;
-
     private final int width;
     private final int height;
+    private int glTexID;
+    private long lastUsed;
     private IntBuffer pixels;
     private boolean loading;
 
@@ -78,6 +77,22 @@ public class GLTexture {
         textures.add(this);
     }
 
+    @SubscribeEvent
+    public static void onTick(TickEvent.ClientTickEvent event) {
+        if (event.phase != TickEvent.Phase.START) {
+            return;
+        }
+
+        for (GLTexture texture : textures) {
+            if (texture.glTexID == -1) {
+                continue;
+            }
+            if (System.currentTimeMillis() - texture.lastUsed > texture.cacheSeconds * 1000) {
+                texture.dealloc();
+            }
+        }
+    }
+
     private IntBuffer imageToPixels(BufferedImage image) {
         int[] pixels = new int[image.getWidth() * image.getHeight()];
         image.getRGB(0, 0, image.getWidth(), image.getHeight(), pixels, 0, image.getWidth());
@@ -86,7 +101,6 @@ public class GLTexture {
         buffer.flip();
         return buffer;
     }
-
 
     private int uploadTexture() {
         System.out.println("ALLOC " + this.texLoc);
@@ -156,23 +170,6 @@ public class GLTexture {
             System.out.println("DEALLOC " + this.texLoc);
             GL11.glDeleteTextures(this.glTexID);
             this.glTexID = -1;
-        }
-    }
-
-    private static List<GLTexture> textures = new ArrayList<>();
-    @SubscribeEvent
-    public static void onTick(TickEvent.ClientTickEvent event) {
-        if (event.phase != TickEvent.Phase.START) {
-            return;
-        }
-
-        for (GLTexture texture : textures) {
-            if (texture.glTexID == -1) {
-                continue;
-            }
-            if (System.currentTimeMillis() - texture.lastUsed > texture.cacheSeconds * 1000) {
-                texture.dealloc();
-            }
         }
     }
 }

@@ -7,11 +7,11 @@ public abstract class CheckBox extends Button {
         super(builder, new GuiCheckBox(-1, builder.getWidth() / 2 + x, builder.getHeight() / 4 + y, text, enabled));
     }
 
-    public void setChecked(boolean val) {
-        ((GuiCheckBox)this.button).setIsChecked(val);
+    public boolean isChecked() {
+        return ((GuiCheckBox) this.button).isChecked();
     }
 
-    public boolean isChecked() {
-        return ((GuiCheckBox)this.button).isChecked();
+    public void setChecked(boolean val) {
+        ((GuiCheckBox) this.button).setIsChecked(val);
     }
 }

@@ -14,14 +14,24 @@ import java.util.stream.Collectors;
 
 public class ConfigFile {
 
-    @Retention(RetentionPolicy.RUNTIME)
-    public @interface Name {
-        String value();
-    }
+    private static Map<Class<?>, Function<Object, String>> encoders = new HashMap<>();
+    private static Map<Class<?>, Function<String, Object>> decoders = new HashMap<>();
 
-    @Retention(RetentionPolicy.RUNTIME)
-    public @interface Comment {
-        String value();
+    static {
+        addMapper(int.class, i -> (i.toString()), Integer::parseInt);
+        addMapper(Integer.class, i -> (i == null ? "" : i.toString()), Integer::parseInt);
+        addMapper(long.class, i -> (i.toString()), Long::parseLong);
+        addMapper(Long.class, i -> (i == null ? "" : i.toString()), Long::parseLong);
+        addMapper(float.class, i -> (i.toString()), Float::parseFloat);
+        addMapper(Float.class, i -> (i == null ? "" : i.toString()), Float::parseFloat);
+        addMapper(double.class, i -> (i.toString()), Double::parseDouble);
+        addMapper(Double.class, i -> (i == null ? "" : i.toString()), Double::parseDouble);
+
+        addMapper(boolean.class, i -> (i.toString()), Boolean::parseBoolean);
+        addMapper(Boolean.class, i -> (i == null ? "" : i.toString()), Boolean::parseBoolean);
+
+        addMapper(String.class, i -> (i == null ? "" : i), l -> l);
+
     }
 
     public static void sync(Class cls, Path path) {
@@ -52,29 +62,9 @@ public class ConfigFile {
         }
     }
 
-    private static Map<Class<?>, Function<Object, String>> encoders = new HashMap<>();
-    private static Map<Class<?>, Function<String, Object>> decoders = new HashMap<>();
-
     public static <T> void addMapper(Class<T> cls, Function<T, String> encoder, Function<String, T> decoder) {
         encoders.put(cls, x -> encoder.apply((T) x));
         decoders.put(cls, decoder::apply);
-    }
-
-    static {
-        addMapper(int.class, i -> (i.toString()), Integer::parseInt);
-        addMapper(Integer.class, i -> (i == null ? "" : i.toString()), Integer::parseInt);
-        addMapper(long.class, i -> (i.toString()), Long::parseLong);
-        addMapper(Long.class, i -> (i == null ? "" : i.toString()), Long::parseLong);
-        addMapper(float.class, i -> (i.toString()), Float::parseFloat);
-        addMapper(Float.class, i -> (i == null ? "" : i.toString()), Float::parseFloat);
-        addMapper(double.class, i -> (i.toString()), Double::parseDouble);
-        addMapper(Double.class, i -> (i == null ? "" : i.toString()), Double::parseDouble);
-
-        addMapper(boolean.class, i -> (i.toString()), Boolean::parseBoolean);
-        addMapper(Boolean.class, i -> (i == null ? "" : i.toString()), Boolean::parseBoolean);
-
-        addMapper(String.class, i -> (i == null ? "" : i), l -> l);
-
     }
 
     private static String getPrefix(Class<?> cls) {
@@ -93,15 +83,26 @@ public class ConfigFile {
 
     private static Object decode(Class<?> cls, String s) {
         if (cls.isEnum()) {
-            return Enum.valueOf((Class<? extends Enum>)cls, s);
+            return Enum.valueOf((Class<? extends Enum>) cls, s);
         }
         return decoders.get(cls).apply(s);
+    }
+
+    @Retention(RetentionPolicy.RUNTIME)
+    public @interface Name {
+        String value();
+    }
+
+    @Retention(RetentionPolicy.RUNTIME)
+    public @interface Comment {
+        String value();
     }
 
     private abstract static class Property {
         protected abstract <A extends Annotation> A getAnnotation(Class<A> cls);
 
         protected abstract void read(List<String> lines);
+
         protected abstract List<String> write();
 
         protected abstract String getName();
@@ -128,10 +129,10 @@ public class ConfigFile {
                 int max = Arrays.stream(parts).map(String::length).sorted(Comparator.reverseOrder()).findFirst().get();
                 max = Math.max(max, getName().length());
                 result.add(StringUtils.repeat("#", max + 4));
-                result.add("# " + getName() + StringUtils.repeat( " ", max - getName().length()) + " #");
-                result.add("# " + StringUtils.repeat( "-", max) + " #");
+                result.add("# " + getName() + StringUtils.repeat(" ", max - getName().length()) + " #");
+                result.add("# " + StringUtils.repeat("-", max) + " #");
                 for (String part : parts) {
-                    result.add("# " + part + StringUtils.repeat( " ", max - part.length()) + " #");
+                    result.add("# " + part + StringUtils.repeat(" ", max - part.length()) + " #");
                 }
                 result.add(StringUtils.repeat("#", max + 4));
             }
@@ -145,6 +146,7 @@ public class ConfigFile {
         private PropertyField(Field f) {
             this.field = f;
         }
+
         @Override
         protected <A extends Annotation> A getAnnotation(Class<A> cls) {
             return field.getAnnotation(cls);
@@ -155,16 +157,16 @@ public class ConfigFile {
             if (field.getType().isArray()) {
                 lines.remove(0);
                 List<String> found = new ArrayList<>();
-                while(!lines.isEmpty()) {
+                while (!lines.isEmpty()) {
                     String line = lines.remove(0);
-                    if(line.equals(">")) {
+                    if (line.equals(">")) {
                         try {
                             Object[] array = (Object[]) Array.newInstance(field.getType().getComponentType(), found.size());
                             for (int i = 0; i < found.size(); i++) {
                                 array[i] = decode(field.getType().getComponentType(), found.get(i));
                             }
                             field.set(null, array);
-                        } catch (IllegalAccessException|NullPointerException e) {
+                        } catch (IllegalAccessException | NullPointerException e) {
                             System.out.println("Error reading field " + field);
                             e.printStackTrace();
                         }
@@ -178,7 +180,7 @@ public class ConfigFile {
             if (Map.class.isAssignableFrom(field.getType())) {
                 lines.remove(0);
                 List<String> found = new ArrayList<>();
-                while(!lines.isEmpty()) {
+                while (!lines.isEmpty()) {
                     String line = lines.remove(0);
                     if (line.equals("}")) {
 
@@ -195,7 +197,7 @@ public class ConfigFile {
                                 Object val = decode(vt, sp[1]);
                                 data.put(key, val);
                             }
-                        } catch (IllegalAccessException|NullPointerException e) {
+                        } catch (IllegalAccessException | NullPointerException e) {
                             System.out.println("Error reading field " + field);
                             e.printStackTrace();
                         }
@@ -209,7 +211,7 @@ public class ConfigFile {
             String line = lines.remove(0);
             try {
                 field.set(null, decode(field.getType(), line.split("=", 2)[1]));
-            } catch (IllegalAccessException|NullPointerException e) {
+            } catch (IllegalAccessException | NullPointerException e) {
                 System.out.println("Error reading field " + field);
                 e.printStackTrace();
             }
@@ -228,7 +230,7 @@ public class ConfigFile {
                     for (Object elem : data) {
                         lines.add("    " + encode(aType, elem));
                     }
-                } catch (IllegalAccessException|NullPointerException e) {
+                } catch (IllegalAccessException | NullPointerException e) {
                     throw new RuntimeException("Error writing field " + field, e);
                 }
                 lines.add(">");
@@ -240,11 +242,11 @@ public class ConfigFile {
                 lines.add(getName() + " {");
                 try {
                     Map<Object, Object> data = (Map<Object, Object>) field.get(null);
-                    for(Object key : data.keySet()) {
+                    for (Object key : data.keySet()) {
                         Object value = data.get(key);
                         lines.add("    " + getPrefix(value.getClass()) + ":" + encode(key.getClass(), key) + "=" + encode(value.getClass(), value));
                     }
-                } catch (IllegalAccessException|NullPointerException e) {
+                } catch (IllegalAccessException | NullPointerException e) {
                     throw new RuntimeException("Error writing field " + field, e);
                 }
                 lines.add("}");
@@ -255,7 +257,7 @@ public class ConfigFile {
 
             try {
                 lines.add(getPrefix(field.getType()) + ":" + getName() + "=" + encode(field.getType(), field.get(null)));
-            } catch (IllegalAccessException|NullPointerException e) {
+            } catch (IllegalAccessException | NullPointerException e) {
                 throw new RuntimeException("Error writing field " + field, e);
             }
             lines.add("");
@@ -300,7 +302,7 @@ public class ConfigFile {
         @Override
         protected void read(List<String> lines) {
             lines.remove(0);
-            while(!lines.isEmpty()) {
+            while (!lines.isEmpty()) {
                 String line = lines.get(0);
 
                 if (line.equals("}")) {

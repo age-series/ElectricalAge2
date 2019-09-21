@@ -29,6 +29,16 @@ public class StandardModel {
     private List<Pair<IBlockState, IBakedModel>> models = new ArrayList<>();
     private List<Consumer<Float>> custom = new ArrayList<>();
 
+    public static IBlockState itemToBlockState(cam72cam.mod.item.ItemStack stack) {
+        Block block = Block.getBlockFromItem(stack.internal.getItem());
+        @SuppressWarnings("deprecation")
+        IBlockState gravelState = block.getStateFromMeta(stack.internal.getMetadata());
+        if (block instanceof BlockLog) {
+            gravelState = gravelState.withProperty(BlockLog.LOG_AXIS, BlockLog.EnumAxis.Z);
+        }
+        return gravelState;
+    }
+
     public StandardModel addColorBlock(Color color, Vec3d translate, Vec3d scale) {
         IBlockState state = Blocks.CONCRETE.getDefaultState();
         state = state.withProperty(BlockColored.COLOR, color.internal);
@@ -41,15 +51,17 @@ public class StandardModel {
         layers = Math.min(layers, 8);
         IBlockState state = Blocks.SNOW_LAYER.getDefaultState().withProperty(BlockSnow.LAYERS, layers);
         IBakedModel model = Minecraft.getMinecraft().getBlockRendererDispatcher().getBlockModelShapes().getModelForState(state);
-        models.add(Pair.of(state, new BakedScaledModel(model, new Vec3d(1, 1,1), translate)));
+        models.add(Pair.of(state, new BakedScaledModel(model, new Vec3d(1, 1, 1), translate)));
         return this;
     }
+
     public StandardModel addItemBlock(ItemStack bed, Vec3d translate, Vec3d scale) {
         IBlockState state = itemToBlockState(bed);
         IBakedModel model = Minecraft.getMinecraft().getBlockRendererDispatcher().getBlockModelShapes().getModelForState(state);
         models.add(Pair.of(state, new BakedScaledModel(model, scale, translate)));
         return this;
     }
+
     public StandardModel addItem(ItemStack stack, Vec3d translate, Vec3d scale) {
         custom.add((pt) -> {
             GL11.glPushMatrix();
@@ -62,10 +74,12 @@ public class StandardModel {
         });
         return this;
     }
+
     public StandardModel addCustom(Runnable fn) {
         this.custom.add(pt -> fn.run());
         return this;
     }
+
     public StandardModel addCustom(Consumer<Float> fn) {
         this.custom.add(fn);
         return this;
@@ -80,19 +94,10 @@ public class StandardModel {
         return quads;
     }
 
-    public static IBlockState itemToBlockState(cam72cam.mod.item.ItemStack stack) {
-        Block block = Block.getBlockFromItem(stack.internal.getItem());
-        @SuppressWarnings("deprecation")
-        IBlockState gravelState = block.getStateFromMeta(stack.internal.getMetadata());
-        if (block instanceof BlockLog) {
-            gravelState = gravelState.withProperty(BlockLog.LOG_AXIS, BlockLog.EnumAxis.Z);
-        }
-        return gravelState;
-    }
-
     public void render() {
         render(0);
     }
+
     public void render(float partialTicks) {
         renderCustom(partialTicks);
         renderQuads();

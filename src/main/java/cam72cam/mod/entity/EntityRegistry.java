@@ -1,9 +1,9 @@
 package cam72cam.mod.entity;
 
 import cam72cam.mod.ModCore;
+import cam72cam.mod.resource.Identifier;
 import cam72cam.mod.text.PlayerMessage;
 import cam72cam.mod.world.World;
-import cam72cam.mod.resource.Identifier;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiDisconnected;
 import net.minecraft.client.gui.GuiMainMenu;
@@ -22,10 +22,12 @@ public class EntityRegistry {
     private static final Map<Class<? extends Entity>, String> identifiers = new HashMap<>();
     private static final Map<String, Supplier<Entity>> constructors = new HashMap<>();
     private static final Map<String, EntitySettings> registered = new HashMap<>();
+    private static String missingResources;
 
     private EntityRegistry() {
 
     }
+
     public static void register(Class<? extends ModCore.Mod> cls, Supplier<Entity> ctr, EntitySettings settings, int distance) {
         Entity tmp = ctr.get();
         Class<? extends Entity> type = tmp.getClass();
@@ -42,6 +44,7 @@ public class EntityRegistry {
             registered.put(id.toString(), settings);
         });
     }
+
     public static EntitySettings getSettings(String type) {
         return registered.get(type);
     }
@@ -62,8 +65,6 @@ public class EntityRegistry {
         return ent.getSelf();
     }
 
-    private static String missingResources;
-
     @EventBusSubscriber(modid = ModCore.MODID)
     public static class EntityEvents {
         @SubscribeEvent
@@ -74,7 +75,7 @@ public class EntityRegistry {
 
 
             if (event.getEntity() instanceof ModdedEntity) {
-                String msg = ((ModdedEntity)event.getEntity()).getSelf().tryJoinWorld();
+                String msg = ((ModdedEntity) event.getEntity()).getSelf().tryJoinWorld();
                 if (msg != null) {
                     event.setCanceled(true);
                     missingResources = msg;

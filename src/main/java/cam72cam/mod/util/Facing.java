@@ -12,15 +12,14 @@ public enum Facing {
     EAST(EnumFacing.EAST),
     ;
 
+    public static final Facing[] HORIZONTALS = {
+            NORTH, SOUTH, EAST, WEST
+    };
     public final EnumFacing internal;
 
     Facing(EnumFacing internal) {
         this.internal = internal;
     }
-
-    public static final Facing[] HORIZONTALS = {
-            NORTH, SOUTH, EAST, WEST
-    };
 
     public static Facing from(EnumFacing facing) {
         if (facing == null) {

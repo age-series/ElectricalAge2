@@ -13,7 +13,10 @@ import net.minecraft.world.World;
 import net.minecraftforge.fml.common.Loader;
 import net.minecraftforge.fml.common.Mod.EventHandler;
 import net.minecraftforge.fml.common.SidedProxy;
-import net.minecraftforge.fml.common.event.*;
+import net.minecraftforge.fml.common.event.FMLInitializationEvent;
+import net.minecraftforge.fml.common.event.FMLPostInitializationEvent;
+import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
+import net.minecraftforge.fml.common.event.FMLServerStartedEvent;
 import org.apache.logging.log4j.Logger;
 
 import java.nio.file.Path;
@@ -24,50 +27,18 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
-@net.minecraftforge.fml.common.Mod(modid=ModCore.MODID, name=ModCore.NAME, version=ModCore.VERSION, acceptedMinecraftVersions = "[1.12,1.13)")
+@net.minecraftforge.fml.common.Mod(modid = ModCore.MODID, name = ModCore.NAME, version = ModCore.VERSION, acceptedMinecraftVersions = "[1.12,1.13)")
 public class ModCore {
     public static final String MODID = "modcore";
     public static final String NAME = "ModCore";
     public static final String VERSION = "1.0.0";
+    public static ModCore instance;
     static List<Supplier<Mod>> modCtrs = new ArrayList<>();
     private static List<Runnable> onInit = new ArrayList<>();
     private static List<Runnable> onReload = new ArrayList<>();
     private static List<Runnable> onServerStarting = new ArrayList<>();
-
-    private List<Mod> mods;
-
-    public static ModCore instance;
-    private Logger logger;
-
-    public static void register(Supplier<Mod> ctr) {
-        modCtrs.add(ctr);
-    }
-
-    public static abstract class Mod {
-        public ModCore instance;
-        protected Logger logger;
-
-        private void init() {
-            logger = ModCore.instance.logger;
-            instance = ModCore.instance;
-        }
-
-        public abstract String modID();
-
-        protected void initClient() {}
-        protected void initServer() {}
-
-        protected abstract void setup();
-        protected void setupClient() {}
-        protected void setupServer() {}
-
-        protected abstract void finalize();
-
-
-        public final Path getConfig(String fname) {
-            return Paths.get(Loader.instance().getConfigDir().toString(), fname);
-        }
-    }
+    @SidedProxy(serverSide = "cam72cam.mod.ModCore$ServerProxy", clientSide = "cam72cam.mod.ModCore$ClientProxy", modId = ModCore.MODID)
+    private static Proxy proxy;
 
     static {
         Packet.register(EntitySync.EntitySyncPacket::new, PacketDirection.ServerToClient);
@@ -75,6 +46,72 @@ public class ModCore {
         Packet.register(Keyboard.KeyPacket::new, PacketDirection.ClientToServer);
         Packet.register(ModdedEntity.PassengerPositionsPacket::new, PacketDirection.ServerToClient);
         Packet.register(MousePressPacket::new, PacketDirection.ClientToServer);
+    }
+
+    private List<Mod> mods;
+    private Logger logger;
+
+    public static void register(Supplier<Mod> ctr) {
+        modCtrs.add(ctr);
+    }
+
+    public static void onInit(Class<? extends Mod> type, Consumer<Mod> fn) {
+        onInit.add(() -> instance.mods.stream().filter(type::isInstance).findFirst().ifPresent(fn));
+    }
+
+    public static void onReload(Runnable fn) {
+        onReload.add(fn);
+    }
+
+    public static void onServerStarting(Runnable fn) {
+        onServerStarting.add(fn);
+    }
+
+    public static void debug(String msg, Object... params) {
+        if (instance == null || instance.logger == null) {
+            System.out.println("DEBUG: " + String.format(msg, params));
+            return;
+        }
+
+        /*TODO if (ConfigDebug.debugLog) {
+            instance.logger.info(String.format(msg, params));
+        }*/
+    }
+
+    public static void info(String msg, Object... params) {
+        if (instance == null || instance.logger == null) {
+            System.out.println("INFO: " + String.format(msg, params));
+            return;
+        }
+
+        instance.logger.info(String.format(msg, params));
+    }
+
+    public static void warn(String msg, Object... params) {
+        if (instance == null || instance.logger == null) {
+            System.out.println("WARN: " + String.format(msg, params));
+            return;
+        }
+
+        instance.logger.warn(String.format(msg, params));
+    }
+
+    public static void error(String msg, Object... params) {
+        if (instance == null || instance.logger == null) {
+            System.out.println("ERROR: " + String.format(msg, params));
+            return;
+        }
+
+        instance.logger.error(String.format(msg, params));
+    }
+
+    public static void catching(Throwable ex) {
+        if (instance == null || instance.logger == null) {
+            ex.printStackTrace();
+            return;
+        }
+
+        instance.logger.catching(ex);
     }
 
     @EventHandler
@@ -108,20 +145,42 @@ public class ModCore {
         onServerStarting.forEach(Runnable::run);
     }
 
-    public static void onInit(Class<? extends Mod> type, Consumer<Mod> fn) {
-        onInit.add(() -> instance.mods.stream().filter(type::isInstance).findFirst().ifPresent(fn));
-    }
+    public static abstract class Mod {
+        public ModCore instance;
+        protected Logger logger;
 
-    public static void onReload(Runnable fn) {
-        onReload.add(fn);
-    }
+        private void init() {
+            logger = ModCore.instance.logger;
+            instance = ModCore.instance;
+        }
 
-    public static void onServerStarting(Runnable fn) {
-        onServerStarting.add(fn);
+        public abstract String modID();
+
+        protected void initClient() {
+        }
+
+        protected void initServer() {
+        }
+
+        protected abstract void setup();
+
+        protected void setupClient() {
+        }
+
+        protected void setupServer() {
+        }
+
+        protected abstract void finalize();
+
+
+        public final Path getConfig(String fname) {
+            return Paths.get(Loader.instance().getConfigDir().toString(), fname);
+        }
     }
 
     public static abstract class Proxy {
         public abstract void init();
+
         public abstract void setup();
     }
 
@@ -158,51 +217,5 @@ public class ModCore {
         public void setup() {
             instance.mods.forEach(Mod::setupServer);
         }
-    }
-
-    @SidedProxy(serverSide = "cam72cam.mod.ModCore$ServerProxy", clientSide = "cam72cam.mod.ModCore$ClientProxy", modId = ModCore.MODID)
-    private static Proxy proxy;
-
-    public static void debug(String msg, Object...params) {
-        if (instance == null || instance.logger == null) {
-            System.out.println("DEBUG: " + String.format(msg, params));
-            return;
-        }
-
-        /*TODO if (ConfigDebug.debugLog) {
-            instance.logger.info(String.format(msg, params));
-        }*/
-    }
-    public static void info(String msg, Object...params) {
-        if (instance == null || instance.logger == null) {
-            System.out.println("INFO: " + String.format(msg, params));
-            return;
-        }
-
-        instance.logger.info(String.format(msg, params));
-    }
-    public static void warn(String msg, Object...params) {
-        if (instance == null || instance.logger == null) {
-            System.out.println("WARN: " + String.format(msg, params));
-            return;
-        }
-
-        instance.logger.warn(String.format(msg, params));
-    }
-    public static void error(String msg, Object...params) {
-        if (instance == null || instance.logger == null) {
-            System.out.println("ERROR: " + String.format(msg, params));
-            return;
-        }
-
-        instance.logger.error(String.format(msg, params));
-    }
-    public static void catching(Throwable ex) {
-        if (instance == null || instance.logger == null) {
-            ex.printStackTrace();
-            return;
-        }
-
-        instance.logger.catching(ex);
     }
 }

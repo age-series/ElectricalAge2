@@ -66,7 +66,7 @@ public class ItemRender {
 
     public static void register(ItemBase item, Identifier tex) {
         bakers.add(event -> event.getModelRegistry().putObject(new ModelResourceLocation(item.getRegistryName().internal, ""), new ItemLayerModel(ImmutableList.of(
-               tex.internal
+                tex.internal
         )).bake(TRSRTransformation.identity(), DefaultVertexFormats.ITEM, ModelLoader.defaultTextureGetter())));
 
         textures.add(event -> Minecraft.getMinecraft().getTextureMapBlocks().registerSprite(tex.internal));
@@ -98,6 +98,30 @@ public class ItemRender {
                 Progress.pop(bar);
             });
         }
+    }
+
+    private static void createSprite(String id, StandardModel model) {
+        int width = iconSheet.spriteSize;
+        int height = iconSheet.spriteSize;
+        Framebuffer fb = new Framebuffer(width, height, true);
+        fb.setFramebufferColor(0, 0, 0, 0);
+        fb.framebufferClear();
+        fb.bindFramebuffer(true);
+
+        GLBoolTracker depth = new GLBoolTracker(GL11.GL_DEPTH_TEST, true);
+        GL11.glDepthFunc(GL11.GL_LESS);
+        GL11.glClearDepth(1);
+
+        model.renderCustom();
+
+        ByteBuffer buff = ByteBuffer.allocateDirect(4 * width * height);
+        GL11.glReadPixels(0, 0, width, height, GL12.GL_BGRA, GL11.GL_UNSIGNED_BYTE, buff);
+
+        fb.unbindFramebuffer();
+        fb.deleteFramebuffer();
+        depth.restore();
+
+        iconSheet.setSprite(id, buff);
     }
 
     static class BakedItemModel implements IBakedModel {
@@ -178,17 +202,6 @@ public class ItemRender {
             return null;
         }
 
-        class ItemOverrideListHack extends ItemOverrideList {
-            ItemOverrideListHack() {
-                super(new ArrayList<>());
-            }
-
-            @Override
-            public IBakedModel handleItemState(IBakedModel originalModel, net.minecraft.item.ItemStack stack, @Nullable net.minecraft.world.World world, @Nullable EntityLivingBase entity) {
-                return new BakedItemModel(new ItemStack(stack), MinecraftClient.getPlayer().getWorld(), model, cacheRender, isGUI);
-            }
-        }
-
         @Override
         public ItemOverrideList getOverrides() {
             return new ItemOverrideListHack();
@@ -217,29 +230,16 @@ public class ItemRender {
             }
             return def;
         }
-    }
 
-    private static void createSprite(String id, StandardModel model) {
-        int width = iconSheet.spriteSize;
-        int height = iconSheet.spriteSize;
-        Framebuffer fb = new Framebuffer(width, height, true);
-        fb.setFramebufferColor(0, 0, 0, 0);
-        fb.framebufferClear();
-        fb.bindFramebuffer(true);
+        class ItemOverrideListHack extends ItemOverrideList {
+            ItemOverrideListHack() {
+                super(new ArrayList<>());
+            }
 
-        GLBoolTracker depth = new GLBoolTracker(GL11.GL_DEPTH_TEST, true);
-        GL11.glDepthFunc(GL11.GL_LESS);
-        GL11.glClearDepth(1);
-
-        model.renderCustom();
-
-        ByteBuffer buff = ByteBuffer.allocateDirect(4 * width * height);
-        GL11.glReadPixels(0, 0, width, height, GL12.GL_BGRA, GL11.GL_UNSIGNED_BYTE, buff);
-
-        fb.unbindFramebuffer();
-        fb.deleteFramebuffer();
-        depth.restore();
-
-        iconSheet.setSprite(id, buff);
+            @Override
+            public IBakedModel handleItemState(IBakedModel originalModel, net.minecraft.item.ItemStack stack, @Nullable net.minecraft.world.World world, @Nullable EntityLivingBase entity) {
+                return new BakedItemModel(new ItemStack(stack), MinecraftClient.getPlayer().getWorld(), model, cacheRender, isGUI);
+            }
+        }
     }
 }

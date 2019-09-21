@@ -41,31 +41,6 @@ public class GuiRegistry {
         );
     }
 
-    public static class GUIType {
-        private final int id;
-
-        private GUIType(int id) {
-            this.id = id;
-        }
-    }
-
-    private static class CreateEvent {
-        final boolean isServer;
-        final Player player;
-        final int entityIDorX;
-        final int y;
-        final int z;
-
-        private CreateEvent(boolean isServer, Player player, int entityIDorX, int y, int z) {
-            this.isServer = isServer;
-            this.player = player;
-            this.entityIDorX = entityIDorX;
-            this.y = y;
-            this.z = z;
-        }
-    }
-
-
     public GUIType register(String name, Supplier<IScreen> ctr) {
         int id = name.hashCode();
         registry.put(id, event -> {
@@ -132,10 +107,36 @@ public class GuiRegistry {
     public void openGUI(Player player, GUIType type) {
         player.internal.openGui(ModCore.instance, type.id, player.getWorld().internal, 0, 0, 0);
     }
+
     public void openGUI(Player player, Entity ent, GUIType type) {
         player.internal.openGui(ModCore.instance, type.id, player.getWorld().internal, ent.internal.getEntityId(), 0, 0);
     }
+
     public void openGUI(Player player, Vec3i pos, GUIType type) {
         player.internal.openGui(ModCore.instance, type.id, player.getWorld().internal, pos.x, pos.y, pos.z);
+    }
+
+    public static class GUIType {
+        private final int id;
+
+        private GUIType(int id) {
+            this.id = id;
+        }
+    }
+
+    private static class CreateEvent {
+        final boolean isServer;
+        final Player player;
+        final int entityIDorX;
+        final int y;
+        final int z;
+
+        private CreateEvent(boolean isServer, Player player, int entityIDorX, int y, int z) {
+            this.isServer = isServer;
+            this.player = player;
+            this.entityIDorX = entityIDorX;
+            this.y = y;
+            this.z = z;
+        }
     }
 }

@@ -33,7 +33,7 @@ public class Vec3i {
     @Override
     public boolean equals(Object o) {
         if (o instanceof Vec3i) {
-            return ((Vec3i)o).internal.equals(this.internal);
+            return ((Vec3i) o).internal.equals(this.internal);
         }
         return false;
     }
@@ -49,36 +49,47 @@ public class Vec3i {
     public Vec3i up() {
         return offset(Facing.UP);
     }
+
     public Vec3i down() {
         return offset(Facing.DOWN);
     }
+
     public Vec3i north() {
         return offset(Facing.NORTH);
     }
+
     public Vec3i east() {
         return offset(Facing.EAST);
     }
+
     public Vec3i south() {
         return offset(Facing.SOUTH);
     }
+
     public Vec3i west() {
         return offset(Facing.WEST);
     }
+
     public Vec3i up(int offset) {
         return offset(Facing.UP, offset);
     }
+
     public Vec3i down(int offset) {
         return offset(Facing.DOWN, offset);
     }
+
     public Vec3i north(int offset) {
         return offset(Facing.NORTH, offset);
     }
+
     public Vec3i east(int offset) {
         return offset(Facing.EAST, offset);
     }
+
     public Vec3i south(int offset) {
         return offset(Facing.SOUTH, offset);
     }
+
     public Vec3i west(int offset) {
         return offset(Facing.WEST, offset);
     }
@@ -86,12 +97,15 @@ public class Vec3i {
     public Vec3i add(Vec3i other) {
         return new Vec3i(internal.add(other.internal));
     }
+
     public Vec3i add(int x, int y, int z) {
         return new Vec3i(internal.add(x, y, z));
     }
+
     public Vec3i subtract(Vec3i other) {
         return new Vec3i(internal.subtract(other.internal));
     }
+
     public Vec3i subtract(int x, int y, int z) {
         return add(-x, -y, -z);
     }
@@ -108,6 +122,7 @@ public class Vec3i {
     public String toString() {
         return internal.toString();
     }
+
     @Override
     public int hashCode() {
         return internal.hashCode();
@@ -116,6 +131,7 @@ public class Vec3i {
     public Vec3d toChunkMin() {
         return new Vec3d(x >> 4 << 4, 0, z >> 4 << 4);
     }
+
     public Vec3d toChunkMax() {
         return new Vec3d((x >> 4 << 4) + 16, Double.POSITIVE_INFINITY, (z >> 4 << 4) + 16);
     }

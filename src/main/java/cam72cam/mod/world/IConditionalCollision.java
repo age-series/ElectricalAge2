@@ -15,9 +15,9 @@ public interface IConditionalCollision {
      * Return whether or not a block at the given position with the given state can collide
      * with the given damage source.
      *
-     * @param world World the block is in.
-     * @param pos Position of the block.
-     * @param state Block state of the block.
+     * @param world        World the block is in.
+     * @param pos          Position of the block.
+     * @param state        Block state of the block.
      * @param damageSource Damage source that would be used to collide with the block.
      * @return Whether or not to calculate actual collision.
      */

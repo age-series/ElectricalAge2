@@ -94,6 +94,7 @@ public class BlockRender {
                 }
                 GL11.glPopMatrix();
             }
+
             public boolean isGlobalRenderer(TileEntity te) {
                 return true;
             }

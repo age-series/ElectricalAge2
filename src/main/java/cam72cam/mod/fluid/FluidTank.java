@@ -35,6 +35,10 @@ public class FluidTank implements ITank {
         return internal.getCapacity();
     }
 
+    public void setCapacity(int milliBuckets) {
+        internal.setCapacity(milliBuckets);
+    }
+
     @Override
     public boolean allows(Fluid fluid) {
         return internal.canFill();
@@ -54,10 +58,6 @@ public class FluidTank implements ITank {
             return null;
         }
         return new FluidStack(internal.drain(fluidStack.internal, !simulate));
-    }
-
-    public void setCapacity(int milliBuckets) {
-        internal.setCapacity(milliBuckets);
     }
 
     public TagCompound write(TagCompound tag) {

@@ -32,20 +32,28 @@ import java.util.function.Consumer;
 
 @Mod.EventBusSubscriber(modid = ModCore.MODID)
 public abstract class BlockType {
-    protected final BlockSettings settings;
-    public final net.minecraft.block.Block internal;
-
     private static List<Consumer<RegistryEvent.Register<Block>>> registrations = new ArrayList<>();
+    public final net.minecraft.block.Block internal;
+    protected final BlockSettings settings;
+
+    public BlockType(BlockSettings settings) {
+        this.settings = settings;
+
+        internal = getBlock();
+
+        registrations.add(reg -> reg.getRegistry().register(internal));
+    }
+
     @SubscribeEvent
-    public static void registerBlocks(RegistryEvent.Register<Block> event)
-    {
+    public static void registerBlocks(RegistryEvent.Register<Block> event) {
         registrations.forEach(reg -> reg.accept(event));
     }
+
     @SubscribeEvent
     public static void onBlockBreakEvent(BlockEvent.BreakEvent event) {
         Block block = event.getWorld().getBlockState(event.getPos()).getBlock();
         if (block instanceof BlockInternal) {
-            BlockInternal internal = (BlockInternal)block;
+            BlockInternal internal = (BlockInternal) block;
             if (!internal.tryBreak(event.getWorld(), event.getPos(), event.getPlayer())) {
                 event.setCanceled(true);
                 //TODO updateListeners?
@@ -55,6 +63,28 @@ public abstract class BlockType {
 
     public String getName() {
         return settings.name;
+    }
+
+    protected BlockInternal getBlock() {
+        return new BlockInternal();
+    }
+
+    public abstract boolean tryBreak(World world, Vec3i pos, Player player);
+
+    /*
+    Public functionality
+     */
+
+    public abstract void onBreak(World world, Vec3i pos);
+
+    public abstract boolean onClick(World world, Vec3i pos, Player player, Hand hand, Facing facing, Vec3d hit);
+
+    public abstract ItemStack onPick(World world, Vec3i pos);
+
+    public abstract void onNeighborChange(World world, Vec3i pos, Vec3i neighbor);
+
+    public double getHeight() {
+        return 1;
     }
 
     protected class BlockInternal extends net.minecraft.block.Block {
@@ -71,26 +101,30 @@ public abstract class BlockType {
             BlockType.this.onBreak(World.get(world), new Vec3i(pos));
             super.breakBlock(world, pos, state);
         }
+
         @Override
         public final boolean onBlockActivated(net.minecraft.world.World world, BlockPos pos, IBlockState state, EntityPlayer player, EnumHand hand, EnumFacing facing, float hitX, float hitY, float hitZ) {
             return BlockType.this.onClick(World.get(world), new Vec3i(pos), new Player(player), Hand.from(hand), Facing.from(facing), new Vec3d(hitX, hitY, hitZ));
         }
+
         @Override
         public final net.minecraft.item.ItemStack getPickBlock(IBlockState state, RayTraceResult target, net.minecraft.world.World world, BlockPos pos, EntityPlayer player) {
             return BlockType.this.onPick(World.get(world), new Vec3i(pos)).internal;
         }
+
         @Override
         public void neighborChanged(IBlockState state, net.minecraft.world.World worldIn, BlockPos pos, net.minecraft.block.Block blockIn, BlockPos fromPos) {
             this.onNeighborChange(worldIn, pos, fromPos);
         }
+
         @Override
-        public void onNeighborChange(IBlockAccess world, BlockPos pos, BlockPos neighbor){
+        public void onNeighborChange(IBlockAccess world, BlockPos pos, BlockPos neighbor) {
             BlockType.this.onNeighborChange(World.get((net.minecraft.world.World) world), new Vec3i(pos), new Vec3i(neighbor));
         }
 
-            /*
-            Overrides
-             */
+        /*
+        Overrides
+         */
         @Override
         public final float getExplosionResistance(Entity exploder) {
             return settings.resistance;
@@ -125,9 +159,8 @@ public abstract class BlockType {
         }
 
         @Override
-        public AxisAlignedBB getSelectedBoundingBox(IBlockState state, net.minecraft.world.World worldIn, BlockPos pos)
-        {
-            return  getCollisionBoundingBox(state, worldIn, pos).expand(0, 0.1, 0).offset(pos);
+        public AxisAlignedBB getSelectedBoundingBox(IBlockState state, net.minecraft.world.World worldIn, BlockPos pos) {
+            return getCollisionBoundingBox(state, worldIn, pos).expand(0, 0.1, 0).offset(pos);
         }
 
         @Override
@@ -142,10 +175,10 @@ public abstract class BlockType {
         public boolean canBeConnectedTo(IBlockAccess internal, BlockPos pos, EnumFacing facing) {
             return settings.connectable;
         }
+
         @Deprecated
         @Override
-        public BlockFaceShape getBlockFaceShape(IBlockAccess p_193383_1_, IBlockState p_193383_2_, BlockPos p_193383_3_, EnumFacing p_193383_4_)
-        {
+        public BlockFaceShape getBlockFaceShape(IBlockAccess p_193383_1_, IBlockState p_193383_2_, BlockPos p_193383_3_, EnumFacing p_193383_4_) {
             if (settings.connectable) {
                 return super.getBlockFaceShape(p_193383_1_, p_193383_2_, p_193383_3_, p_193383_4_);
             }
@@ -200,27 +233,4 @@ public abstract class BlockType {
             */
 
     }
-
-    public BlockType(BlockSettings settings) {
-        this.settings = settings;
-
-        internal = getBlock();
-
-        registrations.add(reg -> reg.getRegistry().register(internal));
-    }
-
-    protected BlockInternal getBlock() {
-        return new BlockInternal();
-    }
-
-    /*
-    Public functionality
-     */
-
-    public abstract boolean tryBreak(World world, Vec3i pos, Player player);
-    public abstract void onBreak(World world, Vec3i pos);
-    public abstract boolean onClick(World world, Vec3i pos, Player player, Hand hand, Facing facing, Vec3d hit);
-    public abstract ItemStack onPick(World world, Vec3i pos);
-    public abstract void onNeighborChange(World world, Vec3i pos, Vec3i neighbor);
-    public double getHeight() { return 1; }
 }

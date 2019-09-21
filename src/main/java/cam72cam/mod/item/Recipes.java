@@ -25,10 +25,11 @@ public class Recipes {
         registrations.forEach(Runnable::run);
     }
 
-    public static void register(ItemBase item, int width, Fuzzy ... ingredients) {
+    public static void register(ItemBase item, int width, Fuzzy... ingredients) {
         register(new ItemStack(item, 1), width, ingredients);
     }
-    public static void register(ItemStack result, int width, Fuzzy ... ingredients) {
+
+    public static void register(ItemStack result, int width, Fuzzy... ingredients) {
         registrations.add(() -> {
             CraftingHelper.ShapedPrimer primer = new CraftingHelper.ShapedPrimer();
             primer.width = width;

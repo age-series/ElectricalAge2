@@ -18,15 +18,23 @@ import java.util.*;
 import java.util.function.Consumer;
 
 public class Keyboard {
+    @SidedProxy(clientSide = "cam72cam.mod.input.Keyboard$ClientProxy", serverSide = "cam72cam.mod.input.Keyboard$ServerProxy", modId = ModCore.MODID)
+    public static Proxy proxy;
     private static Map<UUID, Vec3d> vecs = new HashMap<>();
-    private static Map<String, Consumer<Player>> keyFuncs = new HashMap<>();
 
     /* Player Movement */
-
+    private static Map<String, Consumer<Player>> keyFuncs = new HashMap<>();
 
     public static Vec3d getMovement(Player player) {
         return vecs.getOrDefault(player.getUUID(), Vec3d.ZERO);
     }
+
+    public static void registerKey(String name, int keyCode, String category, Consumer<Player> handler) {
+        keyFuncs.put(name, handler);
+        proxy.registerKey(name, keyCode, category);
+    }
+
+    /* Key Bindings */
 
     @Mod.EventBusSubscriber(value = Side.CLIENT, modid = ModCore.MODID)
     public static class KeyboardListener {
@@ -55,26 +63,18 @@ public class Keyboard {
         public MovementPacket() {
 
         }
+
         public MovementPacket(UUID id, Vec3d move) {
             data.setUUID("id", id);
             data.setVec3d("move", move);
             vecs.put(data.getUUID("id"), data.getVec3d("move"));
         }
+
         @Override
         protected void handle() {
             vecs.put(data.getUUID("id"), data.getVec3d("move"));
         }
     }
-
-    /* Key Bindings */
-
-    public static void registerKey(String name, int keyCode, String category, Consumer<Player> handler) {
-        keyFuncs.put(name, handler);
-        proxy.registerKey(name, keyCode, category);
-    }
-
-    @SidedProxy(clientSide = "cam72cam.mod.input.Keyboard$ClientProxy", serverSide = "cam72cam.mod.input.Keyboard$ServerProxy", modId = ModCore.MODID)
-    public static Proxy proxy;
 
     public static abstract class Proxy {
         public abstract void registerKey(String name, int keyCode, String category);
@@ -100,6 +100,7 @@ public class Keyboard {
         public KeyPacket() {
 
         }
+
         public KeyPacket(String name) {
             data.setString("name", name);
         }

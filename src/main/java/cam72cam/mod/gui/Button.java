@@ -39,5 +39,7 @@ public abstract class Button {
 
     public void setVisible(boolean b) {
         button.visible = b;
-    };
+    }
+
+    ;
 }

@@ -20,14 +20,20 @@ public abstract class BlockEntity {
     public Vec3i pos;
 
     public abstract void load(TagCompound nbt);
+
     public abstract void save(TagCompound nbt);
+
     public abstract void writeUpdate(TagCompound nbt);
+
     public abstract void readUpdate(TagCompound nbt);
 
 
     public abstract void onBreak();
+
     public abstract boolean onClick(Player player, Hand hand, Facing facing, Vec3d hit);
+
     public abstract ItemStack onPick();
+
     public abstract void onNeighborChange(Vec3i neighbor);
 
     public double getHeight() {
@@ -63,6 +69,7 @@ public abstract class BlockEntity {
     public IBoundingBox getBoundingBox() {
         return null;
     }
+
     public double getRenderDistance() {
         return 4096.0D; // MC default
     }

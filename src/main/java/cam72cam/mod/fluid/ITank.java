@@ -8,14 +8,6 @@ import net.minecraftforge.fluids.capability.IFluidHandlerItem;
 import java.util.function.Consumer;
 
 public interface ITank {
-    FluidStack getContents();
-    int getCapacity();
-
-    boolean allows(Fluid fluid);
-
-    int fill(FluidStack fluidStack, boolean simulate);
-    FluidStack drain(FluidStack fluidStack, boolean simulate);
-
     static ITank getTank(ItemStack inputCopy, Consumer<ItemStack> onUpdate) {
         IFluidHandlerItem internal = FluidUtil.getFluidHandler(inputCopy.internal);
         if (internal == null) {
@@ -57,6 +49,7 @@ public interface ITank {
             }
         };
     }
+
     static ITank getTank(IFluidHandler internal) {
         return new ITank() {
             @Override
@@ -86,5 +79,15 @@ public interface ITank {
             }
         };
     }
+
+    FluidStack getContents();
+
+    int getCapacity();
+
+    boolean allows(Fluid fluid);
+
+    int fill(FluidStack fluidStack, boolean simulate);
+
+    FluidStack drain(FluidStack fluidStack, boolean simulate);
 
 }

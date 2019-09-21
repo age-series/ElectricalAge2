@@ -15,11 +15,16 @@ public enum Rotation {
 
     public static Rotation from(net.minecraft.util.Rotation rot) {
         switch (rot) {
-            case NONE: return NONE;
-            case CLOCKWISE_90: return CLOCKWISE_90;
-            case CLOCKWISE_180: return CLOCKWISE_180;
-            case COUNTERCLOCKWISE_90: return COUNTERCLOCKWISE_90;
-            default: return null;
+            case NONE:
+                return NONE;
+            case CLOCKWISE_90:
+                return CLOCKWISE_90;
+            case CLOCKWISE_180:
+                return CLOCKWISE_180;
+            case COUNTERCLOCKWISE_90:
+                return COUNTERCLOCKWISE_90;
+            default:
+                return null;
         }
     }
 

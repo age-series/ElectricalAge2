@@ -11,29 +11,12 @@ import java.util.List;
 import java.util.Map;
 
 public class SpriteSheet {
-    private class SpriteInfo {
-        final float uMin;
-        final float uMax;
-        final int uPx;
-        final float vMin;
-        final float vMax;
-        final int vPx;
-        final int texID;
-
-        private SpriteInfo(float u, float uMax, int uPx, float v, float vMax, int vPx, int texID) {
-            this.uMin = u;
-            this.uMax = uMax;
-            this.uPx = uPx;
-            this.vMin = v;
-            this.vMax = vMax;
-            this.vPx = vPx;
-            this.texID = texID;
-        }
-    }
-
+    public final int spriteSize;
     private final Map<String, SpriteInfo> sprites = new HashMap<>();
     private final List<SpriteInfo> unallocated = new ArrayList<>();
-    public final int spriteSize;
+    public SpriteSheet(int spriteSize) {
+        this.spriteSize = spriteSize;
+    }
 
     private void allocateSheet() {
         int textureID = GL11.glGenTextures();
@@ -46,17 +29,13 @@ public class SpriteSheet {
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL12.GL_CLAMP_TO_EDGE);
         for (int uPx = 0; uPx < sheetSize; uPx += spriteSize) {
             for (int vPx = 0; vPx < sheetSize; vPx += spriteSize) {
-                float u = uPx / (float)sheetSize;
-                float uMax = (uPx+spriteSize) / (float)sheetSize;
-                float v = vPx / (float)sheetSize;
-                float vMax = (vPx+spriteSize) / (float)sheetSize;
+                float u = uPx / (float) sheetSize;
+                float uMax = (uPx + spriteSize) / (float) sheetSize;
+                float v = vPx / (float) sheetSize;
+                float vMax = (vPx + spriteSize) / (float) sheetSize;
                 unallocated.add(new SpriteInfo(u, uMax, uPx, v, vMax, vPx, textureID));
             }
         }
-    }
-
-    public SpriteSheet(int spriteSize) {
-        this.spriteSize = spriteSize;
     }
 
     public void setSprite(String id, ByteBuffer pixels) {
@@ -104,5 +83,25 @@ public class SpriteSheet {
     public void freeSprite(String id) {
         unallocated.add(sprites.remove(id));
         // TODO shrink number of sheets?
+    }
+
+    private class SpriteInfo {
+        final float uMin;
+        final float uMax;
+        final int uPx;
+        final float vMin;
+        final float vMax;
+        final int vPx;
+        final int texID;
+
+        private SpriteInfo(float u, float uMax, int uPx, float v, float vMax, int vPx, int texID) {
+            this.uMin = u;
+            this.uMax = uMax;
+            this.uPx = uPx;
+            this.vMin = v;
+            this.vMax = vMax;
+            this.vPx = vPx;
+            this.texID = texID;
+        }
     }
 }

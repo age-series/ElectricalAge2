@@ -34,6 +34,7 @@ public class EntitySettings {
         this.canBePushed = canBePushed;
         return this;
     }
+
     public EntitySettings setDefaultMovement(boolean defaultMovement) {
         this.defaultMovement = defaultMovement;
         return this;

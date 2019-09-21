@@ -6,9 +6,6 @@ import cam72cam.mod.world.World;
 import trackapi.lib.Util;
 
 public interface ITrack {
-    double getTrackGauge();
-    Vec3d getNextPosition(Vec3d vec3d, Vec3d vec3d1);
-
     static boolean isRail(World world, Vec3i pos) {
         return get(world, new Vec3d(pos), true) != null;
     }
@@ -34,6 +31,10 @@ public interface ITrack {
     static ITrack get(World world, Vec3d pos, boolean allowMCRail) {
         return from(Util.getTileEntity(world.internal, pos.internal, allowMCRail));
     }
+
+    double getTrackGauge();
+
+    Vec3d getNextPosition(Vec3d vec3d, Vec3d vec3d1);
 
     default trackapi.lib.ITrack to() {
         return new trackapi.lib.ITrack() {

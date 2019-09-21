@@ -1,8 +1,8 @@
 package cam72cam.mod.render;
 
-import cam72cam.mod.model.obj.Vec2f;
 import cam72cam.mod.MinecraftClient;
 import cam72cam.mod.math.Vec3d;
+import cam72cam.mod.model.obj.Vec2f;
 import org.apache.commons.lang3.tuple.Pair;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
@@ -57,6 +57,7 @@ public class VBA {
         colorBuffer.put(b);
         colorBuffer.put(a);
     }
+
     public void draw() {
         if (isVBO) {
             drawVBO(null);
@@ -64,6 +65,7 @@ public class VBA {
             drawVBA(null);
         }
     }
+
     public void draw(Iterable<String> groups) {
         if (isVBO) {
             drawVBO(groups);
@@ -71,6 +73,7 @@ public class VBA {
             drawVBA(groups);
         }
     }
+
     private void drawVBO(Iterable<String> groups) {
         int prev = GL11.glGetInteger(GL15.GL_ARRAY_BUFFER_BINDING);
 
@@ -141,6 +144,7 @@ public class VBA {
         GL11.glColor4f(1, 1, 1, 1);
         GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, prev);
     }
+
     private void drawVBA(Iterable<String> groups) {
         GL11.glEnableClientState(GL11.GL_VERTEX_ARRAY);
         GL11.glEnableClientState(GL11.GL_TEXTURE_COORD_ARRAY);

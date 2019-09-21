@@ -4,12 +4,8 @@ import cam72cam.mod.ModCore;
 import cam72cam.mod.world.World;
 import net.minecraft.command.*;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.util.math.BlockPos;
-import net.minecraftforge.fml.client.FMLClientHandler;
 import net.minecraftforge.fml.common.FMLCommonHandler;
-import net.minecraftforge.fml.server.FMLServerHandler;
 
-import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
@@ -26,12 +22,9 @@ public abstract class Command {
         });
     }
 
-    public static void register(Command cmd) {
-        commands.add(cmd);
-    }
-
-
     private final ICommand internal;
+
+
     protected Command() {
         this.internal = new CommandBase() {
             @Override
@@ -56,6 +49,10 @@ public abstract class Command {
                 }
             }
         };
+    }
+
+    public static void register(Command cmd) {
+        commands.add(cmd);
     }
 
     public abstract String getPrefix();

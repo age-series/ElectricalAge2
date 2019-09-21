@@ -82,14 +82,17 @@ public class Fuzzy {
         OreDictionary.registerOre(ident, item.internal);
         return this;
     }
+
     public Fuzzy add(Block block) {
         OreDictionary.registerOre(ident, block);
         return this;
     }
+
     public Fuzzy add(Item item) {
         OreDictionary.registerOre(ident, item);
         return this;
     }
+
     public void add(ItemBase item) {
         add(item.internal);
     }

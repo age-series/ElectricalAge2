@@ -8,6 +8,7 @@ public enum ToolType {
     ToolType(String internal) {
         this.internal = internal;
     }
+
     public String toString() {
         return this.internal;
     }

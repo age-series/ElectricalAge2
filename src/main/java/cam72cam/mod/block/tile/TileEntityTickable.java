@@ -9,6 +9,7 @@ public class TileEntityTickable extends TileEntity implements ITickable {
     public TileEntityTickable() {
         super();
     }
+
     public TileEntityTickable(Identifier id) {
         super(id);
     }

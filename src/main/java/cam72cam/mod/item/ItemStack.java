@@ -56,6 +56,7 @@ public class ItemStack {
         }
         return new TagCompound(internal.getTagCompound());
     }
+
     public void setTagCompound(TagCompound data) {
         internal.setTagCompound(data.internal);
     }
@@ -71,6 +72,7 @@ public class ItemStack {
     public int getCount() {
         return internal.getCount();
     }
+
     public void setCount(int count) {
         internal.setCount(count);
     }

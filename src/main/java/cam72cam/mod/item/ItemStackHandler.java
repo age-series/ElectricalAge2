@@ -48,22 +48,27 @@ public class ItemStackHandler implements IInventory {
     public int getSlotCount() {
         return internal.getSlots();
     }
+
     @Override
     public ItemStack get(int slot) {
         return new ItemStack(internal.getStackInSlot(slot));
     }
+
     @Override
     public void set(int slot, ItemStack stack) {
         internal.setStackInSlot(slot, stack.internal);
     }
+
     @Override
     public ItemStack insert(int slot, ItemStack stack, boolean simulate) {
         return new ItemStack(internal.insertItem(slot, stack.internal, simulate));
     }
+
     @Override
     public ItemStack extract(int slot, int amount, boolean simulate) {
         return new ItemStack(internal.extractItem(slot, amount, simulate));
     }
+
     @Override
     public int getLimit(int slot) {
         return internal.getSlotLimit(slot);

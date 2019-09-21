@@ -11,15 +11,13 @@ public class TextField {
         this.textfield = create(builder, x, y, width, height);
         builder.addTextField(this);
     }
+
     GuiTextField create(IScreenBuilder builder, int x, int y, int width, int height) {
         return new GuiTextField(-1, Minecraft.getMinecraft().fontRenderer, builder.getWidth() / 2 + x, builder.getHeight() / 4 + y, width, height);
     }
+
     GuiTextField internal() {
         return textfield;
-    }
-
-    public void setText(String s) {
-        textfield.setText(s);
     }
 
     public void setValidator(Predicate<String> filter) {
@@ -32,5 +30,9 @@ public class TextField {
 
     public String getText() {
         return textfield.getText();
+    }
+
+    public void setText(String s) {
+        textfield.setText(s);
     }
 }

@@ -1,11 +1,11 @@
 package cam72cam.mod.entity;
 
-import cam72cam.mod.world.World;
 import cam72cam.mod.entity.boundingbox.IBoundingBox;
 import cam72cam.mod.entity.sync.EntitySync;
 import cam72cam.mod.math.Vec3d;
 import cam72cam.mod.math.Vec3i;
 import cam72cam.mod.net.Packet;
+import cam72cam.mod.world.World;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.passive.EntityVillager;
 import net.minecraft.entity.player.EntityPlayer;
@@ -19,20 +19,22 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public class Entity {
+    public final EntitySync sync;
     public net.minecraft.entity.Entity internal;
     private ModdedEntity modded;
-    public final EntitySync sync;
 
     protected Entity() {
         this.sync = new EntitySync(this);
     }
+
     public Entity(net.minecraft.entity.Entity entity) {
         this();
         setup(entity);
     }
+
     Entity setup(net.minecraft.entity.Entity entity) {
         this.internal = entity;
-        this.modded = entity instanceof ModdedEntity ? (ModdedEntity)entity : null;
+        this.modded = entity instanceof ModdedEntity ? (ModdedEntity) entity : null;
         return this;
     }
 
@@ -53,9 +55,11 @@ public class Entity {
     public Vec3i getBlockPosition() {
         return new Vec3i(internal.getPosition());
     }
+
     public Vec3d getPosition() {
         return new Vec3d(internal.getPositionVector());
     }
+
     public void setPosition(Vec3d pos) {
         internal.setPosition(pos.x, pos.y, pos.z);
     }
@@ -63,6 +67,7 @@ public class Entity {
     public Vec3d getVelocity() {
         return new Vec3d(internal.motionX, internal.motionY, internal.motionZ);
     }
+
     public void setVelocity(Vec3d motion) {
         internal.motionX = motion.x;
         internal.motionY = motion.y;
@@ -72,22 +77,27 @@ public class Entity {
     public float getRotationYaw() {
         return internal.rotationYaw;
     }
-    public float getRotationPitch() {
-        return internal.rotationPitch;
-    }
-    public float getPrevRotationYaw() {
-        return internal.prevRotationYaw;
-    }
-    public float getPrevRotationPitch() {
-        return internal.prevRotationPitch;
-    }
+
     public void setRotationYaw(float yaw) {
         internal.prevRotationYaw = internal.rotationYaw;
         internal.rotationYaw = yaw;
     }
+
+    public float getRotationPitch() {
+        return internal.rotationPitch;
+    }
+
     public void setRotationPitch(float pitch) {
         internal.prevRotationPitch = internal.rotationPitch;
         internal.rotationPitch = pitch;
+    }
+
+    public float getPrevRotationYaw() {
+        return internal.prevRotationYaw;
+    }
+
+    public float getPrevRotationPitch() {
+        return internal.prevRotationPitch;
     }
 
     public Vec3d getPositionEyes(float partialTicks) {
@@ -111,14 +121,14 @@ public class Entity {
 
     public <T extends net.minecraft.entity.Entity> T asInternal(Class<T> entity) {
         if (internal.getClass().isInstance(entity)) {
-            return (T)internal;
+            return (T) internal;
         }
         return null;
     }
 
     public <T extends Entity> T as(Class<T> type) {
         if (type.isInstance(this)) {
-            return (T)this;
+            return (T) this;
         }
         return null;
     }
@@ -130,6 +140,7 @@ public class Entity {
     public void kill() {
         internal.world.removeEntity(internal);
     }
+
     public final boolean isDead() {
         return internal.isDead;
     }
@@ -174,6 +185,7 @@ public class Entity {
     public final Vec3d getRidingOffset(Entity source) {
         return modded.getRidingOffset(source);
     }
+
     public final void setRidingOffset(Entity source, Vec3d pos) {
         modded.setRidingOffset(source, pos);
     }

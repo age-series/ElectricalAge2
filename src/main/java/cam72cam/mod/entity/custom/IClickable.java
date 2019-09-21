@@ -5,13 +5,14 @@ import cam72cam.mod.item.ClickResult;
 import cam72cam.mod.util.Hand;
 
 public interface IClickable {
-    ClickResult onClick(Player player, Hand hand);
+    IClickable NOP = (player, hand) -> ClickResult.PASS;
 
     static IClickable get(Object o) {
         if (o instanceof IClickable) {
-            return (IClickable)o;
+            return (IClickable) o;
         }
         return NOP;
     }
-    IClickable NOP = (player, hand) -> ClickResult.PASS;
+
+    ClickResult onClick(Player player, Hand hand);
 }

@@ -6,18 +6,6 @@ import net.minecraftforge.fml.common.ProgressManager.ProgressBar;
 import java.util.Iterator;
 
 public class Progress {
-    public static class Bar {
-        private final ProgressBar bar;
-
-        public Bar(ProgressBar bar) {
-            this.bar = bar;
-        }
-
-        public void step(String name) {
-            bar.step(name);
-        }
-    }
-
     public static Bar push(String name, int steps) {
         return new Bar(ProgressManager.push(name, steps));
     }
@@ -35,5 +23,17 @@ public class Progress {
 
         //This is terrible, I am sorry
         ProgressManager.pop(origBar);
+    }
+
+    public static class Bar {
+        private final ProgressBar bar;
+
+        public Bar(ProgressBar bar) {
+            this.bar = bar;
+        }
+
+        public void step(String name) {
+            bar.step(name);
+        }
     }
 }

@@ -36,10 +36,11 @@ public class GlobalRender {
     private static List<Consumer<Float>> renderFuncs = new ArrayList<>();
     private static List<Consumer<Float>> overlayFuncs = new ArrayList<>();
     private static Map<ItemBase, MouseoverEvent> itemMouseovers = new HashMap<>();
+    private static TileEntity grh = new GlobalRenderHelper();
+    private static List<TileEntity> grhList = new ArrayList<>();
 
-    @FunctionalInterface
-    public interface MouseoverEvent {
-        void render(Player player, ItemStack stack, Vec3i pos, Vec3d offset, float partialTicks);
+    static {
+        grhList.add(grh);
     }
 
     @SubscribeEvent
@@ -51,6 +52,7 @@ public class GlobalRender {
             }
         });
     }
+
     @SubscribeEvent
     public static void onRenderMouseover(DrawBlockHighlightEvent event) {
         Player player = MinecraftClient.getPlayer();
@@ -64,6 +66,7 @@ public class GlobalRender {
             }
         }
     }
+
     @SubscribeEvent
     public static void onOverlayEvent(RenderGameOverlayEvent.Pre event) {
         if (event.getType() == RenderGameOverlayEvent.ElementType.ALL) {
@@ -74,9 +77,11 @@ public class GlobalRender {
     public static void registerRender(Consumer<Float> func) {
         renderFuncs.add(func);
     }
+
     public static void registerOverlay(Consumer<Float> func) {
         overlayFuncs.add(func);
     }
+
     public static void registerItemMouseover(ItemBase item, MouseoverEvent fn) {
         itemMouseovers.put(item, fn);
     }
@@ -85,12 +90,6 @@ public class GlobalRender {
         return MinecraftForgeClient.getRenderPass() != 0;
     }
 
-
-    private static TileEntity grh = new GlobalRenderHelper();
-    private static List<TileEntity> grhList = new ArrayList<>();
-    static {
-        grhList.add(grh);
-    }
     @SubscribeEvent
     public static void onClientTick(TickEvent.ClientTickEvent event) {
         if (event.phase != TickEvent.Phase.START) {
@@ -98,22 +97,6 @@ public class GlobalRender {
         }
 
         Minecraft.getMinecraft().renderGlobal.updateTileEntities(grhList, grhList);
-    }
-
-    public static class GlobalRenderHelper extends TileEntity {
-
-        public net.minecraft.util.math.AxisAlignedBB getRenderBoundingBox() {
-            return INFINITE_EXTENT_AABB;
-        }
-
-        public double getDistanceSq(double x, double y, double z) {
-            return 1;
-        }
-
-        public boolean shouldRenderInPass(int pass) {
-            return true;
-        }
-
     }
 
     public static Vec3d getCameraPos(float partialTicks) {
@@ -147,6 +130,27 @@ public class GlobalRender {
 
     public static boolean isInRenderDistance(Vec3d pos) {
         // max rail length is 100, 50 is center
-        return MinecraftClient.getPlayer().getPosition().distanceTo(pos) < ((Minecraft.getMinecraft().gameSettings.renderDistanceChunks+1) * 16 + 50);
+        return MinecraftClient.getPlayer().getPosition().distanceTo(pos) < ((Minecraft.getMinecraft().gameSettings.renderDistanceChunks + 1) * 16 + 50);
+    }
+
+    @FunctionalInterface
+    public interface MouseoverEvent {
+        void render(Player player, ItemStack stack, Vec3i pos, Vec3d offset, float partialTicks);
+    }
+
+    public static class GlobalRenderHelper extends TileEntity {
+
+        public net.minecraft.util.math.AxisAlignedBB getRenderBoundingBox() {
+            return INFINITE_EXTENT_AABB;
+        }
+
+        public double getDistanceSq(double x, double y, double z) {
+            return 1;
+        }
+
+        public boolean shouldRenderInPass(int pass) {
+            return true;
+        }
+
     }
 }

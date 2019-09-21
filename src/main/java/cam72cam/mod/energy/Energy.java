@@ -1,8 +1,8 @@
 package cam72cam.mod.energy;
 
 public class Energy implements IEnergy {
-    private int stored;
     private final int max;
+    private int stored;
 
     public Energy(int maxStorage) {
         this.stored = 0;
