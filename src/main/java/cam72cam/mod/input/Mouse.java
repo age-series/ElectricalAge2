@@ -1,6 +1,7 @@
 package cam72cam.mod.input;
 
 import cam72cam.mod.MinecraftClient;
+import cam72cam.mod.ModCore;
 import cam72cam.mod.entity.Entity;
 import cam72cam.mod.entity.ModdedEntity;
 import cam72cam.mod.util.Hand;
@@ -10,7 +11,7 @@ import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.relauncher.Side;
 
-@EventBusSubscriber(Side.CLIENT)
+@EventBusSubscriber(value = Side.CLIENT, modid = ModCore.MODID)
 public class Mouse {
     @SubscribeEvent
     public static void onClick(MouseEvent event) {

@@ -1,5 +1,6 @@
 package cam72cam.mod.render;
 
+import cam72cam.mod.ModCore;
 import cam72cam.mod.block.BlockEntity;
 import cam72cam.mod.block.BlockType;
 import cam72cam.mod.block.BlockTypeEntity;
@@ -36,7 +37,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-@Mod.EventBusSubscriber(Side.CLIENT)
+@Mod.EventBusSubscriber(value = Side.CLIENT, modid = ModCore.MODID)
 public class BlockRender {
     private static final List<BakedQuad> EMPTY = new ArrayList<>();
     private static final List<Consumer<ModelBakeEvent>> bakers = new ArrayList<>();

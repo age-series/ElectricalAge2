@@ -1,5 +1,6 @@
 package cam72cam.mod.world;
 
+import cam72cam.mod.ModCore;
 import cam72cam.mod.block.BlockEntity;
 import cam72cam.mod.block.BlockType;
 import cam72cam.mod.block.tile.TileEntity;
@@ -41,7 +42,7 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-@Mod.EventBusSubscriber
+@Mod.EventBusSubscriber(modid = ModCore.MODID)
 public class World {
 
     /* Static access to loaded worlds */

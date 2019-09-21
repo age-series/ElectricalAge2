@@ -1,6 +1,7 @@
 package cam72cam.mod.render;
 
 import cam72cam.mod.MinecraftClient;
+import cam72cam.mod.ModCore;
 import cam72cam.mod.gui.Progress;
 import cam72cam.mod.item.ItemBase;
 import cam72cam.mod.item.ItemStack;
@@ -40,7 +41,7 @@ import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-@Mod.EventBusSubscriber(Side.CLIENT)
+@Mod.EventBusSubscriber(value = Side.CLIENT, modid = ModCore.MODID)
 public class ItemRender {
     private static final List<BakedQuad> EMPTY = new ArrayList<>();
     private static final List<Consumer<ModelBakeEvent>> bakers = new ArrayList<>();

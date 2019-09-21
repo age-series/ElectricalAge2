@@ -1,6 +1,7 @@
 package cam72cam.mod.sound;
 
 import cam72cam.mod.MinecraftClient;
+import cam72cam.mod.ModCore;
 import cam72cam.mod.entity.Player;
 import cam72cam.mod.math.Vec3d;
 import cam72cam.mod.math.Vec3i;
@@ -16,7 +17,7 @@ import net.minecraftforge.fml.relauncher.Side;
 
 public class Audio {
 
-    @SidedProxy(clientSide="cam72cam.mod.sound.Audio$ClientProxy", serverSide="cam72cam.mod.sound.Audio$ServerProxy")
+    @SidedProxy(clientSide="cam72cam.mod.sound.Audio$ClientProxy", serverSide="cam72cam.mod.sound.Audio$ServerProxy", modId = ModCore.MODID)
     public static IAudioProxy proxy;
 
     public static void playSound(Vec3d pos, StandardSound sound, SoundCategory category, float volume, float pitch) {
@@ -47,7 +48,7 @@ public class Audio {
         }
     }
 
-    @Mod.EventBusSubscriber(Side.CLIENT)
+    @Mod.EventBusSubscriber(value = Side.CLIENT, modid = ModCore.MODID)
     public static class ClientProxy implements IAudioProxy {
         private static ModSoundManager soundManager;
 

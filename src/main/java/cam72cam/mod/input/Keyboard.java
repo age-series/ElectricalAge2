@@ -1,5 +1,6 @@
 package cam72cam.mod.input;
 
+import cam72cam.mod.ModCore;
 import cam72cam.mod.entity.Player;
 import cam72cam.mod.math.Vec3d;
 import cam72cam.mod.net.Packet;
@@ -27,7 +28,7 @@ public class Keyboard {
         return vecs.getOrDefault(player.getUUID(), Vec3d.ZERO);
     }
 
-    @Mod.EventBusSubscriber(Side.CLIENT)
+    @Mod.EventBusSubscriber(value = Side.CLIENT, modid = ModCore.MODID)
     public static class KeyboardListener {
         static List<KeyBinding> keys = new ArrayList<>();
 
@@ -72,7 +73,7 @@ public class Keyboard {
         proxy.registerKey(name, keyCode, category);
     }
 
-    @SidedProxy(clientSide = "cam72cam.mod.input.Keyboard$ClientProxy", serverSide = "cam72cam.mod.input.Keyboard$ServerProxy")
+    @SidedProxy(clientSide = "cam72cam.mod.input.Keyboard$ClientProxy", serverSide = "cam72cam.mod.input.Keyboard$ServerProxy", modId = ModCore.MODID)
     public static Proxy proxy;
 
     public static abstract class Proxy {

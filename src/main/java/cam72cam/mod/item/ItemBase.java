@@ -1,5 +1,6 @@
 package cam72cam.mod.item;
 
+import cam72cam.mod.ModCore;
 import cam72cam.mod.entity.Entity;
 import cam72cam.mod.entity.Player;
 import cam72cam.mod.resource.Identifier;
@@ -30,7 +31,7 @@ import java.util.List;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
-@Mod.EventBusSubscriber
+@Mod.EventBusSubscriber(modid = ModCore.MODID)
 public class ItemBase {
     private static List<Consumer<RegistryEvent.Register<Item>>> registrations = new ArrayList<>();
 

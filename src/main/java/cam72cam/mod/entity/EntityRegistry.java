@@ -64,7 +64,7 @@ public class EntityRegistry {
 
     private static String missingResources;
 
-    @EventBusSubscriber
+    @EventBusSubscriber(modid = ModCore.MODID)
     public static class EntityEvents {
         @SubscribeEvent
         public static void onEntityJoin(EntityJoinWorldEvent event) {
@@ -83,7 +83,7 @@ public class EntityRegistry {
         }
     }
 
-    @EventBusSubscriber(Side.CLIENT)
+    @EventBusSubscriber(value = Side.CLIENT, modid = ModCore.MODID)
     public static class EntityClientEvents {
         @SubscribeEvent
         public static void onClientTick(TickEvent.ClientTickEvent event) {

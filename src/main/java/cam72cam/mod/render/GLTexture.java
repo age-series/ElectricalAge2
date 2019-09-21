@@ -1,5 +1,6 @@
 package cam72cam.mod.render;
 
+import cam72cam.mod.ModCore;
 import net.minecraft.client.renderer.texture.TextureUtil;
 import net.minecraftforge.fml.common.Loader;
 import net.minecraftforge.fml.common.Mod;
@@ -20,7 +21,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.*;
 
-@Mod.EventBusSubscriber(Side.CLIENT)
+@Mod.EventBusSubscriber(value = Side.CLIENT, modid = ModCore.MODID)
 public class GLTexture {
     private static LinkedBlockingQueue queue = new LinkedBlockingQueue<>(1);
     private static ExecutorService saveImage = new ThreadPoolExecutor(5, 5, 60, TimeUnit.SECONDS, queue);

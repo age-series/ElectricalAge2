@@ -16,7 +16,7 @@ import net.minecraftforge.oredict.ShapedOreRecipe;
 import java.util.ArrayList;
 import java.util.List;
 
-@Mod.EventBusSubscriber()
+@Mod.EventBusSubscriber(modid = ModCore.MODID)
 public class Recipes {
     private static List<Runnable> registrations = new ArrayList<>();
 

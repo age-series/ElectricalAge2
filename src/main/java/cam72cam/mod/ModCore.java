@@ -160,7 +160,7 @@ public class ModCore {
         }
     }
 
-    @SidedProxy(serverSide = "cam72cam.mod.ModCore$ServerProxy", clientSide = "cam72cam.mod.ModCore$ClientProxy")
+    @SidedProxy(serverSide = "cam72cam.mod.ModCore$ServerProxy", clientSide = "cam72cam.mod.ModCore$ClientProxy", modId = ModCore.MODID)
     private static Proxy proxy;
 
     public static void debug(String msg, Object...params) {

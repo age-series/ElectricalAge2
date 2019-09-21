@@ -1,6 +1,7 @@
 package cam72cam.mod.render;
 
 import cam72cam.mod.MinecraftClient;
+import cam72cam.mod.ModCore;
 import cam72cam.mod.entity.Player;
 import cam72cam.mod.item.ItemBase;
 import cam72cam.mod.item.ItemStack;
@@ -30,7 +31,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
-@Mod.EventBusSubscriber(Side.CLIENT)
+@Mod.EventBusSubscriber(value = Side.CLIENT, modid = ModCore.MODID)
 public class GlobalRender {
     private static List<Consumer<Float>> renderFuncs = new ArrayList<>();
     private static List<Consumer<Float>> overlayFuncs = new ArrayList<>();

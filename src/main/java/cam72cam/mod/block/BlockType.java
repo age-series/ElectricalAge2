@@ -1,5 +1,6 @@
 package cam72cam.mod.block;
 
+import cam72cam.mod.ModCore;
 import cam72cam.mod.entity.Player;
 import cam72cam.mod.item.ItemStack;
 import cam72cam.mod.math.Vec3d;
@@ -29,7 +30,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 
-@Mod.EventBusSubscriber
+@Mod.EventBusSubscriber(modid = ModCore.MODID)
 public abstract class BlockType {
     protected final BlockSettings settings;
     public final net.minecraft.block.Block internal;

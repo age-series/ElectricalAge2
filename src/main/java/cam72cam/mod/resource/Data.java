@@ -1,5 +1,6 @@
 package cam72cam.mod.resource;
 
+import cam72cam.mod.ModCore;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.IResource;
 import net.minecraftforge.fml.common.Loader;
@@ -17,7 +18,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
 class Data {
-    @SidedProxy(clientSide="cam72cam.mod.resource.Data$ClientProxy", serverSide="cam72cam.mod.resource.Data$ServerProxy")
+    @SidedProxy(clientSide="cam72cam.mod.resource.Data$ClientProxy", serverSide="cam72cam.mod.resource.Data$ServerProxy", modId = ModCore.MODID)
     public static DataProxy proxy;
 
     public static abstract class DataProxy {

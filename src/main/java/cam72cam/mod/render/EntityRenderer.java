@@ -1,6 +1,7 @@
 package cam72cam.mod.render;
 
 import cam72cam.mod.MinecraftClient;
+import cam72cam.mod.ModCore;
 import cam72cam.mod.entity.Entity;
 import cam72cam.mod.entity.ModdedEntity;
 import cam72cam.mod.math.Vec3d;
@@ -25,7 +26,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-@Mod.EventBusSubscriber(Side.CLIENT)
+@Mod.EventBusSubscriber(value = Side.CLIENT, modid = ModCore.MODID)
 public class EntityRenderer extends Render<ModdedEntity> {
     private static Map<Class<? extends Entity>, IEntityRender> renderers = new HashMap<>();
 
