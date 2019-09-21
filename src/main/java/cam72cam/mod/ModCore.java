@@ -154,6 +154,9 @@ public class ModCore {
                     EntityRegistry.registration();
                     GuiRegistry.registration();
                     break;
+                case START:
+                    Command.registration();
+                    break;
             }
         }
 
@@ -176,11 +179,6 @@ public class ModCore {
 
         @Override
         public void serverEvent(ModEvent event) {
-            switch (event) {
-                case START:
-                    Command.registration();
-                    break;
-            }
         }
     }
 
