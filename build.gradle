@@ -14,6 +14,10 @@ buildscript {
 }
 
 repositories {
+    maven {
+        name = "CurseForge"
+        url = "https://minecraft.curseforge.com/api/maven/"
+    }
 }
 
 apply plugin: 'net.minecraftforge.gradle.forge'
@@ -63,14 +67,8 @@ dependencies {
     // for more info...
     // http://www.gradle.org/docs/current/userguide/artifact_dependencies_tutorial.html
     // http://www.gradle.org/docs/current/userguide/dependency_management.html
-
-	compile files(
-		'TrackAPI-1.1_1.12.jar'
-	)
-
-	shade files(
-		'InventoryTweaks-1.63-api.jar'
-	)
+	compile 'track-api:TrackAPI:1.1_1.12'
+	shade 'inventory-tweaks:InventoryTweaks:1.63:api'
 }
 
 jar {
