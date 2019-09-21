@@ -1,3 +1,8 @@
+configurations {
+    shade
+    compile.extendsFrom shade
+}
+
 buildscript {
     repositories {
         jcenter()
@@ -63,9 +68,17 @@ dependencies {
 		'TrackAPI-1.1_1.12.jar'
 	)
 
-	compile files(
+	shade files(
 		'InventoryTweaks-1.63-api.jar'
 	)
+}
+
+jar {
+    configurations.shade.each { dep ->
+        from(project.zipTree(dep)){
+            exclude 'META-INF', 'META-INF/**'
+        }
+    }
 }
 
 processResources {
