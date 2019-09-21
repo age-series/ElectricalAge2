@@ -21,24 +21,26 @@ import java.util.function.Supplier;
 
 
 public class GuiRegistry {
-    private Map<Integer, Function<CreateEvent, Object>> registry = new HashMap<>();
+    private static Map<Integer, Function<CreateEvent, Object>> registry = new HashMap<>();
 
-    public GuiRegistry(Class<? extends ModCore.Mod> type) {
-        ModCore.onInit(type, mod ->
-                NetworkRegistry.INSTANCE.registerGuiHandler(ModCore.instance, new IGuiHandler() {
-                    @Nullable
-                    @Override
-                    public Object getServerGuiElement(int ID, EntityPlayer player, World world, int x, int y, int z) {
-                        return registry.get(ID).apply(new CreateEvent(true, new Player(player), x, y, z));
-                    }
+    public GuiRegistry(ModCore.Mod mod) {
+        //TODO support for multiple mods using different ID ranges
+    }
 
-                    @Nullable
-                    @Override
-                    public Object getClientGuiElement(int ID, EntityPlayer player, World world, int x, int y, int z) {
-                        return registry.get(ID).apply(new CreateEvent(false, new Player(player), x, y, z));
-                    }
-                })
-        );
+    public static void registration() {
+        NetworkRegistry.INSTANCE.registerGuiHandler(ModCore.instance, new IGuiHandler() {
+            @Nullable
+            @Override
+            public Object getServerGuiElement(int ID, EntityPlayer player, World world, int x, int y, int z) {
+                return registry.get(ID).apply(new CreateEvent(true, new Player(player), x, y, z));
+            }
+
+            @Nullable
+            @Override
+            public Object getClientGuiElement(int ID, EntityPlayer player, World world, int x, int y, int z) {
+                return registry.get(ID).apply(new CreateEvent(false, new Player(player), x, y, z));
+            }
+        });
     }
 
     public GUIType register(String name, Supplier<IScreen> ctr) {

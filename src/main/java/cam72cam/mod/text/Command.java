@@ -1,6 +1,5 @@
 package cam72cam.mod.text;
 
-import cam72cam.mod.ModCore;
 import cam72cam.mod.world.World;
 import net.minecraft.command.*;
 import net.minecraft.server.MinecraftServer;
@@ -12,15 +11,6 @@ import java.util.function.Consumer;
 
 public abstract class Command {
     private static final List<Command> commands = new ArrayList<>();
-
-    static {
-        ModCore.onServerStarting(() -> {
-            CommandHandler ch = (CommandHandler) FMLCommonHandler.instance().getMinecraftServerInstance().getCommandManager();
-            for (Command command : commands) {
-                ch.registerCommand(command.internal);
-            }
-        });
-    }
 
     private final ICommand internal;
 
@@ -53,6 +43,13 @@ public abstract class Command {
 
     public static void register(Command cmd) {
         commands.add(cmd);
+    }
+
+    public static void registration() {
+        CommandHandler ch = (CommandHandler) FMLCommonHandler.instance().getMinecraftServerInstance().getCommandManager();
+        for (Command command : commands) {
+            ch.registerCommand(command.internal);
+        }
     }
 
     public abstract String getPrefix();

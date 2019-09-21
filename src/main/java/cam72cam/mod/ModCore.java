@@ -1,12 +1,15 @@
 package cam72cam.mod;
 
+import cam72cam.mod.entity.EntityRegistry;
 import cam72cam.mod.entity.ModdedEntity;
 import cam72cam.mod.entity.sync.EntitySync;
+import cam72cam.mod.gui.GuiRegistry;
 import cam72cam.mod.input.Keyboard;
 import cam72cam.mod.input.MousePressPacket;
 import cam72cam.mod.net.Packet;
 import cam72cam.mod.net.PacketDirection;
 import cam72cam.mod.render.BlockRender;
+import cam72cam.mod.text.Command;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.SimpleReloadableResourceManager;
 import net.minecraft.world.World;
@@ -23,7 +26,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
@@ -34,19 +36,6 @@ public class ModCore {
     public static final String VERSION = "1.0.0";
     public static ModCore instance;
     static List<Supplier<Mod>> modCtrs = new ArrayList<>();
-    private static List<Runnable> onInit = new ArrayList<>();
-    private static List<Runnable> onReload = new ArrayList<>();
-    private static List<Runnable> onServerStarting = new ArrayList<>();
-    @SidedProxy(serverSide = "cam72cam.mod.ModCore$ServerProxy", clientSide = "cam72cam.mod.ModCore$ClientProxy", modId = ModCore.MODID)
-    private static Proxy proxy;
-
-    static {
-        Packet.register(EntitySync.EntitySyncPacket::new, PacketDirection.ServerToClient);
-        Packet.register(Keyboard.MovementPacket::new, PacketDirection.ClientToServer);
-        Packet.register(Keyboard.KeyPacket::new, PacketDirection.ClientToServer);
-        Packet.register(ModdedEntity.PassengerPositionsPacket::new, PacketDirection.ServerToClient);
-        Packet.register(MousePressPacket::new, PacketDirection.ClientToServer);
-    }
 
     private List<Mod> mods;
     private Logger logger;
@@ -55,16 +44,144 @@ public class ModCore {
         modCtrs.add(ctr);
     }
 
-    public static void onInit(Class<? extends Mod> type, Consumer<Mod> fn) {
-        onInit.add(() -> instance.mods.stream().filter(type::isInstance).findFirst().ifPresent(fn));
+    public ModCore() {
+        System.out.println("Welcome to ModCore!");
+        instance = this;
+        mods = modCtrs.stream().map(Supplier::get).collect(Collectors.toList());
     }
 
-    public static void onReload(Runnable fn) {
-        onReload.add(fn);
+    @EventHandler
+    public void preInit(FMLPreInitializationEvent event) {
+        logger = event.getModLog();
+        proxy.event(ModEvent.INITIALIZE);
     }
 
-    public static void onServerStarting(Runnable fn) {
-        onServerStarting.add(fn);
+    @EventHandler
+    public void init(FMLInitializationEvent event) {
+        proxy.event(ModEvent.SETUP);
+    }
+
+    @EventHandler
+    public void postInit(FMLPostInitializationEvent event) {
+        proxy.event(ModEvent.FINALIZE);
+    }
+
+    @EventHandler
+    public void serverStarting(FMLServerStartedEvent event) {
+        proxy.event(ModEvent.START);
+    }
+
+    public static abstract class Mod {
+        public abstract String modID();
+
+        public abstract void commonEvent(ModEvent event);
+        public abstract void clientEvent(ModEvent event);
+        public abstract void serverEvent(ModEvent event);
+
+        public final Path getConfig(String fname) {
+            return Paths.get(Loader.instance().getConfigDir().toString(), fname);
+        }
+
+        public static void debug(String msg, Object...params) {
+            ModCore.debug(msg, params);
+        }
+        public static void info(String msg, Object...params) {
+            ModCore.info(msg, params);
+        }
+        public static void warn(String msg, Object...params) {
+            ModCore.warn(msg, params);
+        }
+        public static void error(String msg, Object...params) {
+            ModCore.error(msg, params);
+        }
+        public static void catching(Throwable ex) {
+            ModCore.catching(ex);
+        }
+    }
+
+    @SidedProxy(serverSide = "cam72cam.mod.ModCore$ServerProxy", clientSide = "cam72cam.mod.ModCore$ClientProxy", modId = ModCore.MODID)
+    private static Proxy proxy;
+    public static class Proxy {
+        public Proxy() {
+            event(ModEvent.CONSTRUCT);
+        }
+
+        public void event(ModEvent event) {
+            instance.mods.forEach(m -> m.commonEvent(event));
+        }
+    }
+
+    public static class ClientProxy extends Proxy {
+        public void event(ModEvent event) {
+            super.event(event);
+            instance.mods.forEach(m -> m.clientEvent(event));
+        }
+    }
+
+    public static class ServerProxy extends Proxy {
+        public void event(ModEvent event) {
+            super.event(event);
+            instance.mods.forEach(m -> m.serverEvent(event));
+        }
+    }
+
+
+    static {
+        ModCore.register(Internal::new);
+    }
+
+    public static class Internal extends Mod {
+        public int skipN = 1;
+
+        @Override
+        public String modID() {
+            return "modcoreinternal";
+        }
+
+        @Override
+        public void commonEvent(ModEvent event) {
+            switch (event) {
+                case CONSTRUCT:
+                    Packet.register(EntitySync.EntitySyncPacket::new, PacketDirection.ServerToClient);
+                    Packet.register(Keyboard.MovementPacket::new, PacketDirection.ClientToServer);
+                    Packet.register(Keyboard.KeyPacket::new, PacketDirection.ClientToServer);
+                    Packet.register(ModdedEntity.PassengerPositionsPacket::new, PacketDirection.ServerToClient);
+                    Packet.register(MousePressPacket::new, PacketDirection.ClientToServer);
+                    break;
+                case SETUP:
+                    World.MAX_ENTITY_RADIUS = Math.max(World.MAX_ENTITY_RADIUS, 32);
+
+                    EntityRegistry.registration();
+                    GuiRegistry.registration();
+                    break;
+            }
+        }
+
+        @Override
+        public void clientEvent(ModEvent event) {
+            switch (event) {
+                case SETUP:
+                    ((SimpleReloadableResourceManager) Minecraft.getMinecraft().getResourceManager()).registerReloadListener(resourceManager -> {
+                        if (skipN > 0) {
+                            skipN--;
+                            return;
+                        }
+                        ModCore.instance.mods.forEach(mod -> mod.clientEvent(ModEvent.RELOAD));
+                    });
+                    BlockRender.onPostColorSetup();
+                    break;
+            }
+
+        }
+
+        @Override
+        public void serverEvent(ModEvent event) {
+            switch (event) {
+                case START:
+                    Command.registration();
+                    break;
+            }
+        }
     }
 
     public static void debug(String msg, Object... params) {
@@ -112,110 +229,5 @@ public class ModCore {
         }
 
         instance.logger.catching(ex);
-    }
-
-    @EventHandler
-    public void preInit(FMLPreInitializationEvent event) {
-        System.out.println("Welcome to ModCore!");
-
-        instance = this;
-        logger = event.getModLog();
-
-        World.MAX_ENTITY_RADIUS = Math.max(World.MAX_ENTITY_RADIUS, 32);
-
-        mods = modCtrs.stream().map(Supplier::get).collect(Collectors.toList());
-        mods.forEach(Mod::init);
-        proxy.init();
-    }
-
-    @EventHandler
-    public void init(FMLInitializationEvent event) {
-        mods.forEach(Mod::setup);
-        onInit.forEach(Runnable::run);
-        proxy.setup();
-    }
-
-    @EventHandler
-    public void postInit(FMLPostInitializationEvent event) {
-        mods.forEach(Mod::finalize);
-    }
-
-    @EventHandler
-    public void serverStarting(FMLServerStartedEvent event) {
-        onServerStarting.forEach(Runnable::run);
-    }
-
-    public static abstract class Mod {
-        public ModCore instance;
-        protected Logger logger;
-
-        private void init() {
-            logger = ModCore.instance.logger;
-            instance = ModCore.instance;
-        }
-
-        public abstract String modID();
-
-        protected void initClient() {
-        }
-
-        protected void initServer() {
-        }
-
-        protected abstract void setup();
-
-        protected void setupClient() {
-        }
-
-        protected void setupServer() {
-        }
-
-        protected abstract void finalize();
-
-
-        public final Path getConfig(String fname) {
-            return Paths.get(Loader.instance().getConfigDir().toString(), fname);
-        }
-    }
-
-    public static abstract class Proxy {
-        public abstract void init();
-
-        public abstract void setup();
-    }
-
-    public static class ClientProxy extends Proxy {
-        public static boolean skipFirst = true;
-
-        @Override
-        public void init() {
-            instance.mods.forEach(Mod::initClient);
-        }
-
-        @Override
-        public void setup() {
-            instance.mods.forEach(Mod::setupClient);
-
-            ((SimpleReloadableResourceManager) Minecraft.getMinecraft().getResourceManager()).registerReloadListener(resourceManager -> {
-                if (skipFirst) {
-                    skipFirst = false;
-                    return;
-                }
-                onReload.forEach(Runnable::run);
-            });
-            BlockRender.onPostColorSetup();
-        }
-    }
-
-    public static class ServerProxy extends Proxy {
-        @Override
-        public void init() {
-            instance.mods.forEach(Mod::initServer);
-        }
-
-        @Override
-        public void setup() {
-            instance.mods.forEach(Mod::setupServer);
-        }
     }
 }
