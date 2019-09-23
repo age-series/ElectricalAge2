@@ -29,7 +29,7 @@ public class StandardModel {
     private List<Pair<IBlockState, IBakedModel>> models = new ArrayList<>();
     private List<Consumer<Float>> custom = new ArrayList<>();
 
-    public static IBlockState itemToBlockState(cam72cam.mod.item.ItemStack stack) {
+    private static IBlockState itemToBlockState(cam72cam.mod.item.ItemStack stack) {
         Block block = Block.getBlockFromItem(stack.internal.getItem());
         @SuppressWarnings("deprecation")
         IBlockState gravelState = block.getStateFromMeta(stack.internal.getMetadata());
@@ -85,7 +85,7 @@ public class StandardModel {
         return this;
     }
 
-    public List<BakedQuad> getQuads(EnumFacing side, long rand) {
+    List<BakedQuad> getQuads(EnumFacing side, long rand) {
         List<BakedQuad> quads = new ArrayList<>();
         for (Pair<IBlockState, IBakedModel> model : models) {
             quads.addAll(model.getValue().getQuads(model.getKey(), side, rand));
