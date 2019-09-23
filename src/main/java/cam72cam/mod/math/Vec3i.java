@@ -22,6 +22,7 @@ public class Vec3i {
         this(new BlockPos(x, y, z));
     }
 
+    @Deprecated
     public Vec3i(long serialized) {
         this(BlockPos.fromLong(serialized));
     }
@@ -110,6 +111,7 @@ public class Vec3i {
         return add(-x, -y, -z);
     }
 
+    @Deprecated
     public long toLong() {
         return internal.toLong();
     }

@@ -102,6 +102,10 @@ public class TagCompound {
     }
 
     public Vec3i getVec3i(String key) {
+        if (internal.getTagId(key) == 4) {
+            return new Vec3i(internal.getLong(key));
+        }
+
         NBTTagCompound tag = internal.getCompoundTag(key);
         return new Vec3i(tag.getInteger("X"), tag.getInteger("Y"), tag.getInteger("Z"));
     }
