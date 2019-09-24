@@ -4,14 +4,11 @@ import cam72cam.mod.entity.boundingbox.BoundingBox;
 import cam72cam.mod.entity.custom.*;
 import cam72cam.mod.item.ClickResult;
 import cam72cam.mod.math.Vec3d;
-import cam72cam.mod.math.Vec3i;
 import cam72cam.mod.net.Packet;
-import cam72cam.mod.resource.Identifier;
 import cam72cam.mod.util.Hand;
 import cam72cam.mod.util.TagCompound;
 import io.netty.buffer.ByteBuf;
 import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityList;
 import net.minecraft.entity.monster.EntityMob;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.nbt.NBTTagCompound;
@@ -25,13 +22,13 @@ import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 
 import java.util.*;
-import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 public class ModdedEntity extends Entity implements IEntityAdditionalSpawnData {
     private cam72cam.mod.entity.Entity self;
 
     private Map<UUID, Vec3d> passengerPositions = new HashMap<>();
-    private List<StaticPassenger> staticPassengers = new ArrayList<>();
+    private List<SeatEntity> seats = new ArrayList<>();
 
     private EntitySettings settings;
     private String type;
@@ -139,6 +136,10 @@ public class ModdedEntity extends Entity implements IEntityAdditionalSpawnData {
     public final void onUpdate() {
         iTickable.onTick();
         self.sync.send();
+
+        if (!seats.isEmpty()) {
+            seats.removeAll(seats.stream().filter(x -> x.isDead).collect(Collectors.toList()));
+        }
     }
 
     /* Player Interact */
@@ -182,51 +183,60 @@ public class ModdedEntity extends Entity implements IEntityAdditionalSpawnData {
     }
 
     @Override
-    public final void addPassenger(Entity entityIn) {
-        cam72cam.mod.entity.Entity entity = new cam72cam.mod.entity.Entity(entityIn);
-        passengerPositions.put(entity.getUUID(), iRidable.getMountPosition(entity));
-        if (entity.isPlayer()) {
-            super.addPassenger(entityIn);
-        } else {
-            StaticPassenger sp = new StaticPassenger(entity);
-            staticPassengers.add(sp);
-            entity.kill();
-        }
+    public final void addPassenger(Entity entity) {
+        System.out.println("New Seat");
+        SeatEntity seat = new SeatEntity(world);
+        seat.setParent(this);
+        passengerPositions.put(entity.getPersistentID(), iRidable.getMountPosition(self.getWorld().getEntity(entity)));
+        world.spawnEntity(seat);
+        updateSeat(seat);
+        entity.startRiding(seat);
         self.sendToObserving(new PassengerPositionsPacket(this));
     }
 
-    @Override
-    public final void updatePassenger(net.minecraft.entity.Entity passenger) {
-        iRidable.updatePassenger(new cam72cam.mod.entity.Entity(passenger));
+    List<cam72cam.mod.entity.Entity> getActualPassengers() {
+        return seats.stream()
+                .map(SeatEntity::getEntityPassenger)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
     }
 
-    @Override
-    public final void removePassenger(net.minecraft.entity.Entity ent) {
-        super.removePassenger(ent);
-        iRidable.onDismountPassenger(new cam72cam.mod.entity.Entity(ent));
-        Vec3d dismountPos = iRidable.getDismountPosition(new cam72cam.mod.entity.Entity(ent));
-        ent.setPosition(dismountPos.x, dismountPos.y, dismountPos.z);
+    void updateSeat(SeatEntity seat) {
+        if (!seats.contains(seat)) {
+            seats.add(seat);
+        }
+
+        cam72cam.mod.entity.Entity passenger = seat.getEntityPassenger();
+        if (passenger != null) {
+            iRidable.updatePassenger(passenger);
+            seat.setPosition(passenger.getPosition().x, passenger.getPosition().y, passenger.getPosition().z);
+            seat.shouldSit = iRidable.shouldRiderSit(passenger);
+        }
     }
 
-    public final cam72cam.mod.entity.Entity removePassenger() {
-        // TODO players?
-        return removePassenger((StaticPassenger p) -> true);
+    boolean isPassenger(cam72cam.mod.entity.Entity passenger) {
+        return getActualPassengers().stream().anyMatch(p -> p.getUUID().equals(passenger.getUUID()));
     }
 
-    public final cam72cam.mod.entity.Entity removePassenger(Predicate<StaticPassenger> filter) {
-        Optional<StaticPassenger> found = staticPassengers.stream().filter(filter).findFirst();
-        if (found.isPresent()) {
-            staticPassengers.remove(found.get());
-            Entity ent = found.get().reconstitute(world);
-            world.spawnEntity(ent);
+    void removeSeat(SeatEntity seat) {
+        cam72cam.mod.entity.Entity passenger = seat.getEntityPassenger();
+        if (passenger != null) {
+            if (getRidingOffset(passenger.getUUID()) != null) {
+                iRidable.onDismountPassenger(passenger);
+                passenger.setPosition(iRidable.getDismountPosition(passenger));
+            }
+        }
+        seats.remove(seat);
+    }
 
-            Vec3d dismountPos = iRidable.getDismountPosition(new cam72cam.mod.entity.Entity(ent));
-            iRidable.onDismountPassenger(new cam72cam.mod.entity.Entity(ent));
-            ent.setPosition(dismountPos.x, dismountPos.y, dismountPos.z);
-
-            self.sendToObserving(new PassengerPositionsPacket(this));
-
-            return self.getWorld().getEntity(ent.getUniqueID(), cam72cam.mod.entity.Entity.class);
+    cam72cam.mod.entity.Entity removePassenger(cam72cam.mod.entity.Entity passenger) {
+        for (SeatEntity seat : this.seats) {
+            cam72cam.mod.entity.Entity seatPass = seat.getEntityPassenger();
+            if (seatPass != null && seatPass.getUUID().equals(passenger.getUUID())) {
+                passenger.internal.dismountRidingEntity();
+                seat.removePassenger(passenger.internal);
+                return passenger;
+            }
         }
         return null;
     }
@@ -245,15 +255,6 @@ public class ModdedEntity extends Entity implements IEntityAdditionalSpawnData {
     }
 
     @Override
-    public final boolean shouldRiderSit() {
-        return shouldRiderSit(null);
-    }
-
-    public boolean shouldRiderSit(Entity ent) {
-        return false;
-    }
-
-    @Override
     public boolean canRiderInteract() {
         return false;
     }
@@ -267,16 +268,12 @@ public class ModdedEntity extends Entity implements IEntityAdditionalSpawnData {
     }
 
     public int getPassengerCount() {
-        return this.staticPassengers.size() + this.getPassengers().size();
-    }
-
-    public List<StaticPassenger> getStaticPassengers() {
-        return staticPassengers;
+        return seats.size();
     }
 
     private void readPassengerData(TagCompound data) {
         passengerPositions = data.getMap("passengers", UUID::fromString, (TagCompound tag) -> tag.getVec3d("pos"));
-        staticPassengers = data.getList("staticPassengers", StaticPassenger::new);
+        // TODO legacy? staticPassengers = data.getList("staticPassengers", StaticPassenger::new);
     }
 
     private void writePassengerData(TagCompound data) {
@@ -286,7 +283,6 @@ public class ModdedEntity extends Entity implements IEntityAdditionalSpawnData {
             tmp.setVec3d("pos", pos);
             return tmp;
         });
-        data.setList("staticPassengers", staticPassengers, StaticPassenger::toTag);
     }
 
     /* ICollision */
@@ -352,51 +348,6 @@ public class ModdedEntity extends Entity implements IEntityAdditionalSpawnData {
     /*
      * Disable standard entity sync
      */
-
-    public static class StaticPassenger {
-        public Identifier ident;
-        public TagCompound data;
-        public UUID uuid;
-        public float rotation;
-        public boolean isVillager;
-        public Object cache;
-        private Vec3i startPos;
-
-        public StaticPassenger(cam72cam.mod.entity.Entity entityliving) {
-            ident = new Identifier(EntityList.getKey(entityliving.internal));
-            data = new TagCompound(entityliving.internal.writeToNBT(new NBTTagCompound()));
-            uuid = entityliving.getUUID();
-            startPos = new Vec3i(entityliving.getPosition());
-            isVillager = entityliving.isVillager();
-            rotation = (float) (Math.random() * 360);
-        }
-
-        public StaticPassenger(TagCompound init) {
-            ident = new Identifier(init.getString("ident"));
-            data = init.get("data");
-            uuid = UUID.fromString(init.getString("uuid"));
-            rotation = init.getFloat("rotation");
-            startPos = init.getVec3i("startPos");
-            isVillager = init.getBoolean("isVillager");
-        }
-
-        public TagCompound toTag() {
-            TagCompound init = new TagCompound();
-            init.setString("ident", ident.toString());
-            init.set("data", data);
-            init.setString("uuid", uuid.toString());
-            init.setFloat("rotation", rotation);
-            init.setVec3i("startPos", startPos);
-            init.setBoolean("isVillager", isVillager);
-            return init;
-        }
-
-        public Entity reconstitute(World world) {
-            Entity ent = EntityList.createEntityByIDFromName(ident.internal, world);
-            ent.readFromNBT(data.internal);
-            return ent;
-        }
-    }
 
     public static class PassengerPositionsPacket extends Packet {
         public PassengerPositionsPacket() {

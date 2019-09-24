@@ -15,7 +15,6 @@ import net.minecraftforge.fml.common.registry.EntityRegistry;
 
 import java.util.List;
 import java.util.UUID;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public class Entity {
@@ -179,6 +178,9 @@ public class Entity {
     }
 
     public final boolean isPassenger(cam72cam.mod.entity.Entity passenger) {
+        if (modded != null) {
+            return modded.isPassenger(passenger);
+        }
         return internal.isPassenger(passenger.internal);
     }
 
@@ -190,11 +192,14 @@ public class Entity {
         modded.setRidingOffset(source, pos);
     }
 
-    public Entity removePassenger(Predicate<ModdedEntity.StaticPassenger> o) {
-        return modded.removePassenger(o);
+    public Entity removePassenger(Entity entity) {
+        return modded.removePassenger(entity);
     }
 
-    protected List<Entity> getPassengers() {
+    public List<Entity> getPassengers() {
+        if (modded != null) {
+            return modded.getActualPassengers();
+        }
         return internal.getPassengers().stream().map(Entity::new).collect(Collectors.toList());
     }
 
@@ -204,7 +209,10 @@ public class Entity {
 
     public Entity getRiding() {
         if (internal.getRidingEntity() != null) {
-            return getWorld().getEntity(internal.getRidingEntity().getUniqueID(), Entity.class);
+            if (internal.getRidingEntity() instanceof SeatEntity) {
+                return ((SeatEntity)internal.getRidingEntity()).getParent();
+            }
+            return getWorld().getEntity(internal.getRidingEntity());
         }
         return null;
     }

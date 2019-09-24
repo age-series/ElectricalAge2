@@ -155,6 +155,10 @@ public class World {
 
     /* Entity Methods */
 
+    public Entity getEntity(net.minecraft.entity.Entity entity) {
+        return getEntity(entity.getUniqueID(), Entity.class);
+    }
+
     public <T extends Entity> T getEntity(int id, Class<T> type) {
         Entity ent = entityByID.get(id);
         if (ent == null) {
