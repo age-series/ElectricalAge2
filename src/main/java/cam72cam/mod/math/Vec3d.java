@@ -74,4 +74,18 @@ public class Vec3d {
     public String toString() {
         return internal.toString();
     }
+
+    public Vec3d rotateMinecraftYaw(float angleDegrees) {
+        double rad = Math.toRadians(angleDegrees);
+        double sin = Math.sin(rad);
+        double cos = Math.cos(rad);
+        return new Vec3d(cos * -x + sin * z, y, sin * x + cos * z);
+    }
+
+    public Vec3d rotateYaw(float angleDegrees) {
+        double rad = Math.toRadians(angleDegrees);
+        double sin = Math.sin(rad);
+        double cos = Math.cos(rad);
+        return new Vec3d(cos * x + sin * z, y, sin * x + cos * z);
+    }
 }

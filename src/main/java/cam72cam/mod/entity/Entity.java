@@ -184,16 +184,11 @@ public class Entity {
         return internal.isPassenger(passenger.internal);
     }
 
-    public final Vec3d getRidingOffset(Entity source) {
-        return modded.getRidingOffset(source);
-    }
-
-    public final void setRidingOffset(Entity source, Vec3d pos) {
-        modded.setRidingOffset(source, pos);
-    }
-
-    public Entity removePassenger(Entity entity) {
-        return modded.removePassenger(entity);
+    public void removePassenger(Entity entity) {
+        if (modded != null) {
+            modded.removePassenger(entity);
+        }
+        entity.internal.dismountRidingEntity();
     }
 
     public List<Entity> getPassengers() {

@@ -182,13 +182,22 @@ public class ModdedEntity extends Entity implements IEntityAdditionalSpawnData {
         return iRidable.canFitPassenger(new cam72cam.mod.entity.Entity(passenger));
     }
 
+    private Vec3d calculatePassengerOffset(cam72cam.mod.entity.Entity passenger) {
+        return passenger.getPosition().subtract(self.getPosition()).rotateMinecraftYaw(-self.getRotationYaw());
+    }
+
+    private Vec3d calculatePassengerPosition(Vec3d offset) {
+        return offset.rotateMinecraftYaw(-self.getRotationYaw()).add(self.getPosition());
+    }
+
     @Override
     public final void addPassenger(Entity entity) {
         if (!world.isRemote) {
             System.out.println("New Seat");
             SeatEntity seat = new SeatEntity(world);
             seat.setParent(this);
-            passengerPositions.put(entity.getPersistentID(), iRidable.getMountPosition(self.getWorld().getEntity(entity)));
+            cam72cam.mod.entity.Entity passenger = self.getWorld().getEntity(entity);
+            passengerPositions.put(entity.getPersistentID(), iRidable.getMountOffset(passenger, calculatePassengerOffset(passenger)));
             entity.startRiding(seat);
             updateSeat(seat);
             world.spawnEntity(seat);
@@ -212,9 +221,20 @@ public class ModdedEntity extends Entity implements IEntityAdditionalSpawnData {
 
         cam72cam.mod.entity.Entity passenger = seat.getEntityPassenger();
         if (passenger != null) {
-            iRidable.updatePassenger(passenger);
-            seat.setPosition(passenger.getPosition().x, passenger.getPosition().y, passenger.getPosition().z);
-            seat.shouldSit = iRidable.shouldRiderSit(passenger);
+            Vec3d offset = passengerPositions.get(passenger.getUUID());
+            if (offset != null) {
+                offset = iRidable.onPassengerUpdate(passenger, offset);
+                passengerPositions.put(passenger.getUUID(), offset);
+
+                Vec3d pos = calculatePassengerPosition(offset);
+                seat.setPosition(pos.x, pos.y, pos.z);
+                passenger.setPosition(pos);
+
+                float delta = rotationYaw - prevRotationYaw;
+                passenger.internal.rotationYaw = passenger.internal.rotationYaw + delta;
+
+                seat.shouldSit = iRidable.shouldRiderSit(passenger);
+            }
         }
     }
 
@@ -225,50 +245,28 @@ public class ModdedEntity extends Entity implements IEntityAdditionalSpawnData {
     void removeSeat(SeatEntity seat) {
         cam72cam.mod.entity.Entity passenger = seat.getEntityPassenger();
         if (passenger != null) {
-            if (getRidingOffset(passenger.getUUID()) != null) {
-                iRidable.onDismountPassenger(passenger);
-                passenger.setPosition(iRidable.getDismountPosition(passenger));
+            Vec3d offset = passengerPositions.get(passenger.getUUID());
+            if (offset != null) {
+                offset = iRidable.onDismountPassenger(passenger, offset);
+                passenger.setPosition(calculatePassengerPosition(offset));
             }
         }
         seats.remove(seat);
     }
 
-    cam72cam.mod.entity.Entity removePassenger(cam72cam.mod.entity.Entity passenger) {
+    void removePassenger(cam72cam.mod.entity.Entity passenger) {
         for (SeatEntity seat : this.seats) {
             cam72cam.mod.entity.Entity seatPass = seat.getEntityPassenger();
             if (seatPass != null && seatPass.getUUID().equals(passenger.getUUID())) {
                 passenger.internal.dismountRidingEntity();
-                seat.removePassenger(passenger.internal);
-                return passenger;
+                break;
             }
         }
-        return null;
-    }
-
-    public Vec3d getRidingOffset(UUID id) {
-        return this.passengerPositions.get(id);
-    }
-
-    public Vec3d getRidingOffset(cam72cam.mod.entity.Entity ent) {
-        return this.passengerPositions.get(ent.getUUID());
-    }
-
-    public void setRidingOffset(cam72cam.mod.entity.Entity ent, Vec3d pos) {
-        this.passengerPositions.put(ent.getUUID(), pos);
-        self.sendToObserving(new PassengerPositionsPacket(this));
     }
 
     @Override
     public boolean canRiderInteract() {
         return false;
-    }
-
-    public void handlePassengerPositions(Map<UUID, Vec3d> passengerPositions) {
-        this.passengerPositions = passengerPositions;
-        /*
-        for (net.minecraft.entity.Entity passenger : this.getPassengers()) {
-            this.updatePassenger(passenger);
-        }*/
     }
 
     public int getPassengerCount() {
@@ -316,22 +314,6 @@ public class ModdedEntity extends Entity implements IEntityAdditionalSpawnData {
     @Override
     public boolean canBePushed() {
         return settings.canBePushed;
-    }
-
-    @Override
-    public <T extends Entity> Collection<T> getRecursivePassengersByType(Class<T> entityClass) {
-        if (!settings.attachedToPlayer) {
-            try {
-                throw new Exception("Hack the planet");
-            } catch (Exception ex) {
-                for (StackTraceElement tl : ex.getStackTrace()) {
-                    if (tl.getFileName().contains("PlayerList.java")) {
-                        return new ArrayList<>();
-                    }
-                }
-            }
-        }
-        return super.getRecursivePassengersByType(entityClass);
     }
 
     @Override

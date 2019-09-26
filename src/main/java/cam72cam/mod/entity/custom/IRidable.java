@@ -11,28 +11,23 @@ public interface IRidable {
         }
 
         @Override
-        public boolean shouldRiderSit(Entity ent) {
+        public boolean shouldRiderSit(Entity passenger) {
             return false;
         }
 
         @Override
-        public void updatePassenger(Entity passenger) {
-
-        }
-
-        @Override
-        public Vec3d getMountPosition(Entity entity) {
+        public Vec3d getMountOffset(Entity passenger, Vec3d offset) {
             return Vec3d.ZERO;
         }
 
         @Override
-        public Vec3d getDismountPosition(Entity ent) {
+        public Vec3d onPassengerUpdate(Entity passenger, Vec3d offset) {
             return Vec3d.ZERO;
         }
 
         @Override
-        public void onDismountPassenger(Entity entity) {
-
+        public Vec3d onDismountPassenger(Entity passenger, Vec3d offset) {
+            return Vec3d.ZERO;
         }
     };
 
@@ -45,13 +40,11 @@ public interface IRidable {
 
     boolean canFitPassenger(Entity passenger);
 
-    boolean shouldRiderSit(Entity ent);
+    boolean shouldRiderSit(Entity passenger);
 
-    void updatePassenger(Entity passenger);
+    Vec3d getMountOffset(Entity passenger, Vec3d offset);
 
-    Vec3d getMountPosition(Entity entity);
+    Vec3d onPassengerUpdate(Entity passenger, Vec3d offset);
 
-    Vec3d getDismountPosition(Entity ent);
-
-    void onDismountPassenger(Entity entity);
+    Vec3d onDismountPassenger(Entity passenger, Vec3d offset);
 }

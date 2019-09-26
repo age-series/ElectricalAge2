@@ -34,6 +34,7 @@ public class Player extends Entity {
         return internal.isCreative();
     }
 
+    @Deprecated
     public float getYawHead() {
         return internal.rotationYawHead;
     }

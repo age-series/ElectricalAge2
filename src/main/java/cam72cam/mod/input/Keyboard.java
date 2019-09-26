@@ -48,7 +48,7 @@ public class Keyboard {
             }
             new MovementPacket(
                     player.getUniqueID(),
-                    new Vec3d(player.moveForward, 0, player.moveStrafing).scale(player.isSprinting() ? 0.4 : 0.2)
+                    new Vec3d(player.moveStrafing, 0, player.moveForward).scale(player.isSprinting() ? 0.4 : 0.2)
             ).sendToServer();
 
             for (KeyBinding key : keys) {
