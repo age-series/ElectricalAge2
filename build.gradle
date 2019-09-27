@@ -26,7 +26,7 @@ apply plugin: 'net.minecraftforge.gradle.forge'
 
 version = version_major + '.' + version_minor + '.' + version_patch
 group = "cam72cam.modcore" // http://maven.apache.org/guides/mini/guide-naming-conventions.html
-archivesBaseName = "ModCore"
+archivesBaseName = "UniversalModCore"
 
 sourceCompatibility = targetCompatibility = '1.8' // Need this here so eclipse task generates correctly.
 compileJava {
