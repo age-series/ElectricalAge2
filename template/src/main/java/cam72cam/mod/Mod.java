@@ -1,4 +1,4 @@
-package cam72cam.mod.#MODID#;
+package cam72cam.#MODID#;
 
 import cam72cam.mod.ModCore;
 
