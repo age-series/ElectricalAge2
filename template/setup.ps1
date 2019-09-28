@@ -20,6 +20,7 @@ Copy-Item -Path UniversalModCore/template/*gradle* -Destination $PWD -Recurse
 (Get-Content src/main/java/cam72cam/$MODID/Mod.java) -replace "#MODID#", "$MODID" | Set-Content src/main/java/cam72cam/$MODID/Mod.java
 (Get-Content src/main/java/cam72cam/$MODID/Mod.java) -replace "#MODNAME#", "$MODNAME" | Set-Content src/main/java/cam72cam/$MODID/Mod.java
 (Get-Content src/main/java/cam72cam/$MODID/Mod.java) -replace "#MODVERSION#", "$MODVERSION" | Set-Content src/main/java/cam72cam/$MODID/Mod.java
+(Get-Content src/main/java/cam72cam/$MODID/Mod.java) -replace "#MODCLASS#", "$MODCLASS" | Set-Content src/main/java/cam72cam/$MODID/Mod.java
 
 Write-Host @"
 It's recommended you now run the following for intellij setup:
