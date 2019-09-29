@@ -3,61 +3,63 @@ package cam72cam.mod.entity;
 import cam72cam.mod.ModCore;
 import cam72cam.mod.util.TagCompound;
 import cam72cam.mod.world.World;
-import io.netty.buffer.ByteBuf;
 import net.minecraft.entity.Entity;
-import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.entity.EntityClassification;
+import net.minecraft.entity.EntityType;
+import net.minecraft.nbt.CompoundNBT;
+import net.minecraft.network.IPacket;
+import net.minecraft.network.PacketBuffer;
+import net.minecraft.network.play.server.SSpawnObjectPacket;
 import net.minecraft.util.ResourceLocation;
-import net.minecraftforge.fml.common.network.ByteBufUtils;
 import net.minecraftforge.fml.common.registry.IEntityAdditionalSpawnData;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
 
 import java.util.UUID;
 
 public class SeatEntity extends Entity implements IEntityAdditionalSpawnData {
+    public static final EntityType<?> TYPE = EntityType.Builder.create(SeatEntity::new, EntityClassification.MISC).immuneToFire().build(SeatEntity.ID.toString());
     static final ResourceLocation ID = new ResourceLocation(ModCore.MODID, "seat");
     private UUID parent;
     private int ticksUnsure = 0;
     boolean shouldSit = true;
 
-    public SeatEntity(net.minecraft.world.World worldIn) {
-        super(worldIn);
+    public SeatEntity(EntityType type, net.minecraft.world.World worldIn) {
+        super(type, worldIn);
     }
 
     @Override
-    protected void entityInit() {
-
-    }
-
-    @Override
-    protected void readEntityFromNBT(NBTTagCompound compound) {
+    protected void readAdditional(CompoundNBT compound) {
         TagCompound data = new TagCompound(compound);
         parent = data.getUUID("parent");
         shouldSit = data.getBoolean("shouldSit");
     }
 
     @Override
-    protected void writeEntityToNBT(NBTTagCompound compound) {
+    protected void writeAdditional(CompoundNBT compound) {
         TagCompound data = new TagCompound(compound);
         data.setUUID("parent", parent);
         data.setBoolean("shouldSit", shouldSit);
     }
 
     @Override
-    public void onUpdate() {
+    protected void registerData() {
+
+    }
+
+    @Override
+    public void tick() {
         if (parent == null) {
             System.out.println("No parent, goodbye");
-            this.setDead();
+            this.remove();
             return;
         }
         if (getPassengers().isEmpty()) {
             System.out.println("No passengers, goodbye");
-            this.setDead();
+            this.remove();
             return;
         }
         if (ticksUnsure > 10) {
             System.out.println("Parent not loaded, goodbye");
-            this.setDead();
+            this.remove();
             return;
         }
 
@@ -108,8 +110,13 @@ public class SeatEntity extends Entity implements IEntityAdditionalSpawnData {
         super.removePassenger(passenger);
     }
 
+    @Override
+    public IPacket<?> createSpawnPacket() {
+        return new SSpawnObjectPacket(this);
+    }
+
     public cam72cam.mod.entity.Entity getEntityPassenger() {
-        if (this.isDead) {
+        if (!this.isAlive()) {
             return null;
         }
         if (this.getPassengers().size() == 0) {
@@ -119,20 +126,19 @@ public class SeatEntity extends Entity implements IEntityAdditionalSpawnData {
     }
 
     @Override
-    public void writeSpawnData(ByteBuf buffer) {
+    public void writeSpawnData(PacketBuffer buffer) {
         TagCompound data = new TagCompound();
         data.setUUID("parent", parent);
-        ByteBufUtils.writeTag(buffer, data.internal);
+        buffer.writeCompoundTag(data.internal);
     }
 
     @Override
-    public void readSpawnData(ByteBuf additionalData) {
-        TagCompound data = new TagCompound(ByteBufUtils.readTag(additionalData));
+    public void readSpawnData(PacketBuffer additionalData) {
+        TagCompound data = new TagCompound(additionalData.readCompoundTag());
         parent = data.getUUID("parent");
     }
 
     @Override
-    @SideOnly(Side.CLIENT)
     public boolean isInRangeToRenderDist(double distance) {
         return false;
     }

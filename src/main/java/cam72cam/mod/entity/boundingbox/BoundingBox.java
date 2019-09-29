@@ -1,9 +1,9 @@
 package cam72cam.mod.entity.boundingbox;
 
 import cam72cam.mod.math.Vec3d;
-import net.minecraft.util.EnumFacing;
 import net.minecraft.util.math.AxisAlignedBB;
-import net.minecraft.util.math.RayTraceResult;
+
+import java.util.Optional;
 
 public class BoundingBox extends AxisAlignedBB {
     private final IBoundingBox internal;
@@ -21,13 +21,6 @@ public class BoundingBox extends AxisAlignedBB {
         Vec3d min = internal.min();
         Vec3d max = internal.max();
         return new double[]{max.x, max.y, max.z, min.x, min.y, min.z};
-    }
-
-    /* NOP */
-    @Override
-    public BoundingBox setMaxY(double y) {
-        // Used by blockwall
-        return this;
     }
 
     @Override
@@ -64,6 +57,7 @@ public class BoundingBox extends AxisAlignedBB {
     }
 
     /* Interactions */
+    /*
     @Override
     public double calculateXOffset(AxisAlignedBB other, double offsetX) {
         return internal.calculateXOffset(IBoundingBox.from(other), offsetX);
@@ -79,6 +73,7 @@ public class BoundingBox extends AxisAlignedBB {
     public double calculateZOffset(AxisAlignedBB other, double offsetZ) {
         return internal.calculateZOffset(IBoundingBox.from(other), offsetZ);
     }
+    */
 
     @Override
     public boolean intersects(double minX, double minY, double minZ, double maxX, double maxY, double maxZ) {
@@ -86,12 +81,12 @@ public class BoundingBox extends AxisAlignedBB {
     }
 
     @Override
-    public boolean contains(net.minecraft.util.math.Vec3d vec) {
-        return internal.contains(new Vec3d(vec));
+    public boolean contains(double x, double y, double z) {
+        return internal.contains(new Vec3d(x, y, z));
     }
 
     @Override
-    public RayTraceResult calculateIntercept(net.minecraft.util.math.Vec3d vecA, net.minecraft.util.math.Vec3d vecB) {
+    public Optional<net.minecraft.util.math.Vec3d> rayTrace(net.minecraft.util.math.Vec3d vecA, net.minecraft.util.math.Vec3d vecB) {
         int steps = 10;
         double xDist = vecB.x - vecA.x;
         double yDist = vecB.y - vecA.y;
@@ -102,9 +97,9 @@ public class BoundingBox extends AxisAlignedBB {
         for (int step = 0; step < steps; step++) {
             Vec3d stepPos = new Vec3d(vecA.x + xDelta * step, vecA.y + yDelta * step, vecA.z + zDelta * step);
             if (internal.contains(stepPos)) {
-                return new RayTraceResult(stepPos.internal, EnumFacing.UP);
+                return Optional.of(stepPos.internal);
             }
         }
-        return null;
+        return Optional.empty();
     }
 }

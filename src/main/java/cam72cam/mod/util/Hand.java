@@ -1,19 +1,18 @@
 package cam72cam.mod.util;
 
-import net.minecraft.util.EnumHand;
 
 public enum Hand {
-    PRIMARY(EnumHand.MAIN_HAND),
-    SECONDARY(EnumHand.OFF_HAND),
+    PRIMARY(net.minecraft.util.Hand.MAIN_HAND),
+    SECONDARY(net.minecraft.util.Hand.OFF_HAND),
     ;
 
-    public final EnumHand internal;
+    public final net.minecraft.util.Hand internal;
 
-    Hand(EnumHand internal) {
+    Hand(net.minecraft.util.Hand internal) {
         this.internal = internal;
     }
 
-    public static Hand from(EnumHand hand) {
+    public static Hand from(net.minecraft.util.Hand hand) {
         switch (hand) {
             case MAIN_HAND:
                 return PRIMARY;

@@ -8,12 +8,15 @@ import cam72cam.mod.math.Vec3i;
 import cam72cam.mod.text.PlayerMessage;
 import cam72cam.mod.util.Facing;
 import cam72cam.mod.util.Hand;
-import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.item.ItemUseContext;
+import net.minecraft.util.Direction;
+import net.minecraft.util.math.BlockRayTraceResult;
 
 public class Player extends Entity {
-    public final EntityPlayer internal;
+    public final PlayerEntity internal;
 
-    public Player(EntityPlayer player) {
+    public Player(PlayerEntity player) {
         super(player);
         this.internal = player;
     }
@@ -56,6 +59,6 @@ public class Player extends Entity {
     }
 
     public ClickResult clickBlock(Hand hand, Vec3i pos, Vec3d hit) {
-        return ClickResult.from(getHeldItem(hand).internal.onItemUse(internal, getWorld().internal, pos.internal, hand.internal, Facing.DOWN.internal, (float) hit.x, (float) hit.y, (float) hit.z));
+        return ClickResult.from(getHeldItem(hand).internal.onItemUse(new ItemUseContext(internal, hand.internal, new BlockRayTraceResult(hit.internal, Direction.DOWN, pos.internal, false))));
     }
 }

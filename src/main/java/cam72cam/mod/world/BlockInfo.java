@@ -1,14 +1,13 @@
 package cam72cam.mod.world;
 
 import cam72cam.mod.util.TagCompound;
-import net.minecraft.block.state.IBlockState;
-import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.block.BlockState;
 import net.minecraft.nbt.NBTUtil;
 
 public class BlockInfo {
-    final IBlockState internal;
+    final BlockState internal;
 
-    BlockInfo(IBlockState state) {
+    BlockInfo(BlockState state) {
         this.internal = state;
     }
 
@@ -17,6 +16,6 @@ public class BlockInfo {
     }
 
     public TagCompound toNBT() {
-        return new TagCompound(NBTUtil.writeBlockState(new NBTTagCompound(), internal));
+        return new TagCompound(NBTUtil.writeBlockState(internal));
     }
 }

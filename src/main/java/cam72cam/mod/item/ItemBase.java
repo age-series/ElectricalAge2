@@ -13,7 +13,9 @@ import net.minecraft.client.util.ITooltipFlag;
 import net.minecraft.creativetab.CreativeTabs;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.inventory.EntityEquipmentSlot;
+import net.minecraft.item.ArmorItem;
 import net.minecraft.item.Item;
+import net.minecraft.item.Items;
 import net.minecraft.util.*;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.text.TextFormatting;
@@ -95,7 +97,7 @@ public class ItemBase {
     }
 
     @Optional.Interface(iface = "mezz.jei.api.ingredients.ISlowRenderItem", modid = "jei")
-    private class ItemInternal extends Item {
+    private class ItemInternal extends ArmorItem {
         @Override
         public final void getSubItems(CreativeTabs tab, NonNullList<net.minecraft.item.ItemStack> items) {
             CreativeTab myTab = tab != CreativeTabs.SEARCH ? new CreativeTab(tab) : null;

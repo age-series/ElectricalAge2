@@ -3,29 +3,30 @@ package cam72cam.mod.block.tile;
 import cam72cam.mod.ModCore;
 import cam72cam.mod.block.BlockEntityTickable;
 import cam72cam.mod.resource.Identifier;
-import net.minecraft.util.ITickable;
+import net.minecraft.tileentity.ITickableTileEntity;
+import net.minecraft.tileentity.TileEntityType;
 
-public class TileEntityTickable extends TileEntity implements ITickable {
-    public TileEntityTickable() {
-        super();
+public class TileEntityTickable extends TileEntity implements ITickableTileEntity {
+    static {
+        ctrs.put(TileEntityTickable.class, TileEntityTickable::new);
+        names.put(TileEntityTickable.class, new Identifier(ModCore.MODID, "hack_tickable"));
     }
 
-    public TileEntityTickable(Identifier id) {
-        super(id);
+    public TileEntityTickable(TileEntityType type) {
+        super(type);
+    }
+
+    public TileEntityTickable(TileEntityType type, Identifier id) {
+        super(type, id);
     }
 
     @Override
-    public void update() {
+    public void tick() {
         BlockEntityTickable tickable = (BlockEntityTickable) instance();
         if (tickable == null) {
             System.out.println("uhhhhh, null tickable?");
             return;
         }
         tickable.update();
-    }
-
-    @Override
-    public Identifier getName() {
-        return new Identifier(ModCore.MODID, "hack_tickable");
     }
 }

@@ -3,7 +3,6 @@ package cam72cam.mod.world;
 import net.minecraft.entity.Entity;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
-import net.minecraft.world.chunk.Chunk;
 
 public class ChunkPos {
     public final int dim;
@@ -11,10 +10,9 @@ public class ChunkPos {
     public final int chunkZ;
 
     public ChunkPos(World world, BlockPos pos) {
-        dim = world.provider.getDimension();
-        Chunk chunk = world.getChunkFromBlockCoords(pos);
-        chunkX = chunk.x;
-        chunkZ = chunk.z;
+        dim = world.getDimension().getType().getId();
+        chunkX = pos.getX() >> 4;
+        chunkZ = pos.getZ() >> 4;
     }
 
     public ChunkPos(Entity entity) {

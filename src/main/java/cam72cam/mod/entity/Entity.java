@@ -6,12 +6,12 @@ import cam72cam.mod.math.Vec3d;
 import cam72cam.mod.math.Vec3i;
 import cam72cam.mod.net.Packet;
 import cam72cam.mod.world.World;
-import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.entity.passive.EntityVillager;
-import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.entity.EntityType;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.merchant.villager.VillagerEntity;
+import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.DamageSource;
 import net.minecraft.world.Explosion;
-import net.minecraftforge.fml.common.registry.EntityRegistry;
 
 import java.util.List;
 import java.util.UUID;
@@ -46,7 +46,7 @@ public class Entity {
     }
 
     public UUID getUUID() {
-        return internal.getPersistentID();
+        return internal.getUniqueID();
     }
 
     /* Position / Rotation */
@@ -64,13 +64,11 @@ public class Entity {
     }
 
     public Vec3d getVelocity() {
-        return new Vec3d(internal.motionX, internal.motionY, internal.motionZ);
+        return new Vec3d(internal.getMotion());
     }
 
     public void setVelocity(Vec3d motion) {
-        internal.motionX = motion.x;
-        internal.motionY = motion.y;
-        internal.motionZ = motion.z;
+        internal.setMotion(motion.internal);
     }
 
     public float getRotationYaw() {
@@ -100,7 +98,7 @@ public class Entity {
     }
 
     public Vec3d getPositionEyes(float partialTicks) {
-        return new Vec3d(internal.getPositionEyes(partialTicks));
+        return new Vec3d(internal.getEyePosition(partialTicks));
     }
 
 
@@ -108,8 +106,8 @@ public class Entity {
 
 
     public Player asPlayer() {
-        if (internal instanceof EntityPlayer) {
-            return new Player((EntityPlayer) internal);
+        if (internal instanceof PlayerEntity) {
+            return new Player((PlayerEntity) internal);
         }
         return null;
     }
@@ -133,15 +131,15 @@ public class Entity {
     }
 
     public boolean isVillager() {
-        return this.is(EntityVillager.class);
+        return this.is(VillagerEntity.class);
     }
 
     public void kill() {
-        internal.world.removeEntity(internal);
+        internal.remove();
     }
 
     public final boolean isDead() {
-        return internal.isDead;
+        return !internal.isAlive();
     }
 
 
@@ -149,8 +147,9 @@ public class Entity {
 
     public void sendToObserving(Packet packet) {
         boolean found = false;
-        int syncDist = EntityRegistry.instance().lookupModSpawn(internal.getClass(), true).getTrackingRange();
-        for (EntityPlayer player : internal.world.playerEntities) {
+
+        int syncDist = internal.getType().getTrackingRange();
+        for (PlayerEntity player : internal.world.getPlayers()) {
             if (player.getPositionVector().distanceTo(internal.getPositionVector()) < syncDist) {
                 found = true;
                 break;
@@ -188,7 +187,7 @@ public class Entity {
         if (modded != null) {
             modded.removePassenger(entity);
         }
-        entity.internal.dismountRidingEntity();
+        entity.internal.stopRiding();
     }
 
     public List<Entity> getPassengers() {
@@ -199,7 +198,7 @@ public class Entity {
     }
 
     public boolean isPlayer() {
-        return internal instanceof EntityPlayer;
+        return internal instanceof PlayerEntity;
     }
 
     public Entity getRiding() {
@@ -213,7 +212,7 @@ public class Entity {
     }
 
     public IBoundingBox getBounds() {
-        return IBoundingBox.from(internal.getEntityBoundingBox());
+        return IBoundingBox.from(internal.getBoundingBox());
     }
 
     public float getRotationYawHead() {
@@ -225,7 +224,7 @@ public class Entity {
     }
 
     public boolean isLiving() {
-        return internal instanceof EntityLivingBase;
+        return internal instanceof LivingEntity;
     }
 
     public void startRiding(Entity entity) {
@@ -241,7 +240,7 @@ public class Entity {
     }
 
     protected void createExplosion(Vec3d pos, float size, boolean damageTerrain) {
-        Explosion explosion = new Explosion(getWorld().internal, this.internal, pos.x, pos.y, pos.z, size, false, damageTerrain);
+        Explosion explosion = new Explosion(getWorld().internal, this.internal, pos.x, pos.y, pos.z, size, false, damageTerrain ? Explosion.Mode.DESTROY : Explosion.Mode.NONE);
         if (net.minecraftforge.event.ForgeEventFactory.onExplosionStart(getWorld().internal, explosion)) return;
         explosion.doExplosionA();
         explosion.doExplosionB(true);

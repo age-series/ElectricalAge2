@@ -2,6 +2,7 @@ package cam72cam.mod.block.tile;
 
 import cam72cam.mod.ModCore;
 import cam72cam.mod.block.BlockEntity;
+import cam72cam.mod.block.BlockType;
 import cam72cam.mod.energy.IEnergy;
 import cam72cam.mod.entity.boundingbox.BoundingBox;
 import cam72cam.mod.entity.boundingbox.IBoundingBox;
@@ -14,32 +15,54 @@ import cam72cam.mod.util.Facing;
 import cam72cam.mod.util.TagCompound;
 import cam72cam.mod.world.World;
 import com.google.common.collect.HashBiMap;
+import net.minecraft.block.Block;
 import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.nbt.CompoundNBT;
 import net.minecraft.network.NetworkManager;
-import net.minecraft.network.play.server.SPacketUpdateTileEntity;
-import net.minecraft.util.ResourceLocation;
+import net.minecraft.network.play.server.SUpdateTileEntityPacket;
+import net.minecraft.tileentity.TileEntityType;
 import net.minecraft.util.math.BlockPos;
+import net.minecraftforge.client.model.data.IModelData;
+import net.minecraftforge.client.model.data.ModelDataMap;
+import net.minecraftforge.client.model.data.ModelProperty;
+import net.minecraftforge.common.util.LazyOptional;
 import net.minecraftforge.energy.CapabilityEnergy;
 import net.minecraftforge.energy.IEnergyStorage;
+import net.minecraftforge.event.RegistryEvent;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fluids.FluidStack;
 import net.minecraftforge.fluids.capability.CapabilityFluidHandler;
 import net.minecraftforge.fluids.capability.IFluidHandler;
-import net.minecraftforge.fluids.capability.IFluidTankProperties;
+import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.items.CapabilityItemHandler;
 import net.minecraftforge.items.IItemHandlerModifiable;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 public class TileEntity extends net.minecraft.tileentity.TileEntity {
     private static final Map<String, Supplier<BlockEntity>> registry = HashBiMap.create();
+    protected static final Map<Class<? extends TileEntity>, Function<TileEntityType, TileEntity>> ctrs = new HashMap<>();
+    protected static final Map<Class<? extends TileEntity>, Identifier> names = new HashMap<>();
+    private static final Map<Class<? extends TileEntity>, Set<Block>> blocks = new HashMap<>();
+    private static final Map<Class<? extends TileEntity>, TileEntityType> types = new HashMap<>();
+
+    static {
+        ctrs.put(TileEntity.class, TileEntity::new);
+        names.put(TileEntity.class, new Identifier(ModCore.MODID, "hack"));
+    }
+
+
     public World world;
     public Vec3i pos;
     public boolean hasTileData;
-    private String instanceId;
+    public String instanceId;
 
     /*
     Tile registration
@@ -47,34 +70,42 @@ public class TileEntity extends net.minecraft.tileentity.TileEntity {
     private BlockEntity instance;
     private TagCompound deferredLoad;
 
-    public TileEntity() {
-        // Forge reflection
-        super();
+    protected TileEntity(TileEntityType type) {
+        super(type);
     }
 
-    public TileEntity(Identifier id) {
-        this();
+    protected TileEntity(TileEntityType type, Identifier id) {
+        super(type);
         instanceId = id.toString();
     }
 
-    public static void register(Supplier<BlockEntity> instance, Identifier id) {
+    public static void register(Class<? extends TileEntity> cls, Supplier<BlockEntity> instance, Identifier id, BlockType type) {
         registry.put(id.toString(), instance);
-    }
 
-    public final void register() {
-        ResourceLocation currentName = TileEntity.getKey(this.getClass());
-        if (currentName != null) {
-            if (!currentName.toString().equals(getName().toString())) {
-                throw new RuntimeException("Duplicate TileEntity registration with different name: " + currentName + " : " + getName());
-            }
-            // TODO log a warning here?
-            return;
+        if (!blocks.containsKey(cls)) {
+            blocks.put(cls, new HashSet<>());
         }
-        net.minecraft.tileentity.TileEntity.register(this.getName().internal.toString(), this.getClass());
+        blocks.get(cls).add(type.internal);
     }
 
-    public Identifier getName() {
-        return new Identifier(ModCore.MODID, "hack");
+    public static TileEntity construct(Class<? extends TileEntity> cls, Identifier id) {
+        TileEntity te = ctrs.get(cls).apply(types.get(cls));
+        te.instanceId = id.toString();
+        return te;
+    }
+
+    @Mod.EventBusSubscriber(modid = ModCore.MODID)
+    public static class EventBus {
+        @SubscribeEvent
+        public static void onTileEntityRegistry(RegistryEvent.Register<TileEntityType<?>> event) {
+            for (Class<? extends TileEntity> cls : blocks.keySet()) {
+                Function<TileEntityType, TileEntity> ctr = ctrs.get(cls);
+                types.put(cls, new TileEntityType<>(() -> ctr.apply(types.get(cls)), blocks.get(cls), null).setRegistryName(names.get(cls).internal));
+            }
+
+
+            types.values().forEach(event.getRegistry()::register);
+        }
     }
 
 
@@ -89,12 +120,6 @@ public class TileEntity extends net.minecraft.tileentity.TileEntity {
     }
 
     @Override
-    protected void setWorldCreate(net.minecraft.world.World worldIn) {
-        super.setWorld(worldIn);
-        this.world = World.get(worldIn);
-    }
-
-    @Override
     public void setPos(BlockPos pos) {
         super.setPos(pos);
         this.pos = new Vec3i(pos);
@@ -102,55 +127,55 @@ public class TileEntity extends net.minecraft.tileentity.TileEntity {
 
 
     @Override
-    public final void readFromNBT(NBTTagCompound compound) {
+    public final void read(CompoundNBT compound) {
         hasTileData = true;
         load(new TagCompound(compound));
     }
 
     @Override
-    public final NBTTagCompound writeToNBT(NBTTagCompound compound) {
+    public final CompoundNBT write(CompoundNBT compound) {
         save(new TagCompound(compound));
         return compound;
     }
 
     @Override
-    public final SPacketUpdateTileEntity getUpdatePacket() {
+    public final SUpdateTileEntityPacket getUpdatePacket() {
         TagCompound nbt = new TagCompound();
-        this.writeToNBT(nbt.internal);
+        this.write(nbt.internal);
         this.writeUpdate(nbt);
 
-        return new SPacketUpdateTileEntity(this.getPos(), 1, nbt.internal);
+        return new SUpdateTileEntityPacket(this.getPos(), 1, nbt.internal);
     }
 
     @Override
-    public final void onDataPacket(NetworkManager net, SPacketUpdateTileEntity pkt) {
+    public final void onDataPacket(NetworkManager net, SUpdateTileEntityPacket pkt) {
         hasTileData = true;
-        this.readFromNBT(pkt.getNbtCompound());
+        this.read(pkt.getNbtCompound());
         this.readUpdate(new TagCompound(pkt.getNbtCompound()));
         super.onDataPacket(net, pkt);
         if (updateRerender()) {
-            world.internal.markBlockRangeForRenderUpdate(getPos(), getPos());
+            //TODO? world.internal.markBlockRangeForRenderUpdate(getPos(), getPos());
         }
     }
 
     @Override
-    public final NBTTagCompound getUpdateTag() {
-        NBTTagCompound tag = super.getUpdateTag();
+    public final CompoundNBT getUpdateTag() {
+        CompoundNBT tag = super.getUpdateTag();
         if (this.isLoaded()) {
-            this.writeToNBT(tag);
+            this.write(tag);
             this.writeUpdate(new TagCompound(tag));
         }
         return tag;
     }
 
     @Override
-    public final void handleUpdateTag(NBTTagCompound tag) {
+    public final void handleUpdateTag(CompoundNBT tag) {
         hasTileData = true;
-        this.readFromNBT(tag);
+        this.read(tag);
         this.readUpdate(new TagCompound(tag));
         super.handleUpdateTag(tag);
         if (updateRerender()) {
-            world.internal.markBlockRangeForRenderUpdate(getPos(), getPos());
+            //TODO? world.internal.markBlockRangeForRenderUpdate(getPos(), getPos());
         }
     }
 
@@ -160,7 +185,7 @@ public class TileEntity extends net.minecraft.tileentity.TileEntity {
         super.markDirty();
         if (world.isServer) {
             world.internal.notifyBlockUpdate(getPos(), world.internal.getBlockState(getPos()), world.internal.getBlockState(getPos()), 1 + 2 + 8);
-            world.internal.notifyNeighborsOfStateChange(pos.internal, this.getBlockType(), true);
+            world.internal.notifyNeighborsOfStateChange(pos.internal, world.internal.getBlockState(getPos()).getBlock());
         }
     }
 
@@ -181,86 +206,63 @@ public class TileEntity extends net.minecraft.tileentity.TileEntity {
     }
 
     @Override
-    public boolean hasCapability(net.minecraftforge.common.capabilities.Capability<?> capability, @Nullable net.minecraft.util.EnumFacing facing) {
-        //TODO more efficient
-        return getCapability(capability, facing) != null;
-    }
-
-    @Override
     @Nullable
-    public <T> T getCapability(net.minecraftforge.common.capabilities.Capability<T> capability, @Nullable net.minecraft.util.EnumFacing facing) {
+    public <T> LazyOptional<T> getCapability(net.minecraftforge.common.capabilities.Capability<T> capability, @Nullable net.minecraft.util.Direction facing) {
         if (capability == CapabilityFluidHandler.FLUID_HANDLER_CAPABILITY) {
             ITank target = getTank(Facing.from(facing));
             if (target == null) {
-                return null;
+                return LazyOptional.empty();
             }
-            return CapabilityFluidHandler.FLUID_HANDLER_CAPABILITY.cast(new IFluidHandler() {
+
+            return LazyOptional.of(() -> new IFluidHandler() {
                 @Override
-                public IFluidTankProperties[] getTankProperties() {
-                    return new IFluidTankProperties[]{
-                            new IFluidTankProperties() {
-                                @Nullable
-                                @Override
-                                public FluidStack getContents() {
-                                    return target.getContents().internal;
-                                }
+                public int getTanks() {
+                    return 1;
+                }
 
-                                @Override
-                                public int getCapacity() {
-                                    return target.getCapacity();
-                                }
-
-                                @Override
-                                public boolean canFill() {
-                                    return true;
-                                }
-
-                                @Override
-                                public boolean canDrain() {
-                                    return true;
-                                }
-
-                                @Override
-                                public boolean canFillFluidType(FluidStack fluidStack) {
-                                    return target.allows(Fluid.getFluid(fluidStack.getFluid()));
-                                }
-
-                                @Override
-                                public boolean canDrainFluidType(FluidStack fluidStack) {
-                                    return target.allows(Fluid.getFluid(fluidStack.getFluid()));
-                                }
-                            }
-                    };
+                @Nonnull
+                @Override
+                public FluidStack getFluidInTank(int tank) {
+                    return target.getContents().internal;
                 }
 
                 @Override
-                public int fill(FluidStack resource, boolean doFill) {
-                    int res = target.fill(new cam72cam.mod.fluid.FluidStack(resource), !doFill);
-                    return res;
+                public int getTankCapacity(int tank) {
+                    return target.getCapacity();
                 }
 
-                @Nullable
                 @Override
-                public FluidStack drain(FluidStack resource, boolean doDrain) {
-                    return target.drain(new cam72cam.mod.fluid.FluidStack(resource), !doDrain).internal;
+                public boolean isFluidValid(int tank, @Nonnull FluidStack stack) {
+                    return target.allows(Fluid.getFluid(stack.getFluid()));
                 }
 
-                @Nullable
                 @Override
-                public FluidStack drain(int maxDrain, boolean doDrain) {
+                public int fill(FluidStack resource, FluidAction action) {
+                    return target.fill(new cam72cam.mod.fluid.FluidStack(resource), action.execute());
+                }
+
+                @Nonnull
+                @Override
+                public FluidStack drain(FluidStack resource, FluidAction action) {
+                    return target.drain(new cam72cam.mod.fluid.FluidStack(resource), action.execute()).internal;
+                }
+
+                @Nonnull
+                @Override
+                public FluidStack drain(int maxDrain, FluidAction action) {
                     if (target.getContents().internal == null) {
-                        return null;
+                        return FluidStack.EMPTY;
                     }
-                    return target.drain(new cam72cam.mod.fluid.FluidStack(new FluidStack(target.getContents().internal, maxDrain)), doDrain).internal;
+                    return target.drain(new cam72cam.mod.fluid.FluidStack(new FluidStack(target.getContents().internal, maxDrain)), action.execute()).internal;
                 }
-            });
+            }).cast();
         }
         if (capability == CapabilityItemHandler.ITEM_HANDLER_CAPABILITY) {
             IInventory target = getInventory(Facing.from(facing));
             if (target == null) {
-                return null;
+                return LazyOptional.empty();
             }
-            return CapabilityItemHandler.ITEM_HANDLER_CAPABILITY.cast(new IItemHandlerModifiable() {
+            return LazyOptional.of(() -> new IItemHandlerModifiable() {
                 @Override
                 public int getSlots() {
                     return target.getSlotCount();
@@ -293,11 +295,19 @@ public class TileEntity extends net.minecraft.tileentity.TileEntity {
                 public int getSlotLimit(int slot) {
                     return target.getLimit(slot);
                 }
-            });
+
+                @Override
+                public boolean isItemValid(int slot, @Nonnull ItemStack stack) {
+                    return true; //TODO 1.14.4
+                }
+            }).cast();
         }
         if (capability == CapabilityEnergy.ENERGY) {
             IEnergy target = getEnergy(Facing.from(facing));
-            return CapabilityEnergy.ENERGY.cast(new IEnergyStorage() {
+            if (target == null) {
+                return LazyOptional.empty();
+            }
+            return LazyOptional.of(() -> new IEnergyStorage() {
                 @Override
                 public int receiveEnergy(int maxReceive, boolean simulate) {
                     return target.receiveEnergy(maxReceive, simulate);
@@ -327,7 +337,7 @@ public class TileEntity extends net.minecraft.tileentity.TileEntity {
                 public boolean canReceive() {
                     return true;
                 }
-            });
+            }).cast();
         }
         return null;
     }
@@ -345,7 +355,7 @@ public class TileEntity extends net.minecraft.tileentity.TileEntity {
     }
 
     public void load(TagCompound data) {
-        super.readFromNBT(data.internal);
+        super.read(data.internal);
         pos = new Vec3i(super.pos);
 
         if (instanceId == null) {
@@ -364,7 +374,7 @@ public class TileEntity extends net.minecraft.tileentity.TileEntity {
     }
 
     public void save(TagCompound data) {
-        super.writeToNBT(data.internal);
+        super.write(data.internal);
         data.setString("instanceId", instanceId);
         if (instance() != null) {
             instance().save(data);
@@ -430,5 +440,11 @@ public class TileEntity extends net.minecraft.tileentity.TileEntity {
 
     public IEnergy getEnergy(Facing side) {
         return instance() != null ? instance().getEnergy(side) : null;
+    }
+
+    /* Render */
+    ModelProperty<TileEntity> TE_PROPERTY = new ModelProperty<>();
+    public final IModelData getModelData() {
+        return new ModelDataMap.Builder().withInitial(TE_PROPERTY, this).build();
     }
 }

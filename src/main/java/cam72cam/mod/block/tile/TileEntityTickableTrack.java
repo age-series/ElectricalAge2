@@ -3,15 +3,20 @@ package cam72cam.mod.block.tile;
 import cam72cam.mod.ModCore;
 import cam72cam.mod.resource.Identifier;
 import cam72cam.mod.util.ITrack;
+import net.minecraft.tileentity.TileEntityType;
 
 public class TileEntityTickableTrack extends TileEntityTickable implements trackapi.lib.ITrack {
-
-    public TileEntityTickableTrack() {
-        super();
+    static {
+        ctrs.put(TileEntityTickableTrack.class, TileEntityTickableTrack::new);
+        names.put(TileEntityTickableTrack.class, new Identifier(ModCore.MODID, "hack"));
     }
 
-    public TileEntityTickableTrack(Identifier id) {
-        super(id);
+    public TileEntityTickableTrack(TileEntityType type) {
+        super(type);
+    }
+
+    public TileEntityTickableTrack(TileEntityType type, Identifier id) {
+        super(type, id);
     }
 
     private trackapi.lib.ITrack track() {

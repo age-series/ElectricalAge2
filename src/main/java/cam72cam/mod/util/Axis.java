@@ -1,19 +1,19 @@
 package cam72cam.mod.util;
 
-import net.minecraft.util.EnumFacing;
+import net.minecraft.util.Direction;
 
 public enum Axis {
-    X(EnumFacing.Axis.X),
-    Y(EnumFacing.Axis.Y),
-    Z(EnumFacing.Axis.Z);
+    X(Direction.Axis.X),
+    Y(Direction.Axis.Y),
+    Z(Direction.Axis.Z);
 
-    public final EnumFacing.Axis internal;
+    public final Direction.Axis internal;
 
-    Axis(EnumFacing.Axis internal) {
+    Axis(Direction.Axis internal) {
         this.internal = internal;
     }
 
-    public static Axis from(EnumFacing.Axis axis) {
+    public static Axis from(Direction.Axis axis) {
         switch (axis) {
             case X:
                 return X;

@@ -42,17 +42,17 @@ public interface IBoundingBox {
 
             @Override
             public double calculateXOffset(IBoundingBox other, double offsetX) {
-                return internal.calculateXOffset(new AxisAlignedBB(other.min().internal, other.max().internal), offsetX);
+                return 0;//internal.calculateXOffset(new AxisAlignedBB(other.min().internal, other.max().internal), offsetX);
             }
 
             @Override
             public double calculateYOffset(IBoundingBox other, double offsetY) {
-                return internal.calculateYOffset(new AxisAlignedBB(other.min().internal, other.max().internal), offsetY);
+                return 0;//internal.calculateYOffset(new AxisAlignedBB(other.min().internal, other.max().internal), offsetY);
             }
 
             @Override
             public double calculateZOffset(IBoundingBox other, double offsetZ) {
-                return internal.calculateZOffset(new AxisAlignedBB(other.min().internal, other.max().internal), offsetZ);
+                return 0;//internal.calculateZOffset(new AxisAlignedBB(other.min().internal, other.max().internal), offsetZ);
             }
 
             @Override

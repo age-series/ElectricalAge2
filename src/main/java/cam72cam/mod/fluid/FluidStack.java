@@ -15,13 +15,13 @@ public class FluidStack {
         if (internal == null) {
             return null;
         }
-        return Fluid.getFluid(internal.getFluid().getName());
+        return Fluid.getFluid(internal.getFluid().getRegistryName().toString());
     }
 
     public int getAmount() {
         if (internal == null) {
             return 0;
         }
-        return internal.amount;
+        return internal.getAmount();
     }
 }
