@@ -63,7 +63,6 @@ public class BlockRender {
     }
 
     public static void onPostColorSetup() {
-        // TODO call from non mod context (subscribe event)
         colors.forEach(Runnable::run);
 
         ClientRegistry.bindTileEntitySpecialRenderer(TileEntity.class, new TileEntitySpecialRenderer<TileEntity>() {

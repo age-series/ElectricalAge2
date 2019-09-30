@@ -255,7 +255,14 @@ public class TagCompound {
         TagCompound ted = get(key);
         World world = ted.getWorld("world", isClient);
 
-        //TODO pull logic in here to avoid crash
+        if (world == null) {
+            return null;
+        }
+
+        if (!ted.hasKey("data")) {
+            return null;
+        }
+
         net.minecraft.tileentity.TileEntity te = net.minecraft.tileentity.TileEntity.create(world.internal, ted.get("data").internal);
         assert te instanceof TileEntity;
         return (T) ((TileEntity) te).instance();

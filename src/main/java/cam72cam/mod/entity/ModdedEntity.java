@@ -275,12 +275,10 @@ public class ModdedEntity extends Entity implements IEntityAdditionalSpawnData {
 
     private void readPassengerData(TagCompound data) {
         passengerPositions = data.getMap("passengers", UUID::fromString, (TagCompound tag) -> tag.getVec3d("pos"));
-        // TODO legacy? staticPassengers = data.getList("staticPassengers", StaticPassenger::new);
     }
 
     private void writePassengerData(TagCompound data) {
         data.setMap("passengers", passengerPositions, UUID::toString, (Vec3d pos) -> {
-            //TODO single encoder step
             TagCompound tmp = new TagCompound();
             tmp.setVec3d("pos", pos);
             return tmp;

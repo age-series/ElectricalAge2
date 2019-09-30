@@ -71,7 +71,6 @@ public class BoundingBox extends AxisAlignedBB {
 
     @Override
     public double calculateYOffset(AxisAlignedBB other, double offsetY) {
-        // TODO check if other is already a custom BB
         return internal.calculateYOffset(IBoundingBox.from(other), offsetY);
     }
 

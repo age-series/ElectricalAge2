@@ -69,8 +69,7 @@ public class GLTexture {
             try {
                 ImageIO.write(image, "png", texLoc);
             } catch (IOException e) {
-                //TODO throw?
-                e.printStackTrace();
+                throw new RuntimeException("Unable to save image " + texLoc, e)
             }
         });
 

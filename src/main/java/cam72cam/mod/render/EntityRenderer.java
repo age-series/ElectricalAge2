@@ -36,7 +36,6 @@ public class EntityRenderer extends Render<ModdedEntity> {
         super(factory);
     }
 
-    //TODO client only
     @SubscribeEvent
     public static void registerEntities(RegistryEvent.Register<EntityEntry> event) {
         RenderingRegistry.registerEntityRenderingHandler(ModdedEntity.class, manager -> new EntityRenderer(manager));

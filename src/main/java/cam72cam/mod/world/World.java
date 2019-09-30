@@ -165,7 +165,7 @@ public class World {
             return null;
         }
         if (!type.isInstance(ent)) {
-            // TODO Warning???
+            ModCore.warn("When looking for entity %s by id %s, we instead got a %s", type, id, ent.getClass());
             return null;
         }
         return (T) ent;
@@ -177,7 +177,7 @@ public class World {
             return null;
         }
         if (!type.isInstance(ent)) {
-            // TODO Warning???
+            ModCore.warn("When looking for entity %s by id %s, we instead got a %s", type, id, ent.getClass());
             return null;
         }
         return (T) ent;
