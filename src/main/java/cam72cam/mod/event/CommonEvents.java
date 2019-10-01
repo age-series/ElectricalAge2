@@ -55,24 +55,24 @@ public class CommonEvents {
         // World
         @SubscribeEvent
         public static void onWorldLoad(WorldEvent.Load event) {
-            World.LOAD.callbacks.forEach(x -> x.accept(event.getWorld()));
+            World.LOAD.execute(x -> x.accept(event.getWorld()));
         }
 
         @SubscribeEvent
         public static void onWorldUnload(WorldEvent.Unload event) {
-            World.UNLOAD.callbacks.forEach(x -> x.accept(event.getWorld()));
+            World.UNLOAD.execute(x -> x.accept(event.getWorld()));
         }
 
         @SubscribeEvent
         public static void onWorldTick(TickEvent.WorldTickEvent event) {
             if (event.phase == TickEvent.Phase.START) {
-                World.TICK.callbacks.forEach(x -> x.accept(event.world));
+                World.TICK.execute(x -> x.accept(event.world));
             }
         }
 
         @SubscribeEvent
         public static void registerBlocks(RegistryEvent.Register<net.minecraft.block.Block> event) {
-            Block.REGISTER.callbacks.forEach(Runnable::run);
+            Block.REGISTER.execute(Runnable::run);
         }
 
         @FunctionalInterface
@@ -81,27 +81,24 @@ public class CommonEvents {
         }
         @SubscribeEvent
         public static void onBlockBreakEvent(BlockEvent.BreakEvent event) {
-            for (BlockBrokenEvent callback : Block.BROKEN.callbacks) {
-                if (!callback.onBroken(event.getWorld(), event.getPos(), event.getPlayer())) {
-                    event.setCanceled(true);
-                    return;
-                }
+            if (!Block.BROKEN.executeCancellable(x -> x.onBroken(event.getWorld(), event.getPos(), event.getPlayer()))) {
+                event.setCanceled(true);
             }
         }
 
         @SubscribeEvent
         public static void registerItems(RegistryEvent.Register<net.minecraft.item.Item> event) {
-            Item.REGISTER.callbacks.forEach(Runnable::run);
+            Item.REGISTER.execute(Runnable::run);
         }
 
         @SubscribeEvent
         public static void registerRecipes(RegistryEvent.Register<IRecipe> event) {
-            Recipe.REGISTER.callbacks.forEach(Runnable::run);
+            Recipe.REGISTER.execute(Runnable::run);
         }
 
         @SubscribeEvent
         public static void registerEntities(RegistryEvent.Register<EntityEntry> event) {
-            Entity.REGISTER.callbacks.forEach(Runnable::run);
+            Entity.REGISTER.execute(Runnable::run);
         }
 
         @FunctionalInterface
@@ -110,11 +107,8 @@ public class CommonEvents {
         }
         @SubscribeEvent
         public static void onEntityJoin(EntityJoinWorldEvent event) {
-            for (EntityJoinEvent callback : Entity.JOIN.callbacks) {
-                if (!callback.onJoin(event.getWorld(), event.getEntity())) {
-                    event.setCanceled(true);
-                    return;
-                }
+            if (!Entity.JOIN.executeCancellable(x -> x.onJoin(event.getWorld(), event.getEntity()))) {
+                event.setCanceled(true);
             }
         }
     }

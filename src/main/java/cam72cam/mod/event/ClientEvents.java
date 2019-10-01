@@ -50,7 +50,7 @@ public class ClientEvents {
 
         @SubscribeEvent
         public static void onClientTick(TickEvent.ClientTickEvent event) {
-            TICK.callbacks.forEach(Runnable::run);
+            TICK.execute(Runnable::run);
         }
 
         @SubscribeEvent
@@ -60,52 +60,49 @@ public class ClientEvents {
 
             if ((event.getButton() == attackID || event.getButton() == useID) && event.isButtonstate()) {
                 Hand button = attackID == event.getButton() ? Hand.SECONDARY : Hand.PRIMARY;
-                for (Function<Hand, Boolean> callback : CLICK.callbacks) {
-                    if (!callback.apply(button)) {
-                        event.setCanceled(true);
-                        return;
-                    }
+                if (!CLICK.executeCancellable(x -> x.apply(button))) {
+                    event.setCanceled(true);
                 }
             }
         }
 
         @SubscribeEvent
         public static void registerModels(ModelRegistryEvent event) {
-            MODEL_CREATE.callbacks.forEach(Runnable::run);
+            MODEL_CREATE.execute(Runnable::run);
         }
 
         @SubscribeEvent
         public static void onModelBakeEvent(ModelBakeEvent event) {
-            MODEL_BAKE.callbacks.forEach(x -> x.accept(event));
+            MODEL_BAKE.execute(x -> x.accept(event));
         }
 
         @SubscribeEvent
         public static void onTextureStitchEvent(TextureStitchEvent.Pre event) {
-            TEXTURE_STITCH.callbacks.forEach(Runnable::run);
+            TEXTURE_STITCH.execute(Runnable::run);
         }
 
         @SubscribeEvent
         public static void registerEntities(RegistryEvent.Register<EntityEntry> event) {
-            REGISTER_ENTITY.callbacks.forEach(Runnable::run);
+            REGISTER_ENTITY.execute(Runnable::run);
         }
 
         @SubscribeEvent
         public static void onDebugRender(RenderGameOverlayEvent.Text event) {
-            RENDER_DEBUG.callbacks.forEach(x -> x.accept(event));
+            RENDER_DEBUG.execute(x -> x.accept(event));
         }
 
         public static void onOverlayEvent(RenderGameOverlayEvent.Pre event) {
-            RENDER_OVERLAY.callbacks.forEach(x -> x.accept(event));
+            RENDER_OVERLAY.execute(x -> x.accept(event));
         }
 
         @SubscribeEvent
         public static void onRenderMouseover(DrawBlockHighlightEvent event) {
-            RENDER_MOUSEOVER.callbacks.forEach(x -> x.accept(event.getPartialTicks()));
+            RENDER_MOUSEOVER.execute(x -> x.accept(event.getPartialTicks()));
         }
 
         @SubscribeEvent
         public static void onSoundLoad(SoundLoadEvent event) {
-            SOUND_LOAD.callbacks.forEach(x -> x.accept(event));
+            SOUND_LOAD.execute(x -> x.accept(event));
         }
     }
 }
