@@ -29,7 +29,7 @@ public class EntityRegistry {
         Entity tmp = ctr.get();
         Class<? extends Entity> type = tmp.getClass();
 
-        CommonEvents.Entity.REGISTER.register(() -> {
+        CommonEvents.Entity.REGISTER.subscribe(() -> {
             Identifier id = new Identifier(mod.modID(), type.getSimpleName());
             System.out.println(id);
 
@@ -65,11 +65,11 @@ public class EntityRegistry {
 
 
     public static void registerEvents() {
-        CommonEvents.Entity.REGISTER.register(() -> {
+        CommonEvents.Entity.REGISTER.subscribe(() -> {
             net.minecraftforge.fml.common.registry.EntityRegistry.registerModEntity(SeatEntity.ID, SeatEntity.class, SeatEntity.class.getSimpleName(), constructors.size()+1, ModCore.instance, 32, 20, false);
         });
 
-        CommonEvents.Entity.JOIN.register((world, entity) -> {
+        CommonEvents.Entity.JOIN.subscribe((world, entity) -> {
             if (entity instanceof ModdedEntity) {
                 if (World.get(world) != null) {
                     String msg = ((ModdedEntity) entity).getSelf().tryJoinWorld();
@@ -84,7 +84,7 @@ public class EntityRegistry {
     }
 
     public static void registerClientEvents() {
-        ClientEvents.TICK.register(() -> {
+        ClientEvents.TICK.subscribe(() -> {
             if (missingResources != null && !Minecraft.getMinecraft().isSingleplayer() && Minecraft.getMinecraft().getConnection() != null) {
                 System.out.println(missingResources);
                 Minecraft.getMinecraft().getConnection().getNetworkManager().closeChannel(PlayerMessage.direct(missingResources).internal);

@@ -16,7 +16,7 @@ public class Recipes {
     }
 
     public static void register(ItemStack result, int width, Fuzzy... ingredients) {
-        CommonEvents.Recipe.REGISTER.register(() -> {
+        CommonEvents.Recipe.REGISTER.subscribe(() -> {
             CraftingHelper.ShapedPrimer primer = new CraftingHelper.ShapedPrimer();
             primer.width = width;
             primer.height = ingredients.length / width;

@@ -7,7 +7,7 @@ import java.util.function.Function;
 
 public class Event<T> {
     private Set<T> callbacks = new LinkedHashSet<>();
-    public void register(T callback) {
+    public void subscribe(T callback) {
         callbacks.add(callback);
     }
     void execute(Consumer<T> handler) {

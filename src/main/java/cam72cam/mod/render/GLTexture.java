@@ -33,7 +33,7 @@ public class GLTexture {
     private boolean loading;
 
     static {
-        ClientEvents.TICK.register(() -> {
+        ClientEvents.TICK.subscribe(() -> {
             for (GLTexture texture : textures) {
                 if (texture.glTexID == -1) {
                     continue;

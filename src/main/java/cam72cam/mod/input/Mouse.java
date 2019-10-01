@@ -10,7 +10,7 @@ import net.minecraft.client.Minecraft;
 
 public class Mouse {
     public static void registerClientEvents() {
-        ClientEvents.CLICK.register(button -> {
+        ClientEvents.CLICK.subscribe(button -> {
             // So it turns out that the client sends mouse click packets to the server regardless of
             // if the entity being clicked is within the requisite distance.
             // We need to override that distance because train centers are further away

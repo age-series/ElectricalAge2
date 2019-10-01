@@ -38,7 +38,7 @@ public class BlockRender {
     private static List<net.minecraft.tileentity.TileEntity> prev = new ArrayList<>();
 
     static {
-        ClientEvents.TICK.register(() -> {
+        ClientEvents.TICK.subscribe(() -> {
             if (Minecraft.getMinecraft().world == null) {
                 return;
             }
@@ -98,7 +98,7 @@ public class BlockRender {
             blockColors.registerBlockColorHandler((state, worldIn, pos, tintIndex) -> worldIn != null && pos != null ? BiomeColorHelper.getGrassColorAtPos(worldIn, pos) : ColorizerGrass.getGrassColor(0.5D, 1.0D), block.internal);
         });
 
-        ClientEvents.MODEL_BAKE.register(event -> {
+        ClientEvents.MODEL_BAKE.subscribe(event -> {
             event.getModelRegistry().putObject(new ModelResourceLocation(block.internal.getRegistryName(), ""), new IBakedModel() {
                 @Override
                 public List<BakedQuad> getQuads(@Nullable IBlockState state, @Nullable EnumFacing side, long rand) {

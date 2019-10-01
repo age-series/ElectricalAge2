@@ -25,7 +25,7 @@ public class GlobalRender {
     private static List<Consumer<Float>> renderFuncs = new ArrayList<>();
 
     public static void registerClientEvents() {
-        ClientEvents.REGISTER_ENTITY.register(() -> {
+        ClientEvents.REGISTER_ENTITY.subscribe(() -> {
             ClientRegistry.bindTileEntitySpecialRenderer(GlobalRenderHelper.class, new TileEntitySpecialRenderer<GlobalRenderHelper>() {
                 @Override
                 public void render(GlobalRenderHelper te, double x, double y, double z, float partialTicks, int destroyStage, float alpha) {
@@ -37,9 +37,9 @@ public class GlobalRender {
         TileEntity grh = new GlobalRenderHelper();
         List<TileEntity> grhList = new ArrayList<>();
         grhList.add(grh);
-        ClientEvents.TICK.register(() -> Minecraft.getMinecraft().renderGlobal.updateTileEntities(grhList, grhList));
+        ClientEvents.TICK.subscribe(() -> Minecraft.getMinecraft().renderGlobal.updateTileEntities(grhList, grhList));
 
-        ClientEvents.RENDER_DEBUG.register(event -> {
+        ClientEvents.RENDER_DEBUG.subscribe(event -> {
             if (Minecraft.getMinecraft().gameSettings.showDebugInfo && GPUInfo.hasGPUInfo()) {
                 int i;
                 for (i = 0; i < event.getRight().size(); i++) {
@@ -58,7 +58,7 @@ public class GlobalRender {
     }
 
     public static void registerOverlay(Consumer<Float> func) {
-        ClientEvents.RENDER_OVERLAY.register(event -> {
+        ClientEvents.RENDER_OVERLAY.subscribe(event -> {
             if (event.getType() == RenderGameOverlayEvent.ElementType.ALL) {
                 func.accept(event.getPartialTicks());
             }
@@ -66,7 +66,7 @@ public class GlobalRender {
     }
 
     public static void registerItemMouseover(ItemBase item, MouseoverEvent fn) {
-        ClientEvents.RENDER_MOUSEOVER.register(partialTicks -> {
+        ClientEvents.RENDER_MOUSEOVER.subscribe(partialTicks -> {
             if (MinecraftClient.getBlockMouseOver() != null) {
                 Player player = MinecraftClient.getPlayer();
                 if (item.internal == player.getHeldItem(Hand.PRIMARY).internal.getItem()) {

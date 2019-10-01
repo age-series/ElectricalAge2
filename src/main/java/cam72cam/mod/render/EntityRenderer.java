@@ -27,7 +27,7 @@ public class EntityRenderer extends Render<ModdedEntity> {
     }
 
     public static void registerClientEvents() {
-        ClientEvents.REGISTER_ENTITY.register(() -> {
+        ClientEvents.REGISTER_ENTITY.subscribe(() -> {
             RenderingRegistry.registerEntityRenderingHandler(ModdedEntity.class, EntityRenderer::new);
         });
 

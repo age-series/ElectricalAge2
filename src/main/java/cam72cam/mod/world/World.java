@@ -68,7 +68,7 @@ public class World {
     }
 
     public static void registerEvents() {
-        CommonEvents.World.LOAD.register(world -> {
+        CommonEvents.World.LOAD.subscribe(world -> {
             Map<net.minecraft.world.World, World> worlds = world.isRemote ? clientWorlds : serverWorlds;
             Map<Integer, World> worldsByID = world.isRemote ? clientWorldsByID : serverWorldsByID;
 
@@ -79,7 +79,7 @@ public class World {
             world.addEventListener(new WorldEventListener(worldWrap));
         });
 
-        CommonEvents.World.UNLOAD.register(world -> {
+        CommonEvents.World.UNLOAD.subscribe(world -> {
             Map<net.minecraft.world.World, World> worlds = world.isRemote ? clientWorlds : serverWorlds;
             Map<Integer, World> worldsByID = world.isRemote ? clientWorldsByID : serverWorldsByID;
 
@@ -87,7 +87,7 @@ public class World {
             worldsByID.remove(world.provider.getDimension());
         });
 
-        CommonEvents.World.TICK.register(world -> {
+        CommonEvents.World.TICK.subscribe(world -> {
             onTicks.forEach(fn -> fn.accept(get(world)));
             get(world).ticks++;
         });

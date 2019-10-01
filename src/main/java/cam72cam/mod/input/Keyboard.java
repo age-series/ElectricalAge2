@@ -34,7 +34,7 @@ public class Keyboard {
     }
 
     public static void registerClientEvents() {
-        ClientEvents.TICK.register(() -> {
+        ClientEvents.TICK.subscribe(() -> {
             EntityPlayerSP player = Minecraft.getMinecraft().player;
             if (player == null) {
                 return;

@@ -39,7 +39,7 @@ public class ItemBase {
         internal.setCreativeTab(tabs[0].internal);
         this.creativeTabs = tabs;
 
-        CommonEvents.Item.REGISTER.register(() -> ForgeRegistries.ITEMS.register(internal));
+        CommonEvents.Item.REGISTER.subscribe(() -> ForgeRegistries.ITEMS.register(internal));
     }
 
     public List<ItemStack> getItemVariants(CreativeTab creativeTab) {

@@ -39,13 +39,13 @@ public class ItemRender {
     private static final SpriteSheet iconSheet = new SpriteSheet(128);
 
     public static void register(ItemBase item, Identifier tex) {
-        ClientEvents.MODEL_BAKE.register(event -> event.getModelRegistry().putObject(new ModelResourceLocation(item.getRegistryName().internal, ""), new ItemLayerModel(ImmutableList.of(
+        ClientEvents.MODEL_BAKE.subscribe(event -> event.getModelRegistry().putObject(new ModelResourceLocation(item.getRegistryName().internal, ""), new ItemLayerModel(ImmutableList.of(
                 tex.internal
         )).bake(TRSRTransformation.identity(), DefaultVertexFormats.ITEM, ModelLoader.defaultTextureGetter())));
 
-        ClientEvents.TEXTURE_STITCH.register(() -> Minecraft.getMinecraft().getTextureMapBlocks().registerSprite(tex.internal));
+        ClientEvents.TEXTURE_STITCH.subscribe(() -> Minecraft.getMinecraft().getTextureMapBlocks().registerSprite(tex.internal));
 
-        ClientEvents.MODEL_CREATE.register(() -> ModelLoader.setCustomModelResourceLocation(item.internal, 0,
+        ClientEvents.MODEL_CREATE.subscribe(() -> ModelLoader.setCustomModelResourceLocation(item.internal, 0,
                 new ModelResourceLocation(item.getRegistryName().internal, "")));
     }
 
@@ -54,14 +54,14 @@ public class ItemRender {
     }
 
     public static void register(ItemBase item, BiFunction<ItemStack, World, StandardModel> model, Function<ItemStack, Pair<String, StandardModel>> cacheRender) {
-        ClientEvents.MODEL_CREATE.register(() ->
+        ClientEvents.MODEL_CREATE.subscribe(() ->
                 ModelLoader.setCustomModelResourceLocation(item.internal, 0, new ModelResourceLocation(item.getRegistryName().internal, ""))
         );
 
-        ClientEvents.MODEL_BAKE.register((ModelBakeEvent event) -> event.getModelRegistry().putObject(new ModelResourceLocation(item.getRegistryName().internal, ""), new BakedItemModel(model, cacheRender)));
+        ClientEvents.MODEL_BAKE.subscribe((ModelBakeEvent event) -> event.getModelRegistry().putObject(new ModelResourceLocation(item.getRegistryName().internal, ""), new BakedItemModel(model, cacheRender)));
 
         if (cacheRender != null) {
-            ClientEvents.TEXTURE_STITCH.register(() -> {
+            ClientEvents.TEXTURE_STITCH.subscribe(() -> {
                 List<ItemStack> variants = item.getItemVariants(null);
                 Progress.Bar bar = Progress.push(item.getClass().getSimpleName() + " Icon", variants.size());
                 for (ItemStack stack : variants) {

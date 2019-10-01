@@ -31,9 +31,9 @@ public abstract class BlockType {
 
         internal = getBlock();
 
-        CommonEvents.Block.REGISTER.register(() -> ForgeRegistries.BLOCKS.register(internal));
+        CommonEvents.Block.REGISTER.subscribe(() -> ForgeRegistries.BLOCKS.register(internal));
 
-        CommonEvents.Block.BROKEN.register((world, pos, player) -> {
+        CommonEvents.Block.BROKEN.subscribe((world, pos, player) -> {
             net.minecraft.block.Block block = world.getBlockState(pos).getBlock();
             if (block instanceof BlockInternal) {
                 return ((BlockInternal) block).tryBreak(world, pos, player);
