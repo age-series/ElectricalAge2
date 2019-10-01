@@ -2,6 +2,7 @@ package cam72cam.mod.event;
 
 import cam72cam.mod.ModCore;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.item.crafting.IRecipe;
 import net.minecraft.util.math.BlockPos;
 import net.minecraftforge.event.RegistryEvent;
 import net.minecraftforge.event.entity.EntityJoinWorldEvent;
@@ -18,22 +19,31 @@ public class CommonEvents {
     private static void registerEvents() {
         cam72cam.mod.world.World.registerEvents();
         cam72cam.mod.entity.EntityRegistry.registerEvents();
+        cam72cam.mod.world.ChunkManager.registerEvents();
     }
 
     public static final class World {
-        public static Event<Consumer<net.minecraft.world.World>> LOAD = new Event<>();
-        public static Event<Consumer<net.minecraft.world.World>> UNLOAD = new Event<>();
-        public static Event<Consumer<net.minecraft.world.World>> TICK = new Event<>();
+        public static final Event<Consumer<net.minecraft.world.World>> LOAD = new Event<>();
+        public static final Event<Consumer<net.minecraft.world.World>> UNLOAD = new Event<>();
+        public static final Event<Consumer<net.minecraft.world.World>> TICK = new Event<>();
     }
 
     public static final class Block {
-        public static Event<Runnable> REGISTER = new Event<>();
-        public static Event<EventBus.BlockBrokenEvent> BROKEN = new Event<>();
+        public static final Event<Runnable> REGISTER = new Event<>();
+        public static final Event<EventBus.BlockBrokenEvent> BROKEN = new Event<>();
+    }
+
+    public static final class Item {
+        public static final Event<Runnable> REGISTER = new Event<>();
+    }
+
+    public static final class Recipe {
+        public static final Event<Runnable> REGISTER = new Event<>();
     }
 
     public static final class Entity {
-        public static Event<Runnable> REGISTER = new Event<>();
-        public static Event<EventBus.EntityJoinEvent> JOIN = new Event<>();
+        public static final Event<Runnable> REGISTER = new Event<>();
+        public static final Event<EventBus.EntityJoinEvent> JOIN = new Event<>();
     }
 
     @Mod.EventBusSubscriber(modid = ModCore.MODID)
@@ -77,6 +87,16 @@ public class CommonEvents {
                     return;
                 }
             }
+        }
+
+        @SubscribeEvent
+        public static void registerItems(RegistryEvent.Register<net.minecraft.item.Item> event) {
+            Item.REGISTER.callbacks.forEach(Runnable::run);
+        }
+
+        @SubscribeEvent
+        public static void registerRecipes(RegistryEvent.Register<IRecipe> event) {
+            Recipe.REGISTER.callbacks.forEach(Runnable::run);
         }
 
         @SubscribeEvent

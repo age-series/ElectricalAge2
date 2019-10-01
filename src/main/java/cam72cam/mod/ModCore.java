@@ -1,11 +1,10 @@
 package cam72cam.mod;
 
-import cam72cam.mod.entity.EntityRegistry;
 import cam72cam.mod.entity.ModdedEntity;
 import cam72cam.mod.entity.sync.EntitySync;
 import cam72cam.mod.gui.GuiRegistry;
 import cam72cam.mod.input.Keyboard;
-import cam72cam.mod.input.MousePressPacket;
+import cam72cam.mod.input.Mouse;
 import cam72cam.mod.net.Packet;
 import cam72cam.mod.net.PacketDirection;
 import cam72cam.mod.render.BlockRender;
@@ -146,7 +145,7 @@ public class ModCore {
                     Packet.register(Keyboard.MovementPacket::new, PacketDirection.ClientToServer);
                     Packet.register(Keyboard.KeyPacket::new, PacketDirection.ClientToServer);
                     Packet.register(ModdedEntity.PassengerPositionsPacket::new, PacketDirection.ServerToClient);
-                    Packet.register(MousePressPacket::new, PacketDirection.ClientToServer);
+                    Packet.register(Mouse.MousePressPacket::new, PacketDirection.ClientToServer);
                     break;
                 case SETUP:
                     World.MAX_ENTITY_RADIUS = Math.max(World.MAX_ENTITY_RADIUS, 32);

@@ -1,10 +1,10 @@
 package cam72cam.mod.render;
 
-import cam72cam.mod.ModCore;
 import cam72cam.mod.block.BlockEntity;
 import cam72cam.mod.block.BlockType;
 import cam72cam.mod.block.BlockTypeEntity;
 import cam72cam.mod.block.tile.TileEntity;
+import cam72cam.mod.event.ClientEvents;
 import net.minecraft.block.material.Material;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.client.Minecraft;
@@ -19,13 +19,8 @@ import net.minecraft.init.Blocks;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.world.ColorizerGrass;
 import net.minecraft.world.biome.BiomeColorHelper;
-import net.minecraftforge.client.event.ModelBakeEvent;
 import net.minecraftforge.common.property.IExtendedBlockState;
 import net.minecraftforge.fml.client.registry.ClientRegistry;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
-import net.minecraftforge.fml.common.gameevent.TickEvent;
-import net.minecraftforge.fml.relauncher.Side;
 import org.lwjgl.opengl.GL11;
 
 import javax.annotation.Nullable;
@@ -33,33 +28,26 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-@Mod.EventBusSubscriber(value = Side.CLIENT, modid = ModCore.MODID)
 public class BlockRender {
     private static final List<BakedQuad> EMPTY = new ArrayList<>();
-    private static final List<Consumer<ModelBakeEvent>> bakers = new ArrayList<>();
     private static final List<Runnable> colors = new ArrayList<>();
     private static final Map<Class<? extends BlockEntity>, Function<BlockEntity, StandardModel>> renderers = new HashMap<>();
     private static List<net.minecraft.tileentity.TileEntity> prev = new ArrayList<>();
 
-    @SubscribeEvent
-    public static void onModelBakeEvent(ModelBakeEvent event) {
-        bakers.forEach(baker -> baker.accept(event));
-    }
-
-    @SubscribeEvent
-    public static void onTick(TickEvent.ClientTickEvent tick) {
-        if (Minecraft.getMinecraft().world == null) {
-            return;
-        }
-        List<net.minecraft.tileentity.TileEntity> tes = Minecraft.getMinecraft().world.loadedTileEntityList.stream()
-                .filter(x -> x instanceof TileEntity && ((TileEntity) x).isLoaded())
-                .collect(Collectors.toList());
-        Minecraft.getMinecraft().renderGlobal.updateTileEntities(prev, tes);
-        prev = tes;
+    static {
+        ClientEvents.TICK.register(() -> {
+            if (Minecraft.getMinecraft().world == null) {
+                return;
+            }
+            List<net.minecraft.tileentity.TileEntity> tes = Minecraft.getMinecraft().world.loadedTileEntityList.stream()
+                    .filter(x -> x instanceof TileEntity && ((TileEntity) x).isLoaded())
+                    .collect(Collectors.toList());
+            Minecraft.getMinecraft().renderGlobal.updateTileEntities(prev, tes);
+            prev = tes;
+        });
     }
 
     public static void onPostColorSetup() {
@@ -110,7 +98,7 @@ public class BlockRender {
             blockColors.registerBlockColorHandler((state, worldIn, pos, tintIndex) -> worldIn != null && pos != null ? BiomeColorHelper.getGrassColorAtPos(worldIn, pos) : ColorizerGrass.getGrassColor(0.5D, 1.0D), block.internal);
         });
 
-        bakers.add(event -> {
+        ClientEvents.MODEL_BAKE.register(event -> {
             event.getModelRegistry().putObject(new ModelResourceLocation(block.internal.getRegistryName(), ""), new IBakedModel() {
                 @Override
                 public List<BakedQuad> getQuads(@Nullable IBlockState state, @Nullable EnumFacing side, long rand) {

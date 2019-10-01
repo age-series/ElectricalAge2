@@ -1,7 +1,7 @@
 package cam72cam.mod.render;
 
 import cam72cam.mod.MinecraftClient;
-import cam72cam.mod.ModCore;
+import cam72cam.mod.event.ClientEvents;
 import cam72cam.mod.gui.Progress;
 import cam72cam.mod.item.ItemBase;
 import cam72cam.mod.item.ItemStack;
@@ -18,15 +18,9 @@ import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.util.EnumFacing;
 import net.minecraftforge.client.ForgeHooksClient;
 import net.minecraftforge.client.event.ModelBakeEvent;
-import net.minecraftforge.client.event.ModelRegistryEvent;
-import net.minecraftforge.client.event.TextureStitchEvent;
 import net.minecraftforge.client.model.ItemLayerModel;
 import net.minecraftforge.client.model.ModelLoader;
 import net.minecraftforge.common.model.TRSRTransformation;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.common.eventhandler.EventPriority;
-import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
-import net.minecraftforge.fml.relauncher.Side;
 import org.apache.commons.lang3.tuple.Pair;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
@@ -38,40 +32,20 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BiFunction;
-import java.util.function.Consumer;
 import java.util.function.Function;
 
-@Mod.EventBusSubscriber(value = Side.CLIENT, modid = ModCore.MODID)
 public class ItemRender {
     private static final List<BakedQuad> EMPTY = new ArrayList<>();
-    private static final List<Consumer<ModelBakeEvent>> bakers = new ArrayList<>();
-    private static final List<Runnable> mappers = new ArrayList<>();
-    private static final List<Consumer<TextureStitchEvent.Pre>> textures = new ArrayList<>();
     private static final SpriteSheet iconSheet = new SpriteSheet(128);
 
-    @SubscribeEvent
-    public static void onModelBakeEvent(ModelBakeEvent event) {
-        bakers.forEach(baker -> baker.accept(event));
-    }
-
-    @SubscribeEvent
-    public static void registerModels(ModelRegistryEvent event) {
-        mappers.forEach(Runnable::run);
-    }
-
-    @SubscribeEvent(priority = EventPriority.LOW)
-    public static void onTextureStich(TextureStitchEvent.Pre event) {
-        textures.forEach(texture -> texture.accept(event));
-    }
-
     public static void register(ItemBase item, Identifier tex) {
-        bakers.add(event -> event.getModelRegistry().putObject(new ModelResourceLocation(item.getRegistryName().internal, ""), new ItemLayerModel(ImmutableList.of(
+        ClientEvents.MODEL_BAKE.register(event -> event.getModelRegistry().putObject(new ModelResourceLocation(item.getRegistryName().internal, ""), new ItemLayerModel(ImmutableList.of(
                 tex.internal
         )).bake(TRSRTransformation.identity(), DefaultVertexFormats.ITEM, ModelLoader.defaultTextureGetter())));
 
-        textures.add(event -> Minecraft.getMinecraft().getTextureMapBlocks().registerSprite(tex.internal));
+        ClientEvents.TEXTURE_STITCH.register(() -> Minecraft.getMinecraft().getTextureMapBlocks().registerSprite(tex.internal));
 
-        mappers.add(() -> ModelLoader.setCustomModelResourceLocation(item.internal, 0,
+        ClientEvents.MODEL_CREATE.register(() -> ModelLoader.setCustomModelResourceLocation(item.internal, 0,
                 new ModelResourceLocation(item.getRegistryName().internal, "")));
     }
 
@@ -80,14 +54,14 @@ public class ItemRender {
     }
 
     public static void register(ItemBase item, BiFunction<ItemStack, World, StandardModel> model, Function<ItemStack, Pair<String, StandardModel>> cacheRender) {
-        mappers.add(() ->
+        ClientEvents.MODEL_CREATE.register(() ->
                 ModelLoader.setCustomModelResourceLocation(item.internal, 0, new ModelResourceLocation(item.getRegistryName().internal, ""))
         );
 
-        bakers.add((ModelBakeEvent event) -> event.getModelRegistry().putObject(new ModelResourceLocation(item.getRegistryName().internal, ""), new BakedItemModel(model, cacheRender)));
+        ClientEvents.MODEL_BAKE.register((ModelBakeEvent event) -> event.getModelRegistry().putObject(new ModelResourceLocation(item.getRegistryName().internal, ""), new BakedItemModel(model, cacheRender)));
 
         if (cacheRender != null) {
-            textures.add((event) -> {
+            ClientEvents.TEXTURE_STITCH.register(() -> {
                 List<ItemStack> variants = item.getItemVariants(null);
                 Progress.Bar bar = Progress.push(item.getClass().getSimpleName() + " Icon", variants.size());
                 for (ItemStack stack : variants) {

@@ -1,36 +1,22 @@
 package cam72cam.mod.item;
 
 import cam72cam.mod.ModCore;
-import net.minecraft.item.crafting.IRecipe;
+import cam72cam.mod.event.CommonEvents;
 import net.minecraft.item.crafting.Ingredient;
 import net.minecraft.util.NonNullList;
 import net.minecraft.util.ResourceLocation;
 import net.minecraftforge.common.crafting.CraftingHelper;
-import net.minecraftforge.event.RegistryEvent;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.registry.ForgeRegistries;
 import net.minecraftforge.oredict.OreIngredient;
 import net.minecraftforge.oredict.ShapedOreRecipe;
 
-import java.util.ArrayList;
-import java.util.List;
-
-@Mod.EventBusSubscriber(modid = ModCore.MODID)
 public class Recipes {
-    private static List<Runnable> registrations = new ArrayList<>();
-
-    @SubscribeEvent
-    public static void registerRecipes(RegistryEvent.Register<IRecipe> event) {
-        registrations.forEach(Runnable::run);
-    }
-
     public static void register(ItemBase item, int width, Fuzzy... ingredients) {
         register(new ItemStack(item, 1), width, ingredients);
     }
 
     public static void register(ItemStack result, int width, Fuzzy... ingredients) {
-        registrations.add(() -> {
+        CommonEvents.Recipe.REGISTER.register(() -> {
             CraftingHelper.ShapedPrimer primer = new CraftingHelper.ShapedPrimer();
             primer.width = width;
             primer.height = ingredients.length / width;

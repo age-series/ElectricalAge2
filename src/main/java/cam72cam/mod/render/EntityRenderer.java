@@ -1,9 +1,9 @@
 package cam72cam.mod.render;
 
 import cam72cam.mod.MinecraftClient;
-import cam72cam.mod.ModCore;
 import cam72cam.mod.entity.Entity;
 import cam72cam.mod.entity.ModdedEntity;
+import cam72cam.mod.event.ClientEvents;
 import cam72cam.mod.world.World;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.culling.ICamera;
@@ -11,12 +11,7 @@ import net.minecraft.client.renderer.entity.Render;
 import net.minecraft.client.renderer.entity.RenderManager;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.AxisAlignedBB;
-import net.minecraftforge.event.RegistryEvent;
 import net.minecraftforge.fml.client.registry.RenderingRegistry;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
-import net.minecraftforge.fml.common.registry.EntityEntry;
-import net.minecraftforge.fml.relauncher.Side;
 import org.lwjgl.opengl.GL11;
 
 import javax.annotation.Nullable;
@@ -24,7 +19,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-@Mod.EventBusSubscriber(value = Side.CLIENT, modid = ModCore.MODID)
 public class EntityRenderer extends Render<ModdedEntity> {
     private static Map<Class<? extends Entity>, IEntityRender> renderers = new HashMap<>();
 
@@ -32,13 +26,15 @@ public class EntityRenderer extends Render<ModdedEntity> {
         GlobalRender.registerRender(EntityRenderer::renderLargeEntities);
     }
 
-    public EntityRenderer(RenderManager factory) {
-        super(factory);
+    public static void registerClientEvents() {
+        ClientEvents.REGISTER_ENTITY.register(() -> {
+            RenderingRegistry.registerEntityRenderingHandler(ModdedEntity.class, EntityRenderer::new);
+        });
+
     }
 
-    @SubscribeEvent
-    public static void registerEntities(RegistryEvent.Register<EntityEntry> event) {
-        RenderingRegistry.registerEntityRenderingHandler(ModdedEntity.class, manager -> new EntityRenderer(manager));
+    public EntityRenderer(RenderManager factory) {
+        super(factory);
     }
 
     public static void register(Class<? extends Entity> type, IEntityRender render) {
