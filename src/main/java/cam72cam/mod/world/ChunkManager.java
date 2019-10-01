@@ -1,19 +1,15 @@
 package cam72cam.mod.world;
 
 import cam72cam.mod.ModCore;
+import cam72cam.mod.event.CommonEvents;
 import cam72cam.mod.math.Vec3i;
 import net.minecraft.world.World;
 import net.minecraftforge.common.ForgeChunkManager;
 import net.minecraftforge.common.ForgeChunkManager.Ticket;
-import net.minecraftforge.event.world.WorldEvent;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
-import net.minecraftforge.fml.common.gameevent.TickEvent;
 
 import java.util.*;
 
-@Mod.EventBusSubscriber(modid = ModCore.MODID)
-class ChunkManager implements ForgeChunkManager.LoadingCallback, ForgeChunkManager.OrderedLoadingCallback {
+public class ChunkManager implements ForgeChunkManager.LoadingCallback, ForgeChunkManager.OrderedLoadingCallback {
     /*
      * This takes a similar approach to FTBUtilities
      * One massive ticket for each dim
@@ -30,12 +26,18 @@ class ChunkManager implements ForgeChunkManager.LoadingCallback, ForgeChunkManag
 
     private static ChunkManager instance;
 
-    @SubscribeEvent
-    public static void onWorldLoad(WorldEvent.Load event) {
-        if (instance == null) {
-            instance = new ChunkManager();
-            instance.init();
-        }
+
+    public static void registerEvents() {
+        CommonEvents.World.LOAD.subscribe(world -> {
+            if (instance == null) {
+                instance = new ChunkManager();
+                instance.init();
+            }
+        });
+
+        CommonEvents.World.TICK.subscribe(world -> {
+            onWorldTick(world);
+        });
     }
 
     private static Ticket ticketForWorld(World world) {
@@ -64,13 +66,7 @@ class ChunkManager implements ForgeChunkManager.LoadingCallback, ForgeChunkManag
         CHUNK_MAP.put(pos, Math.max(100, Math.min(10, currTicks)));
     }
 
-    @SubscribeEvent
-    public static void onWorldTick(TickEvent.WorldTickEvent event) {
-        if (event.phase != TickEvent.Phase.START) {
-            return;
-        }
-        World world = event.world;
-
+    public static void onWorldTick(World world) {
         Ticket ticket;
         try {
             ticket = ticketForWorld(world);
@@ -155,9 +151,7 @@ class ChunkManager implements ForgeChunkManager.LoadingCallback, ForgeChunkManag
     @Override
     public void ticketsLoaded(List<Ticket> tickets, World world) {
         int dim = world.provider.getDimension();
-        if (TICKETS.containsKey(dim)) {
-            TICKETS.remove(dim);
-        }
+        TICKETS.remove(dim);
 
         if (tickets.size() == 1) {
             TICKETS.put(dim, tickets.get(0));

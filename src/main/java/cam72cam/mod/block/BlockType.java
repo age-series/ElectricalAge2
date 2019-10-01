@@ -1,14 +1,13 @@
 package cam72cam.mod.block;
 
-import cam72cam.mod.ModCore;
 import cam72cam.mod.entity.Player;
+import cam72cam.mod.event.CommonEvents;
 import cam72cam.mod.item.ItemStack;
 import cam72cam.mod.math.Vec3d;
 import cam72cam.mod.math.Vec3i;
 import cam72cam.mod.util.Facing;
 import cam72cam.mod.util.Hand;
 import cam72cam.mod.world.World;
-import net.minecraft.block.Block;
 import net.minecraft.block.state.BlockFaceShape;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.entity.Entity;
@@ -21,18 +20,9 @@ import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.RayTraceResult;
 import net.minecraft.world.IBlockAccess;
-import net.minecraftforge.event.RegistryEvent;
-import net.minecraftforge.event.world.BlockEvent;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
+import net.minecraftforge.fml.common.registry.ForgeRegistries;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.function.Consumer;
-
-@Mod.EventBusSubscriber(modid = ModCore.MODID)
 public abstract class BlockType {
-    private static List<Consumer<RegistryEvent.Register<Block>>> registrations = new ArrayList<>();
     public final net.minecraft.block.Block internal;
     protected final BlockSettings settings;
 
@@ -41,24 +31,15 @@ public abstract class BlockType {
 
         internal = getBlock();
 
-        registrations.add(reg -> reg.getRegistry().register(internal));
-    }
+        CommonEvents.Block.REGISTER.subscribe(() -> ForgeRegistries.BLOCKS.register(internal));
 
-    @SubscribeEvent
-    public static void registerBlocks(RegistryEvent.Register<Block> event) {
-        registrations.forEach(reg -> reg.accept(event));
-    }
-
-    @SubscribeEvent
-    public static void onBlockBreakEvent(BlockEvent.BreakEvent event) {
-        Block block = event.getWorld().getBlockState(event.getPos()).getBlock();
-        if (block instanceof BlockInternal) {
-            BlockInternal internal = (BlockInternal) block;
-            if (!internal.tryBreak(event.getWorld(), event.getPos(), event.getPlayer())) {
-                event.setCanceled(true);
-                //TODO updateListeners?
+        CommonEvents.Block.BROKEN.subscribe((world, pos, player) -> {
+            net.minecraft.block.Block block = world.getBlockState(pos).getBlock();
+            if (block instanceof BlockInternal) {
+                return ((BlockInternal) block).tryBreak(world, pos, player);
             }
-        }
+            return true;
+        });
     }
 
     public String getName() {

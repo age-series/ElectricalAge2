@@ -1,8 +1,8 @@
 package cam72cam.mod.item;
 
-import cam72cam.mod.ModCore;
 import cam72cam.mod.entity.Entity;
 import cam72cam.mod.entity.Player;
+import cam72cam.mod.event.CommonEvents;
 import cam72cam.mod.math.Vec3d;
 import cam72cam.mod.math.Vec3i;
 import cam72cam.mod.resource.Identifier;
@@ -17,10 +17,8 @@ import net.minecraft.item.Item;
 import net.minecraft.util.*;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.text.TextFormatting;
-import net.minecraftforge.event.RegistryEvent;
-import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.Optional;
-import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
+import net.minecraftforge.fml.common.registry.ForgeRegistries;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 
@@ -28,12 +26,9 @@ import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
-@Mod.EventBusSubscriber(modid = ModCore.MODID)
 public class ItemBase {
-    private static List<Consumer<RegistryEvent.Register<Item>>> registrations = new ArrayList<>();
     public final Item internal;
     private final CreativeTab[] creativeTabs;
     public ItemBase(String modID, String name, int stackSize, CreativeTab... tabs) {
@@ -44,12 +39,7 @@ public class ItemBase {
         internal.setCreativeTab(tabs[0].internal);
         this.creativeTabs = tabs;
 
-        registrations.add((event) -> event.getRegistry().register(internal));
-    }
-
-    @SubscribeEvent
-    public static void registerItems(RegistryEvent.Register<Item> event) {
-        registrations.forEach((consumer) -> consumer.accept(event));
+        CommonEvents.Item.REGISTER.subscribe(() -> ForgeRegistries.ITEMS.register(internal));
     }
 
     public List<ItemStack> getItemVariants(CreativeTab creativeTab) {

@@ -1,12 +1,8 @@
 package cam72cam.mod.render;
 
-import cam72cam.mod.ModCore;
+import cam72cam.mod.event.ClientEvents;
 import net.minecraft.client.renderer.texture.TextureUtil;
 import net.minecraftforge.fml.common.Loader;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
-import net.minecraftforge.fml.common.gameevent.TickEvent;
-import net.minecraftforge.fml.relauncher.Side;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
@@ -21,7 +17,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.*;
 
-@Mod.EventBusSubscriber(value = Side.CLIENT, modid = ModCore.MODID)
 public class GLTexture {
     private static LinkedBlockingQueue queue = new LinkedBlockingQueue<>(1);
     private static ExecutorService saveImage = new ThreadPoolExecutor(5, 5, 60, TimeUnit.SECONDS, queue);
@@ -36,6 +31,19 @@ public class GLTexture {
     private long lastUsed;
     private IntBuffer pixels;
     private boolean loading;
+
+    static {
+        ClientEvents.TICK.subscribe(() -> {
+            for (GLTexture texture : textures) {
+                if (texture.glTexID == -1) {
+                    continue;
+                }
+                if (System.currentTimeMillis() - texture.lastUsed > texture.cacheSeconds * 1000) {
+                    texture.dealloc();
+                }
+            }
+        });
+    }
 
     public GLTexture(String name, BufferedImage image, int cacheSeconds, boolean isSmallEnoughToUpload) {
         File cacheDir = Paths.get(Loader.instance().getConfigDir().getParentFile().getPath(), "cache", "modcore").toFile();
@@ -69,27 +77,11 @@ public class GLTexture {
             try {
                 ImageIO.write(image, "png", texLoc);
             } catch (IOException e) {
-                throw new RuntimeException("Unable to save image " + texLoc, e)
+                throw new RuntimeException("Unable to save image " + texLoc, e);
             }
         });
 
         textures.add(this);
-    }
-
-    @SubscribeEvent
-    public static void onTick(TickEvent.ClientTickEvent event) {
-        if (event.phase != TickEvent.Phase.START) {
-            return;
-        }
-
-        for (GLTexture texture : textures) {
-            if (texture.glTexID == -1) {
-                continue;
-            }
-            if (System.currentTimeMillis() - texture.lastUsed > texture.cacheSeconds * 1000) {
-                texture.dealloc();
-            }
-        }
     }
 
     private IntBuffer imageToPixels(BufferedImage image) {

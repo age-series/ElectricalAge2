@@ -10,6 +10,7 @@ import cam72cam.mod.entity.ModdedEntity;
 import cam72cam.mod.entity.Player;
 import cam72cam.mod.entity.boundingbox.BoundingBox;
 import cam72cam.mod.entity.boundingbox.IBoundingBox;
+import cam72cam.mod.event.CommonEvents;
 import cam72cam.mod.fluid.ITank;
 import cam72cam.mod.item.IInventory;
 import cam72cam.mod.item.ItemStack;
@@ -27,12 +28,8 @@ import net.minecraft.util.DamageSource;
 import net.minecraft.util.EnumParticleTypes;
 import net.minecraft.world.chunk.Chunk;
 import net.minecraftforge.common.IPlantable;
-import net.minecraftforge.event.world.WorldEvent;
 import net.minecraftforge.fluids.capability.CapabilityFluidHandler;
 import net.minecraftforge.fluids.capability.IFluidHandler;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
-import net.minecraftforge.fml.common.gameevent.TickEvent;
 import net.minecraftforge.items.CapabilityItemHandler;
 import net.minecraftforge.items.IItemHandler;
 import net.minecraftforge.items.IItemHandlerModifiable;
@@ -42,7 +39,6 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-@Mod.EventBusSubscriber(modid = ModCore.MODID)
 public class World {
 
     /* Static access to loaded worlds */
@@ -50,8 +46,8 @@ public class World {
     private static Map<net.minecraft.world.World, World> serverWorlds = new HashMap<>();
     private static Map<Integer, World> clientWorldsByID = new HashMap<>();
     private static Map<Integer, World> serverWorldsByID = new HashMap<>();
-
     private static List<Consumer<World>> onTicks = new ArrayList<>();
+
     public final net.minecraft.world.World internal;
     public final boolean isClient;
     public final boolean isServer;
@@ -71,36 +67,30 @@ public class World {
         entityByUUID = new HashMap<>();
     }
 
-    @SubscribeEvent
-    public static void onWorldLoad(WorldEvent.Load event) {
-        Map<net.minecraft.world.World, World> worlds = event.getWorld().isRemote ? clientWorlds : serverWorlds;
-        Map<Integer, World> worldsByID = event.getWorld().isRemote ? clientWorldsByID : serverWorldsByID;
+    public static void registerEvents() {
+        CommonEvents.World.LOAD.subscribe(world -> {
+            Map<net.minecraft.world.World, World> worlds = world.isRemote ? clientWorlds : serverWorlds;
+            Map<Integer, World> worldsByID = world.isRemote ? clientWorldsByID : serverWorldsByID;
 
-        net.minecraft.world.World world = event.getWorld();
-        World worldWrap = new World(world);
-        worlds.put(world, worldWrap);
-        worldsByID.put(world.provider.getDimension(), worldWrap);
+            World worldWrap = new World(world);
+            worlds.put(world, worldWrap);
+            worldsByID.put(world.provider.getDimension(), worldWrap);
 
-        world.addEventListener(new WorldEventListener(worldWrap));
-    }
+            world.addEventListener(new WorldEventListener(worldWrap));
+        });
 
-    @SubscribeEvent
-    public static void onWorldUnload(WorldEvent.Unload event) {
-        Map<net.minecraft.world.World, World> worlds = event.getWorld().isRemote ? clientWorlds : serverWorlds;
-        Map<Integer, World> worldsByID = event.getWorld().isRemote ? clientWorldsByID : serverWorldsByID;
+        CommonEvents.World.UNLOAD.subscribe(world -> {
+            Map<net.minecraft.world.World, World> worlds = world.isRemote ? clientWorlds : serverWorlds;
+            Map<Integer, World> worldsByID = world.isRemote ? clientWorldsByID : serverWorldsByID;
 
-        net.minecraft.world.World world = event.getWorld();
-        worlds.remove(world);
-        worldsByID.remove(world.provider.getDimension());
-    }
+            worlds.remove(world);
+            worldsByID.remove(world.provider.getDimension());
+        });
 
-    @SubscribeEvent
-    public static void onWorldTick(TickEvent.WorldTickEvent event) {
-        if (event.phase != TickEvent.Phase.START) {
-            return;
-        }
-        onTicks.forEach(fn -> fn.accept(get(event.world)));
-        get(event.world).ticks++;
+        CommonEvents.World.TICK.subscribe(world -> {
+            onTicks.forEach(fn -> fn.accept(get(world)));
+            get(world).ticks++;
+        });
     }
 
     public static World get(net.minecraft.world.World world) {

@@ -1,47 +1,39 @@
 package cam72cam.mod.input;
 
-import cam72cam.mod.ModCore;
 import cam72cam.mod.entity.Player;
+import cam72cam.mod.event.ClientEvents;
 import cam72cam.mod.math.Vec3d;
 import cam72cam.mod.net.Packet;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityPlayerSP;
 import net.minecraft.client.settings.KeyBinding;
 import net.minecraftforge.fml.client.registry.ClientRegistry;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.common.SidedProxy;
-import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
-import net.minecraftforge.fml.common.gameevent.TickEvent;
 import net.minecraftforge.fml.relauncher.Side;
+import net.minecraftforge.fml.relauncher.SideOnly;
 
 import java.util.*;
-import java.util.function.Consumer;
 
 public class Keyboard {
-    @SidedProxy(clientSide = "cam72cam.mod.input.Keyboard$ClientProxy", serverSide = "cam72cam.mod.input.Keyboard$ServerProxy", modId = ModCore.MODID)
-    public static Proxy proxy;
     private static Map<UUID, Vec3d> vecs = new HashMap<>();
-
-    /* Player Movement */
-    private static Map<String, Consumer<Player>> keyFuncs = new HashMap<>();
 
     public static Vec3d getMovement(Player player) {
         return vecs.getOrDefault(player.getUUID(), Vec3d.ZERO);
     }
 
-    public static void registerKey(String name, int keyCode, String category, Consumer<Player> handler) {
-        keyFuncs.put(name, handler);
-        proxy.registerKey(name, keyCode, category);
+    @SideOnly(Side.CLIENT)
+    public static void registerKey(String name, int keyCode, String category, Runnable handler) {
+        KeyBinding key = new KeyBinding(name, keyCode, category);
+        ClientRegistry.registerKeyBinding(key);
+        ClientEvents.TICK.subscribe(() -> {
+            if (key.isKeyDown()) {
+                handler.run();
+            }
+        });
     }
 
-    /* Key Bindings */
-
-    @Mod.EventBusSubscriber(value = Side.CLIENT, modid = ModCore.MODID)
-    public static class KeyboardListener {
-        static List<KeyBinding> keys = new ArrayList<>();
-
-        @SubscribeEvent
-        public static void onKeyInput(TickEvent.ClientTickEvent event) {
+    @SideOnly(Side.CLIENT)
+    public static void registerClientEvents() {
+        ClientEvents.TICK.subscribe(() -> {
             EntityPlayerSP player = Minecraft.getMinecraft().player;
             if (player == null) {
                 return;
@@ -50,13 +42,7 @@ public class Keyboard {
                     player.getUniqueID(),
                     new Vec3d(player.moveStrafing, 0, player.moveForward).scale(player.isSprinting() ? 0.4 : 0.2)
             ).sendToServer();
-
-            for (KeyBinding key : keys) {
-                if (key.isKeyDown()) {
-                    new KeyPacket(key.getKeyDescription()).sendToServer();
-                }
-            }
-        }
+        });
     }
 
     public static class MovementPacket extends Packet {
@@ -73,41 +59,6 @@ public class Keyboard {
         @Override
         protected void handle() {
             vecs.put(data.getUUID("id"), data.getVec3d("move"));
-        }
-    }
-
-    public static abstract class Proxy {
-        public abstract void registerKey(String name, int keyCode, String category);
-    }
-
-    public static class ClientProxy extends Proxy {
-        @Override
-        public void registerKey(String name, int keyCode, String category) {
-            KeyBinding key = new KeyBinding(name, keyCode, category);
-            ClientRegistry.registerKeyBinding(key);
-            KeyboardListener.keys.add(key);
-        }
-    }
-
-    public static class ServerProxy extends Proxy {
-        @Override
-        public void registerKey(String name, int keyCode, String category) {
-            // NOP
-        }
-    }
-
-    public static class KeyPacket extends Packet {
-        public KeyPacket() {
-
-        }
-
-        public KeyPacket(String name) {
-            data.setString("name", name);
-        }
-
-        @Override
-        protected void handle() {
-            keyFuncs.get(data.getString("name")).accept(getPlayer());
         }
     }
 }
