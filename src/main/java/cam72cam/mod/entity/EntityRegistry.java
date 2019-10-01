@@ -10,6 +10,8 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiDisconnected;
 import net.minecraft.client.gui.GuiMainMenu;
 import net.minecraft.client.gui.GuiMultiplayer;
+import net.minecraftforge.fml.relauncher.Side;
+import net.minecraftforge.fml.relauncher.SideOnly;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -31,7 +33,6 @@ public class EntityRegistry {
 
         CommonEvents.Entity.REGISTER.subscribe(() -> {
             Identifier id = new Identifier(mod.modID(), type.getSimpleName());
-            System.out.println(id);
 
             // This has back-compat for older entity names
             // TODO expose updateFreq and vecUpdates
@@ -83,6 +84,7 @@ public class EntityRegistry {
         });
     }
 
+    @SideOnly(Side.CLIENT)
     public static void registerClientEvents() {
         ClientEvents.TICK.subscribe(() -> {
             if (missingResources != null && !Minecraft.getMinecraft().isSingleplayer() && Minecraft.getMinecraft().getConnection() != null) {

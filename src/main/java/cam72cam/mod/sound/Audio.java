@@ -15,6 +15,7 @@ public class Audio {
     @SideOnly(Side.CLIENT)
     private static ModSoundManager soundManager;
 
+    @SideOnly(Side.CLIENT)
     public static void registerClientCallbacks() {
         ClientEvents.TICK.subscribe(() -> {
             Player player = MinecraftClient.getPlayer();

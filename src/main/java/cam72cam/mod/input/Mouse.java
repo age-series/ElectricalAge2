@@ -7,8 +7,11 @@ import cam72cam.mod.event.ClientEvents;
 import cam72cam.mod.net.Packet;
 import cam72cam.mod.util.Hand;
 import net.minecraft.client.Minecraft;
+import net.minecraftforge.fml.relauncher.Side;
+import net.minecraftforge.fml.relauncher.SideOnly;
 
 public class Mouse {
+    @SideOnly(Side.CLIENT)
     public static void registerClientEvents() {
         ClientEvents.CLICK.subscribe(button -> {
             // So it turns out that the client sends mouse click packets to the server regardless of

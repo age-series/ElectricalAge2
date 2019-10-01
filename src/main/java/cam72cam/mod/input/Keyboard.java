@@ -12,27 +12,26 @@ import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 
 import java.util.*;
-import java.util.function.Consumer;
 
 public class Keyboard {
     private static Map<UUID, Vec3d> vecs = new HashMap<>();
-    @SideOnly(Side.CLIENT)
-    private static List<KeyBinding> keys = new ArrayList<>();
-
-    /* Player Movement */
-    private static Map<String, Consumer<Player>> keyFuncs = new HashMap<>();
 
     public static Vec3d getMovement(Player player) {
         return vecs.getOrDefault(player.getUUID(), Vec3d.ZERO);
     }
 
-    public static void registerKey(String name, int keyCode, String category, Consumer<Player> handler) {
-        keyFuncs.put(name, handler);
+    @SideOnly(Side.CLIENT)
+    public static void registerKey(String name, int keyCode, String category, Runnable handler) {
         KeyBinding key = new KeyBinding(name, keyCode, category);
         ClientRegistry.registerKeyBinding(key);
-        keys.add(key);
+        ClientEvents.TICK.subscribe(() -> {
+            if (key.isKeyDown()) {
+                handler.run();
+            }
+        });
     }
 
+    @SideOnly(Side.CLIENT)
     public static void registerClientEvents() {
         ClientEvents.TICK.subscribe(() -> {
             EntityPlayerSP player = Minecraft.getMinecraft().player;
@@ -43,12 +42,6 @@ public class Keyboard {
                     player.getUniqueID(),
                     new Vec3d(player.moveStrafing, 0, player.moveForward).scale(player.isSprinting() ? 0.4 : 0.2)
             ).sendToServer();
-
-            for (KeyBinding key : keys) {
-                if (key.isKeyDown()) {
-                    new KeyPacket(key.getKeyDescription()).sendToServer();
-                }
-            }
         });
     }
 
@@ -66,21 +59,6 @@ public class Keyboard {
         @Override
         protected void handle() {
             vecs.put(data.getUUID("id"), data.getVec3d("move"));
-        }
-    }
-
-    public static class KeyPacket extends Packet {
-        public KeyPacket() {
-
-        }
-
-        public KeyPacket(String name) {
-            data.setString("name", name);
-        }
-
-        @Override
-        protected void handle() {
-            keyFuncs.get(data.getString("name")).accept(getPlayer());
         }
     }
 }
