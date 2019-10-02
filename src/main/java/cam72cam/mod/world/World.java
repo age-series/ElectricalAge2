@@ -74,7 +74,7 @@ public class World {
 
             World worldWrap = new World(world);
             worlds.put(world, worldWrap);
-            worldsByID.put(world.provider.getDimension(), worldWrap);
+            worldsByID.put(worldWrap.getId(), worldWrap);
 
             world.addEventListener(new WorldEventListener(worldWrap));
         });
@@ -110,6 +110,10 @@ public class World {
 
     public static void onTick(Consumer<World> fn) {
         onTicks.add(fn);
+    }
+
+    public int getId() {
+        return internal.provider.getDimension();
     }
 
     public boolean doesBlockCollideWith(Vec3i bp, IBoundingBox bb) {
