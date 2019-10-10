@@ -16,7 +16,9 @@ import net.minecraft.tileentity.TileEntity;
 import net.minecraftforge.client.MinecraftForgeClient;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import net.minecraftforge.fml.client.registry.ClientRegistry;
+import org.lwjgl.opengl.GL11;
 
+import java.nio.FloatBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
@@ -98,6 +100,10 @@ public class GlobalRender {
     public static boolean isInRenderDistance(Vec3d pos) {
         // max rail length is 100, 50 is center
         return MinecraftClient.getPlayer().getPosition().distanceTo(pos) < ((Minecraft.getMinecraft().gameSettings.renderDistanceChunks + 1) * 16 + 50);
+    }
+
+    public static void mulMatrix(FloatBuffer fbm) {
+        GL11.glMultMatrix(fbm);
     }
 
     @FunctionalInterface
