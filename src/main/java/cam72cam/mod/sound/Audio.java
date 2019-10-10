@@ -10,6 +10,7 @@ import cam72cam.mod.resource.Identifier;
 import cam72cam.mod.world.World;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
+import paulscode.sound.SoundSystemConfig;
 
 public class Audio {
     @SideOnly(Side.CLIENT)
@@ -53,5 +54,9 @@ public class Audio {
 
     public static ISound newSound(Identifier oggLocation, boolean repeats, float attenuationDistance, float scale) {
         return soundManager.createSound(oggLocation, repeats, attenuationDistance, scale);
+    }
+
+    public static void setSoundChannels(int max) {
+        SoundSystemConfig.setNumberNormalChannels(Math.max(SoundSystemConfig.getNumberNormalChannels(), max));
     }
 }
