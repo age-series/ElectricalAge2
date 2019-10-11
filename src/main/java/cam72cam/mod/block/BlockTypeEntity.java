@@ -31,7 +31,7 @@ public abstract class BlockTypeEntity extends BlockType {
     private final Supplier<BlockEntity> constructData;
 
     public BlockTypeEntity(BlockSettings settings, Supplier<BlockEntity> constructData) {
-        super(settings);
+        super(settings.withRedstonePovider(constructData.get() instanceof IRedstoneProvider));
         id = new Identifier(settings.modID, settings.name);
         this.constructData = constructData;
         TileEntity.register(constructData, id);
@@ -119,6 +119,28 @@ public abstract class BlockTypeEntity extends BlockType {
             return instance.getHeight();
         }
         return 1;
+    }
+
+    @Override
+    public int getStrongPower(World world, Vec3i pos, Facing from) {
+        if (settings.redstoneProvider) {
+            BlockEntity instance = getInstance(world, pos);
+            if (instance instanceof IRedstoneProvider) {
+                return ((IRedstoneProvider)instance).getStrongPower(from);
+            }
+        }
+        return 0;
+    }
+
+    @Override
+    public int getWeakPower(World world, Vec3i pos, Facing from) {
+        if (settings.redstoneProvider) {
+            BlockEntity instance = getInstance(world, pos);
+            if (instance instanceof IRedstoneProvider) {
+                return ((IRedstoneProvider)instance).getWeakPower(from);
+            }
+        }
+        return 0;
     }
 
     protected class BlockTypeInternal extends BlockInternal {

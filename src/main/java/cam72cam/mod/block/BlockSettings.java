@@ -7,6 +7,7 @@ public class BlockSettings {
     float hardness;
     float resistance;
     boolean connectable;
+    boolean redstoneProvider;
 
     public BlockSettings(String modID, String name) {
         this.modID = modID;
@@ -48,6 +49,12 @@ public class BlockSettings {
     public BlockSettings withConnectable(boolean connectable) {
         BlockSettings settings = new BlockSettings(this);
         settings.connectable = connectable;
+        return settings;
+    }
+
+    BlockSettings withRedstonePovider(boolean redstoneProvider) {
+        BlockSettings settings = new BlockSettings(this);
+        settings.redstoneProvider = redstoneProvider;
         return settings;
     }
 }

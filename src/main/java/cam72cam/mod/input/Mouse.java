@@ -20,20 +20,20 @@ public class Mouse {
             // than 36m.
 
             if (Minecraft.getMinecraft().objectMouseOver == null) {
-                return false;
+                return true;
             }
 
             Entity entity = MinecraftClient.getEntityMouseOver();
             if (entity != null && entity.internal instanceof ModdedEntity) {
                 new MousePressPacket(button, entity).sendToServer();
-                return true;
+                return false;
             }
             Entity riding = MinecraftClient.getPlayer().getRiding();
             if (riding != null && riding.internal instanceof ModdedEntity) {
                 new MousePressPacket(button, riding).sendToServer();
-                return true;
+                return false;
             }
-            return false;
+            return true;
         });
     }
 
