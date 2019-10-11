@@ -83,6 +83,7 @@ public class ItemRender {
         fb.bindFramebuffer(true);
 
         GLBoolTracker depth = new GLBoolTracker(GL11.GL_DEPTH_TEST, true);
+        int oldDepth = GL11.glGetInteger(GL11.GL_DEPTH_FUNC);
         GL11.glDepthFunc(GL11.GL_LESS);
         GL11.glClearDepth(1);
 
@@ -93,6 +94,7 @@ public class ItemRender {
 
         fb.unbindFramebuffer();
         fb.deleteFramebuffer();
+        GL11.glDepthFunc(oldDepth);
         depth.restore();
 
         iconSheet.setSprite(id, buff);
