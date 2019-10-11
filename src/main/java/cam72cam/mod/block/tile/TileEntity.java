@@ -128,9 +128,7 @@ public class TileEntity extends net.minecraft.tileentity.TileEntity {
         this.readFromNBT(pkt.getNbtCompound());
         this.readUpdate(new TagCompound(pkt.getNbtCompound()));
         super.onDataPacket(net, pkt);
-        if (updateRerender()) {
-            world.internal.markBlockRangeForRenderUpdate(getPos(), getPos());
-        }
+        world.internal.markBlockRangeForRenderUpdate(getPos(), getPos());
     }
 
     @Override
@@ -149,9 +147,7 @@ public class TileEntity extends net.minecraft.tileentity.TileEntity {
         this.readFromNBT(tag);
         this.readUpdate(new TagCompound(tag));
         super.handleUpdateTag(tag);
-        if (updateRerender()) {
-            world.internal.markBlockRangeForRenderUpdate(getPos(), getPos());
-        }
+        world.internal.markBlockRangeForRenderUpdate(getPos(), getPos());
     }
 
 
@@ -389,11 +385,6 @@ public class TileEntity extends net.minecraft.tileentity.TileEntity {
 
     public boolean isLoaded() {
         return this.hasWorld() && (world.isServer || hasTileData);
-    }
-
-    // TODO render system?
-    public boolean updateRerender() {
-        return false;
     }
 
     public BlockEntity instance() {
