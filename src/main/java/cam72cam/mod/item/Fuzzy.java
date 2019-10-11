@@ -44,6 +44,7 @@ public class Fuzzy {
     public static final Fuzzy WOOL_BLOCK = new Fuzzy("wool").add(new ItemStack(Blocks.WOOL, 1, OreDictionary.WILDCARD_VALUE));
     public static final Fuzzy BUCKET = new Fuzzy("bucket").add(new ItemStack(Items.BUCKET, 1));
     public static final Fuzzy EMERALD = new Fuzzy("gemEmerald");
+    public static final Fuzzy REDSTONE_TORCH = new Fuzzy("redstoneTorch").add(Blocks.REDSTONE_TORCH);
 
     static {
         ConfigFile.addMapper(Fuzzy.class, Fuzzy::toString, Fuzzy::new);
