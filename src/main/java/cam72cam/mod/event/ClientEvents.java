@@ -22,6 +22,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 public class ClientEvents {
+
     private static void registerClientEvents() {
         EntityRegistry.registerClientEvents();
         EntityRenderer.registerClientEvents();
@@ -29,6 +30,10 @@ public class ClientEvents {
         Keyboard.registerClientEvents();
         GlobalRender.registerClientEvents();
         Audio.registerClientCallbacks();
+    }
+
+    public static void fireReload() {
+        RELOAD.execute(Runnable::run);
     }
 
     public static final Event<Runnable> TICK = new Event<>();
@@ -41,6 +46,7 @@ public class ClientEvents {
     public static final Event<Consumer<RenderGameOverlayEvent.Pre>> RENDER_OVERLAY = new Event<>();
     public static final Event<Consumer<Float>> RENDER_MOUSEOVER = new Event<>();
     public static final Event<Consumer<SoundLoadEvent>> SOUND_LOAD = new Event<>();
+    public static final Event<Runnable> RELOAD = new Event<>();
 
     @Mod.EventBusSubscriber(value = Side.CLIENT, modid = ModCore.MODID)
     public static class ClientEventBus {

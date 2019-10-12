@@ -226,14 +226,14 @@ public class OBJTextureSheet {
         }
 
         if (texture.tryUpload()) {
-            return texture.bind();
+            return texture.bind(false);
         }
-        System.out.println("DEFER...");
+        System.out.println("DEFER... " + texture.info());
         return bindIcon();
     }
 
     int bindIcon() {
-        return icon.bind();
+        return icon.bind(true);
     }
 
     private class SubTexture {

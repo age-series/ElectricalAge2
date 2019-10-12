@@ -61,7 +61,7 @@ public class ItemRender {
         ClientEvents.MODEL_BAKE.subscribe((ModelBakeEvent event) -> event.getModelRegistry().putObject(new ModelResourceLocation(item.getRegistryName().internal, ""), new BakedItemModel(model, cacheRender)));
 
         if (cacheRender != null) {
-            ClientEvents.TEXTURE_STITCH.subscribe(() -> {
+            ClientEvents.RELOAD.subscribe(() -> {
                 List<ItemStack> variants = item.getItemVariants(null);
                 Progress.Bar bar = Progress.push(item.getClass().getSimpleName() + " Icon", variants.size());
                 for (ItemStack stack : variants) {

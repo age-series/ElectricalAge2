@@ -2,6 +2,7 @@ package cam72cam.mod;
 
 import cam72cam.mod.entity.ModdedEntity;
 import cam72cam.mod.entity.sync.EntitySync;
+import cam72cam.mod.event.ClientEvents;
 import cam72cam.mod.gui.GuiRegistry;
 import cam72cam.mod.input.Keyboard;
 import cam72cam.mod.input.Mouse;
@@ -167,8 +168,10 @@ public class ModCore {
                             return;
                         }
                         ModCore.instance.mods.forEach(mod -> mod.clientEvent(ModEvent.RELOAD));
+                        ClientEvents.fireReload();
                     });
                     BlockRender.onPostColorSetup();
+                    ClientEvents.fireReload();
                     break;
             }
 
