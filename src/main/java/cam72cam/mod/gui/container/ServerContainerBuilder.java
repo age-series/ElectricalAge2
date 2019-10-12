@@ -145,6 +145,11 @@ public class ServerContainerBuilder extends net.minecraft.inventory.Container im
     }
 
     @Override
+    public void drawSlotOverlay(String spriteId, int x, int y, double percent, int color) {
+
+    }
+
+    @Override
     public int drawPlayerInventory(int currY, int horizSlots) {
         currY += 9;
 
