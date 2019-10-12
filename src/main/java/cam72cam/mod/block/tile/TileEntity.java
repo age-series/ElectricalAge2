@@ -293,6 +293,9 @@ public class TileEntity extends net.minecraft.tileentity.TileEntity {
         }
         if (capability == CapabilityEnergy.ENERGY) {
             IEnergy target = getEnergy(Facing.from(facing));
+            if (target == null) {
+                return null;
+            }
             return CapabilityEnergy.ENERGY.cast(new IEnergyStorage() {
                 @Override
                 public int receiveEnergy(int maxReceive, boolean simulate) {

@@ -69,17 +69,23 @@ public class World {
         entityByUUID = new HashMap<>();
     }
 
+    private static void loadWorld(net.minecraft.world.World world) {
+        Map<net.minecraft.world.World, World> worlds = world.isRemote ? clientWorlds : serverWorlds;
+        if (worlds.containsKey(world)) {
+            return;
+        }
+
+        Map<Integer, World> worldsByID = world.isRemote ? clientWorldsByID : serverWorldsByID;
+
+        World worldWrap = new World(world);
+        worlds.put(world, worldWrap);
+        worldsByID.put(worldWrap.getId(), worldWrap);
+
+        world.addEventListener(new WorldEventListener(worldWrap));
+    }
+
     public static void registerEvents() {
-        CommonEvents.World.LOAD.subscribe(world -> {
-            Map<net.minecraft.world.World, World> worlds = world.isRemote ? clientWorlds : serverWorlds;
-            Map<Integer, World> worldsByID = world.isRemote ? clientWorldsByID : serverWorldsByID;
-
-            World worldWrap = new World(world);
-            worlds.put(world, worldWrap);
-            worldsByID.put(worldWrap.getId(), worldWrap);
-
-            world.addEventListener(new WorldEventListener(worldWrap));
-        });
+        CommonEvents.World.LOAD.subscribe(World::loadWorld);
 
         CommonEvents.World.UNLOAD.subscribe(world -> {
             Map<net.minecraft.world.World, World> worlds = world.isRemote ? clientWorlds : serverWorlds;
@@ -100,6 +106,11 @@ public class World {
             return null;
         }
         Map<net.minecraft.world.World, World> worlds = world.isRemote ? clientWorlds : serverWorlds;
+        if (!worlds.containsKey(world)) {
+            // WTF forge
+            // I should NOT need to do this
+            loadWorld(world);
+        }
 
         return worlds.get(world);
     }
