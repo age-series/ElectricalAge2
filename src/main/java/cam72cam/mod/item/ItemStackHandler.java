@@ -14,7 +14,7 @@ public class ItemStackHandler implements IInventory {
             @Override
             public void setStackInSlot(int slot, @Nonnull net.minecraft.item.ItemStack stack) {
                 if (checkSlot.test(slot, new ItemStack(stack))) {
-                    super.setStackInSlot(slot, stack.copy());
+                    super.setStackInSlot(slot, stack);
                 }
             }
 
