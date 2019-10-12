@@ -97,6 +97,7 @@ public class ClientEvents {
             RENDER_DEBUG.execute(x -> x.accept(event));
         }
 
+        @SubscribeEvent
         public static void onOverlayEvent(RenderGameOverlayEvent.Pre event) {
             RENDER_OVERLAY.execute(x -> x.accept(event));
         }
