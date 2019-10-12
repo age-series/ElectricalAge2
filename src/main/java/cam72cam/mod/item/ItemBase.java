@@ -25,6 +25,7 @@ import net.minecraftforge.fml.relauncher.SideOnly;
 import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -52,7 +53,8 @@ public class ItemBase {
 
     /* Overrides */
 
-    public void addInformation(ItemStack itemStack, List<String> tooltip) {
+    public List<String> getTooltip(ItemStack itemStack) {
+        return Collections.emptyList();
     }
 
     public ClickResult onClickBlock(Player player, World world, Vec3i vec3i, Hand from, Facing from1, Vec3d vec3d) {
@@ -97,7 +99,7 @@ public class ItemBase {
         public final void addInformation(net.minecraft.item.ItemStack stack, @Nullable net.minecraft.world.World worldIn, List<String> tooltip, ITooltipFlag flagIn) {
             super.addInformation(stack, worldIn, tooltip, flagIn);
             applyCustomName(new ItemStack(stack));
-            ItemBase.this.addInformation(new ItemStack(stack), tooltip);
+            tooltip.addAll(ItemBase.this.getTooltip(new ItemStack(stack)));
         }
 
         @Override
