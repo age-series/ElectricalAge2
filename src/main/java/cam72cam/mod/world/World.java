@@ -25,7 +25,9 @@ import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Blocks;
 import net.minecraft.util.DamageSource;
+import net.minecraft.util.EnumFacing;
 import net.minecraft.util.EnumParticleTypes;
+import net.minecraft.util.math.RayTraceResult;
 import net.minecraft.world.chunk.Chunk;
 import net.minecraftforge.common.IPlantable;
 import net.minecraftforge.fluids.capability.CapabilityFluidHandler;
@@ -437,7 +439,13 @@ public class World {
 
     public ItemStack getItemStack(Vec3i pos) {
         IBlockState state = internal.getBlockState(pos.internal);
-        return new ItemStack(state.getBlock().getItemDropped(state, internal.rand, 0), 1, state.getBlock().damageDropped(state));
+        return new ItemStack(
+                state.getBlock().getPickBlock(
+                        state,
+                        new RayTraceResult(new net.minecraft.util.math.Vec3d(pos.internal), EnumFacing.UP, pos.internal), internal, pos.internal,
+                        null
+                )
+        );
     }
 
     public List<ItemStack> getDroppedItems(IBoundingBox bb) {
