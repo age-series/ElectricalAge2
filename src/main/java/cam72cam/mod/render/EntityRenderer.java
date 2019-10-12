@@ -3,6 +3,7 @@ package cam72cam.mod.render;
 import cam72cam.mod.MinecraftClient;
 import cam72cam.mod.entity.Entity;
 import cam72cam.mod.entity.ModdedEntity;
+import cam72cam.mod.entity.SeatEntity;
 import cam72cam.mod.event.ClientEvents;
 import cam72cam.mod.world.World;
 import net.minecraft.client.Minecraft;
@@ -11,6 +12,7 @@ import net.minecraft.client.renderer.entity.Render;
 import net.minecraft.client.renderer.entity.RenderManager;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.AxisAlignedBB;
+import net.minecraftforge.fml.client.registry.IRenderFactory;
 import net.minecraftforge.fml.client.registry.RenderingRegistry;
 import org.lwjgl.opengl.GL11;
 
@@ -27,10 +29,15 @@ public class EntityRenderer extends Render<ModdedEntity> {
     }
 
     public static void registerClientEvents() {
-        ClientEvents.REGISTER_ENTITY.subscribe(() -> {
-            RenderingRegistry.registerEntityRenderingHandler(ModdedEntity.class, EntityRenderer::new);
-        });
+        ClientEvents.REGISTER_ENTITY.subscribe(() -> RenderingRegistry.registerEntityRenderingHandler(ModdedEntity.class, EntityRenderer::new));
 
+        ClientEvents.REGISTER_ENTITY.subscribe(() -> RenderingRegistry.registerEntityRenderingHandler(SeatEntity.class, manager -> new Render<SeatEntity>(manager) {
+            @Nullable
+            @Override
+            protected ResourceLocation getEntityTexture(SeatEntity entity) {
+                return null;
+            }
+        }));
     }
 
     public EntityRenderer(RenderManager factory) {
