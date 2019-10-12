@@ -7,6 +7,7 @@ import cam72cam.mod.item.ItemBase;
 import cam72cam.mod.item.ItemStack;
 import cam72cam.mod.math.Vec3d;
 import cam72cam.mod.math.Vec3i;
+import cam72cam.mod.util.CollectionUtil;
 import cam72cam.mod.util.Hand;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.culling.Frustum;
@@ -36,9 +37,7 @@ public class GlobalRender {
             });
         });
 
-        TileEntity grh = new GlobalRenderHelper();
-        List<TileEntity> grhList = new ArrayList<>();
-        grhList.add(grh);
+        List<TileEntity> grhList = CollectionUtil.listOf(new GlobalRenderHelper());
         ClientEvents.TICK.subscribe(() -> Minecraft.getMinecraft().renderGlobal.updateTileEntities(grhList, grhList));
 
         ClientEvents.RENDER_DEBUG.subscribe(event -> {
