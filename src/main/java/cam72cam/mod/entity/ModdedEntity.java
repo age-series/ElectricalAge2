@@ -73,7 +73,15 @@ public class ModdedEntity extends Entity implements IEntityAdditionalSpawnData {
     }
 
     private final void loadSelf(TagCompound data) {
-        init(data.getString("custom_mob_type"));
+        String type = data.getString("custom_mob_type");
+        if (type == null) {
+            // Legacy...
+            type = data.getString("id");
+        }
+        if (type == null) {
+            throw new RuntimeException("Invalid entity data: " + data);
+        }
+        init(type);
     }
 
     private final void saveSelf(TagCompound data) {
