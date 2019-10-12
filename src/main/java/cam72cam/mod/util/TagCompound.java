@@ -76,7 +76,10 @@ public class TagCompound {
     }
 
     public String getString(String key) {
-        return internal.getString(key);
+        if (internal.hasKey(key)) {
+            return internal.getString(key);
+        }
+        return null;
     }
 
     public void setString(String key, String value) {
