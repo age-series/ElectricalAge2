@@ -195,7 +195,7 @@ public class ModdedEntity extends Entity implements IEntityAdditionalSpawnData {
         if (!world.isRemote) {
             System.out.println("New Seat");
             SeatEntity seat = new SeatEntity(world);
-            seat.setParent(this);
+            seat.setup(this, entity);
             cam72cam.mod.entity.Entity passenger = self.getWorld().getEntity(entity);
             passengerPositions.put(entity.getPersistentID(), iRidable.getMountOffset(passenger, calculatePassengerOffset(passenger)));
             entity.startRiding(seat);

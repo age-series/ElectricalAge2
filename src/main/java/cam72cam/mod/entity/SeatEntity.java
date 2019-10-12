@@ -17,8 +17,9 @@ import java.util.UUID;
 public class SeatEntity extends Entity implements IEntityAdditionalSpawnData {
     static final ResourceLocation ID = new ResourceLocation(ModCore.MODID, "seat");
     private UUID parent;
-    private int ticksUnsure = 0;
+    private UUID passenger;
     boolean shouldSit = true;
+    private boolean hasHadPassenger = false;
 
     public SeatEntity(net.minecraft.world.World worldIn) {
         super(worldIn);
@@ -33,6 +34,7 @@ public class SeatEntity extends Entity implements IEntityAdditionalSpawnData {
     protected void readEntityFromNBT(NBTTagCompound compound) {
         TagCompound data = new TagCompound(compound);
         parent = data.getUUID("parent");
+        passenger = data.getUUID("passenger");
         shouldSit = data.getBoolean("shouldSit");
     }
 
@@ -40,6 +42,7 @@ public class SeatEntity extends Entity implements IEntityAdditionalSpawnData {
     protected void writeEntityToNBT(NBTTagCompound compound) {
         TagCompound data = new TagCompound(compound);
         data.setUUID("parent", parent);
+        data.setUUID("passenger", passenger);
         data.setBoolean("shouldSit", shouldSit);
     }
 
@@ -50,27 +53,40 @@ public class SeatEntity extends Entity implements IEntityAdditionalSpawnData {
             this.setDead();
             return;
         }
-        if (getPassengers().isEmpty()) {
-            System.out.println("No passengers, goodbye");
-            this.setDead();
-            return;
-        }
-        if (ticksUnsure > 10) {
-            System.out.println("Parent not loaded, goodbye");
+        if (passenger == null) {
+            System.out.println("No passenger, goodbye");
             this.setDead();
             return;
         }
 
-        cam72cam.mod.entity.Entity linked = World.get(world).getEntity(parent, cam72cam.mod.entity.Entity.class);
-        if (linked != null && linked.internal instanceof ModdedEntity) {
-            ticksUnsure = 0;
-        } else {
-            ticksUnsure++;
+        if (getPassengers().isEmpty()) {
+            if (this.ticksExisted < 20) {
+                if (!hasHadPassenger) {
+                    cam72cam.mod.entity.Entity toRide = World.get(world).getEntity(passenger, cam72cam.mod.entity.Entity.class);
+                    if (toRide != null) {
+                        System.out.println("FORCE RIDER");
+                        toRide.internal.startRiding(this, true);
+                        hasHadPassenger = true;
+                    }
+                }
+            } else {
+                System.out.println("No passengers, goodbye");
+                this.setDead();
+                return;
+            }
+        }
+
+        if (getParent() == null) {
+            if (ticksExisted > 20) {
+                System.out.println("No parent found, goodbye");
+                this.setDead();
+            }
         }
     }
 
-    public void setParent(ModdedEntity moddedEntity) {
+    public void setup(ModdedEntity moddedEntity, Entity passenger) {
         this.parent = moddedEntity.getUniqueID();
+        this.passenger = passenger.getUniqueID();
     }
 
     public cam72cam.mod.entity.Entity getParent() {
@@ -122,6 +138,7 @@ public class SeatEntity extends Entity implements IEntityAdditionalSpawnData {
     public void writeSpawnData(ByteBuf buffer) {
         TagCompound data = new TagCompound();
         data.setUUID("parent", parent);
+        data.setUUID("passenger", passenger);
         ByteBufUtils.writeTag(buffer, data.internal);
     }
 
@@ -129,6 +146,7 @@ public class SeatEntity extends Entity implements IEntityAdditionalSpawnData {
     public void readSpawnData(ByteBuf additionalData) {
         TagCompound data = new TagCompound(ByteBufUtils.readTag(additionalData));
         parent = data.getUUID("parent");
+        passenger = data.getUUID("passenger");
     }
 
     @Override
