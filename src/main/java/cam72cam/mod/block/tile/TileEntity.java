@@ -296,22 +296,22 @@ public class TileEntity extends net.minecraft.tileentity.TileEntity {
             return CapabilityEnergy.ENERGY.cast(new IEnergyStorage() {
                 @Override
                 public int receiveEnergy(int maxReceive, boolean simulate) {
-                    return target.receiveEnergy(maxReceive, simulate);
+                    return target.receive(maxReceive, simulate);
                 }
 
                 @Override
                 public int extractEnergy(int maxExtract, boolean simulate) {
-                    return target.extractEnergy(maxExtract, simulate);
+                    return target.extract(maxExtract, simulate);
                 }
 
                 @Override
                 public int getEnergyStored() {
-                    return target.getEnergyStored();
+                    return target.getCurrent();
                 }
 
                 @Override
                 public int getMaxEnergyStored() {
-                    return target.getMaxEnergyStored();
+                    return target.getMax();
                 }
 
                 @Override

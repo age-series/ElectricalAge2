@@ -32,7 +32,6 @@ public abstract class Packet {
     MessageContext ctx;
 
     public static void register(Supplier<Packet> sup, PacketDirection dir) {
-        //TODO remove dir?
         types.put(sup.get().getClass().toString(), sup);
     }
 
