@@ -67,7 +67,6 @@ dependencies {
     // for more info...
     // http://www.gradle.org/docs/current/userguide/artifact_dependencies_tutorial.html
     // http://www.gradle.org/docs/current/userguide/dependency_management.html
-	compile project(":TrackAPI")
 	shade 'inventory-tweaks:InventoryTweaks:1.63:api'
 }
 

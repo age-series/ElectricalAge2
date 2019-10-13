@@ -9,10 +9,14 @@ import cam72cam.mod.item.IInventory;
 import cam72cam.mod.item.ItemStack;
 import cam72cam.mod.math.Vec3d;
 import cam72cam.mod.math.Vec3i;
+import cam72cam.mod.resource.Identifier;
 import cam72cam.mod.util.Facing;
 import cam72cam.mod.util.Hand;
 import cam72cam.mod.util.TagCompound;
 import cam72cam.mod.world.World;
+
+import java.util.function.Function;
+import java.util.function.Supplier;
 
 public abstract class BlockEntity {
     public TileEntity internal;
@@ -72,5 +76,9 @@ public abstract class BlockEntity {
 
     public double getRenderDistance() {
         return 4096.0D; // MC default
+    }
+
+    protected TileEntity supplier(Identifier id) {
+        return new TileEntity(id);
     }
 }

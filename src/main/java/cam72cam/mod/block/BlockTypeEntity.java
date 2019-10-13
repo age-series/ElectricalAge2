@@ -1,8 +1,6 @@
 package cam72cam.mod.block;
 
 import cam72cam.mod.block.tile.TileEntity;
-import cam72cam.mod.block.tile.TileEntityTickable;
-import cam72cam.mod.block.tile.TileEntityTickableTrack;
 import cam72cam.mod.entity.Player;
 import cam72cam.mod.item.ItemStack;
 import cam72cam.mod.math.Vec3d;
@@ -10,7 +8,6 @@ import cam72cam.mod.math.Vec3i;
 import cam72cam.mod.resource.Identifier;
 import cam72cam.mod.util.Facing;
 import cam72cam.mod.util.Hand;
-import cam72cam.mod.util.ITrack;
 import cam72cam.mod.world.World;
 import net.minecraft.block.properties.IProperty;
 import net.minecraft.block.state.BlockStateContainer;
@@ -35,7 +32,7 @@ public abstract class BlockTypeEntity extends BlockType {
         id = new Identifier(settings.modID, settings.name);
         this.constructData = constructData;
         TileEntity.register(constructData, id);
-        ((TileEntity) internal.createTileEntity(null, null)).register();
+        constructData.get().supplier(id).register();
     }
 
     public BlockEntity createBlockEntity(World world, Vec3i pos) {
@@ -59,7 +56,7 @@ public abstract class BlockTypeEntity extends BlockType {
     private BlockEntity getInstance(World world, Vec3i pos) {
         TileEntity te = world.getTileEntity(pos, TileEntity.class);
         if (te != null) {
-            return (BlockEntity) te.instance();
+            return te.instance();
         }
         return null;
     }
@@ -151,13 +148,7 @@ public abstract class BlockTypeEntity extends BlockType {
 
         @Override
         public final net.minecraft.tileentity.TileEntity createTileEntity(net.minecraft.world.World world, IBlockState state) {
-            if (constructData.get() instanceof BlockEntityTickable) {
-                if (constructData.get() instanceof ITrack) {
-                    return new TileEntityTickableTrack(id);
-                }
-                return new TileEntityTickable(id);
-            }
-            return new TileEntity(id);
+            return constructData.get().supplier(id);
         }
 
         @Override
