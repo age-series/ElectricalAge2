@@ -306,6 +306,7 @@ public class World {
     }
 
     public void setSnowLevel(Vec3i ph, int snowDown) {
+        snowDown = Math.max(1, Math.min(8, snowDown));
         internal.setBlockState(ph.internal, Blocks.SNOW_LAYER.getDefaultState().withProperty(BlockSnow.LAYERS, snowDown));
     }
 
