@@ -44,8 +44,8 @@ public class Identifier {
     }
 
     public boolean canLoad() {
-        try {
-            return this.getResourceStream() != null;
+        try (InputStream stream = this.getResourceStream()) {
+            return stream != null;
         } catch (IOException e){
             return false;
         }
