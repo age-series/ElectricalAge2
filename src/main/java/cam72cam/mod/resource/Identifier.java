@@ -39,6 +39,19 @@ public class Identifier {
         return new Identifier(getDomain(), FilenameUtils.concat(FilenameUtils.getPath(getPath()), path).replace('\\', '/'));
     }
 
+    public Identifier getOrDefault(Identifier fallback){
+        return this.canLoad() ? this : fallback;
+    }
+
+    public boolean canLoad() {
+        try {
+            this.getResourceStream();
+            return true;
+        } catch (IOException e){
+            return false;
+        }
+    }
+
 
     public List<InputStream> getResourceStreamAll() throws IOException {
         return Data.proxy.getResourceStreamAll(this);
