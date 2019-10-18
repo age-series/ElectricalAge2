@@ -11,6 +11,7 @@ import com.google.common.collect.ImmutableList;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.block.model.*;
+import net.minecraft.client.renderer.block.model.ItemCameraTransforms.TransformType;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.client.renderer.vertex.DefaultVertexFormats;
 import net.minecraft.client.shader.Framebuffer;
@@ -31,8 +32,6 @@ import javax.vecmath.Vector3f;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.BiFunction;
-import java.util.function.Function;
 
 public class ItemRender {
     private static final List<BakedQuad> EMPTY = new ArrayList<>();
@@ -49,30 +48,74 @@ public class ItemRender {
                 new ModelResourceLocation(item.getRegistryName().internal, "")));
     }
 
-    public static void register(ItemBase item, BiFunction<ItemStack, World, StandardModel> model) {
-        register(item, model, null);
-    }
-
-    public static void register(ItemBase item, BiFunction<ItemStack, World, StandardModel> model, Function<ItemStack, Pair<String, StandardModel>> cacheRender) {
+    public static void register(ItemBase item, IItemModel model) {
         ClientEvents.MODEL_CREATE.subscribe(() ->
                 ModelLoader.setCustomModelResourceLocation(item.internal, 0, new ModelResourceLocation(item.getRegistryName().internal, ""))
         );
 
-        ClientEvents.MODEL_BAKE.subscribe((ModelBakeEvent event) -> event.getModelRegistry().putObject(new ModelResourceLocation(item.getRegistryName().internal, ""), new BakedItemModel(model, cacheRender)));
+        ClientEvents.MODEL_BAKE.subscribe((ModelBakeEvent event) -> event.getModelRegistry().putObject(new ModelResourceLocation(item.getRegistryName().internal, ""), new BakedItemModel(model)));
 
-        if (cacheRender != null) {
+        if (model instanceof ISpriteItemModel) {
             ClientEvents.RELOAD.subscribe(() -> {
                 List<ItemStack> variants = item.getItemVariants(null);
                 Progress.Bar bar = Progress.push(item.getClass().getSimpleName() + " Icon", variants.size());
                 for (ItemStack stack : variants) {
-                    Pair<String, StandardModel> info = cacheRender.apply(stack);
-                    bar.step(info.getKey());
-                    createSprite(info.getKey(), info.getValue());
+                    String id = ((ISpriteItemModel) model).getSpriteKey(stack);
+                    bar.step(id);
+                    createSprite(id, ((ISpriteItemModel) model).getSpriteModel(stack));
                 }
                 Progress.pop(bar);
             });
         }
     }
+
+    public enum ItemRenderType {
+        NONE(TransformType.NONE),
+        THIRD_PERSON_LEFT_HAND(TransformType.THIRD_PERSON_LEFT_HAND),
+        THIRD_PERSON_RIGHT_HAND(TransformType.THIRD_PERSON_RIGHT_HAND),
+        FIRST_PERSON_LEFT_HAND(TransformType.FIRST_PERSON_LEFT_HAND),
+        FIRST_PERSON_RIGHT_HAND(TransformType.FIRST_PERSON_RIGHT_HAND),
+        HEAD(TransformType.HEAD),
+        GUI(TransformType.GUI),
+        ENTITY(TransformType.GROUND),
+        FRAME(TransformType.FIXED);
+
+        private final TransformType type;
+
+        ItemRenderType(TransformType type) {
+            this.type = type;
+        }
+
+        public static ItemRenderType from(TransformType cameraTransformType) {
+            for (ItemRenderType type : values()) {
+                if (cameraTransformType == type.type) {
+                    return type;
+                }
+            }
+            return null;
+        }
+    }
+
+    @FunctionalInterface
+    public interface IItemModel {
+        StandardModel getModel(World world, ItemStack stack);
+        default void applyTransform(ItemRenderType type) {
+            switch (type) {
+                case FRAME:
+                    GL11.glRotated(90, 0, 1, 0);
+                    break;
+                case HEAD:
+                    GL11.glScaled(2, 2, 2);
+                    GL11.glTranslated(0, 1, 0);
+            }
+        }
+    }
+
+    public interface ISpriteItemModel extends IItemModel {
+        String getSpriteKey(ItemStack stack);
+        StandardModel getSpriteModel(ItemStack stack);
+    }
+
 
     private static void createSprite(String id, StandardModel model) {
         int width = iconSheet.spriteSize;
@@ -101,40 +144,29 @@ public class ItemRender {
     }
 
     static class BakedItemModel implements IBakedModel {
-        private final ItemStack stack;
-        private final World world;
-        private final BiFunction<ItemStack, World, StandardModel> model;
-        private final Function<ItemStack, Pair<String, StandardModel>> cacheRender;
-        private final boolean isGUI;
+        private ItemStack stack;
+        private final IItemModel model;
+        private ItemRenderType type;
 
-        BakedItemModel(BiFunction<ItemStack, World, StandardModel> model, Function<ItemStack, Pair<String, StandardModel>> cacheRender) {
-            this.world = null;
+
+        BakedItemModel(IItemModel model) {
             this.stack = null;
             this.model = model;
-            this.cacheRender = cacheRender;
-            isGUI = false;
-        }
-
-        BakedItemModel(ItemStack stack, World world, BiFunction<ItemStack, World, StandardModel> model, Function<ItemStack, Pair<String, StandardModel>> cacheRender, boolean isGUI) {
-            this.stack = stack;
-            this.world = world;
-            this.model = model;
-            this.cacheRender = cacheRender;
-            this.isGUI = isGUI;
+            this.type = ItemRenderType.NONE;
         }
 
         @Override
         public List<BakedQuad> getQuads(@Nullable IBlockState state, @Nullable EnumFacing side, long rand) {
-            if (stack == null || world == null) {
+            if (stack == null) {
                 return EMPTY;
             }
 
-            if (isGUI) {
-                iconSheet.renderSprite(cacheRender.apply(stack).getKey());
+            if (type == ItemRenderType.GUI && model instanceof ISpriteItemModel) {
+                iconSheet.renderSprite(((ISpriteItemModel) model).getSpriteKey(stack));
                 return EMPTY;
             }
 
-            StandardModel std = model.apply(stack, world);
+            StandardModel std = model.getModel(MinecraftClient.getPlayer().getWorld(), stack);
             if (std == null) {
                 return EMPTY;
             }
@@ -152,6 +184,7 @@ public class ItemRender {
              * before actually setting up the correct GL context.
              */
             if (side == null) {
+                model.applyTransform(type);
                 std.renderCustom();
             }
 
@@ -184,27 +217,9 @@ public class ItemRender {
         }
 
         @Override
-        public Pair<? extends IBakedModel, Matrix4f> handlePerspective(ItemCameraTransforms.TransformType cameraTransformType) {
-            Pair<? extends IBakedModel, Matrix4f> def = ForgeHooksClient.handlePerspective(this, cameraTransformType);
-            // TODO more efficient
-            if (cacheRender != null && (cameraTransformType == ItemCameraTransforms.TransformType.GUI)) {
-                return Pair.of(new BakedItemModel(stack, world, model, cacheRender, true), def.getRight());
-            }
-            // TODO Expose as part of the renderItem API
-            if (cameraTransformType == ItemCameraTransforms.TransformType.FIXED) {
-                Matrix4f mat = new Matrix4f();
-                mat.setIdentity();
-                mat.rotY((float) Math.toRadians(90));
-                return Pair.of(def.getLeft(), mat);
-            }
-            if (cameraTransformType == ItemCameraTransforms.TransformType.HEAD) {
-                Matrix4f mat = new Matrix4f();
-                mat.setIdentity();
-                mat.setScale(2);
-                mat.setTranslation(new Vector3f(0, 1, 0));
-                return Pair.of(def.getLeft(), mat);
-            }
-            return def;
+        public Pair<? extends IBakedModel, Matrix4f> handlePerspective(TransformType cameraTransformType) {
+            this.type = ItemRenderType.from(cameraTransformType);
+            return ForgeHooksClient.handlePerspective(this, cameraTransformType);
         }
 
         class ItemOverrideListHack extends ItemOverrideList {
@@ -214,7 +229,8 @@ public class ItemRender {
 
             @Override
             public IBakedModel handleItemState(IBakedModel originalModel, net.minecraft.item.ItemStack stack, @Nullable net.minecraft.world.World world, @Nullable EntityLivingBase entity) {
-                return new BakedItemModel(new ItemStack(stack), MinecraftClient.getPlayer().getWorld(), model, cacheRender, isGUI);
+                BakedItemModel.this.stack = new ItemStack(stack);
+                return BakedItemModel.this;
             }
         }
     }

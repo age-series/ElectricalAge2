@@ -1,8 +1,7 @@
 configurations {
     shade
-    //compile.extendsFrom shade
+    compile.extendsFrom shade
 }
-
 
 buildscript {
     repositories {
@@ -47,11 +46,17 @@ minecraft {
     // makeObfSourceJar = false // an Srg named sources jar is made by default. uncomment this to disable.
 }
 
+apply plugin: 'java'
+sourceSets {
+	main {
+		java {
+			srcDir "UniversalModCore/src/main/java"
+		}
+	}
+}
+
 dependencies {
-	compile project(':UniversalModCore')
-	shade files (
-		'UniversalModCore/build/libs/UniversalModCore-1.0.0.jar'
-	)
+	shade 'inventory-tweaks:InventoryTweaks:1.63:api'
 }
 
 jar {
