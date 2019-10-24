@@ -20,6 +20,7 @@ public class SeatEntity extends Entity implements IEntityAdditionalSpawnData {
     private UUID passenger;
     boolean shouldSit = true;
     private boolean hasHadPassenger = false;
+    private int ticks = 0;
 
     public SeatEntity(net.minecraft.world.World worldIn) {
         super(worldIn);
@@ -48,6 +49,7 @@ public class SeatEntity extends Entity implements IEntityAdditionalSpawnData {
 
     @Override
     public void onUpdate() {
+        ticks ++;
         if (parent == null) {
             System.out.println("No parent, goodbye");
             this.setDead();
@@ -60,7 +62,7 @@ public class SeatEntity extends Entity implements IEntityAdditionalSpawnData {
         }
 
         if (getPassengers().isEmpty()) {
-            if (this.ticksExisted < 20) {
+            if (this.ticks < 20) {
                 if (!hasHadPassenger) {
                     cam72cam.mod.entity.Entity toRide = World.get(world).getEntity(passenger, cam72cam.mod.entity.Entity.class);
                     if (toRide != null) {
@@ -77,7 +79,7 @@ public class SeatEntity extends Entity implements IEntityAdditionalSpawnData {
         }
 
         if (getParent() == null) {
-            if (ticksExisted > 20) {
+            if (ticks > 20) {
                 System.out.println("No parent found, goodbye");
                 this.setDead();
             }
@@ -86,6 +88,7 @@ public class SeatEntity extends Entity implements IEntityAdditionalSpawnData {
 
     public void setup(ModdedEntity moddedEntity, Entity passenger) {
         this.parent = moddedEntity.getUniqueID();
+        this.setPosition(moddedEntity.posX, moddedEntity.posY, moddedEntity.posZ);
         this.passenger = passenger.getUniqueID();
     }
 

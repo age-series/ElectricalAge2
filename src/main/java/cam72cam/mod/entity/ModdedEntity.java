@@ -11,6 +11,7 @@ import io.netty.buffer.ByteBuf;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.monster.EntityMob;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.DamageSource;
 import net.minecraft.util.EnumHand;
@@ -147,6 +148,7 @@ public class ModdedEntity extends Entity implements IEntityAdditionalSpawnData {
 
         if (!seats.isEmpty()) {
             seats.removeAll(seats.stream().filter(x -> x.isDead).collect(Collectors.toList()));
+            seats.forEach(seat -> seat.setPosition(posX, posY, posZ));
         }
     }
 
@@ -240,8 +242,13 @@ public class ModdedEntity extends Entity implements IEntityAdditionalSpawnData {
             passengerPositions.put(passenger.getUUID(), offset);
 
             Vec3d pos = calculatePassengerPosition(offset);
-            seat.setPosition(pos.x, pos.y, pos.z);
+
+            if (world.loadedEntityList.indexOf(seat) < world.loadedEntityList.indexOf(passenger.internal)) {
+                pos = pos.add(motionX, motionY, motionZ);
+            }
+
             passenger.setPosition(pos);
+            passenger.setVelocity(new Vec3d(motionX, motionY, motionZ));
 
             float delta = rotationYaw - prevRotationYaw;
             passenger.internal.rotationYaw = passenger.internal.rotationYaw + delta;
