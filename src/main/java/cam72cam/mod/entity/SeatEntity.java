@@ -50,6 +50,10 @@ public class SeatEntity extends Entity implements IEntityAdditionalSpawnData {
     @Override
     public void onUpdate() {
         ticks ++;
+        if (world.isRemote || ticks < 5) {
+            return;
+        }
+
         if (parent == null) {
             System.out.println("No parent, goodbye");
             this.setDead();
