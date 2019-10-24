@@ -4,10 +4,7 @@ import cam72cam.mod.ModCore;
 import cam72cam.mod.block.BlockEntity;
 import cam72cam.mod.block.BlockType;
 import cam72cam.mod.block.tile.TileEntity;
-import cam72cam.mod.entity.Entity;
-import cam72cam.mod.entity.Living;
-import cam72cam.mod.entity.ModdedEntity;
-import cam72cam.mod.entity.Player;
+import cam72cam.mod.entity.*;
 import cam72cam.mod.entity.boundingbox.BoundingBox;
 import cam72cam.mod.entity.boundingbox.IBoundingBox;
 import cam72cam.mod.event.CommonEvents;
@@ -153,11 +150,9 @@ public class World {
     }
 
     void onEntityRemoved(net.minecraft.entity.Entity entity) {
-        if (entityByUUID.containsKey(entity.getUniqueID())) {
-            entities.remove(entityByUUID.get(entity.getUniqueID()));
-            entityByID.remove(entity.getEntityId());
-            entityByUUID.remove(entity.getUniqueID());
-        }
+        entities.stream().filter(x -> x.getUUID().equals(entity.getUniqueID())).findFirst().ifPresent(entities::remove);
+        entityByID.remove(entity.getEntityId());
+        entityByUUID.remove(entity.getUniqueID());
     }
 
     /* Entity Methods */
