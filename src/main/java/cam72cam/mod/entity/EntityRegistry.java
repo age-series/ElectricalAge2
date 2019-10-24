@@ -67,7 +67,7 @@ public class EntityRegistry {
 
     public static void registerEvents() {
         CommonEvents.Entity.REGISTER.subscribe(() -> {
-            net.minecraftforge.fml.common.registry.EntityRegistry.registerModEntity(SeatEntity.ID, SeatEntity.class, SeatEntity.class.getSimpleName(), constructors.size()+1, ModCore.instance, 32, 20, false);
+            net.minecraftforge.fml.common.registry.EntityRegistry.registerModEntity(SeatEntity.ID, SeatEntity.class, SeatEntity.class.getSimpleName(), constructors.size()+1, ModCore.instance, 512, 20, false);
         });
 
         CommonEvents.Entity.JOIN.subscribe((world, entity) -> {
