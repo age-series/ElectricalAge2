@@ -107,7 +107,7 @@ public class GLTexture {
 
     private void transition(TextureState state) {
         this.state = state;
-        System.out.println(state.name() + " " + texLoc);
+        //System.out.println(state.name() + " " + texLoc);
     }
 
     private IntBuffer imageToPixels(BufferedImage image) {
