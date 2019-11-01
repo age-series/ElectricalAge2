@@ -45,10 +45,7 @@ public class GLTexture {
     static {
         ClientEvents.TICK.subscribe(() -> {
             for (GLTexture texture : textures.values()) {
-                if (texture.state != TextureState.READ) {
-                    continue;
-                }
-                if (System.currentTimeMillis() - texture.lastUsed > texture.cacheSeconds * 1000) {
+                if (texture.state == TextureState.ALLOCATED && System.currentTimeMillis() - texture.lastUsed > texture.cacheSeconds * 1000) {
                     texture.dealloc();
                 }
             }
@@ -216,8 +213,8 @@ public class GLTexture {
     public void dealloc() {
         if (this.state == TextureState.ALLOCATED) {
             GL11.glDeleteTextures(this.glTexID);
+            transition(TextureState.UNALLOCATED);
         }
-        transition(TextureState.UNALLOCATED);
     }
 
     public String info() {
