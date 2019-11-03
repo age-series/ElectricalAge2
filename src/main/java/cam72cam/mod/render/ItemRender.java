@@ -100,6 +100,9 @@ public class ItemRender {
     public interface IItemModel {
         StandardModel getModel(World world, ItemStack stack);
         default void applyTransform(ItemRenderType type) {
+            defaultTransform(type);
+        }
+        static void defaultTransform(ItemRenderType type) {
             switch (type) {
                 case FRAME:
                     GL11.glRotated(90, 0, 1, 0);
