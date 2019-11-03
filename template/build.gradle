@@ -25,7 +25,7 @@ apply plugin: 'net.minecraftforge.gradle.forge'
 
 
 version = "#MODVERSION#_1.12.2"
-group = "cam72cam.modcoremod" // http://maven.apache.org/guides/mini/guide-naming-conventions.html
+group = "cam72cam.universalmodcoremod" // http://maven.apache.org/guides/mini/guide-naming-conventions.html
 archivesBaseName = "#MODNAME#"
 
 sourceCompatibility = targetCompatibility = '1.8' // Need this here so eclipse task generates correctly.

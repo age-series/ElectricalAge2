@@ -54,7 +54,7 @@ public class GLTexture {
 
     public GLTexture(String name, BufferedImage image, int cacheSeconds, boolean upload) {
 
-        File cacheDir = Paths.get(Loader.instance().getConfigDir().getParentFile().getPath(), "cache", "modcore").toFile();
+        File cacheDir = Paths.get(Loader.instance().getConfigDir().getParentFile().getPath(), "cache", "universalmodcore").toFile();
         cacheDir.mkdirs();
 
         this.texLoc = new File(cacheDir, name);
