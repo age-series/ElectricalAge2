@@ -77,6 +77,7 @@ public class GLTexture {
             transition(TextureState.UNALLOCATED);
 
             this.pixels = imageToPixels(image);
+            transition(TextureState.READ);
             tryUpload();
         } else {
             while (queue.size() != 0) {
@@ -116,7 +117,6 @@ public class GLTexture {
         IntBuffer buffer = BufferUtils.createByteBuffer(image.getWidth() * image.getHeight() * 4).asIntBuffer();
         buffer.put(pixels);
         buffer.flip();
-        transition(TextureState.READ);
         return buffer;
     }
 
@@ -156,6 +156,7 @@ public class GLTexture {
                 readImage.submit(() -> {
                     try {
                         this.pixels = imageToPixels(ImageIO.read(texLoc));
+                        transition(TextureState.READ);
                     } catch (Exception e) {
                         transition(TextureState.ERROR);
                         internalError = new RuntimeException(texLoc.toString(), e);
