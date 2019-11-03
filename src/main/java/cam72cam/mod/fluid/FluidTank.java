@@ -69,7 +69,6 @@ public class FluidTank implements ITank {
     }
 
     public boolean tryDrain(ITank inputTank, int max, boolean simulate) {
-        //TODO broken max
         int maxTransfer = this.fill(inputTank.getContents(), true);
         maxTransfer = Math.min(maxTransfer, max);
 
@@ -86,7 +85,7 @@ public class FluidTank implements ITank {
         }
 
         // Either attempt or do fill
-        boolean ok = this.fill(inputTank.getContents(), simulate) == attemptedDrain.getAmount();
+        boolean ok = this.fill(attemptedDrain, simulate) == attemptedDrain.getAmount();
 
         if (!simulate) {
             // Drain input tank
@@ -96,7 +95,6 @@ public class FluidTank implements ITank {
     }
 
     public boolean tryFill(ITank inputTank, int max, boolean simulate) {
-        //TODO broken max
         int maxTransfer = inputTank.fill(this.getContents(), true);
         maxTransfer = Math.min(maxTransfer, max);
 
@@ -113,7 +111,7 @@ public class FluidTank implements ITank {
         }
 
         // Either attempt or do fill
-        boolean ok = inputTank.fill(this.getContents(), simulate) == attemptedDrain.getAmount();
+        boolean ok = inputTank.fill(attemptedDrain, simulate) == attemptedDrain.getAmount();
 
         if (!simulate) {
             // Drain input tank
