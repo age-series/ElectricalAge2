@@ -19,6 +19,8 @@ public interface IContainerBuilder {
 
     void drawSlotOverlay(ItemStack stack, int x, int y);
 
+    void drawSlotOverlay(String spriteId, int x, int y, double percent, int color);
+
     void drawSlot(ItemStackHandler handler, int slotID, int x, int y);
 
     int drawSlotRow(ItemStackHandler handler, int start, int cols, int x, int y);

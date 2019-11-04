@@ -4,9 +4,12 @@ import cam72cam.mod.fluid.Fluid;
 import cam72cam.mod.gui.helpers.GUIHelpers;
 import cam72cam.mod.item.ItemStack;
 import cam72cam.mod.item.ItemStackHandler;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.inventory.GuiContainer;
 import net.minecraft.client.renderer.GlStateManager;
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
+import net.minecraft.client.renderer.texture.TextureMap;
 import org.lwjgl.opengl.GL11;
 
 import static cam72cam.mod.gui.helpers.GUIHelpers.CHEST_GUI_TEXTURE;
@@ -174,5 +177,19 @@ public class ClientContainerBuilder extends GuiContainer implements IContainerBu
         GlStateManager.enableDepth();
 
         GL11.glColor4f(1, 1, 1, 1);
+    }
+
+    @Override
+    public void drawSlotOverlay(String spriteId, int x, int y, double height, int color) {
+        x += centerX + 1 + paddingLeft;
+        y += centerY + 1;
+
+        drawRect(x, y + (int)(16 - 16 * height), x + 16, y + 16, color);
+
+        TextureAtlasSprite sprite = mc.getTextureMapBlocks().getAtlasSprite(spriteId);
+        Minecraft.getMinecraft().getTextureManager().bindTexture(TextureMap.LOCATION_BLOCKS_TEXTURE);
+        GlStateManager.color(1,1,1,1);
+        super.drawTexturedModalRect(x, y, sprite, 16, 16);
+        Minecraft.getMinecraft().getTextureManager().bindTexture(CHEST_GUI_TEXTURE);
     }
 }

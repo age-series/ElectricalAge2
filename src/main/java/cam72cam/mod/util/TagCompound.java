@@ -7,7 +7,6 @@ import cam72cam.mod.math.Vec3d;
 import cam72cam.mod.math.Vec3i;
 import cam72cam.mod.world.World;
 import net.minecraft.nbt.CompoundNBT;
-import net.minecraft.server.MinecraftServer;
 
 import java.util.*;
 import java.util.function.Function;
@@ -77,7 +76,10 @@ public class TagCompound {
     }
 
     public String getString(String key) {
-        return internal.getString(key);
+        if (internal.contains(key)) {
+            return internal.getString(key);
+        }
+        return null;
     }
 
     public void setString(String key, String value) {
@@ -152,7 +154,7 @@ public class TagCompound {
     public void setEntity(String key, cam72cam.mod.entity.Entity entity) {
         CompoundNBT data = new CompoundNBT();
         data.putUniqueId("id", entity.internal.getUniqueID());
-        data.putInt("world", entity.internal.world.getDimension().getType().getId());
+        data.putInt("world", entity.getWorld().getId());
         internal.put(key, data);
     }
 
@@ -234,7 +236,7 @@ public class TagCompound {
     }
 
     public void setWorld(String key, World world) {
-        setInteger(key, world.internal.getDimension().getType().getId());
+        setInteger(key, world.getId());
     }
 
     public World getWorld(String key, boolean isClient) {
@@ -246,7 +248,7 @@ public class TagCompound {
         ted.setWorld("world", preview.world);
 
         TagCompound data = new TagCompound();
-        preview.internal.writeToNBT(data.internal);
+        preview.internal.write(data.internal);
         ted.set("data", data);
 
         set(key, ted);
@@ -254,9 +256,18 @@ public class TagCompound {
 
     public <T extends BlockEntity> T getTile(String key, boolean isClient) {
         TagCompound ted = get(key);
+        World world = ted.getWorld("world", isClient);
 
-        //TODO pull logic in here to avoid crash
+        if (world == null) {
+            return null;
+        }
+
+        if (!ted.contains("data")) {
+            return null;
+        }
+
         net.minecraft.tileentity.TileEntity te = net.minecraft.tileentity.TileEntity.create(ted.get("data").internal);
+        te.setWorld(world.internal);
         assert te instanceof TileEntity;
         return (T) ((TileEntity) te).instance();
     }

@@ -60,7 +60,7 @@ class ScreenBuilder extends GuiScreen implements IScreenBuilder {
 
     @Override
     public void drawTank(double x, int y, double width, double height, Fluid fluid, float fluidPercent, boolean background, int color) {
-        GUIHelpers.drawTankBlock(this.width / 2 + x, this.height / 2 + y, width, height, fluid, fluidPercent, background, color);
+        GUIHelpers.drawTankBlock(this.width / 2 + x, this.height / 4 + y, width, height, fluid, fluidPercent, background, color);
     }
 
     @Override

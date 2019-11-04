@@ -1,12 +1,8 @@
 package cam72cam.mod.render;
 
-import cam72cam.mod.ModCore;
+import cam72cam.mod.event.ClientEvents;
 import net.minecraft.client.renderer.texture.TextureUtil;
 import net.minecraftforge.fml.common.Loader;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
-import net.minecraftforge.fml.common.gameevent.TickEvent;
-import net.minecraftforge.fml.relauncher.Side;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
@@ -17,17 +13,15 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.IntBuffer;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.*;
 
-@Mod.EventBusSubscriber(value = Side.CLIENT, modid = ModCore.MODID)
 public class GLTexture {
     private static LinkedBlockingQueue queue = new LinkedBlockingQueue<>(1);
     private static ExecutorService saveImage = new ThreadPoolExecutor(5, 5, 60, TimeUnit.SECONDS, queue);
-    private static ExecutorService prioritySaveImage = Executors.newFixedThreadPool(1);
     private static ExecutorService readImage = Executors.newFixedThreadPool(1);
-    private static List<GLTexture> textures = new ArrayList<>();
+    private static Map<String, GLTexture> textures = new HashMap<>();
     private final File texLoc;
     private final int cacheSeconds;
     private final int width;
@@ -35,26 +29,57 @@ public class GLTexture {
     private int glTexID;
     private long lastUsed;
     private IntBuffer pixels;
-    private boolean loading;
+    private TextureState state;
+    private RuntimeException internalError;
 
-    public GLTexture(String name, BufferedImage image, int cacheSeconds, boolean isSmallEnoughToUpload) {
-        File cacheDir = Paths.get(Loader.instance().getConfigDir().getParentFile().getPath(), "cache", "modcore").toFile();
+    private enum TextureState {
+        NEW,
+        WRITING,
+        READING,
+        READ,
+        ALLOCATED,
+        UNALLOCATED,
+        ERROR
+    }
+
+    static {
+        ClientEvents.TICK.subscribe(() -> {
+            for (GLTexture texture : textures.values()) {
+                if (texture.state == TextureState.ALLOCATED && System.currentTimeMillis() - texture.lastUsed > texture.cacheSeconds * 1000) {
+                    texture.dealloc();
+                }
+            }
+        });
+    }
+
+    public GLTexture(String name, BufferedImage image, int cacheSeconds, boolean upload) {
+
+        File cacheDir = Paths.get(Loader.instance().getConfigDir().getParentFile().getPath(), "cache", "universalmodcore").toFile();
         cacheDir.mkdirs();
 
         this.texLoc = new File(cacheDir, name);
-        this.glTexID = -1;
         this.cacheSeconds = cacheSeconds;
         this.width = image.getWidth();
         this.height = image.getHeight();
-        this.loading = false;
+
+        transition(TextureState.NEW);
 
 
-        if (isSmallEnoughToUpload) {
+        transition(TextureState.WRITING);
+        if (upload) {
+            try {
+                ImageIO.write(image, "png", texLoc);
+            } catch (IOException e) {
+                internalError = new RuntimeException(e);
+                transition(TextureState.ERROR);
+                throw internalError;
+            }
+            transition(TextureState.UNALLOCATED);
+
             this.pixels = imageToPixels(image);
+            transition(TextureState.READ);
             tryUpload();
-        }
-
-        if (!isSmallEnoughToUpload) {
+        } else {
             while (queue.size() != 0) {
                 try {
                     Thread.sleep(1000);
@@ -63,37 +88,30 @@ public class GLTexture {
                     e.printStackTrace();
                 }
             }
+            saveImage.submit(() -> {
+                try {
+                    ImageIO.write(image, "png", texLoc);
+                    transition(TextureState.UNALLOCATED);
+                } catch (IOException e) {
+                    internalError = new RuntimeException("Unable to save image " + texLoc, e);
+                    transition(TextureState.ERROR);
+                    throw internalError;
+                }
+            });
         }
 
-        (isSmallEnoughToUpload ? prioritySaveImage : saveImage).submit(() -> {
-            try {
-                ImageIO.write(image, "png", texLoc);
-            } catch (IOException e) {
-                //TODO throw?
-                e.printStackTrace();
-            }
-        });
-
-        textures.add(this);
+        textures.put(texLoc.toString(), this);
     }
 
-    @SubscribeEvent
-    public static void onTick(TickEvent.ClientTickEvent event) {
-        if (event.phase != TickEvent.Phase.START) {
-            return;
-        }
-
-        for (GLTexture texture : textures) {
-            if (texture.glTexID == -1) {
-                continue;
-            }
-            if (System.currentTimeMillis() - texture.lastUsed > texture.cacheSeconds * 1000) {
-                texture.dealloc();
-            }
-        }
+    private void transition(TextureState state) {
+        this.state = state;
+        //System.out.println(state.name() + " " + texLoc);
     }
 
     private IntBuffer imageToPixels(BufferedImage image) {
+        // Will dump out inside a loading thread if prematurely free'd
+        assert state == TextureState.READ;
+
         int[] pixels = new int[image.getWidth() * image.getHeight()];
         image.getRGB(0, 0, image.getWidth(), image.getHeight(), pixels, 0, image.getWidth());
         IntBuffer buffer = BufferUtils.createByteBuffer(image.getWidth() * image.getHeight() * 4).asIntBuffer();
@@ -103,7 +121,7 @@ public class GLTexture {
     }
 
     private int uploadTexture() {
-        System.out.println("ALLOC " + this.texLoc);
+        this.lastUsed = System.currentTimeMillis();
         int textureID = GL11.glGenTextures();
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, textureID);
         TextureUtil.allocateTexture(textureID, width, height);
@@ -113,41 +131,65 @@ public class GLTexture {
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL12.GL_CLAMP_TO_EDGE);
 
         GL11.glTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 0, 0, width, height, GL12.GL_BGRA, GL11.GL_UNSIGNED_BYTE, pixels);
+        pixels = null;
+        transition(TextureState.ALLOCATED);
         return textureID;
     }
 
     public boolean isLoaded() {
-        return this.glTexID != -1;
+        return state == TextureState.ALLOCATED;
     }
 
     public boolean tryUpload() {
-        if (this.glTexID != -1) {
-            return true;
-        }
-        if (pixels != null) {
-            this.glTexID = uploadTexture();
-            pixels = null;
-        } else {
-            if (loading) {
+        switch (this.state) {
+            case NEW:
+            case WRITING:
+            case READING:
                 return false;
-            }
-            loading = true;
-            readImage.submit(() -> {
-                try {
-                    this.pixels = imageToPixels(ImageIO.read(texLoc));
-                    loading = false;
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            });
-            return false; //PENDING
+            case READ:
+                this.glTexID = uploadTexture();
+                return true;
+            case ALLOCATED:
+                return true;
+            case UNALLOCATED:
+                transition(TextureState.READING);
+                readImage.submit(() -> {
+                    try {
+                        this.pixels = imageToPixels(ImageIO.read(texLoc));
+                        transition(TextureState.READ);
+                    } catch (Exception e) {
+                        transition(TextureState.ERROR);
+                        internalError = new RuntimeException(texLoc.toString(), e);
+                        throw internalError;
+                    }
+                });
+                return false;
+            case ERROR:
+                throw internalError;
         }
-        return true;
+
+        throw new RuntimeException(this.state.toString());
     }
 
-    public int bind() {
+    public int bind(boolean force) {
         lastUsed = System.currentTimeMillis();
         int currentTexture = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
+
+        if (force) {
+            // Wait up to 1 second for texture to load
+            // Should be fine for the icons we use this with
+            for (int i = 0; i < 100; i++) {
+                if (tryUpload()) {
+                    break;
+                }
+                try {
+                    Thread.sleep((long) 10);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        }
+
         if (!tryUpload()) {
             return -1;
         }
@@ -159,17 +201,24 @@ public class GLTexture {
     }
 
     public void freeGL() {
-        if (glTexID != -1) {
-            GL11.glDeleteTextures(glTexID);
+        textures.remove(this.texLoc.toString());
+
+        switch (state) {
+            case ALLOCATED:
+                dealloc();
+            default:
+                transition(TextureState.UNALLOCATED);
         }
-        textures.remove(this);
     }
 
     public void dealloc() {
-        if (this.glTexID != -1) {
-            System.out.println("DEALLOC " + this.texLoc);
+        if (this.state == TextureState.ALLOCATED) {
             GL11.glDeleteTextures(this.glTexID);
-            this.glTexID = -1;
+            transition(TextureState.UNALLOCATED);
         }
+    }
+
+    public String info() {
+        return this.texLoc.toString();
     }
 }

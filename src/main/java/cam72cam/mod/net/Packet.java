@@ -32,7 +32,6 @@ public abstract class Packet {
     MessageContext ctx;
 
     public static void register(Supplier<Packet> sup, PacketDirection dir) {
-        //TODO remove dir?
         types.put(sup.get().getClass().toString(), sup);
     }
 
@@ -48,7 +47,7 @@ public abstract class Packet {
 
     public void sendToAllAround(World world, Vec3d pos, double distance) {
         net.sendToAllAround(new Message(this),
-                new NetworkRegistry.TargetPoint(world.internal.provider.getDimension(), pos.x, pos.y, pos.z, distance));
+                new NetworkRegistry.TargetPoint(world.getId(), pos.x, pos.y, pos.z, distance));
     }
 
     public void sendToServer() {

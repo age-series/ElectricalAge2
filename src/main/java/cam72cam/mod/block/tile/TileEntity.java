@@ -1,11 +1,10 @@
 package cam72cam.mod.block.tile;
 
-import cam72cam.mod.ModCore;
 import cam72cam.mod.block.BlockEntity;
-import cam72cam.mod.block.BlockType;
 import cam72cam.mod.energy.IEnergy;
 import cam72cam.mod.entity.boundingbox.BoundingBox;
 import cam72cam.mod.entity.boundingbox.IBoundingBox;
+import cam72cam.mod.event.CommonEvents;
 import cam72cam.mod.fluid.Fluid;
 import cam72cam.mod.fluid.ITank;
 import cam72cam.mod.item.IInventory;
@@ -28,86 +27,50 @@ import net.minecraftforge.client.model.data.ModelProperty;
 import net.minecraftforge.common.util.LazyOptional;
 import net.minecraftforge.energy.CapabilityEnergy;
 import net.minecraftforge.energy.IEnergyStorage;
-import net.minecraftforge.event.RegistryEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fluids.FluidStack;
 import net.minecraftforge.fluids.capability.CapabilityFluidHandler;
 import net.minecraftforge.fluids.capability.IFluidHandler;
-import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.items.CapabilityItemHandler;
 import net.minecraftforge.items.IItemHandlerModifiable;
+import net.minecraftforge.registries.ForgeRegistries;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
-import java.util.function.Function;
 import java.util.function.Supplier;
 
 public class TileEntity extends net.minecraft.tileentity.TileEntity {
+    private static final Map<String, TileEntityType<? extends TileEntity>> types = HashBiMap.create();
     private static final Map<String, Supplier<BlockEntity>> registry = HashBiMap.create();
-    protected static final Map<Class<? extends TileEntity>, Function<TileEntityType, TileEntity>> ctrs = new HashMap<>();
-    protected static final Map<Class<? extends TileEntity>, Identifier> names = new HashMap<>();
-    private static final Map<Class<? extends TileEntity>, Set<Block>> blocks = new HashMap<>();
-    private static final Map<Class<? extends TileEntity>, TileEntityType> types = new HashMap<>();
-
-    static {
-        ctrs.put(TileEntity.class, TileEntity::new);
-        names.put(TileEntity.class, new Identifier(ModCore.MODID, "hack"));
-    }
-
 
     public World world;
     public Vec3i pos;
     public boolean hasTileData;
-    public String instanceId;
 
     /*
     Tile registration
     */
-    private BlockEntity instance;
-    private TagCompound deferredLoad;
+    private final BlockEntity instance;
 
-    protected TileEntity(TileEntityType type) {
-        super(type);
+    protected TileEntity(Identifier id) {
+        super(types.get(id.toString()));
+        instance = registry.get(id.toString()).get();
     }
 
-    protected TileEntity(TileEntityType type, Identifier id) {
-        super(type);
-        instanceId = id.toString();
-    }
-
-    public static void register(Class<? extends TileEntity> cls, Supplier<BlockEntity> instance, Identifier id, BlockType type) {
+    public static void register(Supplier<BlockEntity> instance, Supplier<TileEntity> ctr, Identifier id) {
         registry.put(id.toString(), instance);
-
-        if (!blocks.containsKey(cls)) {
-            blocks.put(cls, new HashSet<>());
-        }
-        blocks.get(cls).add(type.internal);
+        CommonEvents.Tile.REGISTER.subscribe(() -> {
+            TileEntityType<TileEntity> type = new TileEntityType<>(ctr, new HashSet<Block>() {
+                public boolean contains(Object var1) {
+                    // WHYYYYYYYYYYYYYYYY
+                    return true;
+                }
+            }, null);
+            types.put(id.toString(), type);
+            ForgeRegistries.TILE_ENTITIES.register(type);
+        });
     }
-
-    public static TileEntity construct(Class<? extends TileEntity> cls, Identifier id) {
-        TileEntity te = ctrs.get(cls).apply(types.get(cls));
-        te.instanceId = id.toString();
-        return te;
-    }
-
-    @Mod.EventBusSubscriber(modid = ModCore.MODID)
-    public static class EventBus {
-        @SubscribeEvent
-        public static void onTileEntityRegistry(RegistryEvent.Register<TileEntityType<?>> event) {
-            for (Class<? extends TileEntity> cls : blocks.keySet()) {
-                Function<TileEntityType, TileEntity> ctr = ctrs.get(cls);
-                types.put(cls, new TileEntityType<>(() -> ctr.apply(types.get(cls)), blocks.get(cls), null).setRegistryName(names.get(cls).internal));
-            }
-
-
-            types.values().forEach(event.getRegistry()::register);
-        }
-    }
-
 
     /*
     Standard Tile function overrides
@@ -153,9 +116,7 @@ public class TileEntity extends net.minecraft.tileentity.TileEntity {
         this.read(pkt.getNbtCompound());
         this.readUpdate(new TagCompound(pkt.getNbtCompound()));
         super.onDataPacket(net, pkt);
-        if (updateRerender()) {
-            //TODO? world.internal.markBlockRangeForRenderUpdate(getPos(), getPos());
-        }
+        world.internal.notifyBlockUpdate(super.pos, null, super.world.getBlockState(super.pos), 3);
     }
 
     @Override
@@ -174,9 +135,7 @@ public class TileEntity extends net.minecraft.tileentity.TileEntity {
         this.read(tag);
         this.readUpdate(new TagCompound(tag));
         super.handleUpdateTag(tag);
-        if (updateRerender()) {
-            //TODO? world.internal.markBlockRangeForRenderUpdate(getPos(), getPos());
-        }
+        world.internal.notifyBlockUpdate(super.pos, null, super.world.getBlockState(super.pos), 3);
     }
 
 
@@ -310,22 +269,22 @@ public class TileEntity extends net.minecraft.tileentity.TileEntity {
             return LazyOptional.of(() -> new IEnergyStorage() {
                 @Override
                 public int receiveEnergy(int maxReceive, boolean simulate) {
-                    return target.receiveEnergy(maxReceive, simulate);
+                    return target.receive(maxReceive, simulate);
                 }
 
                 @Override
                 public int extractEnergy(int maxExtract, boolean simulate) {
-                    return target.extractEnergy(maxExtract, simulate);
+                    return target.extract(maxExtract, simulate);
                 }
 
                 @Override
                 public int getEnergyStored() {
-                    return target.getEnergyStored();
+                    return target.getCurrent();
                 }
 
                 @Override
                 public int getMaxEnergyStored() {
-                    return target.getMaxEnergyStored();
+                    return target.getMax();
                 }
 
                 @Override
@@ -358,27 +317,16 @@ public class TileEntity extends net.minecraft.tileentity.TileEntity {
         super.read(data.internal);
         pos = new Vec3i(super.pos);
 
-        if (instanceId == null) {
-            // If this fails something is really wrong
-            instanceId = data.getString("instanceId");
-            if (instanceId == null) {
-                throw new RuntimeException("Unable to load instanceid with " + data.toString());
-            }
-        }
+        instance.internal = this;
+        instance.world = world;
+        instance.pos = pos;
 
-        if (instance() != null) {
-            instance().load(data);
-        } else {
-            deferredLoad = data;
-        }
+        instance.load(data);
     }
 
     public void save(TagCompound data) {
         super.write(data.internal);
-        data.setString("instanceId", instanceId);
-        if (instance() != null) {
-            instance().save(data);
-        }
+        instance.save(data);
     }
 
     public void writeUpdate(TagCompound nbt) {
@@ -401,31 +349,14 @@ public class TileEntity extends net.minecraft.tileentity.TileEntity {
         return this.hasWorld() && (world.isServer || hasTileData);
     }
 
-    // TODO render system?
-    public boolean updateRerender() {
-        return false;
-    }
-
     public BlockEntity instance() {
-        if (this.instance == null) {
-            if (isLoaded()) {
-                if (this.instanceId == null) {
-                    System.out.println("WAT NULL");
-                }
-                if (!registry.containsKey(instanceId)) {
-                    System.out.println("WAT " + instanceId);
-                }
-                this.instance = registry.get(this.instanceId).get();
-                this.instance.internal = this;
-                this.instance.world = this.world;
-                this.instance.pos = this.pos;
-                if (deferredLoad != null) {
-                    this.instance.load(deferredLoad);
-                }
-                this.deferredLoad = null;
-            }
+        if (isLoaded()) {
+            this.instance.internal = this;
+            this.instance.world = this.world;
+            this.instance.pos = this.pos;
+            return this.instance;
         }
-        return this.instance;
+        return null;
     }
 
     /* Capabilities */

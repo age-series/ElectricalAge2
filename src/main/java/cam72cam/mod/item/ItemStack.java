@@ -129,4 +129,8 @@ public class ItemStack {
     public void damageItem(int i, Player player) {
         internal.damageItem(i, player.internal);
     }
+
+    public void clearTagCompound() {
+        internal.setTagCompound(null);
+    }
 }

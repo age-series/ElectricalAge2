@@ -20,7 +20,9 @@ import java.util.*;
 import java.util.List;
 
 public class OBJTextureSheet {
-    public final GLTexture icon;
+    private static GLTexture empty;
+
+    private final GLTexture icon;
     private final GLTexture texture;
     private Map<String, SubTexture> mappings;
     private int sheetWidth = 0;
@@ -226,14 +228,24 @@ public class OBJTextureSheet {
         }
 
         if (texture.tryUpload()) {
-            return texture.bind();
+            return texture.bind(false);
         }
-        System.out.println("DEFER...");
+        //System.out.println("DEFER... " + texture.info());
         return bindIcon();
     }
 
     int bindIcon() {
-        return icon.bind();
+        if (!icon.tryUpload()) {
+            if (empty == null) {
+                BufferedImage ei = new BufferedImage(16, 16, BufferedImage.TYPE_INT_ARGB);
+                Graphics gfx = ei.getGraphics();
+                gfx.setColor(Color.GRAY);
+                gfx.clearRect(0, 0, 16, 16);
+                empty = new GLTexture("empty", ei, 6000, true);
+            }
+            return empty.bind(true);
+        }
+        return icon.bind(false);
     }
 
     private class SubTexture {

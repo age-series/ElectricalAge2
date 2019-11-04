@@ -7,11 +7,6 @@ import net.minecraft.tileentity.ITickableTileEntity;
 import net.minecraft.tileentity.TileEntityType;
 
 public class TileEntityTickable extends TileEntity implements ITickableTileEntity {
-    static {
-        ctrs.put(TileEntityTickable.class, TileEntityTickable::new);
-        names.put(TileEntityTickable.class, new Identifier(ModCore.MODID, "hack_tickable"));
-    }
-
     public TileEntityTickable(TileEntityType type) {
         super(type);
     }

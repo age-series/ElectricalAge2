@@ -10,7 +10,7 @@ public class Energy implements IEnergy {
     }
 
     @Override
-    public int receiveEnergy(int maxReceive, boolean simulate) {
+    public int receive(int maxReceive, boolean simulate) {
         int delta = Math.min(maxReceive, max - stored);
         if (!simulate) {
             this.stored += delta;
@@ -19,7 +19,7 @@ public class Energy implements IEnergy {
     }
 
     @Override
-    public int extractEnergy(int maxExtract, boolean simulate) {
+    public int extract(int maxExtract, boolean simulate) {
         int delta = Math.min(maxExtract, stored);
         if (!simulate) {
             this.stored -= delta;
@@ -28,12 +28,12 @@ public class Energy implements IEnergy {
     }
 
     @Override
-    public int getEnergyStored() {
+    public int getCurrent() {
         return stored;
     }
 
     @Override
-    public int getMaxEnergyStored() {
+    public int getMax() {
         return max;
     }
 }

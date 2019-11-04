@@ -62,10 +62,9 @@ public abstract class IParticle {
                             renderer.accept(particles, subp -> GL11.glTranslated(subp.renderPos.x, subp.renderPos.y, subp.renderPos.z), partialTicks);
                             particles.forEach(p -> p.canRender = true);
                             particles.clear();
-                        } else {
-                            particles.add(ip);
-                            ip.canRender = false;
                         }
+                        particles.add(ip);
+                        ip.canRender = false;
                     }
                 }
             };

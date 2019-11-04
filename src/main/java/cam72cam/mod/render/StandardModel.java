@@ -48,7 +48,7 @@ public class StandardModel {
     }
 
     public StandardModel addSnow(int layers, Vec3d translate) {
-        layers = Math.min(layers, 8);
+        layers = Math.max(1, Math.min(8, layers));
         IBlockState state = Blocks.SNOW_LAYER.getDefaultState().withProperty(BlockSnow.LAYERS, layers);
         IBakedModel model = Minecraft.getMinecraft().getBlockRendererDispatcher().getBlockModelShapes().getModelForState(state);
         models.add(Pair.of(state, new BakedScaledModel(model, new Vec3d(1, 1, 1), translate)));

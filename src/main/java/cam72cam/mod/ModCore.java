@@ -1,11 +1,11 @@
 package cam72cam.mod;
 
-import cam72cam.mod.entity.EntityRegistry;
 import cam72cam.mod.entity.ModdedEntity;
 import cam72cam.mod.entity.sync.EntitySync;
+import cam72cam.mod.event.ClientEvents;
 import cam72cam.mod.gui.GuiRegistry;
 import cam72cam.mod.input.Keyboard;
-import cam72cam.mod.input.MousePressPacket;
+import cam72cam.mod.input.Mouse;
 import cam72cam.mod.net.Packet;
 import cam72cam.mod.net.PacketDirection;
 import cam72cam.mod.render.BlockRender;
@@ -29,8 +29,8 @@ import java.util.stream.Collectors;
 
 @net.minecraftforge.fml.common.Mod(ModCore.MODID)
 public class ModCore {
-    public static final String MODID = "modcore";
-    public static final String NAME = "ModCore";
+    public static final String MODID = "universalmodcore";
+    public static final String NAME = "UniversalModCore";
     public static final String VERSION = "1.0.0";
     public static ModCore instance;
     static List<Supplier<Mod>> modCtrs = new ArrayList<>();
@@ -43,7 +43,7 @@ public class ModCore {
     }
 
     public ModCore() {
-        System.out.println("Welcome to ModCore!");
+        System.out.println("Welcome to UniversalModCore!");
         instance = this;
         mods = modCtrs.stream().map(Supplier::get).collect(Collectors.toList());
 
@@ -145,7 +145,7 @@ public class ModCore {
 
         @Override
         public String modID() {
-            return "modcoreinternal";
+            return "universalmodcoreinternal";
         }
 
         @Override
@@ -154,9 +154,8 @@ public class ModCore {
                 case CONSTRUCT:
                     Packet.register(EntitySync.EntitySyncPacket::new, PacketDirection.ServerToClient);
                     Packet.register(Keyboard.MovementPacket::new, PacketDirection.ClientToServer);
-                    Packet.register(Keyboard.KeyPacket::new, PacketDirection.ClientToServer);
                     Packet.register(ModdedEntity.PassengerPositionsPacket::new, PacketDirection.ServerToClient);
-                    Packet.register(MousePressPacket::new, PacketDirection.ClientToServer);
+                    Packet.register(Mouse.MousePressPacket::new, PacketDirection.ClientToServer);
                     break;
                 case SETUP:
                     World.MAX_ENTITY_RADIUS = Math.max(World.MAX_ENTITY_RADIUS, 32);
@@ -179,8 +178,10 @@ public class ModCore {
                             return;
                         }
                         ModCore.instance.mods.forEach(mod -> mod.clientEvent(ModEvent.RELOAD));
+                        ClientEvents.fireReload();
                     });
                     BlockRender.onPostColorSetup();
+                    ClientEvents.fireReload();
                     break;
             }
 

@@ -29,7 +29,7 @@ repositories {
 
 
 version = version_major + '.' + version_minor + '.' + version_patch
-group = "cam72cam.modcore" // http://maven.apache.org/guides/mini/guide-naming-conventions.html
+group = "cam72cam.universalmodcore" // http://maven.apache.org/guides/mini/guide-naming-conventions.html
 archivesBaseName = "UniversalModCore"
 
 
@@ -59,7 +59,7 @@ minecraft {
             property 'forge.logging.console.level', 'debug'
 
             mods {
-                examplemod {
+                universalmodcore {
                     source sourceSets.main
                 }
             }
@@ -75,7 +75,7 @@ minecraft {
             property 'forge.logging.console.level', 'debug'
 
             mods {
-                examplemod {
+                universalmodcore {
                     source sourceSets.main
                 }
             }
@@ -90,10 +90,10 @@ minecraft {
             // Recommended logging level for the console
             property 'forge.logging.console.level', 'debug'
 
-            args '--mod', 'examplemod', '--all', '--output', file('src/generated/resources/')
+            args '--mod', 'universalmodcore', '--all', '--output', file('src/generated/resources/')
 
             mods {
-                examplemod {
+                universalmodcore {
                     source sourceSets.main
                 }
             }
@@ -123,19 +123,17 @@ dependencies {
     // for more info...
     // http://www.gradle.org/docs/current/userguide/artifact_dependencies_tutorial.html
     // http://www.gradle.org/docs/current/userguide/dependency_management.html
-	//compile project(":TrackAPI")
-	shade 'inventory-tweaks:InventoryTweaks:1.63:api'
 }
 
 jar {
     manifest {
         attributes([
-            "Specification-Title": "examplemod",
-            "Specification-Vendor": "examplemodsareus",
+            "Specification-Title": "universalmodcore",
+            "Specification-Vendor": "",
             "Specification-Version": "1", // We are version 1 of ourselves
             "Implementation-Title": project.name,
             "Implementation-Version": "${version}",
-            "Implementation-Vendor" :"examplemodsareus",
+            "Implementation-Vendor" :"",
             "Implementation-Timestamp": new Date().format("yyyy-MM-dd'T'HH:mm:ssZ")
         ])
     }

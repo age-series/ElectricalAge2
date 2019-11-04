@@ -10,9 +10,14 @@ import net.minecraft.util.SoundCategory;
 import org.apache.commons.lang3.tuple.Pair;
 import paulscode.sound.SoundSystem;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.net.MalformedURLException;
 import java.net.URL;
+import java.net.URLConnection;
+import java.net.URLStreamHandler;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
@@ -21,7 +26,6 @@ import java.util.function.Supplier;
 public class ModSoundManager {
     private static ModSoundManager soundManager;
     private SoundManager manager;
-    private Function<ResourceLocation, URL> getURLForSoundResource;
     private Supplier<SoundSystem> soundSystem;
     private List<ISound> sounds = new ArrayList<ISound>();
     private float lastSoundLevel;
@@ -31,32 +35,15 @@ public class ModSoundManager {
     public ModSoundManager(SoundManager manager) {
         this.manager = manager;
 
-        initSoundSystem(Pair.of("field_148620_e", "func_148612_a"), Pair.of("sndSystem", "getURLForSoundResource"));
+        initSoundSystem();
 
         lastSoundLevel = Minecraft.getMinecraft().gameSettings.getSoundLevel(category);
     }
 
-    @SafeVarargs
-    private final void initSoundSystem(Pair<String, String>... fieldNames) {
-        for (Pair<String, String> fieldName : fieldNames) {
+    private final void initSoundSystem() {
+        for (String fname : new String[]{"field_148620_e", "sndSystem"}) {
             try {
-                Method getURLField = SoundManager.class.getDeclaredMethod(fieldName.getRight(), ResourceLocation.class);
-                getURLField.setAccessible(true);
-                this.getURLForSoundResource = (ResourceLocation loc) -> {
-                    try {
-                        return (URL) getURLField.invoke(null, loc);
-                    } catch (Exception e) {
-                        ModCore.catching(e);
-                    }
-                    return null;
-                };
-            } catch (Exception e) {
-                ModCore.catching(e);
-                continue;
-            }
-
-            try {
-                Field sndSystemField = SoundManager.class.getDeclaredField(fieldName.getLeft());
+                Field sndSystemField = SoundManager.class.getDeclaredField(fname);
                 sndSystemField.setAccessible(true);
                 this.soundSystem = () -> {
                     try {
@@ -83,10 +70,41 @@ public class ModSoundManager {
             return null;
         }
 
-        ClientSound snd = new ClientSound(this.soundSystem, oggLocation, getURLForSoundResource.apply(oggLocation.internal), lastSoundLevel, repeats, attenuationDistance, scale);
+        ClientSound snd = new ClientSound(this.soundSystem, oggLocation, getURLForSoundResource(oggLocation), lastSoundLevel, repeats, attenuationDistance, scale);
         this.sounds.add(snd);
 
         return snd;
+    }
+
+    private URL getURLForSoundResource(Identifier internal) {
+        // Duplicate MC's getUrlForSoundResource but inject our own resources as well
+
+        String s = String.format("%s:%s:%s", "mcsounddomain", internal.getDomain(), internal.getPath());
+        URLStreamHandler urlstreamhandler = new URLStreamHandler()
+        {
+            protected URLConnection openConnection(URL p_openConnection_1_)
+            {
+                return new URLConnection(p_openConnection_1_)
+                {
+                    public void connect() throws IOException
+                    {
+                    }
+                    public InputStream getInputStream() throws IOException
+                    {
+                        return internal.getResourceStream();
+                    }
+                };
+            }
+        };
+
+        try
+        {
+            return new URL((URL)null, s, urlstreamhandler);
+        }
+        catch (MalformedURLException var4)
+        {
+            throw new Error("TODO: Sanely handle url exception! :D");
+        }
     }
 
     public void tick() {

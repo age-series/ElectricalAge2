@@ -27,6 +27,7 @@ public class Fuzzy {
 
     public static final Fuzzy GOLD_INGOT = new Fuzzy("ingotGold");
     public static final Fuzzy STEEL_INGOT = new Fuzzy("ingotSteel");
+    public static final Fuzzy STEEL_BLOCK = new Fuzzy("blockSteel");
     public static final Fuzzy IRON_INGOT = new Fuzzy("ingotIron");
     public static final Fuzzy IRON_BLOCK = new Fuzzy("blockIron");
     public static final Fuzzy IRON_BARS = new Fuzzy("barsIron").add(Blocks.IRON_BARS);
@@ -44,6 +45,8 @@ public class Fuzzy {
     public static final Fuzzy WOOL_BLOCK = new Fuzzy("wool").add(new ItemStack(Blocks.WOOL, 1, OreDictionary.WILDCARD_VALUE));
     public static final Fuzzy BUCKET = new Fuzzy("bucket").add(new ItemStack(Items.BUCKET, 1));
     public static final Fuzzy EMERALD = new Fuzzy("gemEmerald");
+    public static final Fuzzy REDSTONE_TORCH = new Fuzzy("redstoneTorch").add(Blocks.REDSTONE_TORCH);
+    public static final Fuzzy GLASS_PANE = new Fuzzy("paneGlass");
 
     static {
         ConfigFile.addMapper(Fuzzy.class, Fuzzy::toString, Fuzzy::new);

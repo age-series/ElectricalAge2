@@ -23,16 +23,16 @@ import net.minecraftforge.api.distmarker.OnlyIn;
 import net.minecraftforge.fml.common.registry.IEntityAdditionalSpawnData;
 
 import java.util.*;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 public class ModdedEntity extends Entity implements IEntityAdditionalSpawnData {
     private cam72cam.mod.entity.Entity self;
+    private EntitySettings settings;
 
     private Map<UUID, Vec3d> passengerPositions = new HashMap<>();
     private List<SeatEntity> seats = new ArrayList<>();
 
-    private EntitySettings settings;
-    private String type;
     private IWorldData iWorldData;
     private ISpawnData iSpawnData;
     private ITickable iTickable;
@@ -41,39 +41,22 @@ public class ModdedEntity extends Entity implements IEntityAdditionalSpawnData {
     private IRidable iRidable;
     private ICollision iCollision;
 
-    public ModdedEntity(EntityType type, World world) {
+    public ModdedEntity(EntityType type, World world, Supplier<cam72cam.mod.entity.Entity> ctr, EntitySettings settings) {
         super(type, world);
 
         super.preventEntitySpawning = true;
-    }
 
-    /* Init Self Wrapper */
+        self = ctr.get();
+        self.setup(this);
+        this.settings = settings;
 
-    protected final void init(String type) {
-        if (self == null) {
-            this.type = type;
-            self = EntityRegistry.create(type, this);
-
-            EntitySettings settings = EntityRegistry.getSettings(type);
-            super.entityCollisionReduction = settings.entityCollisionReduction;
-            this.settings = settings;
-
-            iWorldData = IWorldData.get(self);
-            iSpawnData = ISpawnData.get(self);
-            iTickable = ITickable.get(self);
-            iClickable = IClickable.get(self);
-            iKillable = IKillable.get(self);
-            iRidable = IRidable.get(self);
-            iCollision = ICollision.get(self);
-        }
-    }
-
-    private final void loadSelf(TagCompound data) {
-        init(data.getString("custom_mob_type"));
-    }
-
-    private final void saveSelf(TagCompound data) {
-        data.setString("custom_mob_type", type);
+        iWorldData = IWorldData.get(self);
+        iSpawnData = ISpawnData.get(self);
+        iTickable = ITickable.get(self);
+        iClickable = IClickable.get(self);
+        iKillable = IKillable.get(self);
+        iRidable = IRidable.get(self);
+        iCollision = ICollision.get(self);
     }
 
     public cam72cam.mod.entity.Entity getSelf() {
@@ -88,7 +71,6 @@ public class ModdedEntity extends Entity implements IEntityAdditionalSpawnData {
     }
 
     private final void load(TagCompound data) {
-        loadSelf(data);
         iWorldData.load(data);
         readPassengerData(data);
     }
@@ -100,7 +82,6 @@ public class ModdedEntity extends Entity implements IEntityAdditionalSpawnData {
 
     private final void save(TagCompound data) {
         iWorldData.save(data);
-        saveSelf(data);
         writePassengerData(data);
     }
 
@@ -109,7 +90,6 @@ public class ModdedEntity extends Entity implements IEntityAdditionalSpawnData {
     @Override
     public final void readSpawnData(PacketBuffer additionalData) {
         TagCompound data = new TagCompound(additionalData.readCompoundTag());
-        loadSelf(data);
         iSpawnData.loadSpawn(data);
         self.sync.receive(data.get("sync"));
         readPassengerData(data);
@@ -119,7 +99,6 @@ public class ModdedEntity extends Entity implements IEntityAdditionalSpawnData {
     public final void writeSpawnData(PacketBuffer buffer) {
         TagCompound data = new TagCompound();
         iSpawnData.saveSpawn(data);
-        saveSelf(data);
         data.set("sync", self.sync);
         writePassengerData(data);
 
@@ -135,6 +114,7 @@ public class ModdedEntity extends Entity implements IEntityAdditionalSpawnData {
 
         if (!seats.isEmpty()) {
             seats.removeAll(seats.stream().filter(x -> !x.isAlive()).collect(Collectors.toList()));
+            seats.forEach(seat -> seat.setPosition(posX, posY, posZ));
         }
     }
 
@@ -196,7 +176,7 @@ public class ModdedEntity extends Entity implements IEntityAdditionalSpawnData {
         if (!world.isRemote) {
             System.out.println("New Seat");
             SeatEntity seat = new SeatEntity(SeatEntity.TYPE, world);
-            seat.setParent(this);
+            seat.setup(this, entity);
             cam72cam.mod.entity.Entity passenger = self.getWorld().getEntity(entity);
             passengerPositions.put(entity.getUniqueID(), iRidable.getMountOffset(passenger, calculatePassengerOffset(passenger)));
             entity.startRiding(seat);
@@ -223,19 +203,32 @@ public class ModdedEntity extends Entity implements IEntityAdditionalSpawnData {
         cam72cam.mod.entity.Entity passenger = seat.getEntityPassenger();
         if (passenger != null) {
             Vec3d offset = passengerPositions.get(passenger.getUUID());
-            if (offset != null) {
-                offset = iRidable.onPassengerUpdate(passenger, offset);
+            // Weird case around player joining with a different UUID during debugging
+            if (offset == null) {
+                offset = iRidable.getMountOffset(passenger, calculatePassengerOffset(passenger));
                 passengerPositions.put(passenger.getUUID(), offset);
-
-                Vec3d pos = calculatePassengerPosition(offset);
-                seat.setPosition(pos.x, pos.y, pos.z);
-                passenger.setPosition(pos);
-
-                float delta = rotationYaw - prevRotationYaw;
-                passenger.internal.rotationYaw = passenger.internal.rotationYaw + delta;
-
-                seat.shouldSit = iRidable.shouldRiderSit(passenger);
             }
+
+            offset = iRidable.onPassengerUpdate(passenger, offset);
+            if (!seat.isPassenger(passenger.internal)) {
+                return;
+            }
+
+            passengerPositions.put(passenger.getUUID(), offset);
+
+            Vec3d pos = calculatePassengerPosition(offset);
+
+            /* TODO 1.14.4 if (world.loadedEntityList.indexOf(seat) < world.loadedEntityList.indexOf(passenger.internal)) {
+                pos = pos.add(motionX, motionY, motionZ);
+            }*/
+
+            passenger.setPosition(pos);
+            passenger.setVelocity(new Vec3d(getMotion()));
+
+            float delta = rotationYaw - prevRotationYaw;
+            passenger.internal.rotationYaw = passenger.internal.rotationYaw + delta;
+
+            seat.shouldSit = iRidable.shouldRiderSit(passenger);
         }
     }
 
@@ -251,6 +244,7 @@ public class ModdedEntity extends Entity implements IEntityAdditionalSpawnData {
                 offset = iRidable.onDismountPassenger(passenger, offset);
                 passenger.setPosition(calculatePassengerPosition(offset));
             }
+            passengerPositions.remove(passenger.getUUID());
         }
         seats.remove(seat);
     }
@@ -276,12 +270,10 @@ public class ModdedEntity extends Entity implements IEntityAdditionalSpawnData {
 
     private void readPassengerData(TagCompound data) {
         passengerPositions = data.getMap("passengers", UUID::fromString, (TagCompound tag) -> tag.getVec3d("pos"));
-        // TODO legacy? staticPassengers = data.getList("staticPassengers", StaticPassenger::new);
     }
 
     private void writePassengerData(TagCompound data) {
         data.setMap("passengers", passengerPositions, UUID::toString, (Vec3d pos) -> {
-            //TODO single encoder step
             TagCompound tmp = new TagCompound();
             tmp.setVec3d("pos", pos);
             return tmp;
