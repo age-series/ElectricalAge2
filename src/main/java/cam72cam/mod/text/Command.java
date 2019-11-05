@@ -20,14 +20,15 @@ public abstract class Command {
     }
 
     public static void registration(CommandDispatcher<CommandSource> ch) {
+        /* TODO
         for (Command command : commands) {
-            ch.register(LiteralArgumentBuilder.literal(command.getPrefix()).executes((CommandContext<CommandSource> ctx) -> {
+            ch.register(LiteralArgumentBuilder.literal(command.getPrefix()).executes((ctx) -> {
                 boolean ok = command.execute(World.get(ctx.getSource().getEntity().getEntityWorld()), msg -> ctx.getSource().getEntity().sendMessage(msg.internal), ctx.getInput().split(" "));
                 if (!ok) {
                     ctx.getSource().getEntity().sendMessage(new StringTextComponent(command.getUsage()));
                 }
                 return ok ? 1 : -1;
-            }).requires((CommandContext<CommandSource> ctx) -> {
+            }).requires((ctx) -> {
                     try {
                         return ctx.getSource().asPlayer().hasPermissionLevel(command.opRequired() ? 4 : 0);
                     } catch (CommandSyntaxException e) {
@@ -36,6 +37,7 @@ public abstract class Command {
                 })
             );
         }
+        */
     }
 
     public abstract String getPrefix();

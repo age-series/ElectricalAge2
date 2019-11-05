@@ -23,7 +23,7 @@ public class TagCompound {
         this(new CompoundNBT());
     }
 
-    public boolean contains(String key) {
+    public boolean hasKey(String key) {
         return internal.contains(key);
     }
 
@@ -262,7 +262,7 @@ public class TagCompound {
             return null;
         }
 
-        if (!ted.contains("data")) {
+        if (!ted.hasKey("data")) {
             return null;
         }
 

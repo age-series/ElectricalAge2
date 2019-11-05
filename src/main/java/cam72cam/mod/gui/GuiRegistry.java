@@ -8,7 +8,9 @@ import cam72cam.mod.gui.container.ClientContainerBuilder;
 import cam72cam.mod.gui.container.IContainer;
 import cam72cam.mod.gui.container.ServerContainerBuilder;
 import cam72cam.mod.math.Vec3i;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.ScreenManager;
+import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.entity.player.ServerPlayerEntity;
@@ -38,7 +40,7 @@ public class GuiRegistry {
     }
 
     public static void registration() {
-
+        /*
         NetworkRegistry.INSTANCE.registerGuiHandler(ModCore.instance, new IGuiHandler() {
             @Nullable
             @Override
@@ -52,6 +54,7 @@ public class GuiRegistry {
                 return registry.get(ID).apply(new CreateEvent(false, new Player(player), x, y, z));
             }
         });
+        */
     }
 
     public GUIType register(String name, Supplier<IScreen> ctr) {
@@ -119,14 +122,15 @@ public class GuiRegistry {
     }
 
     public void openGUI(Player player, GUIType type) {
-        player.internal.openGui(ModCore.instance, type.id, player.getWorld().internal, 0, 0, 0);
+        Minecraft.getInstance().displayGuiScreen((Screen) registry.get(type).apply(new CreateEvent(false, player, 0, 0, 0)));
     }
 
     public void openGUI(Player player, Entity ent, GUIType type) {
-        player.internal.openGui(ModCore.instance, type.id, player.getWorld().internal, ent.internal.getEntityId(), 0, 0);
+        Minecraft.getInstance().displayGuiScreen((Screen) registry.get(type).apply(new CreateEvent(false, player, ent.internal.getEntityId(), 0, 0)));
     }
 
     public void openGUI(Player player, Vec3i pos, GUIType type) {
+        /*
         NetworkHooks.openGui((ServerPlayerEntity) player.internal, new INamedContainerProvider() {
             @Override
             public ITextComponent getDisplayName() {
@@ -139,7 +143,9 @@ public class GuiRegistry {
                 return (ServerContainerBuilder) registry.get(type);
             }
         }, pos.internal);
-        player.internal.openContainer()
+        */
+
+        Minecraft.getInstance().displayGuiScreen((Screen) registry.get(type).apply(new CreateEvent(false, player, pos.x, pos.y, pos.z)));
     }
 
     public static class GUIType {
