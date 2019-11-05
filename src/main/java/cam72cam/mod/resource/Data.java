@@ -1,10 +1,10 @@
 package cam72cam.mod.resource;
 
-import cam72cam.mod.ModCore;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.resources.IResource;
-import net.minecraftforge.fml.common.Loader;
-import net.minecraftforge.fml.common.SidedProxy;
+import net.minecraft.resources.IResource;
+import net.minecraftforge.fml.DistExecutor;
+import net.minecraftforge.fml.ModLoader;
+import net.minecraftforge.fml.loading.FMLPaths;
 import org.apache.commons.io.IOUtils;
 
 import java.io.ByteArrayInputStream;
@@ -18,8 +18,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
 class Data {
-    @SidedProxy(clientSide = "cam72cam.mod.resource.Data$ClientProxy", serverSide = "cam72cam.mod.resource.Data$ServerProxy", modId = ModCore.MODID)
-    public static DataProxy proxy;
+    public static DataProxy proxy = DistExecutor.runForDist(() -> ClientProxy::new, () -> ServerProxy::new);
 
     public static abstract class DataProxy {
         private String configDir;
@@ -49,7 +48,7 @@ class Data {
             List<InputStream> streams = new ArrayList<>();
 
             if (configDir == null) {
-                configDir = Loader.instance().getConfigDir().toString();
+                configDir = FMLPaths.CONFIGDIR.get().toString();
                 new File(configDir).mkdirs();
             }
 
@@ -81,7 +80,7 @@ class Data {
         public List<InputStream> getResourceStreamAll(Identifier identifier) throws IOException {
             List<InputStream> res = new ArrayList<>();
             try {
-                for (IResource resource : Minecraft.getMinecraft().getResourceManager().getAllResources(identifier.internal)) {
+                for (IResource resource : Minecraft.getInstance().getResourceManager().getAllResources(identifier.internal)) {
                     res.add(resource.getInputStream());
                 }
             } catch (java.io.FileNotFoundException ex) {

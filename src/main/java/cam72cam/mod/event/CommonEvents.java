@@ -19,7 +19,7 @@ public class CommonEvents {
     private static void registerEvents() {
         cam72cam.mod.world.World.registerEvents();
         cam72cam.mod.entity.EntityRegistry.registerEvents();
-        cam72cam.mod.world.ChunkManager.registerEvents();
+        //cam72cam.mod.world.ChunkManager.registerEvents();
     }
 
     public static final class World {
@@ -48,7 +48,6 @@ public class CommonEvents {
     public static final class Entity {
         public static final Event<Runnable> REGISTER = new Event<>();
         public static final Event<EventBus.EntityJoinEvent> JOIN = new Event<>();
-        public static final Event<EntityJoinWorldEvent> WORLD_JOIN = new Event<>();
     }
 
     @Mod.EventBusSubscriber(modid = ModCore.MODID)
@@ -101,10 +100,10 @@ public class CommonEvents {
             Item.REGISTER.execute(Runnable::run);
         }
 
-        @SubscribeEvent
+        /*@SubscribeEvent
         public static void registerRecipes(RegistryEvent.Register<IRecipe> event) {
             Recipe.REGISTER.execute(Runnable::run);
-        }
+        }*/
 
         @SubscribeEvent
         public static void registerEntities(RegistryEvent.Register<EntityType<?>> event) {

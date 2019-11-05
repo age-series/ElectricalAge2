@@ -1,8 +1,8 @@
 package cam72cam.mod.render;
 
 import cam72cam.mod.event.ClientEvents;
-import net.minecraft.client.renderer.texture.TextureUtil;
-import net.minecraftforge.fml.common.Loader;
+import com.mojang.blaze3d.platform.TextureUtil;
+import net.minecraftforge.fml.loading.FMLPaths;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
@@ -54,7 +54,7 @@ public class GLTexture {
 
     public GLTexture(String name, BufferedImage image, int cacheSeconds, boolean upload) {
 
-        File cacheDir = Paths.get(Loader.instance().getConfigDir().getParentFile().getPath(), "cache", "universalmodcore").toFile();
+        File cacheDir = Paths.get(FMLPaths.CONFIGDIR.get().toFile().getParentFile().getPath(), "cache", "universalmodcore").toFile();
         cacheDir.mkdirs();
 
         this.texLoc = new File(cacheDir, name);
@@ -124,7 +124,7 @@ public class GLTexture {
         this.lastUsed = System.currentTimeMillis();
         int textureID = GL11.glGenTextures();
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, textureID);
-        TextureUtil.allocateTexture(textureID, width, height);
+        TextureUtil.prepareImage(textureID, width, height);
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL12.GL_CLAMP_TO_EDGE);

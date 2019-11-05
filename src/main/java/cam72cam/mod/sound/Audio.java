@@ -8,17 +8,20 @@ import cam72cam.mod.math.Vec3d;
 import cam72cam.mod.math.Vec3i;
 import cam72cam.mod.resource.Identifier;
 import cam72cam.mod.world.World;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
-import paulscode.sound.SoundSystemConfig;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.api.distmarker.OnlyIn;
 
 public class Audio {
-    @SideOnly(Side.CLIENT)
+    @OnlyIn(Dist.CLIENT)
     private static ModSoundManager soundManager;
 
-    @SideOnly(Side.CLIENT)
+    @OnlyIn(Dist.CLIENT)
     public static void registerClientCallbacks() {
         ClientEvents.TICK.subscribe(() -> {
+            if (soundManager == null) {
+                soundManager = new ModSoundManager();
+            }
+
             Player player = MinecraftClient.getPlayer();
             World world = null;
             if (player != null) {
@@ -33,7 +36,7 @@ public class Audio {
 
         ClientEvents.SOUND_LOAD.subscribe(event -> {
             if (soundManager == null) {
-                soundManager = new ModSoundManager(event.getManager());
+                soundManager = new ModSoundManager();
             } else {
                 soundManager.handleReload(false);
             }
@@ -57,6 +60,6 @@ public class Audio {
     }
 
     public static void setSoundChannels(int max) {
-        SoundSystemConfig.setNumberNormalChannels(Math.max(SoundSystemConfig.getNumberNormalChannels(), max));
+        //SoundSystemConfig.setNumberNormalChannels(Math.max(SoundSystemConfig.getNumberNormalChannels(), max));
     }
 }

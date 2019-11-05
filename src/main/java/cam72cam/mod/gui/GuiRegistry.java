@@ -8,10 +8,20 @@ import cam72cam.mod.gui.container.ClientContainerBuilder;
 import cam72cam.mod.gui.container.IContainer;
 import cam72cam.mod.gui.container.ServerContainerBuilder;
 import cam72cam.mod.math.Vec3i;
-import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.client.gui.ScreenManager;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.entity.player.PlayerInventory;
+import net.minecraft.entity.player.ServerPlayerEntity;
+import net.minecraft.inventory.container.Container;
+import net.minecraft.inventory.container.ContainerType;
+import net.minecraft.inventory.container.INamedContainerProvider;
+import net.minecraft.util.text.ITextComponent;
+import net.minecraft.util.text.StringTextComponent;
 import net.minecraft.world.World;
 import net.minecraftforge.fml.common.network.IGuiHandler;
-import net.minecraftforge.fml.common.network.NetworkRegistry;
+import net.minecraftforge.fml.network.NetworkHooks;
+import net.minecraftforge.fml.network.NetworkRegistry;
+import net.minecraftforge.registries.ForgeRegistries;
 
 import javax.annotation.Nullable;
 import java.util.HashMap;
@@ -28,16 +38,17 @@ public class GuiRegistry {
     }
 
     public static void registration() {
+
         NetworkRegistry.INSTANCE.registerGuiHandler(ModCore.instance, new IGuiHandler() {
             @Nullable
             @Override
-            public Object getServerGuiElement(int ID, EntityPlayer player, World world, int x, int y, int z) {
+            public Object getServerGuiElement(int ID, PlayerEntity player, World world, int x, int y, int z) {
                 return registry.get(ID).apply(new CreateEvent(true, new Player(player), x, y, z));
             }
 
             @Nullable
             @Override
-            public Object getClientGuiElement(int ID, EntityPlayer player, World world, int x, int y, int z) {
+            public Object getClientGuiElement(int ID, PlayerEntity player, World world, int x, int y, int z) {
                 return registry.get(ID).apply(new CreateEvent(false, new Player(player), x, y, z));
             }
         });
@@ -92,6 +103,7 @@ public class GuiRegistry {
 
     public <T extends BlockEntity> GUIType registerBlockContainer(Class<T> cls, Function<T, IContainer> ctr) {
         int id = ("container" + cls.toString()).hashCode();
+
         registry.put(id, event -> {
             T entity = event.player.getWorld().getBlockEntity(new Vec3i(event.entityIDorX, event.y, event.z), cls);
             if (entity == null) {
@@ -115,7 +127,19 @@ public class GuiRegistry {
     }
 
     public void openGUI(Player player, Vec3i pos, GUIType type) {
-        player.internal.openGui(ModCore.instance, type.id, player.getWorld().internal, pos.x, pos.y, pos.z);
+        NetworkHooks.openGui((ServerPlayerEntity) player.internal, new INamedContainerProvider() {
+            @Override
+            public ITextComponent getDisplayName() {
+                return new StringTextComponent( "WAT");
+            }
+
+            @Nullable
+            @Override
+            public Container createMenu(int p_createMenu_1_, PlayerInventory p_createMenu_2_, PlayerEntity p_createMenu_3_) {
+                return (ServerContainerBuilder) registry.get(type);
+            }
+        }, pos.internal);
+        player.internal.openContainer()
     }
 
     public static class GUIType {

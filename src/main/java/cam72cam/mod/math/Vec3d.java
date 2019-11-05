@@ -23,11 +23,11 @@ public class Vec3d {
     }
 
     public Vec3d add(double x, double y, double z) {
-        return new Vec3d(internal.addVector(x, y, z));
+        return new Vec3d(internal.add(x, y, z));
     }
 
     public Vec3d add(Vec3i offset) {
-        return new Vec3d(internal.addVector(offset.x, offset.y, offset.z));
+        return new Vec3d(internal.add(offset.x, offset.y, offset.z));
     }
 
     public Vec3d add(Vec3d other) {
@@ -47,7 +47,7 @@ public class Vec3d {
     }
 
     public double length() {
-        return internal.lengthVector();
+        return internal.length();
     }
 
     public double distanceTo(Vec3d other) {

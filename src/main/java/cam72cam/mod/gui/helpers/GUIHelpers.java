@@ -3,13 +3,12 @@ package cam72cam.mod.gui.helpers;
 import cam72cam.mod.fluid.Fluid;
 import cam72cam.mod.item.ItemStack;
 import cam72cam.mod.resource.Identifier;
+import com.mojang.blaze3d.platform.GlStateManager;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.ScaledResolution;
 import net.minecraft.client.renderer.BufferBuilder;
-import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.client.renderer.Tessellator;
+import net.minecraft.client.renderer.texture.AtlasTexture;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
-import net.minecraft.client.renderer.texture.TextureMap;
 import net.minecraft.client.renderer.vertex.DefaultVertexFormats;
 import net.minecraft.util.ResourceLocation;
 import org.lwjgl.opengl.GL11;
@@ -55,20 +54,18 @@ public class GUIHelpers {
     }
 
     public static void drawFluid(Fluid fluid, double x, double d, double width, int height, int scale) {
-        TextureAtlasSprite sprite = Minecraft.getMinecraft().getTextureMapBlocks().getAtlasSprite(fluid.internal.getStill().toString());
-        if (sprite != null) {
-            drawSprite(sprite, fluid.internal.getColor(), x, d, width, height, scale);
-        }
+        TextureAtlasSprite sprite = Minecraft.getInstance().getTextureMap().getAtlasSprite(fluid.internal.getAttributes().getStillTexture().toString());
+        drawSprite(sprite, fluid.internal.getAttributes().getColor(), x, d, width, height, scale);
     }
 
     public static void drawSprite(TextureAtlasSprite sprite, int col, double x, double y, double width, double height, int scale) {
         double zLevel = 0;
 
-        Minecraft.getMinecraft().getTextureManager().bindTexture(TextureMap.LOCATION_BLOCKS_TEXTURE);
+        Minecraft.getInstance().getTextureManager().bindTexture(AtlasTexture.LOCATION_BLOCKS_TEXTURE);
 
-        GlStateManager.color((col >> 16 & 255) / 255.0f, (col >> 8 & 255) / 255.0f, (col & 255) / 255.0f, 1);
-        int iW = sprite.getIconWidth() * scale;
-        int iH = sprite.getIconHeight() * scale;
+        GlStateManager.color4f((col >> 16 & 255) / 255.0f, (col >> 8 & 255) / 255.0f, (col & 255) / 255.0f, 1);
+        int iW = sprite.getWidth() * scale;
+        int iH = sprite.getHeight() * scale;
 
         float minU = sprite.getMinU();
         float minV = sprite.getMinV();
@@ -90,7 +87,7 @@ public class GUIHelpers {
         }
         tessellator.draw();
 
-        Minecraft.getMinecraft().getTextureManager().bindTexture(CHEST_GUI_TEXTURE);
+        Minecraft.getInstance().getTextureManager().bindTexture(CHEST_GUI_TEXTURE);
     }
 
     public static void drawTankBlock(double x, double y, double width, double height, Fluid fluid, float percentFull) {
@@ -107,26 +104,26 @@ public class GUIHelpers {
             drawFluid(fluid, x, y + height - fullHeight, width, fullHeight, 2);
             drawRect(x, y + height - fullHeight, width, fullHeight, color);
         }
-        GlStateManager.color(1, 1, 1, 1);
+        GlStateManager.color4f(1, 1, 1, 1);
     }
 
     public static void drawCenteredString(String text, int x, int y, int color) {
-        Minecraft.getMinecraft().fontRenderer.drawStringWithShadow(text, (float) (x - Minecraft.getMinecraft().fontRenderer.getStringWidth(text) / 2), (float) y, color);
+        Minecraft.getInstance().fontRenderer.drawStringWithShadow(text, (float) (x - Minecraft.getInstance().fontRenderer.getStringWidth(text) / 2), (float) y, color);
     }
 
     public static void bindTexture(Identifier tex) {
-        Minecraft.getMinecraft().renderEngine.bindTexture(tex.internal);
+        Minecraft.getInstance().getTextureManager().bindTexture(tex.internal);
     }
 
     public static int getScreenWidth() {
-        return new ScaledResolution(Minecraft.getMinecraft()).getScaledWidth();
+        return Minecraft.getInstance().mainWindow.getFramebufferWidth();
     }
 
     public static int getScreenHeight() {
-        return new ScaledResolution(Minecraft.getMinecraft()).getScaledHeight();
+        return Minecraft.getInstance().mainWindow.getFramebufferHeight();
     }
 
     public static void drawItem(ItemStack stack, int x, int y) {
-        Minecraft.getMinecraft().getRenderItem().renderItemIntoGUI(stack.internal, x, y);
+        Minecraft.getInstance().getItemRenderer().renderItemIntoGUI(stack.internal, x, y);
     }
 }

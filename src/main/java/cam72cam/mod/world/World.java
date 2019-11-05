@@ -4,7 +4,10 @@ import cam72cam.mod.ModCore;
 import cam72cam.mod.block.BlockEntity;
 import cam72cam.mod.block.BlockType;
 import cam72cam.mod.block.tile.TileEntity;
-import cam72cam.mod.entity.*;
+import cam72cam.mod.entity.Entity;
+import cam72cam.mod.entity.Living;
+import cam72cam.mod.entity.ModdedEntity;
+import cam72cam.mod.entity.Player;
 import cam72cam.mod.entity.boundingbox.BoundingBox;
 import cam72cam.mod.entity.boundingbox.IBoundingBox;
 import cam72cam.mod.event.CommonEvents;
@@ -15,12 +18,13 @@ import cam72cam.mod.math.Vec3d;
 import cam72cam.mod.math.Vec3i;
 import cam72cam.mod.util.Facing;
 import cam72cam.mod.util.TagCompound;
-import net.minecraft.block.*;
+import net.minecraft.block.Block;
+import net.minecraft.block.BlockState;
+import net.minecraft.block.Blocks;
+import net.minecraft.block.SnowBlock;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.item.ItemEntity;
 import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.item.BlockItemUseContext;
-import net.minecraft.item.ItemUseContext;
 import net.minecraft.particles.BasicParticleType;
 import net.minecraft.particles.ParticleTypes;
 import net.minecraft.util.DamageSource;
@@ -29,15 +33,8 @@ import net.minecraft.util.math.BlockRayTraceResult;
 import net.minecraft.world.biome.Biome;
 import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.gen.Heightmap;
-import net.minecraft.world.storage.loot.LootContext;
-import net.minecraftforge.common.IPlantable;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.event.entity.EntityJoinWorldEvent;
-import net.minecraftforge.event.world.WorldEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fluids.capability.CapabilityFluidHandler;
 import net.minecraftforge.fluids.capability.IFluidHandler;
-import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.items.CapabilityItemHandler;
 import net.minecraftforge.items.IItemHandler;
 import net.minecraftforge.items.IItemHandlerModifiable;
@@ -89,7 +86,10 @@ public class World {
     }
 
     public static void registerEvents() {
-        CommonEvents.Entity.WORLD_JOIN.subscribe(event -> get(event.world).onEntityAdded(event.entity));
+        CommonEvents.Entity.JOIN.subscribe((world, entity) -> {
+            get(world).onEntityAdded(entity);
+            return true;
+        });
 
         CommonEvents.World.LOAD.subscribe(World::loadWorld);
 
@@ -210,7 +210,7 @@ public class World {
 
 
     public void keepLoaded(Vec3i pos) {
-        ChunkManager.flagEntityPos(this, pos);
+        //ChunkManager.flagEntityPos(this, pos);
     }
 
 

@@ -7,11 +7,11 @@ import cam72cam.mod.event.ClientEvents;
 import cam72cam.mod.net.Packet;
 import cam72cam.mod.util.Hand;
 import net.minecraft.client.Minecraft;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.api.distmarker.OnlyIn;
 
 public class Mouse {
-    @SideOnly(Side.CLIENT)
+    @OnlyIn(Dist.CLIENT)
     public static void registerClientEvents() {
         ClientEvents.CLICK.subscribe(button -> {
             // So it turns out that the client sends mouse click packets to the server regardless of
@@ -19,7 +19,7 @@ public class Mouse {
             // We need to override that distance because train centers are further away
             // than 36m.
 
-            if (Minecraft.getMinecraft().objectMouseOver == null) {
+            if (Minecraft.getInstance().objectMouseOver == null) {
                 return true;
             }
 

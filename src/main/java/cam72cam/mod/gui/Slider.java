@@ -6,7 +6,7 @@ import net.minecraftforge.fml.client.config.GuiSlider;
 public abstract class Slider extends Button {
 
     public Slider(IScreenBuilder builder, int x, int y, String text, double min, double max, double start, boolean doublePrecision) {
-        super(builder, new GuiSlider(-1, builder.getWidth() / 2 + x, builder.getHeight() / 4 + y, text, min, max, start, null));
+        super(builder, new GuiSlider(builder.getWidth() / 2 + x, builder.getHeight() / 4 + y, text, min, max, start, null, null));
         ((GuiSlider) this.button).showDecimal = doublePrecision;
         ((GuiSlider) this.button).parent = slider -> Slider.this.onSlider();
     }

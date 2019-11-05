@@ -7,53 +7,55 @@ import cam72cam.mod.item.ItemBase;
 import cam72cam.mod.item.ItemStack;
 import cam72cam.mod.resource.Identifier;
 import cam72cam.mod.world.World;
+import com.google.common.collect.ImmutableBiMap;
 import com.google.common.collect.ImmutableList;
-import net.minecraft.block.state.IBlockState;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Maps;
+import net.minecraft.block.BlockState;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.block.model.*;
-import net.minecraft.client.renderer.block.model.ItemCameraTransforms.TransformType;
+import net.minecraft.client.renderer.model.*;
+import net.minecraft.client.renderer.model.ItemCameraTransforms.TransformType;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.client.renderer.vertex.DefaultVertexFormats;
 import net.minecraft.client.shader.Framebuffer;
-import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.util.EnumFacing;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.util.Direction;
 import net.minecraftforge.client.ForgeHooksClient;
 import net.minecraftforge.client.event.ModelBakeEvent;
 import net.minecraftforge.client.model.ItemLayerModel;
 import net.minecraftforge.client.model.ModelLoader;
-import net.minecraftforge.common.model.TRSRTransformation;
+import net.minecraftforge.client.model.SimpleModelState;
 import org.apache.commons.lang3.tuple.Pair;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 
 import javax.annotation.Nullable;
 import javax.vecmath.Matrix4f;
-import javax.vecmath.Vector3f;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 
 public class ItemRender {
     private static final List<BakedQuad> EMPTY = new ArrayList<>();
     private static final SpriteSheet iconSheet = new SpriteSheet(128);
 
     public static void register(ItemBase item, Identifier tex) {
-        ClientEvents.MODEL_BAKE.subscribe(event -> event.getModelRegistry().putObject(new ModelResourceLocation(item.getRegistryName().internal, ""), new ItemLayerModel(ImmutableList.of(
+        ClientEvents.MODEL_BAKE.subscribe(event -> event.getModelRegistry().put(new ModelResourceLocation(item.getRegistryName().internal, ""), new ItemLayerModel(ImmutableList.of(
                 tex.internal
-        )).bake(TRSRTransformation.identity(), DefaultVertexFormats.ITEM, ModelLoader.defaultTextureGetter())));
+        )).bake(event.getModelLoader(), ModelLoader.defaultTextureGetter(), new SimpleModelState(ImmutableMap.of()), DefaultVertexFormats.ITEM)));
 
-        ClientEvents.TEXTURE_STITCH.subscribe(() -> Minecraft.getMinecraft().getTextureMapBlocks().registerSprite(tex.internal));
+        ClientEvents.TEXTURE_STITCH.subscribe(evt -> evt.addSprite(tex.internal));
 
-        ClientEvents.MODEL_CREATE.subscribe(() -> ModelLoader.setCustomModelResourceLocation(item.internal, 0,
-                new ModelResourceLocation(item.getRegistryName().internal, "")));
+        ClientEvents.MODEL_CREATE.subscribe(() -> ModelLoader.addSpecialModel(item.internal.getRegistryName()));
     }
 
     public static void register(ItemBase item, IItemModel model) {
-        ClientEvents.MODEL_CREATE.subscribe(() ->
-                ModelLoader.setCustomModelResourceLocation(item.internal, 0, new ModelResourceLocation(item.getRegistryName().internal, ""))
-        );
+        //ClientEvents.MODEL_CREATE.subscribe(() ->
+        //        ModelLoader.addSpecialModel().setCustomModelResourceLocation(item.internal, 0, new ModelResourceLocation(item.getRegistryName().internal, ""))
+        //);
 
-        ClientEvents.MODEL_BAKE.subscribe((ModelBakeEvent event) -> event.getModelRegistry().putObject(new ModelResourceLocation(item.getRegistryName().internal, ""), new BakedItemModel(model)));
+        ClientEvents.MODEL_BAKE.subscribe((ModelBakeEvent event) -> event.getModelRegistry().put(new ModelResourceLocation(item.getRegistryName().internal, ""), new BakedItemModel(model)));
 
         if (model instanceof ISpriteItemModel) {
             ClientEvents.RELOAD.subscribe(() -> {
@@ -123,9 +125,9 @@ public class ItemRender {
     private static void createSprite(String id, StandardModel model) {
         int width = iconSheet.spriteSize;
         int height = iconSheet.spriteSize;
-        Framebuffer fb = new Framebuffer(width, height, true);
+        Framebuffer fb = new Framebuffer(width, height, true, true);
         fb.setFramebufferColor(0, 0, 0, 0);
-        fb.framebufferClear();
+        fb.framebufferClear(Minecraft.IS_RUNNING_ON_MAC);
         fb.bindFramebuffer(true);
 
         GLBoolTracker depth = new GLBoolTracker(GL11.GL_DEPTH_TEST, true);
@@ -159,7 +161,7 @@ public class ItemRender {
         }
 
         @Override
-        public List<BakedQuad> getQuads(@Nullable IBlockState state, @Nullable EnumFacing side, long rand) {
+        public List<BakedQuad> getQuads(@Nullable BlockState state, @Nullable Direction side, Random rand) {
             if (stack == null) {
                 return EMPTY;
             }
@@ -227,11 +229,11 @@ public class ItemRender {
 
         class ItemOverrideListHack extends ItemOverrideList {
             ItemOverrideListHack() {
-                super(new ArrayList<>());
+                super();
             }
 
             @Override
-            public IBakedModel handleItemState(IBakedModel originalModel, net.minecraft.item.ItemStack stack, @Nullable net.minecraft.world.World world, @Nullable EntityLivingBase entity) {
+            public IBakedModel getModelWithOverrides(IBakedModel model, net.minecraft.item.ItemStack stack, @Nullable net.minecraft.world.World worldIn, @Nullable LivingEntity entityIn) {
                 BakedItemModel.this.stack = new ItemStack(stack);
                 return BakedItemModel.this;
             }

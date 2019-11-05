@@ -1,22 +1,22 @@
 package cam72cam.mod.item;
 
-import net.minecraft.creativetab.CreativeTabs;
+import net.minecraft.item.ItemGroup;
 
 import java.util.function.Supplier;
 
 public class CreativeTab {
-    public CreativeTabs internal;
+    public ItemGroup internal;
 
     public CreativeTab(String label, Supplier<ItemStack> stack) {
-        internal = new CreativeTabs(label) {
+        internal = new ItemGroup(label) {
             @Override
-            public net.minecraft.item.ItemStack getTabIconItem() {
+            public net.minecraft.item.ItemStack createIcon() {
                 return stack.get().internal;
             }
         };
     }
 
-    public CreativeTab(CreativeTabs tab) {
+    public CreativeTab(ItemGroup tab) {
         this.internal = tab;
     }
 

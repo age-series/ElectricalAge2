@@ -3,23 +3,15 @@ package cam72cam.mod.gui.container;
 import cam72cam.mod.fluid.Fluid;
 import cam72cam.mod.item.ItemStack;
 import cam72cam.mod.item.ItemStackHandler;
-import invtweaks.api.container.ChestContainer;
-import invtweaks.api.container.ContainerSection;
-import invtweaks.api.container.ContainerSectionCallback;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.inventory.IInventory;
-import net.minecraft.inventory.Slot;
-import net.minecraftforge.fml.common.Optional;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.entity.player.PlayerInventory;
+import net.minecraft.inventory.container.Container;
+import net.minecraft.inventory.container.Slot;
 import net.minecraftforge.items.SlotItemHandler;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import java.util.function.Consumer;
 
-@ChestContainer
-public class ServerContainerBuilder extends net.minecraft.inventory.Container implements IContainerBuilder {
+public class ServerContainerBuilder extends Container implements IContainerBuilder {
     // server padding overrides
     public static final int slotSize = 18;
     public static final int topOffset = 18;
@@ -33,14 +25,13 @@ public class ServerContainerBuilder extends net.minecraft.inventory.Container im
     final Consumer<IContainerBuilder> draw;
     final int slotsX;
     final int slotsY;
-    private final IInventory playerInventory;
-    Map<ContainerSection, List<Slot>> slotRefs = new HashMap<>();
+    protected final PlayerInventory playerInventory;
     private int rowSlots = 9;
+    private int totalSlots;
 
-    public ServerContainerBuilder(IInventory playerInventory, IContainer container) {
+    public ServerContainerBuilder(PlayerInventory playerInventory, IContainer container) {
+        super(null, 0); //TODO
         this.playerInventory = playerInventory;
-
-        slotRefs.put(ContainerSection.CHEST, new ArrayList<>());
 
         this.slotsX = container.getSlotsX();
         this.slotsY = container.getSlotsY();
@@ -48,23 +39,6 @@ public class ServerContainerBuilder extends net.minecraft.inventory.Container im
         this.draw = container::draw;
         draw.accept(this);
     }
-
-    /* Inv Tweaks */
-
-    @ChestContainer.RowSizeCallback
-    @Optional.Method(modid = "inventorytweaks")
-    public int rowSize() {
-        return rowSlots;
-    }
-
-    @ContainerSectionCallback
-    @Optional.Method(modid = "inventorytweaks")
-    public Map<ContainerSection, List<Slot>> getContainerSections() {
-        return slotRefs;
-    }
-
-    /* Overrides */
-
 
     @Override
     public int drawTopBar(int x, int y, int slots) {
@@ -75,8 +49,8 @@ public class ServerContainerBuilder extends net.minecraft.inventory.Container im
     public void drawSlot(ItemStackHandler handler, int slotID, int x, int y) {
         x += paddingLeft;
         if (handler != null && handler.getSlotCount() > slotID) {
-            this.addSlotToContainer(new SlotItemHandler(handler.internal, slotID, x, y));
-            slotRefs.get(ContainerSection.CHEST).add(inventorySlots.get(inventorySlots.size() - 1));
+            this.addSlot(new SlotItemHandler(handler.internal, slotID, x, y));
+            totalSlots++;
         }
     }
 
@@ -159,35 +133,26 @@ public class ServerContainerBuilder extends net.minecraft.inventory.Container im
 
         for (int l = 0; l < 3; ++l) {
             for (int j1 = 0; j1 < stdUiHorizSlots; ++j1) {
-                this.addSlotToContainer(new Slot(playerInventory, j1 + l * stdUiHorizSlots + stdUiHorizSlots, normInvOffset + j1 * slotSize, currY));
+                this.addSlot(new Slot(playerInventory, j1 + l * stdUiHorizSlots + stdUiHorizSlots, normInvOffset + j1 * slotSize, currY));
             }
             currY += slotSize;
         }
         currY += 4;
 
         for (int i1 = 0; i1 < 9; ++i1) {
-            this.addSlotToContainer(new Slot(playerInventory, i1, normInvOffset + i1 * slotSize, currY));
+            this.addSlot(new Slot(playerInventory, i1, normInvOffset + i1 * slotSize, currY));
         }
         currY += slotSize;
-
-        slotRefs.put(ContainerSection.INVENTORY, inventorySlots.subList(offset + 0, offset + 36));
-        slotRefs.put(ContainerSection.INVENTORY_NOT_HOTBAR, inventorySlots.subList(offset + 0, offset + 27));
-        slotRefs.put(ContainerSection.INVENTORY_HOTBAR, inventorySlots.subList(offset + 27, offset + 36));
 
         return currY;
     }
 
 
     @Override
-    public final boolean canInteractWith(EntityPlayer playerIn) {
-        return true;
-    }
-
-    @Override
-    public final net.minecraft.item.ItemStack transferStackInSlot(EntityPlayer playerIn, int index) {
+    public final net.minecraft.item.ItemStack transferStackInSlot(PlayerEntity playerIn, int index) {
         net.minecraft.item.ItemStack itemstack = net.minecraft.item.ItemStack.EMPTY;
         Slot slot = this.inventorySlots.get(index);
-        int numSlots = slotRefs.get(ContainerSection.CHEST).size();
+        int numSlots = totalSlots;
 
         if (slot != null && slot.getHasStack()) {
             net.minecraft.item.ItemStack itemstack1 = slot.getStack();
@@ -208,5 +173,10 @@ public class ServerContainerBuilder extends net.minecraft.inventory.Container im
         }
 
         return itemstack;
+    }
+
+    @Override
+    public boolean canInteractWith(PlayerEntity playerIn) {
+        return true;
     }
 }

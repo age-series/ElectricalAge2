@@ -1,6 +1,5 @@
 package cam72cam.mod.item;
 
-import cam72cam.mod.MinecraftClient;
 import cam72cam.mod.entity.Entity;
 import cam72cam.mod.entity.Player;
 import cam72cam.mod.event.CommonEvents;
@@ -11,23 +10,22 @@ import cam72cam.mod.util.Facing;
 import cam72cam.mod.util.Hand;
 import cam72cam.mod.world.World;
 import net.minecraft.client.util.ITooltipFlag;
-import net.minecraft.creativetab.CreativeTabs;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.inventory.EntityEquipmentSlot;
-import net.minecraft.item.ArmorItem;
+import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.Item;
-import net.minecraft.item.Items;
-import net.minecraft.util.*;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.text.TextFormatting;
-import net.minecraftforge.fml.common.Optional;
-import net.minecraftforge.fml.common.registry.ForgeRegistries;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
+import net.minecraft.item.ItemGroup;
+import net.minecraft.item.ItemUseContext;
+import net.minecraft.util.ActionResult;
+import net.minecraft.util.ActionResultType;
+import net.minecraft.util.NonNullList;
+import net.minecraft.util.ResourceLocation;
+import net.minecraft.util.text.ITextComponent;
+import net.minecraft.util.text.StringTextComponent;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.api.distmarker.OnlyIn;
+import net.minecraftforge.registries.ForgeRegistries;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -35,12 +33,13 @@ import java.util.stream.Collectors;
 public class ItemBase {
     public final Item internal;
     private final CreativeTab[] creativeTabs;
+    private final ResourceLocation identifier;
+
     public ItemBase(String modID, String name, int stackSize, CreativeTab... tabs) {
-        internal = new ItemInternal();
-        internal.setUnlocalizedName(modID + ":" + name);
-        internal.setRegistryName(new ResourceLocation(modID, name));
-        internal.setMaxStackSize(stackSize);
-        internal.setCreativeTab(tabs[0].internal);
+        identifier = new ResourceLocation(modID, name);
+
+        internal = new ItemInternal(new Item.Properties().maxStackSize(stackSize)); // .setTEISR()
+        internal.setRegistryName(identifier);
         this.creativeTabs = tabs;
 
         CommonEvents.Item.REGISTER.subscribe(() -> ForgeRegistries.ITEMS.register(internal));
@@ -48,7 +47,7 @@ public class ItemBase {
 
     public List<ItemStack> getItemVariants(CreativeTab creativeTab) {
         List<ItemStack> res = new ArrayList<>();
-        if (creativeTab == null || creativeTab.internal == internal.getCreativeTab()) {
+        if (creativeTab == null || creativeTab.internal == internal.getGroup()) {
             res.add(new ItemStack(internal, 1));
         }
         return res;
@@ -69,7 +68,7 @@ public class ItemBase {
     }
 
     public boolean isValidArmor(ItemStack itemStack, ArmorSlot from, Entity entity) {
-        return internal.isValidArmor(itemStack.internal, from.internal, entity.internal);
+        return false;
     }
 
     public String getCustomName(ItemStack stack) {
@@ -79,57 +78,49 @@ public class ItemBase {
     /* Name Hacks */
 
     protected final void applyCustomName(ItemStack stack) {
-        String custom = getCustomName(stack);
-        if (custom != null) {
-            stack.internal.setStackDisplayName(TextFormatting.RESET + custom);
-        }
     }
 
     public Identifier getRegistryName() {
         return new Identifier(internal.getRegistryName());
     }
 
-    @Optional.Interface(iface = "mezz.jei.api.ingredients.ISlowRenderItem", modid = "jei")
-    private class ItemInternal extends ArmorItem {
+    private class ItemInternal extends Item {
+        public ItemInternal(Properties p_i48487_1_) {
+            super(p_i48487_1_);
+        }
+
         @Override
-        public final void getSubItems(CreativeTabs tab, NonNullList<net.minecraft.item.ItemStack> items) {
-            CreativeTab myTab = tab != CreativeTabs.SEARCH ? new CreativeTab(tab) : null;
+        public void fillItemGroup(ItemGroup tab, NonNullList<net.minecraft.item.ItemStack> items) {
+            CreativeTab myTab = tab != ItemGroup.SEARCH ? new CreativeTab(tab) : null;
             items.addAll(getItemVariants(myTab).stream().map((ItemStack stack) -> stack.internal).collect(Collectors.toList()));
         }
 
         @Override
-        @SideOnly(Side.CLIENT)
-        public final void addInformation(net.minecraft.item.ItemStack stack, @Nullable net.minecraft.world.World worldIn, List<String> tooltip, ITooltipFlag flagIn) {
+        public String getTranslationKey(net.minecraft.item.ItemStack stack) {
+            String cn = getCustomName(new ItemStack(stack));
+            if (cn != null) {
+                return cn;
+            }
+            return "item." + identifier + ".name";
+        }
+
+        @Override
+        @OnlyIn(Dist.CLIENT)
+        public final void addInformation(net.minecraft.item.ItemStack stack, @Nullable net.minecraft.world.World worldIn, List<ITextComponent> tooltip, ITooltipFlag flagIn) {
             super.addInformation(stack, worldIn, tooltip, flagIn);
             applyCustomName(new ItemStack(stack));
-            tooltip.addAll(ItemBase.this.getTooltip(new ItemStack(stack)));
+            tooltip.addAll(ItemBase.this.getTooltip(new ItemStack(stack)).stream().map(StringTextComponent::new).collect(Collectors.toList()));
         }
 
         @Override
-        public final EnumActionResult onItemUse(EntityPlayer player, net.minecraft.world.World worldIn, BlockPos pos, EnumHand hand, EnumFacing facing, float hitX, float hitY, float hitZ) {
-            return ItemBase.this.onClickBlock(new Player(player), World.get(worldIn), new Vec3i(pos), Hand.from(hand), Facing.from(facing), new Vec3d(hitX, hitY, hitZ)).internal;
+        public ActionResultType onItemUse(ItemUseContext context) {
+            return ItemBase.this.onClickBlock(new Player(context.getPlayer()), World.get(context.getWorld()), new Vec3i(context.getPos()), Hand.from(context.getHand()), Facing.from(context.getFace()), new Vec3d(context.getHitVec())).internal;
         }
 
         @Override
-        public final ActionResult<net.minecraft.item.ItemStack> onItemRightClick(net.minecraft.world.World world, EntityPlayer player, EnumHand hand) {
+        public ActionResult<net.minecraft.item.ItemStack> onItemRightClick(net.minecraft.world.World world, PlayerEntity player, net.minecraft.util.Hand hand) {
             onClickAir(new Player(player), World.get(world), Hand.from(hand));
             return super.onItemRightClick(world, player, hand);
-        }
-
-        @Override
-        public final boolean isValidArmor(net.minecraft.item.ItemStack stack, EntityEquipmentSlot armorType, net.minecraft.entity.Entity entity) {
-            return ItemBase.this.isValidArmor(new ItemStack(stack), ArmorSlot.from(armorType), new Entity(entity));
-        }
-
-        @Override
-        public final String getUnlocalizedName(net.minecraft.item.ItemStack stack) {
-            applyCustomName(new ItemStack(stack));
-            return super.getUnlocalizedName(stack);
-        }
-
-        @Override
-        public final CreativeTabs[] getCreativeTabs() {
-            return Arrays.stream(ItemBase.this.creativeTabs).map((CreativeTab tab) -> tab.internal).toArray(CreativeTabs[]::new);
         }
     }
 }

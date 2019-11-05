@@ -4,22 +4,20 @@ import cam72cam.mod.fluid.Fluid;
 import cam72cam.mod.gui.helpers.GUIHelpers;
 import cam72cam.mod.resource.Identifier;
 import cam72cam.mod.util.Hand;
-import net.minecraft.client.gui.GuiButton;
-import net.minecraft.client.gui.GuiScreen;
-import net.minecraft.client.gui.GuiTextField;
+import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.client.gui.widget.Widget;
+import net.minecraft.util.text.StringTextComponent;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
-class ScreenBuilder extends GuiScreen implements IScreenBuilder {
+class ScreenBuilder extends Screen implements IScreenBuilder {
     private final IScreen screen;
-    private Map<GuiButton, Button> buttonMap = new HashMap<>();
-    private List<GuiTextField> textFields = new ArrayList<>();
+    private Map<Widget, Button> buttonMap = new HashMap<net.minecraft.client.gui.widget.Widget, Button>();
 
     public ScreenBuilder(IScreen screen) {
+        super(new StringTextComponent(""));
         this.screen = screen;
     }
 
@@ -29,15 +27,15 @@ class ScreenBuilder extends GuiScreen implements IScreenBuilder {
     public void close() {
         screen.onClose();
 
-        this.mc.displayGuiScreen(null);
-        if (this.mc.currentScreen == null) {
-            this.mc.setIngameFocus();
+        this.minecraft.displayGuiScreen(null);
+        if (this.minecraft.currentScreen == null) {
+            this.minecraft.setGameFocused(true);
         }
     }
 
     @Override
     public void addButton(Button btn) {
-        super.buttonList.add(btn.internal());
+        super.addButton(btn.internal());
         this.buttonMap.put(btn.internal(), btn);
     }
 
@@ -53,7 +51,7 @@ class ScreenBuilder extends GuiScreen implements IScreenBuilder {
 
     @Override
     public void drawImage(Identifier tex, int x, int y, int width, int height) {
-        this.mc.getTextureManager().bindTexture(tex.internal);
+        this.minecraft.getTextureManager().bindTexture(tex.internal);
 
         GUIHelpers.texturedRect(this.width / 2 + x, this.height / 4 + y, width, height);
     }
@@ -65,42 +63,43 @@ class ScreenBuilder extends GuiScreen implements IScreenBuilder {
 
     @Override
     public void drawCenteredString(String str, int x, int y, int color) {
-        super.drawCenteredString(this.fontRenderer, str, this.width / 2 + x, this.height / 4 + y, color);
+        super.drawCenteredString(this.font, str, this.width / 2 + x, this.height / 4 + y, color);
     }
 
     @Override
     public void show() {
-        this.mc.displayGuiScreen(this);
+        this.minecraft.displayGuiScreen(this);
     }
 
     @Override
     public void addTextField(TextField textField) {
-        this.textFields.add(textField.internal());
+        addButton(textField);
     }
 
     // GuiScreen
 
     @Override
-    public void initGui() {
+    public void init() {
         screen.init(this);
     }
 
     @Override
-    public void drawScreen(int mouseX, int mouseY, float partialTicks) {
+    public void render(int mouseX, int mouseY, float partialTicks) {
         for (Button btn : buttonMap.values()) {
             btn.onUpdate();
         }
 
         screen.draw(this);
 
-        textFields.forEach(GuiTextField::drawTextBox);
-
         // draw buttons
-        super.drawScreen(mouseX, mouseY, partialTicks);
+        super.render(mouseX, mouseY, partialTicks);
     }
 
     @Override
-    protected void keyTyped(char typedChar, int keyCode) throws IOException {
+    public boolean keyPressed(int typedChar, int keyCode, int mods) {
+        if (super.keyPressed(typedChar, keyCode, mods)) {
+            return true;
+        }
         if (keyCode == 1) {
             close();
         }
@@ -108,30 +107,14 @@ class ScreenBuilder extends GuiScreen implements IScreenBuilder {
         // Enter
         if (keyCode == 28 || keyCode == 156) {
             screen.onEnterKey(this);
+            return true;
         }
-
-        this.textFields.forEach(x -> x.textboxKeyTyped(typedChar, keyCode));
-    }
-
-    protected void mouseClicked(int mouseX, int mouseY, int mouseButton) throws IOException {
-        // Copy pasta to support right / left button click
-
-        for (int i = 0; i < this.buttonList.size(); ++i) {
-            GuiButton guibutton = super.buttonList.get(i);
-
-            if (guibutton.mousePressed(this.mc, mouseX, mouseY)) {
-                this.selectedButton = guibutton;
-                guibutton.playPressSound(this.mc.getSoundHandler());
-                buttonMap.get(guibutton).onClick(mouseButton == 0 ? Hand.PRIMARY : Hand.SECONDARY);
-            }
-        }
-
-        this.textFields.forEach(x -> x.mouseClicked(mouseX, mouseY, mouseButton));
+        return false;
     }
 
     // Default overrides
     @Override
-    public boolean doesGuiPauseGame() {
+    public boolean isPauseScreen() {
         return false;
     }
 }

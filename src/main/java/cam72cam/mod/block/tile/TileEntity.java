@@ -53,7 +53,7 @@ public class TileEntity extends net.minecraft.tileentity.TileEntity {
     */
     private final BlockEntity instance;
 
-    protected TileEntity(Identifier id) {
+    public TileEntity(Identifier id) {
         super(types.get(id.toString()));
         instance = registry.get(id.toString()).get();
     }
@@ -374,7 +374,7 @@ public class TileEntity extends net.minecraft.tileentity.TileEntity {
     }
 
     /* Render */
-    ModelProperty<TileEntity> TE_PROPERTY = new ModelProperty<>();
+    public static ModelProperty<TileEntity> TE_PROPERTY = new ModelProperty<>();
     public final IModelData getModelData() {
         return new ModelDataMap.Builder().withInitial(TE_PROPERTY, this).build();
     }

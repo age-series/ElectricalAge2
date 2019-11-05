@@ -2,14 +2,15 @@ package cam72cam.mod.gui.helpers;
 
 import cam72cam.mod.item.ItemStack;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiButton;
-import net.minecraft.client.gui.GuiScreen;
+import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.client.gui.widget.Widget;
 import net.minecraft.util.NonNullList;
 import net.minecraft.util.math.Vec3i;
+import net.minecraft.util.text.StringTextComponent;
 
-import java.io.IOException;
-import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 
 public class ItemPickerGUI {
@@ -29,7 +30,7 @@ public class ItemPickerGUI {
     public void setItems(List<ItemStack> items) {
         this.items = NonNullList.create();
         this.items.addAll(items);
-        screen.initGui();
+        screen.init();
     }
 
     public boolean hasOptions() {
@@ -41,36 +42,40 @@ public class ItemPickerGUI {
             onExit.accept(this.items.get(0));
             return;
         }
-        Minecraft.getMinecraft().displayGuiScreen(screen);
+        Minecraft.getInstance().displayGuiScreen(screen);
     }
 
-    private class ItemPickerScreen extends GuiScreen {
-        private List<Vec3i> buttonCoordList = new ArrayList<>();
+    private class ItemPickerScreen extends Screen {
+        private Map<Widget, Vec3i> buttonCoordList = new HashMap<>();
         private GuiScrollBar scrollBar;
 
-        @Override
-        public void drawScreen(int mouseX, int mouseY, float partialTicks) {
-            this.drawDefaultBackground();
-            super.drawScreen(mouseX, mouseY, partialTicks);
+        protected ItemPickerScreen() {
+            super(new StringTextComponent(""));
+        }
 
-            for (GuiButton button : this.buttonList) {
+        @Override
+        public void render(int mouseX, int mouseY, float partialTicks) {
+            this.renderBackground();
+            super.render(mouseX, mouseY, partialTicks);
+
+            for (Widget button : this.buttons) {
                 if (button instanceof GuiScrollBar) continue;
                 if (scrollBar != null) {
-                    button.y = buttonCoordList.get(button.id).getY() - (int) Math.floor(scrollBar.getValue() * 32);
+                    button.y = buttonCoordList.get(button).getY() - (int) Math.floor(scrollBar.getValue() * 32);
                 }
                 if (((ItemButton) button).isMouseOver(mouseX, mouseY)) {
-                    this.renderToolTip(((ItemButton) button).stack.internal, mouseX, mouseY);
+                    this.renderTooltip(((ItemButton) button).stack.internal, mouseX, mouseY);
                 }
             }
         }
 
         @Override
-        public boolean doesGuiPauseGame() {
+        public boolean isPauseScreen() {
             return false;
         }
 
         @Override
-        public void initGui() {
+        public void init() {
             if (width == 0 || height == 0) {
                 return;
             }
@@ -80,44 +85,36 @@ public class ItemPickerGUI {
             int stacksX = this.width * 7 / 8 / 32;
             int stacksY = this.height * 7 / 8 / 32;
 
-            this.buttonList.clear();
+            this.buttons.clear();
             this.buttonCoordList.clear();
             startX += Math.max(0, (stacksX - items.size()) / 2) * 32;
             int i;
             for (i = 0; i < items.size(); i++) {
                 int col = i % stacksX;
                 int row = i / stacksX;
-                this.buttonList.add(new ItemButton(i, items.get(i), startX + col * 32, startY + row * 32));
-                this.buttonCoordList.add(new Vec3i(startX + col * 32, startY + row * 32, 0));
+                this.addButton(new ItemButton(items.get(i), startX + col * 32, startY + row * 32) {
+                    @Override
+                    public void onPress() {
+                        choosenItem = stack;
+                        onExit.accept(stack);
+                    }
+                });
+                this.buttonCoordList.put(this.buttons.get(this.buttons.size()-1), new Vec3i(startX + col * 32, startY + row * 32, 0));
             }
             int rows = i / stacksX + 2;
             if (stacksY < rows) {
                 this.scrollBar = new GuiScrollBar(i++, this.width - 30, 4, 20, this.height - 8, "", 0.0, rows - stacksY, 0.0, null);
-                this.buttonList.add(this.scrollBar);
+                this.addButton(this.scrollBar);
             }
         }
 
         @Override
-        public void actionPerformed(GuiButton button) throws IOException {
-            for (GuiButton itemButton : this.buttonList) {
-                if (itemButton == button && !(button instanceof GuiScrollBar)) {
-                    choosenItem = ((ItemButton) button).stack;
-                    onExit.accept(choosenItem);
-                    break;
-                }
-            }
-        }
-
-        @Override
-        protected void keyTyped(char typedChar, int keyCode) throws IOException {
+        public boolean keyPressed(int typedChar, int keyCode, int mod) {
             if (keyCode == 1) {
                 onExit.accept(null);
+                return true;
             }
-        }
-
-        @Override
-        protected void mouseClicked(int mouseX, int mouseY, int mouseButton) throws IOException {
-            super.mouseClicked(mouseX, mouseY, mouseButton);
+            return false;
         }
     }
 }

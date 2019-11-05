@@ -7,10 +7,11 @@ import cam72cam.mod.model.obj.Vec2f;
 import cam72cam.mod.render.GLTexture;
 import cam72cam.mod.render.GPUInfo;
 import cam72cam.mod.resource.Identifier;
-import net.minecraft.client.renderer.texture.TextureUtil;
+import com.mojang.blaze3d.platform.TextureUtil;
 import net.minecraft.util.math.MathHelper;
 import org.lwjgl.opengl.GL11;
 
+import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.FileNotFoundException;
@@ -268,7 +269,7 @@ public class OBJTextureSheet {
             } catch (FileNotFoundException ex) {
                 input = fallback.getResourceStream();
             }
-            BufferedImage image = TextureUtil.readBufferedImage(input);
+            BufferedImage image = ImageIO.read(input);
             input.close();
 
             realWidth = image.getWidth();

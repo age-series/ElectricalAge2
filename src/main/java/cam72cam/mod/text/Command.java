@@ -1,9 +1,12 @@
 package cam72cam.mod.text;
 
 import cam72cam.mod.world.World;
+import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import com.mojang.brigadier.context.CommandContext;
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import net.minecraft.command.*;
-import net.minecraft.server.MinecraftServer;
-import net.minecraftforge.fml.common.FMLCommonHandler;
+import net.minecraft.util.text.StringTextComponent;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -12,43 +15,26 @@ import java.util.function.Consumer;
 public abstract class Command {
     private static final List<Command> commands = new ArrayList<>();
 
-    private final ICommand internal;
-
-
-    protected Command() {
-        this.internal = new CommandBase() {
-            @Override
-            public String getName() {
-                return Command.this.getPrefix();
-            }
-
-            @Override
-            public String getUsage(ICommandSender sender) {
-                return Command.this.getUsage();
-            }
-
-            @Override
-            public int getRequiredPermissionLevel() {
-                return opRequired() ? 2 : 4;
-            }
-
-            @Override
-            public void execute(MinecraftServer server, ICommandSender sender, String[] args) throws CommandException {
-                if (!Command.this.execute(World.get(sender.getEntityWorld()), m -> sender.sendMessage(m.internal), args)) {
-                    throw new CommandException(getUsage(sender));
-                }
-            }
-        };
-    }
-
     public static void register(Command cmd) {
         commands.add(cmd);
     }
 
-    public static void registration() {
-        CommandHandler ch = (CommandHandler) FMLCommonHandler.instance().getMinecraftServerInstance().getCommandManager();
+    public static void registration(CommandDispatcher<CommandSource> ch) {
         for (Command command : commands) {
-            ch.registerCommand(command.internal);
+            ch.register(LiteralArgumentBuilder.literal(command.getPrefix()).executes((CommandContext<CommandSource> ctx) -> {
+                boolean ok = command.execute(World.get(ctx.getSource().getEntity().getEntityWorld()), msg -> ctx.getSource().getEntity().sendMessage(msg.internal), ctx.getInput().split(" "));
+                if (!ok) {
+                    ctx.getSource().getEntity().sendMessage(new StringTextComponent(command.getUsage()));
+                }
+                return ok ? 1 : -1;
+            }).requires((CommandContext<CommandSource> ctx) -> {
+                    try {
+                        return ctx.getSource().asPlayer().hasPermissionLevel(command.opRequired() ? 4 : 0);
+                    } catch (CommandSyntaxException e) {
+                        return false;
+                    }
+                })
+            );
         }
     }
 

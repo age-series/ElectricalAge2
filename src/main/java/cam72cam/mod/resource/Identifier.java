@@ -28,11 +28,11 @@ public class Identifier {
     }
 
     public String getDomain() {
-        return internal.getResourceDomain();
+        return internal.getNamespace();
     }
 
     public String getPath() {
-        return internal.getResourcePath();
+        return internal.getPath();
     }
 
     public Identifier getRelative(String path) {

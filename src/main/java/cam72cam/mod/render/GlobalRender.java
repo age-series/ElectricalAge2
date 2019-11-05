@@ -9,11 +9,13 @@ import cam72cam.mod.math.Vec3d;
 import cam72cam.mod.math.Vec3i;
 import cam72cam.mod.util.CollectionUtil;
 import cam72cam.mod.util.Hand;
+import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.culling.Frustum;
 import net.minecraft.client.renderer.culling.ICamera;
-import net.minecraft.client.renderer.tileentity.TileEntitySpecialRenderer;
+import net.minecraft.client.renderer.tileentity.TileEntityRenderer;
 import net.minecraft.tileentity.TileEntity;
+import net.minecraft.tileentity.TileEntityType;
 import net.minecraftforge.client.MinecraftForgeClient;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import net.minecraftforge.fml.client.registry.ClientRegistry;
@@ -21,6 +23,7 @@ import org.lwjgl.opengl.GL11;
 
 import java.nio.FloatBuffer;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.function.Consumer;
 
@@ -29,19 +32,19 @@ public class GlobalRender {
 
     public static void registerClientEvents() {
         ClientEvents.REGISTER_ENTITY.subscribe(() -> {
-            ClientRegistry.bindTileEntitySpecialRenderer(GlobalRenderHelper.class, new TileEntitySpecialRenderer<GlobalRenderHelper>() {
+            ClientRegistry.bindTileEntitySpecialRenderer(GlobalRenderHelper.class, new TileEntityRenderer<GlobalRenderHelper>() {
                 @Override
-                public void render(GlobalRenderHelper te, double x, double y, double z, float partialTicks, int destroyStage, float alpha) {
+                public void render(GlobalRenderHelper te, double x, double y, double z, float partialTicks, int destroyStage) {
                     renderFuncs.forEach(r -> r.accept(partialTicks));
                 }
             });
         });
 
         List<TileEntity> grhList = CollectionUtil.listOf(new GlobalRenderHelper());
-        ClientEvents.TICK.subscribe(() -> Minecraft.getMinecraft().renderGlobal.updateTileEntities(grhList, grhList));
+        ClientEvents.TICK.subscribe(() -> Minecraft.getInstance().worldRenderer.updateTileEntities(grhList, grhList));
 
         ClientEvents.RENDER_DEBUG.subscribe(event -> {
-            if (Minecraft.getMinecraft().gameSettings.showDebugInfo && GPUInfo.hasGPUInfo()) {
+            if (Minecraft.getInstance().gameSettings.showDebugInfo && GPUInfo.hasGPUInfo()) {
                 int i;
                 for (i = 0; i < event.getRight().size(); i++) {
                     if (event.getRight().get(i).startsWith("Display: ")) {
@@ -78,11 +81,11 @@ public class GlobalRender {
     }
 
     public static boolean isTransparentPass() {
-        return MinecraftForgeClient.getRenderPass() != 0;
+        return false;//MinecraftForgeClient.getRenderPass() != 0;
     }
 
     public static Vec3d getCameraPos(float partialTicks) {
-        net.minecraft.entity.Entity playerrRender = Minecraft.getMinecraft().getRenderViewEntity();
+        net.minecraft.entity.Entity playerrRender = Minecraft.getInstance().getRenderViewEntity();
         double d0 = playerrRender.lastTickPosX + (playerrRender.posX - playerrRender.lastTickPosX) * partialTicks;
         double d1 = playerrRender.lastTickPosY + (playerrRender.posY - playerrRender.lastTickPosY) * partialTicks;
         double d2 = playerrRender.lastTickPosZ + (playerrRender.posZ - playerrRender.lastTickPosZ) * partialTicks;
@@ -98,11 +101,11 @@ public class GlobalRender {
 
     public static boolean isInRenderDistance(Vec3d pos) {
         // max rail length is 100, 50 is center
-        return MinecraftClient.getPlayer().getPosition().distanceTo(pos) < ((Minecraft.getMinecraft().gameSettings.renderDistanceChunks + 1) * 16 + 50);
+        return MinecraftClient.getPlayer().getPosition().distanceTo(pos) < ((Minecraft.getInstance().gameSettings.renderDistanceChunks + 1) * 16 + 50);
     }
 
     public static void mulMatrix(FloatBuffer fbm) {
-        GL11.glMultMatrix(fbm);
+        GL11.glMultMatrixf(fbm);
     }
 
     @FunctionalInterface
@@ -112,6 +115,20 @@ public class GlobalRender {
 
     public static class GlobalRenderHelper extends TileEntity {
 
+        public GlobalRenderHelper() {
+            super(new TileEntityType<GlobalRenderHelper>(GlobalRenderHelper::new, new HashSet<>(), null) {
+                @Override
+                public boolean isValidBlock(Block block_1) {
+                    return true;
+                }
+            });
+        }
+
+        @Override
+        public boolean hasWorld() {
+            return true;
+        }
+
         public net.minecraft.util.math.AxisAlignedBB getRenderBoundingBox() {
             return INFINITE_EXTENT_AABB;
         }
@@ -119,10 +136,5 @@ public class GlobalRender {
         public double getDistanceSq(double x, double y, double z) {
             return 1;
         }
-
-        public boolean shouldRenderInPass(int pass) {
-            return true;
-        }
-
     }
 }

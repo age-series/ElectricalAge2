@@ -1,39 +1,33 @@
 package cam72cam.mod.gui;
 
-import net.minecraftforge.fml.common.ProgressManager;
-import net.minecraftforge.fml.common.ProgressManager.ProgressBar;
-
-import java.util.Iterator;
+import net.minecraftforge.fml.StartupMessageManager;
 
 public class Progress {
     public static Bar push(String name, int steps) {
-        return new Bar(ProgressManager.push(name, steps));
+        return new Bar(name, steps);
     }
 
     public static void pop(Bar bar) {
-        ProgressManager.pop(bar.bar);
     }
 
     public static void pop() {
-        ProgressBar origBar = null;
-        Iterator<ProgressBar> itr = ProgressManager.barIterator();
-        while (itr.hasNext()) {
-            origBar = itr.next();
-        }
-
-        //This is terrible, I am sorry
-        ProgressManager.pop(origBar);
     }
 
     public static class Bar {
-        private final ProgressBar bar;
+        private final String name;
+        private final int steps;
+        private int at;
 
-        public Bar(ProgressBar bar) {
-            this.bar = bar;
+        public Bar(String name, int steps) {
+            this.name = name;
+            this.steps = steps;
+            this.at = 0;
+            StartupMessageManager.addModMessage(name + " 0%");
         }
 
         public void step(String name) {
-            bar.step(name);
+            at += 1;
+            StartupMessageManager.addModMessage(this.name + " " + (at*100/steps) + "% : " + name);
         }
     }
 }

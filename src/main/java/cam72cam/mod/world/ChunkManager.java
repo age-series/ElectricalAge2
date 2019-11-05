@@ -4,12 +4,10 @@ import cam72cam.mod.ModCore;
 import cam72cam.mod.event.CommonEvents;
 import cam72cam.mod.math.Vec3i;
 import net.minecraft.world.World;
-import net.minecraftforge.common.ForgeChunkManager;
-import net.minecraftforge.common.ForgeChunkManager.Ticket;
 
 import java.util.*;
 
-public class ChunkManager implements ForgeChunkManager.LoadingCallback, ForgeChunkManager.OrderedLoadingCallback {
+public class ChunkManager /*implements ForgeChunkManager.LoadingCallback, ForgeChunkManager.OrderedLoadingCallback*/ {
     /*
      * This takes a similar approach to FTBUtilities
      * One massive ticket for each dim
@@ -19,6 +17,7 @@ public class ChunkManager implements ForgeChunkManager.LoadingCallback, ForgeChu
      *
      * This is used in internal onTick to force/unforce chunks
      */
+    /*
 
     private static final Map<Integer, Ticket> TICKETS = new HashMap<Integer, Ticket>();
     private static final Map<ChunkPos, Integer> CHUNK_MAP = new HashMap<ChunkPos, Integer>();
@@ -157,4 +156,5 @@ public class ChunkManager implements ForgeChunkManager.LoadingCallback, ForgeChu
             TICKETS.put(dim, tickets.get(0));
         }
     }
+    */
 }

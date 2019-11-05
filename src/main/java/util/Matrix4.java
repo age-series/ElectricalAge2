@@ -409,6 +409,7 @@ public class Matrix4
 		return mult3x3(vec).add(m03, m13, m23);
 	}
 
+	/*
 	private org.lwjgl.util.vector.Vector3f mult3x3(org.lwjgl.util.vector.Vector3f vec)
 	{
 		float x = (float) (m00 * vec.x + m01 * vec.y + m02 * vec.z);
@@ -425,6 +426,7 @@ public class Matrix4
 		vec2.z += m23;
 		return vec2;
 	}
+	*/
 
 	public Matrix4f toMatrix4f()
 	{

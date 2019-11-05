@@ -157,12 +157,12 @@ public class VBA {
         colorBuffer.flip();
         normalBuffer.flip();
         texBuffer.flip();
-        GL11.glTexCoordPointer(2, 2 << 2, texBuffer);
-        GL11.glColorPointer(4, 4 << 2, colorBuffer);
+        GL11.glTexCoordPointer(2, GL11.GL_FLOAT, 2 << 2, texBuffer);
+        GL11.glColorPointer(4, GL11.GL_FLOAT, 4 << 2, colorBuffer);
         if (has_vn) {
-            GL11.glNormalPointer(3 << 2, normalBuffer);
+            GL11.glNormalPointer(GL11.GL_FLOAT, 3 << 2, normalBuffer);
         }
-        GL11.glVertexPointer(3, 3 << 2, vertexBuffer);
+        GL11.glVertexPointer(3, GL11.GL_FLOAT, 3 << 2, vertexBuffer);
         if (groups == null) {
             GL11.glDrawArrays(GL11.GL_TRIANGLES, 0, size * 3);
         } else {

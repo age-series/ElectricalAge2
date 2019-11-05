@@ -5,31 +5,37 @@ import cam72cam.mod.entity.Player;
 import cam72cam.mod.math.Vec3d;
 import cam72cam.mod.util.TagCompound;
 import cam72cam.mod.world.World;
-import io.netty.buffer.ByteBuf;
-import net.minecraftforge.fml.common.FMLCommonHandler;
-import net.minecraftforge.fml.common.network.ByteBufUtils;
-import net.minecraftforge.fml.common.network.NetworkRegistry;
-import net.minecraftforge.fml.common.network.simpleimpl.IMessage;
-import net.minecraftforge.fml.common.network.simpleimpl.IMessageHandler;
-import net.minecraftforge.fml.common.network.simpleimpl.MessageContext;
-import net.minecraftforge.fml.common.network.simpleimpl.SimpleNetworkWrapper;
-import net.minecraftforge.fml.relauncher.Side;
+import net.minecraft.network.PacketBuffer;
+import net.minecraft.util.ResourceLocation;
+import net.minecraftforge.fml.network.NetworkDirection;
+import net.minecraftforge.fml.network.NetworkEvent;
+import net.minecraftforge.fml.network.NetworkRegistry;
+import net.minecraftforge.fml.network.PacketDistributor;
+import net.minecraftforge.fml.network.simple.SimpleChannel;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Supplier;
 
 public abstract class Packet {
-    private static final SimpleNetworkWrapper net = NetworkRegistry.INSTANCE.newSimpleChannel("cam72cam.mod");
+    private static final String VERSION = "1.0";
+    private static final SimpleChannel net = NetworkRegistry.newSimpleChannel(
+            new ResourceLocation("universalmodcore", "cam72cam.mod"),
+            () -> VERSION,
+            VERSION::equals,
+            VERSION::equals
+    );
     private static Map<String, Supplier<Packet>> types = new HashMap<>();
 
     static {
-        net.registerMessage(new Packet.Handler<>(), Message.class, 0, Side.CLIENT);
-        net.registerMessage(new Packet.Handler<>(), Message.class, 1, Side.SERVER);
+        net.registerMessage(0, Message.class, Message::toBytes, Message::new, (msg, ctx) -> ctx.get().enqueueWork(() -> {
+            msg.packet.ctx = ctx.get();
+            msg.packet.handle();
+        }));
     }
 
     protected TagCompound data = new TagCompound();
-    MessageContext ctx;
+    NetworkEvent.Context ctx;
 
     public static void register(Supplier<Packet> sup, PacketDirection dir) {
         types.put(sup.get().getClass().toString(), sup);
@@ -42,12 +48,11 @@ public abstract class Packet {
     }
 
     protected final Player getPlayer() {
-        return ctx.side == Side.CLIENT ? MinecraftClient.getPlayer() : new Player(ctx.getServerHandler().player);
+        return ctx.getDirection() == NetworkDirection.PLAY_TO_CLIENT ? MinecraftClient.getPlayer() : new Player(ctx.getSender());
     }
 
     public void sendToAllAround(World world, Vec3d pos, double distance) {
-        net.sendToAllAround(new Message(this),
-                new NetworkRegistry.TargetPoint(world.getId(), pos.x, pos.y, pos.z, distance));
+        net.send(PacketDistributor.NEAR.with(() -> new PacketDistributor.TargetPoint(pos.x, pos.y, pos.z, distance, world.internal.getDimension().getType())), this);
     }
 
     public void sendToServer() {
@@ -55,45 +60,30 @@ public abstract class Packet {
     }
 
     public void sendToAll() {
-        net.sendToAll(new Message(this));
+        net.send(PacketDistributor.ALL.noArg(), this);
     }
 
-    public static class Message implements IMessage {
+    public static class Message {
         Packet packet;
-
-        public Message() {
-            // FORGE REFLECTION
-        }
 
         public Message(Packet pkt) {
             this.packet = pkt;
         }
 
-        @Override
-        public void fromBytes(ByteBuf buf) {
-            TagCompound data = new TagCompound(ByteBufUtils.readTag(buf));
+        public Message(PacketBuffer buff) {
+            fromBytes(buff);
+        }
+
+        public void fromBytes(PacketBuffer buf) {
+            TagCompound data = new TagCompound(buf.readCompoundTag());
             String cls = data.getString("cam72cam.mod.pktid");
             packet = types.get(cls).get();
             packet.data = data;
         }
 
-        @Override
-        public void toBytes(ByteBuf buf) {
+        public void toBytes(PacketBuffer buf) {
             packet.data.setString("cam72cam.mod.pktid", packet.getClass().toString());
-            ByteBufUtils.writeTag(buf, packet.data.internal);
-        }
-    }
-
-    public static class Handler<T extends Message> implements IMessageHandler<T, IMessage> {
-        @Override
-        public IMessage onMessage(T message, MessageContext ctx) {
-            FMLCommonHandler.instance().getWorldThread(ctx.netHandler).addScheduledTask(() -> handle(message, ctx));
-            return null;
-        }
-
-        private void handle(T message, MessageContext ctx) {
-            message.packet.ctx = ctx;
-            message.packet.handle();
+            buf.writeCompoundTag(packet.data.internal);
         }
     }
 }

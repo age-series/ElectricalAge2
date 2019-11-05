@@ -4,8 +4,10 @@ import cam72cam.mod.entity.Player;
 import cam72cam.mod.util.TagCompound;
 import net.minecraft.block.Block;
 import net.minecraft.item.Item;
-import net.minecraft.tileentity.TileEntityFurnace;
+import net.minecraft.tileentity.AbstractFurnaceTileEntity;
+import net.minecraft.util.ResourceLocation;
 import net.minecraftforge.fluids.FluidUtil;
+import net.minecraftforge.registries.ForgeRegistries;
 
 public class ItemStack {
     public static final ItemStack EMPTY = new ItemStack(net.minecraft.item.ItemStack.EMPTY);
@@ -23,11 +25,11 @@ public class ItemStack {
     }
 
     public ItemStack(TagCompound bedItem) {
-        this(new net.minecraft.item.ItemStack(bedItem.internal));
+        this(net.minecraft.item.ItemStack.read(bedItem.internal));
     }
 
     public ItemStack(Item item, int count, int meta) {
-        this(new net.minecraft.item.ItemStack(item, count, meta));
+        this(new net.minecraft.item.ItemStack(item, count));
     }
 
     public ItemStack(Block block) {
@@ -35,7 +37,7 @@ public class ItemStack {
     }
 
     public ItemStack(Block block, int count, int meta) {
-        this(new net.minecraft.item.ItemStack(block, count, meta));
+        this(new net.minecraft.item.ItemStack(block, count));
     }
 
     public ItemStack(Item item) {
@@ -47,18 +49,18 @@ public class ItemStack {
     }
 
     public ItemStack(String item, int i, int meta) {
-        this(Item.getByNameOrId(item), i, meta);
+        this(ForgeRegistries.ITEMS.getValue(new ResourceLocation(item)), i, meta);
     }
 
     public TagCompound getTagCompound() {
-        if (internal.getTagCompound() == null) {
-            internal.setTagCompound(new TagCompound().internal);
+        if (internal.getTag() == null) {
+            internal.setTag(new TagCompound().internal);
         }
-        return new TagCompound(internal.getTagCompound());
+        return new TagCompound(internal.getTag());
     }
 
     public void setTagCompound(TagCompound data) {
-        internal.setTagCompound(data.internal);
+        internal.setTag(data.internal);
     }
 
     public ItemStack copy() {
@@ -78,7 +80,7 @@ public class ItemStack {
     }
 
     public String getDisplayName() {
-        return internal.getDisplayName();
+        return internal.getDisplayName().getString();
     }
 
     public boolean isEmpty() {
@@ -110,7 +112,7 @@ public class ItemStack {
     }
 
     public int getBurnTime() {
-        return TileEntityFurnace.getItemBurnTime(internal);
+        return AbstractFurnaceTileEntity.getBurnTimes().getOrDefault(internal, 0);
     }
 
     public int getLimit() {
@@ -118,7 +120,7 @@ public class ItemStack {
     }
 
     public boolean isValidTool(ToolType tool) {
-        return item.getToolClasses(internal).contains(tool.toString());
+        return item.getToolTypes(internal).contains(tool.internal);
     }
 
     @Override
@@ -127,10 +129,10 @@ public class ItemStack {
     }
 
     public void damageItem(int i, Player player) {
-        internal.damageItem(i, player.internal);
+        internal.damageItem(i, player.internal, (s) -> {});
     }
 
     public void clearTagCompound() {
-        internal.setTagCompound(null);
+        internal.setTag(null);
     }
 }

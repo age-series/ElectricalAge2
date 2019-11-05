@@ -40,7 +40,7 @@ public class ClientEvents {
     public static final Event<Function<Hand, Boolean>> CLICK = new Event<>();
     public static final Event<Runnable> MODEL_CREATE = new Event<>();
     public static final Event<Consumer<ModelBakeEvent>> MODEL_BAKE = new Event<>();
-    public static final Event<Runnable> TEXTURE_STITCH = new Event<>();
+    public static final Event<Consumer<TextureStitchEvent.Pre>> TEXTURE_STITCH = new Event<>();
     public static final Event<Runnable> REGISTER_ENTITY = new Event<>();
     public static final Event<Consumer<RenderGameOverlayEvent.Text>> RENDER_DEBUG = new Event<>();
     public static final Event<Consumer<RenderGameOverlayEvent.Pre>> RENDER_OVERLAY = new Event<>();
@@ -84,11 +84,11 @@ public class ClientEvents {
 
         @SubscribeEvent
         public static void onTextureStitchEvent(TextureStitchEvent.Pre event) {
-            TEXTURE_STITCH.execute(Runnable::run);
+            TEXTURE_STITCH.execute(x -> x.accept(event));
         }
 
         @SubscribeEvent
-        public static void registerEntities(RegistryEvent.Register<EntityType> event) {
+        public static void registerEntities(RegistryEvent.Register<EntityType<?>> event) {
             REGISTER_ENTITY.execute(Runnable::run);
         }
 

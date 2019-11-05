@@ -1,15 +1,15 @@
 package cam72cam.mod.gui.helpers;
 
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.GlStateManager;
 import net.minecraftforge.fml.client.config.GuiSlider;
 
 public class GuiScrollBar extends GuiSlider {
 
 
-    public GuiScrollBar(int id, int xPos, int yPos, int width, int height, String displayStr, double minVal, double maxVal, double currentVal, ISlider par) {
-        super(id, xPos, yPos, width, height, displayStr, displayStr, minVal, maxVal, currentVal, true, false, par);
+    public GuiScrollBar(int id, int xPos, int yPos, int width, int height, String displayStr, double minVal, double maxVal, double currentVal, IPressable par) {
+        super(xPos, yPos, width, height, displayStr, displayStr, minVal, maxVal, currentVal, true, false, par);
     }
+
+    /* TODO
 
     @Override
     protected void mouseDragged(Minecraft mc, int mouseX, int mouseY) {
@@ -19,8 +19,8 @@ public class GuiScrollBar extends GuiSlider {
                 updateSlider();
             }
 
-            GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
-            this.drawTexturedModalRect(this.x, this.y + (int) (this.sliderValue * (float) (this.height - 8)), 0, 66, 20, 20);
+            GlStateManager.color4f(1.0F, 1.0F, 1.0F, 1.0F);
+            this.blit(this.x, this.y + (int) (this.sliderValue * (float) (this.height - 8)), 0, 66, 20, 20);
         }
     }
 
@@ -35,4 +35,5 @@ public class GuiScrollBar extends GuiSlider {
             return false;
         }
     }
+    */
 }

@@ -3,6 +3,7 @@ package cam72cam.mod;
 import cam72cam.mod.entity.ModdedEntity;
 import cam72cam.mod.entity.sync.EntitySync;
 import cam72cam.mod.event.ClientEvents;
+import cam72cam.mod.event.CommonEvents;
 import cam72cam.mod.gui.GuiRegistry;
 import cam72cam.mod.input.Keyboard;
 import cam72cam.mod.input.Mouse;
@@ -11,12 +12,21 @@ import cam72cam.mod.net.PacketDirection;
 import cam72cam.mod.render.BlockRender;
 import cam72cam.mod.text.Command;
 import net.minecraft.client.Minecraft;
+import net.minecraft.profiler.IProfiler;
+import net.minecraft.resources.IFutureReloadListener;
+import net.minecraft.resources.IResourceManager;
 import net.minecraft.resources.SimpleReloadableResourceManager;
+import net.minecraft.util.Unit;
 import net.minecraft.world.World;
 import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.fml.DistExecutor;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
+import net.minecraftforge.fml.event.lifecycle.FMLLoadCompleteEvent;
+import net.minecraftforge.fml.event.lifecycle.InterModEnqueueEvent;
 import net.minecraftforge.fml.event.server.FMLServerStartedEvent;
+import net.minecraftforge.fml.event.server.FMLServerStartingEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
+import net.minecraftforge.fml.loading.FMLPaths;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -24,6 +34,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
@@ -47,18 +59,11 @@ public class ModCore {
         instance = this;
         mods = modCtrs.stream().map(Supplier::get).collect(Collectors.toList());
 
-        // Register the setup method for modloading
         FMLJavaModLoadingContext.get().getModEventBus().addListener(this::preInit);
-        // Register the enqueueIMC method for modloading
-        FMLJavaModLoadingContext.get().getModEventBus().addListener(this::enqueueIMC);
-        // Register the processIMC method for modloading
-        FMLJavaModLoadingContext.get().getModEventBus().addListener(this::processIMC);
-        // Register the doClientStuff method for modloading
-        FMLJavaModLoadingContext.get().getModEventBus().addListener(this::doClientStuff);
-
-        // Register ourselves for server and other game events we are interested in
-        MinecraftForge.EVENT_BUS.register(this);
-
+        FMLJavaModLoadingContext.get().getModEventBus().addListener(this::init);
+        FMLJavaModLoadingContext.get().getModEventBus().addListener(this::postInit);
+        FMLJavaModLoadingContext.get().getModEventBus().addListener(this::serverStarting);
+        FMLJavaModLoadingContext.get().getModEventBus().addListener(this::serverStarted);
     }
 
     public void preInit(FMLCommonSetupEvent event) {
@@ -66,18 +71,19 @@ public class ModCore {
         proxy.event(ModEvent.INITIALIZE);
     }
 
-    @EventHandler
-    public void init(FMLInitializationEvent event) {
+    public void init(InterModEnqueueEvent event) {
         proxy.event(ModEvent.SETUP);
     }
 
-    @EventHandler
-    public void postInit(FMLPostInitializationEvent event) {
+    public void postInit(FMLLoadCompleteEvent event) {
         proxy.event(ModEvent.FINALIZE);
     }
 
-    @EventHandler
-    public void serverStarting(FMLServerStartedEvent event) {
+    public void serverStarting(FMLServerStartingEvent event) {
+        Command.registration(event.getCommandDispatcher());
+    }
+
+    public void serverStarted(FMLServerStartedEvent event) {
         proxy.event(ModEvent.START);
     }
 
@@ -89,7 +95,7 @@ public class ModCore {
         public abstract void serverEvent(ModEvent event);
 
         public final Path getConfig(String fname) {
-            return Paths.get(Loader.instance().getConfigDir().toString(), fname);
+            return Paths.get(FMLPaths.CONFIGDIR.get().toString(), fname);
         }
 
         public static void debug(String msg, Object...params) {
@@ -109,8 +115,7 @@ public class ModCore {
         }
     }
 
-    @SidedProxy(serverSide = "cam72cam.mod.ModCore$ServerProxy", clientSide = "cam72cam.mod.ModCore$ClientProxy", modId = ModCore.MODID)
-    private static Proxy proxy;
+    private static Proxy proxy = DistExecutor.runForDist(() -> ClientProxy::new, () -> ServerProxy::new);
     public static class Proxy {
         public Proxy() {
             event(ModEvent.CONSTRUCT);
@@ -158,21 +163,30 @@ public class ModCore {
                     Packet.register(Mouse.MousePressPacket::new, PacketDirection.ClientToServer);
                     break;
                 case SETUP:
-                    World.MAX_ENTITY_RADIUS = Math.max(World.MAX_ENTITY_RADIUS, 32);
+                    //World.MAX_ENTITY_RADIUS = Math.max(World.MAX_ENTITY_RADIUS, 32);
 
                     GuiRegistry.registration();
                     break;
                 case START:
-                    Command.registration();
                     break;
             }
+        }
+
+        public interface SynchronousResourceReloadListener extends IFutureReloadListener {
+            default CompletableFuture<Void> reload(IFutureReloadListener.IStage stage, IResourceManager resourceManager, IProfiler preparationsProfiler, IProfiler reloadProfiler, Executor backgroundExecutor, Executor gameExecutor) {
+                return stage.markCompleteAwaitingOthers(Unit.INSTANCE).thenRunAsync(() -> {
+                    this.apply(resourceManager);
+                }, backgroundExecutor);
+            }
+
+            void apply(IResourceManager var1);
         }
 
         @Override
         public void clientEvent(ModEvent event) {
             switch (event) {
                 case SETUP:
-                    ((SimpleReloadableResourceManager) Minecraft.getInstance().getResourceManager()).addReloadListener(resourceManager -> {
+                    ((SimpleReloadableResourceManager) Minecraft.getInstance().getResourceManager()).addReloadListener((SynchronousResourceReloadListener)resourceManager -> {
                         if (skipN > 0) {
                             skipN--;
                             return;

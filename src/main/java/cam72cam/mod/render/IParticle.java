@@ -3,9 +3,10 @@ package cam72cam.mod.render;
 import cam72cam.mod.math.Vec3d;
 import cam72cam.mod.world.World;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.particle.IParticleRenderType;
 import net.minecraft.client.particle.Particle;
+import net.minecraft.client.renderer.ActiveRenderInfo;
 import net.minecraft.client.renderer.BufferBuilder;
-import net.minecraft.entity.Entity;
 import org.apache.logging.log4j.util.TriConsumer;
 import org.lwjgl.opengl.GL11;
 
@@ -32,20 +33,23 @@ public abstract class IParticle {
             I ip = ctr.apply(data);
             Particle p = new Particle(data.world.internal, data.pos.x, data.pos.y, data.pos.z, data.motion.x, data.motion.y, data.motion.z) {
                 {
-                    particleMaxAge = data.lifespan;
+                    maxAge = data.lifespan;
                     motionX = data.motion.x;
                     motionY = data.motion.y;
                     motionZ = data.motion.z;
                 }
 
                 @Override
+                public IParticleRenderType getRenderType() {
+                    return ip.depthTestEnabled() ? IParticleRenderType.PARTICLE_SHEET_TRANSLUCENT : IParticleRenderType.PARTICLE_SHEET_OPAQUE;
+                }
                 public boolean shouldDisableDepth() {
                     return !ip.depthTestEnabled();
                 }
 
                 @Override
-                public void renderParticle(BufferBuilder buffer, Entity entityIn, float partialTicks, float rotationX, float rotationZ, float rotationYZ, float rotationXY, float rotationXZ) {
-                    ip.ticks = particleAge;
+                public void renderParticle(BufferBuilder buffer, ActiveRenderInfo entityIn, float partialTicks, float rotationX, float rotationZ, float rotationYZ, float rotationXY, float rotationXZ) {
+                    ip.ticks = age;
                     ip.pos = new Vec3d(posX, posY, posZ);
                     ip.renderPos = new Vec3d(posX - interpPosX, posY - interpPosY, posZ - interpPosZ);
                     ip.renderPos = ip.renderPos.add(this.motionX * partialTicks, this.motionY * partialTicks, this.motionZ * partialTicks);
@@ -69,7 +73,7 @@ public abstract class IParticle {
                 }
             };
 
-            Minecraft.getMinecraft().effectRenderer.addEffect(p);
+            Minecraft.getInstance().particles.addEffect(p);
         };
     }
 

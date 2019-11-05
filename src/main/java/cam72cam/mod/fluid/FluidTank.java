@@ -1,23 +1,19 @@
 package cam72cam.mod.fluid;
 
 import cam72cam.mod.util.TagCompound;
+import net.minecraftforge.fluids.capability.IFluidHandler.FluidAction;
 
 public class FluidTank implements ITank {
-    public final net.minecraftforge.fluids.FluidTank internal;
+    public final net.minecraftforge.fluids.capability.templates.FluidTank internal;
 
     public FluidTank(FluidStack fluidStack, int capacity) {
-        if (fluidStack == null) {
-            internal = new net.minecraftforge.fluids.FluidTank(capacity) {
+            internal = new net.minecraftforge.fluids.capability.templates.FluidTank(capacity) {
                 public void onContentsChanged() {
                     FluidTank.this.onChanged();
                 }
             };
-        } else {
-            internal = new net.minecraftforge.fluids.FluidTank(fluidStack.internal, capacity) {
-                public void onContentsChanged() {
-                    FluidTank.this.onChanged();
-                }
-            };
+        if (fluidStack != null) {
+            internal.setFluid(fluidStack.internal);
         }
     }
 
@@ -41,7 +37,7 @@ public class FluidTank implements ITank {
 
     @Override
     public boolean allows(Fluid fluid) {
-        return internal.canFill();
+        return internal.isFluidValid(new net.minecraftforge.fluids.FluidStack(fluid.internal, 1));
     }
 
     @Override
@@ -49,7 +45,7 @@ public class FluidTank implements ITank {
         if (!allows(fluidStack.getFluid())) {
             return 0;
         }
-        return internal.fill(fluidStack.internal, !simulate);
+        return internal.fill(fluidStack.internal, simulate ? FluidAction.SIMULATE : FluidAction.EXECUTE);
     }
 
     @Override
@@ -57,7 +53,7 @@ public class FluidTank implements ITank {
         if (!allows(fluidStack.getFluid())) {
             return null;
         }
-        return new FluidStack(internal.drain(fluidStack.internal, !simulate));
+        return new FluidStack(internal.drain(fluidStack.internal, simulate ? FluidAction.SIMULATE : FluidAction.EXECUTE));
     }
 
     public TagCompound write(TagCompound tag) {

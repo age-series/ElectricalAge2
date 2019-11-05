@@ -8,11 +8,9 @@ import cam72cam.mod.event.ClientEvents;
 import cam72cam.mod.world.World;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.culling.ICamera;
-import net.minecraft.client.renderer.entity.Render;
-import net.minecraft.client.renderer.entity.RenderManager;
+import net.minecraft.client.renderer.entity.EntityRendererManager;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.AxisAlignedBB;
-import net.minecraftforge.fml.client.registry.IRenderFactory;
 import net.minecraftforge.fml.client.registry.RenderingRegistry;
 import org.lwjgl.opengl.GL11;
 
@@ -21,7 +19,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class EntityRenderer extends Render<ModdedEntity> {
+public class EntityRenderer extends net.minecraft.client.renderer.entity.EntityRenderer<ModdedEntity> {
     private static Map<Class<? extends Entity>, IEntityRender> renderers = new HashMap<>();
 
     static {
@@ -31,7 +29,7 @@ public class EntityRenderer extends Render<ModdedEntity> {
     public static void registerClientEvents() {
         ClientEvents.REGISTER_ENTITY.subscribe(() -> RenderingRegistry.registerEntityRenderingHandler(ModdedEntity.class, EntityRenderer::new));
 
-        ClientEvents.REGISTER_ENTITY.subscribe(() -> RenderingRegistry.registerEntityRenderingHandler(SeatEntity.class, manager -> new Render<SeatEntity>(manager) {
+        ClientEvents.REGISTER_ENTITY.subscribe(() -> RenderingRegistry.registerEntityRenderingHandler(SeatEntity.class, manager -> new net.minecraft.client.renderer.entity.EntityRenderer<SeatEntity>(manager) {
             @Nullable
             @Override
             protected ResourceLocation getEntityTexture(SeatEntity entity) {
@@ -40,7 +38,7 @@ public class EntityRenderer extends Render<ModdedEntity> {
         }));
     }
 
-    public EntityRenderer(RenderManager factory) {
+    public EntityRenderer(EntityRendererManager factory) {
         super(factory);
     }
 
@@ -53,7 +51,7 @@ public class EntityRenderer extends Render<ModdedEntity> {
             return;
         }
 
-        Minecraft.getMinecraft().mcProfiler.startSection("large_entity_helper");
+        Minecraft.getInstance().getProfiler().startSection("large_entity_helper");
 
         ICamera camera = GlobalRender.getCamera(partialTicks);
 
@@ -63,11 +61,11 @@ public class EntityRenderer extends Render<ModdedEntity> {
             // Duplicate forge logic and render entity if the chunk is not rendered but entity is visible (MC entitysize issues/optimization)
             AxisAlignedBB chunk = new AxisAlignedBB(entity.getBlockPosition().toChunkMin().internal, entity.getBlockPosition().toChunkMax().internal);
             if (!camera.isBoundingBoxInFrustum(chunk) && camera.isBoundingBoxInFrustum(entity.internal.getRenderBoundingBox())) {
-                Minecraft.getMinecraft().getRenderManager().renderEntityStatic(entity.internal, partialTicks, true);
+                Minecraft.getInstance().getRenderManager().renderEntityStatic(entity.internal, partialTicks, true);
             }
         }
 
-        Minecraft.getMinecraft().mcProfiler.endSection();
+        Minecraft.getInstance().getProfiler().endSection();
     }
 
     @Override

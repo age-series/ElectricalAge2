@@ -1,6 +1,6 @@
 package cam72cam.mod.render;
 
-import net.minecraft.client.renderer.texture.TextureUtil;
+import com.mojang.blaze3d.platform.TextureUtil;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 
@@ -22,7 +22,7 @@ public class SpriteSheet {
         int textureID = GL11.glGenTextures();
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, textureID);
         int sheetSize = Math.min(1024, GL11.glGetInteger(GL11.GL_MAX_TEXTURE_SIZE));
-        TextureUtil.allocateTexture(textureID, sheetSize, sheetSize);
+        TextureUtil.prepareImage(textureID, sheetSize, sheetSize);
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
         GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL12.GL_CLAMP_TO_EDGE);

@@ -1,13 +1,13 @@
 package cam72cam.mod.render;
 
 import cam72cam.mod.math.Vec3d;
-import net.minecraft.block.state.IBlockState;
-import net.minecraft.client.renderer.block.model.BakedQuad;
-import net.minecraft.client.renderer.block.model.IBakedModel;
-import net.minecraft.client.renderer.block.model.ItemOverrideList;
+import net.minecraft.block.BlockState;
+import net.minecraft.client.renderer.model.BakedQuad;
+import net.minecraft.client.renderer.model.IBakedModel;
+import net.minecraft.client.renderer.model.ItemOverrideList;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.client.renderer.vertex.VertexFormat;
-import net.minecraft.util.EnumFacing;
+import net.minecraft.util.Direction;
 
 import java.util.*;
 
@@ -17,7 +17,7 @@ public class BakedScaledModel implements IBakedModel {
     private final Vec3d scale;
     private final Vec3d transform;
     private IBakedModel source;
-    private Map<EnumFacing, List<BakedQuad>> quadCache = new HashMap<>();
+    private Map<Direction, List<BakedQuad>> quadCache = new HashMap<>();
 
     public BakedScaledModel(IBakedModel source, Vec3d scale, Vec3d transform) {
         this.source = source;
@@ -32,7 +32,7 @@ public class BakedScaledModel implements IBakedModel {
     }
 
     @Override
-    public List<BakedQuad> getQuads(IBlockState state, EnumFacing side, long rand) {
+    public List<BakedQuad> getQuads(BlockState state, Direction side, Random rand) {
         if (quadCache.get(side) == null) {
             List<BakedQuad> quads = source.getQuads(state, side, rand);
             quadCache.put(side, new ArrayList<>());

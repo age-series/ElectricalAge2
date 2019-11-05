@@ -1,15 +1,15 @@
 package cam72cam.mod.item;
 
 public enum ToolType {
-    SHOVEL("shovel"),
+    SHOVEL(net.minecraftforge.common.ToolType.SHOVEL),
     ;
-    private final String internal;
+    final net.minecraftforge.common.ToolType internal;
 
-    ToolType(String internal) {
+    ToolType(net.minecraftforge.common.ToolType internal) {
         this.internal = internal;
     }
 
     public String toString() {
-        return this.internal;
+        return this.internal.getName();
     }
 }
