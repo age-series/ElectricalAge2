@@ -7,6 +7,7 @@ import cam72cam.mod.event.CommonEvents;
 import cam72cam.mod.math.Vec3d;
 import cam72cam.mod.math.Vec3i;
 import cam72cam.mod.resource.Identifier;
+import cam72cam.mod.text.TextUtil;
 import cam72cam.mod.util.Facing;
 import cam72cam.mod.util.Hand;
 import cam72cam.mod.world.World;
@@ -115,6 +116,10 @@ public class ItemBase {
                 applyCustomName(new ItemStack(stack));
                 tooltip.addAll(ItemBase.this.getTooltip(new ItemStack(stack)).stream().map(StringTextComponent::new).collect(Collectors.toList()));
             }
+        }
+
+        public ITextComponent getDisplayName(net.minecraft.item.ItemStack stack) {
+            return new StringTextComponent(TextUtil.translate(getTranslationKey(stack)));
         }
 
         @Override
