@@ -5,6 +5,7 @@ import cam72cam.mod.entity.Player;
 import cam72cam.mod.math.Vec3d;
 import cam72cam.mod.util.TagCompound;
 import cam72cam.mod.world.World;
+import net.minecraft.client.network.play.ClientPlayNetHandler;
 import net.minecraft.network.PacketBuffer;
 import net.minecraft.util.ResourceLocation;
 import net.minecraftforge.fml.network.NetworkDirection;
@@ -28,10 +29,13 @@ public abstract class Packet {
     private static Map<String, Supplier<Packet>> types = new HashMap<>();
 
     static {
-        net.registerMessage(0, Message.class, Message::toBytes, Message::new, (msg, ctx) -> ctx.get().enqueueWork(() -> {
-            msg.packet.ctx = ctx.get();
-            msg.packet.handle();
-        }));
+        net.registerMessage(0, Message.class, Message::toBytes, Message::new, (msg, ctx) -> {
+            ctx.get().enqueueWork(() -> {
+                msg.packet.ctx = ctx.get();
+                msg.packet.handle();
+            });
+            ctx.get().setPacketHandled(true);
+        });
     }
 
     protected TagCompound data = new TagCompound();
@@ -52,7 +56,7 @@ public abstract class Packet {
     }
 
     public void sendToAllAround(World world, Vec3d pos, double distance) {
-        net.send(PacketDistributor.NEAR.with(() -> new PacketDistributor.TargetPoint(pos.x, pos.y, pos.z, distance, world.internal.getDimension().getType())), this);
+        net.send(PacketDistributor.NEAR.with(() -> new PacketDistributor.TargetPoint(pos.x, pos.y, pos.z, distance, world.internal.getDimension().getType())), new Message(this));
     }
 
     public void sendToServer() {
@@ -60,7 +64,7 @@ public abstract class Packet {
     }
 
     public void sendToAll() {
-        net.send(PacketDistributor.ALL.noArg(), this);
+        net.send(PacketDistributor.ALL.noArg(), new Message(this));
     }
 
     public static class Message {

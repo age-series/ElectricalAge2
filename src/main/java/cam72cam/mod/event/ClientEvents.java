@@ -48,12 +48,8 @@ public class ClientEvents {
     public static final Event<Consumer<SoundLoadEvent>> SOUND_LOAD = new Event<>();
     public static final Event<Runnable> RELOAD = new Event<>();
 
-    @Mod.EventBusSubscriber(value = Dist.CLIENT, modid = ModCore.MODID)
-    public static class ClientEventBus {
-        static {
-            registerClientEvents();
-        }
-
+    @Mod.EventBusSubscriber(modid = ModCore.MODID, bus = Mod.EventBusSubscriber.Bus.FORGE, value = Dist.CLIENT)
+    public static class ClientEventBusForge {
         @SubscribeEvent
         public static void onClientTick(TickEvent.ClientTickEvent event) {
             TICK.execute(Runnable::run);
@@ -70,26 +66,6 @@ public class ClientEvents {
                     event.setCanceled(true);
                 }
             }
-        }
-
-        @SubscribeEvent
-        public static void registerModels(ModelRegistryEvent event) {
-            MODEL_CREATE.execute(Runnable::run);
-        }
-
-        @SubscribeEvent
-        public static void onModelBakeEvent(ModelBakeEvent event) {
-            MODEL_BAKE.execute(x -> x.accept(event));
-        }
-
-        @SubscribeEvent
-        public static void onTextureStitchEvent(TextureStitchEvent.Pre event) {
-            TEXTURE_STITCH.execute(x -> x.accept(event));
-        }
-
-        @SubscribeEvent
-        public static void registerEntities(RegistryEvent.Register<EntityType<?>> event) {
-            REGISTER_ENTITY.execute(Runnable::run);
         }
 
         @SubscribeEvent
@@ -110,6 +86,33 @@ public class ClientEvents {
         @SubscribeEvent
         public static void onSoundLoad(SoundLoadEvent event) {
             SOUND_LOAD.execute(x -> x.accept(event));
+        }
+    }
+
+    @Mod.EventBusSubscriber(modid = ModCore.MODID, bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
+    public static class ClientEventBusMod {
+        static {
+            registerClientEvents();
+        }
+
+        @SubscribeEvent
+        public static void registerModels(ModelRegistryEvent event) {
+            MODEL_CREATE.execute(Runnable::run);
+        }
+
+        @SubscribeEvent
+        public static void onModelBakeEvent(ModelBakeEvent event) {
+            MODEL_BAKE.execute(x -> x.accept(event));
+        }
+
+        @SubscribeEvent
+        public static void onTextureStitchEvent(TextureStitchEvent.Pre event) {
+            TEXTURE_STITCH.execute(x -> x.accept(event));
+        }
+
+        @SubscribeEvent
+        public static void registerEntities(RegistryEvent.Register<EntityType<?>> event) {
+            REGISTER_ENTITY.execute(Runnable::run);
         }
     }
 }

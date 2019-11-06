@@ -122,11 +122,11 @@ public class GuiRegistry {
     }
 
     public void openGUI(Player player, GUIType type) {
-        Minecraft.getInstance().displayGuiScreen((Screen) registry.get(type).apply(new CreateEvent(false, player, 0, 0, 0)));
+        Minecraft.getInstance().displayGuiScreen((Screen) registry.get(type.id).apply(new CreateEvent(false, player, 0, 0, 0)));
     }
 
     public void openGUI(Player player, Entity ent, GUIType type) {
-        Minecraft.getInstance().displayGuiScreen((Screen) registry.get(type).apply(new CreateEvent(false, player, ent.internal.getEntityId(), 0, 0)));
+        Minecraft.getInstance().displayGuiScreen((Screen) registry.get(type.id).apply(new CreateEvent(false, player, ent.internal.getEntityId(), 0, 0)));
     }
 
     public void openGUI(Player player, Vec3i pos, GUIType type) {
@@ -145,7 +145,7 @@ public class GuiRegistry {
         }, pos.internal);
         */
 
-        Minecraft.getInstance().displayGuiScreen((Screen) registry.get(type).apply(new CreateEvent(false, player, pos.x, pos.y, pos.z)));
+        Minecraft.getInstance().displayGuiScreen((Screen) registry.get(type.id).apply(new CreateEvent(false, player, pos.x, pos.y, pos.z)));
     }
 
     public static class GUIType {

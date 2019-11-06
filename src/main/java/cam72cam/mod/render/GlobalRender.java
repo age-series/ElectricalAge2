@@ -10,6 +10,8 @@ import cam72cam.mod.math.Vec3i;
 import cam72cam.mod.util.CollectionUtil;
 import cam72cam.mod.util.Hand;
 import net.minecraft.block.Block;
+import net.minecraft.block.BlockState;
+import net.minecraft.block.Blocks;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.culling.Frustum;
 import net.minecraft.client.renderer.culling.ICamera;
@@ -135,6 +137,10 @@ public class GlobalRender {
 
         public double getDistanceSq(double x, double y, double z) {
             return 1;
+        }
+
+        public BlockState getBlockState() {
+            return Blocks.AIR.getDefaultState();
         }
     }
 }

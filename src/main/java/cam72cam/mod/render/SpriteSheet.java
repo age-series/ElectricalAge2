@@ -4,6 +4,7 @@ import com.mojang.blaze3d.platform.TextureUtil;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 
+import java.awt.image.BufferedImage;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -46,6 +47,13 @@ public class SpriteSheet {
             sprites.put(id, unallocated.remove(0));
         }
         SpriteInfo sprite = sprites.get(id);
+
+        BufferedImage img = new BufferedImage(spriteSize, spriteSize, BufferedImage.TYPE_INT_ARGB);
+        for (int i = 0; i < spriteSize; i++) {
+            for (int j = 0; j < spriteSize; j++) {
+                img.setRGB(i, j, pixels.get(i * spriteSize + j));
+            }
+        }
 
         int prevTexture = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, sprite.texID);

@@ -20,6 +20,7 @@ import net.minecraft.util.Unit;
 import net.minecraft.world.World;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.fml.DistExecutor;
+import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLLoadCompleteEvent;
 import net.minecraftforge.fml.event.lifecycle.InterModEnqueueEvent;
@@ -45,10 +46,15 @@ public class ModCore {
     public static final String NAME = "UniversalModCore";
     public static final String VERSION = "1.0.0";
     public static ModCore instance;
+    public static boolean hasResources;
     static List<Supplier<Mod>> modCtrs = new ArrayList<>();
 
     private List<Mod> mods;
     private Logger logger;
+
+    static {
+        cam72cam.immersiverailroading.Mod.hackRegistration();
+    }
 
     public static void register(Supplier<Mod> ctr) {
         modCtrs.add(ctr);
@@ -58,17 +64,21 @@ public class ModCore {
         System.out.println("Welcome to UniversalModCore!");
         instance = this;
         mods = modCtrs.stream().map(Supplier::get).collect(Collectors.toList());
+        proxy.event(ModEvent.CONSTRUCT);
 
         FMLJavaModLoadingContext.get().getModEventBus().addListener(this::preInit);
         FMLJavaModLoadingContext.get().getModEventBus().addListener(this::init);
         FMLJavaModLoadingContext.get().getModEventBus().addListener(this::postInit);
         FMLJavaModLoadingContext.get().getModEventBus().addListener(this::serverStarting);
         FMLJavaModLoadingContext.get().getModEventBus().addListener(this::serverStarted);
+
+        MinecraftForge.EVENT_BUS.register(this);
     }
 
     public void preInit(FMLCommonSetupEvent event) {
         logger = LogManager.getLogger();
         proxy.event(ModEvent.INITIALIZE);
+        hasResources = true;
     }
 
     public void init(InterModEnqueueEvent event) {
@@ -118,7 +128,6 @@ public class ModCore {
     private static Proxy proxy = DistExecutor.runForDist(() -> ClientProxy::new, () -> ServerProxy::new);
     public static class Proxy {
         public Proxy() {
-            event(ModEvent.CONSTRUCT);
         }
 
         public void event(ModEvent event) {
@@ -146,7 +155,7 @@ public class ModCore {
     }
 
     public static class Internal extends Mod {
-        public int skipN = 1;
+        public int skipN = 0;
 
         @Override
         public String modID() {
@@ -195,7 +204,7 @@ public class ModCore {
                         ClientEvents.fireReload();
                     });
                     BlockRender.onPostColorSetup();
-                    ClientEvents.fireReload();
+                    //ClientEvents.fireReload();
                     break;
             }
 

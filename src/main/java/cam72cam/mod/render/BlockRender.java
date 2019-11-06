@@ -52,7 +52,8 @@ public class BlockRender {
         colors.forEach(Runnable::run);
 
         ClientRegistry.bindTileEntitySpecialRenderer(TileEntity.class, new TileEntityRenderer<TileEntity>() {
-            public void render(TileEntity te, double x, double y, double z, float partialTicks, int destroyStage, float alpha) {
+            @Override
+            public void render(TileEntity te, double x, double y, double z, float partialTicks, int destroyStage) {
                 BlockEntity instance = te.instance();
                 if (instance == null) {
                     return;
@@ -106,10 +107,10 @@ public class BlockRender {
                 public List<BakedQuad> getQuads(@Nullable BlockState state, @Nullable Direction side, Random rand, IModelData properties) {
                     if (block instanceof BlockTypeEntity) {
                         TileEntity data = properties.getData(TileEntity.TE_PROPERTY);
-                        if (!cls.isInstance(data)) {
+                        if (!cls.isInstance(data.instance())) {
                             return EMPTY;
                         }
-                        StandardModel out = model.apply(cls.cast(data));
+                        StandardModel out = model.apply(cls.cast(data.instance()));
                         if (out == null) {
                             return EMPTY;
                         }

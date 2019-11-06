@@ -47,18 +47,16 @@ public class ItemRender {
 
         ClientEvents.TEXTURE_STITCH.subscribe(evt -> evt.addSprite(tex.internal));
 
-        ClientEvents.MODEL_CREATE.subscribe(() -> ModelLoader.addSpecialModel(item.internal.getRegistryName()));
+        ClientEvents.MODEL_CREATE.subscribe(() -> Minecraft.getInstance().getItemRenderer().getItemModelMesher().register(item.internal, new ModelResourceLocation(item.getRegistryName().internal, "")));
     }
 
     public static void register(ItemBase item, IItemModel model) {
-        //ClientEvents.MODEL_CREATE.subscribe(() ->
-        //        ModelLoader.addSpecialModel().setCustomModelResourceLocation(item.internal, 0, new ModelResourceLocation(item.getRegistryName().internal, ""))
-        //);
+        ClientEvents.MODEL_CREATE.subscribe(() -> Minecraft.getInstance().getItemRenderer().getItemModelMesher().register(item.internal, new ModelResourceLocation(item.getRegistryName().internal, "")));
 
         ClientEvents.MODEL_BAKE.subscribe((ModelBakeEvent event) -> event.getModelRegistry().put(new ModelResourceLocation(item.getRegistryName().internal, ""), new BakedItemModel(model)));
 
         if (model instanceof ISpriteItemModel) {
-            ClientEvents.RELOAD.subscribe(() -> {
+            ClientEvents.MODEL_CREATE.subscribe(() -> {
                 List<ItemStack> variants = item.getItemVariants(null);
                 Progress.Bar bar = Progress.push(item.getClass().getSimpleName() + " Icon", variants.size());
                 for (ItemStack stack : variants) {
@@ -130,7 +128,19 @@ public class ItemRender {
         fb.framebufferClear(Minecraft.IS_RUNNING_ON_MAC);
         fb.bindFramebuffer(true);
 
+        GL11.glMatrixMode(GL11.GL_PROJECTION);
+        GL11.glPushMatrix();
+        GL11.glLoadIdentity();
+
+        GL11.glMatrixMode(GL11.GL_MODELVIEW);
+        GL11.glPushMatrix();
+        GL11.glLoadIdentity();
+
         GLBoolTracker depth = new GLBoolTracker(GL11.GL_DEPTH_TEST, true);
+        GLBoolTracker alpha = new GLBoolTracker(GL11.GL_ALPHA_TEST, true);
+
+        // GL COLOR MATERIAL = true
+
         int oldDepth = GL11.glGetInteger(GL11.GL_DEPTH_FUNC);
         GL11.glDepthFunc(GL11.GL_LESS);
         GL11.glClearDepth(1);
@@ -138,12 +148,21 @@ public class ItemRender {
         model.renderCustom();
 
         ByteBuffer buff = ByteBuffer.allocateDirect(4 * width * height);
+        fb.bindFramebufferTexture();
         GL11.glReadPixels(0, 0, width, height, GL12.GL_BGRA, GL11.GL_UNSIGNED_BYTE, buff);
+        fb.unbindFramebufferTexture();
 
         fb.unbindFramebuffer();
         fb.deleteFramebuffer();
         GL11.glDepthFunc(oldDepth);
+        alpha.restore();
         depth.restore();
+
+        GL11.glMatrixMode(GL11.GL_MODELVIEW);
+        GL11.glPopMatrix();
+        GL11.glMatrixMode(GL11.GL_PROJECTION);
+        GL11.glPopMatrix();
+        GL11.glMatrixMode(GL11.GL_MODELVIEW);
 
         iconSheet.setSprite(id, buff);
     }

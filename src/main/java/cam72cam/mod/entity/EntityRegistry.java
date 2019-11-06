@@ -40,11 +40,13 @@ public class EntityRegistry {
             EntityType.Builder<net.minecraft.entity.Entity> builder = EntityType.Builder.create((et, world) -> new ModdedEntity(et, world, ctr, settings), EntityClassification.MISC)
                     .setShouldReceiveVelocityUpdates(false)
                     .setTrackingRange(distance)
-                    .setUpdateInterval(20);
+                    .setUpdateInterval(20)
+                    .setCustomClientFactory((se, world) -> new ModdedEntity(registered.get(type), world, ctr, settings));
             if (settings.immuneToFire) {
                 builder = builder.immuneToFire();
             }
             EntityType<net.minecraft.entity.Entity> et = builder.build(id.toString());
+            et.setRegistryName(id.internal);
             ForgeRegistries.ENTITIES.register(et);
             registered.put(type, et);
         });
@@ -61,8 +63,8 @@ public class EntityRegistry {
                 if (World.get(world) != null) {
                     String msg = ((ModdedEntity) entity).getSelf().tryJoinWorld();
                     if (msg != null) {
-                        missingResources = msg;
-                        return false;
+                        //missingResources = msg;
+                        //return false; GAH FORGE FMLPlayMessages:166!
                     }
                 }
             }

@@ -34,6 +34,12 @@ class ScreenBuilder extends Screen implements IScreenBuilder {
     }
 
     @Override
+    public void onClose() {
+        screen.onClose();
+        super.onClose();
+    }
+
+    @Override
     public void addButton(Button btn) {
         super.addButton(btn.internal());
         this.buttonMap.put(btn.internal(), btn);

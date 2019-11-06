@@ -67,6 +67,7 @@ public class TileEntity extends net.minecraft.tileentity.TileEntity {
                     return true;
                 }
             }, null);
+            type.setRegistryName(id.internal);
             types.put(id.toString(), type);
             ForgeRegistries.TILE_ENTITIES.register(type);
         });

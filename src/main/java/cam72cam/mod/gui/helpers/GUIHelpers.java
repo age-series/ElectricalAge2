@@ -116,11 +116,11 @@ public class GUIHelpers {
     }
 
     public static int getScreenWidth() {
-        return Minecraft.getInstance().mainWindow.getFramebufferWidth();
+        return Minecraft.getInstance().mainWindow.getFramebufferWidth()/2;
     }
 
     public static int getScreenHeight() {
-        return Minecraft.getInstance().mainWindow.getFramebufferHeight();
+        return Minecraft.getInstance().mainWindow.getFramebufferHeight()/2;
     }
 
     public static void drawItem(ItemStack stack, int x, int y) {

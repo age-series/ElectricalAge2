@@ -12,12 +12,16 @@ import net.minecraft.network.PacketBuffer;
 import net.minecraft.network.play.server.SSpawnObjectPacket;
 import net.minecraft.util.ResourceLocation;
 import net.minecraftforge.fml.common.registry.IEntityAdditionalSpawnData;
+import net.minecraftforge.fml.network.NetworkHooks;
 
 import java.util.UUID;
 
 public class SeatEntity extends Entity implements IEntityAdditionalSpawnData {
-    public static final EntityType<?> TYPE = EntityType.Builder.create(SeatEntity::new, EntityClassification.MISC).setShouldReceiveVelocityUpdates(false).setTrackingRange(512).setUpdateInterval(20).immuneToFire().build(SeatEntity.ID.toString());
     static final ResourceLocation ID = new ResourceLocation(ModCore.MODID, "seat");
+    public static final EntityType<?> TYPE = EntityType.Builder.create(SeatEntity::new, EntityClassification.MISC).setShouldReceiveVelocityUpdates(false).setTrackingRange(512).setUpdateInterval(20).immuneToFire().build(SeatEntity.ID.toString());
+    static {
+        TYPE.setRegistryName(ID);
+    }
     private UUID parent;
     private UUID passenger;
     boolean shouldSit = true;
@@ -135,7 +139,7 @@ public class SeatEntity extends Entity implements IEntityAdditionalSpawnData {
 
     @Override
     public IPacket<?> createSpawnPacket() {
-        return new SSpawnObjectPacket(this);
+        return NetworkHooks.getEntitySpawningPacket(this);
     }
 
     public cam72cam.mod.entity.Entity getEntityPassenger() {

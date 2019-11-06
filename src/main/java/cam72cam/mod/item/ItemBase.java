@@ -1,5 +1,6 @@
 package cam72cam.mod.item;
 
+import cam72cam.mod.ModCore;
 import cam72cam.mod.entity.Entity;
 import cam72cam.mod.entity.Player;
 import cam72cam.mod.event.CommonEvents;
@@ -38,7 +39,7 @@ public class ItemBase {
     public ItemBase(String modID, String name, int stackSize, CreativeTab... tabs) {
         identifier = new ResourceLocation(modID, name);
 
-        internal = new ItemInternal(new Item.Properties().maxStackSize(stackSize)); // .setTEISR()
+        internal = new ItemInternal(new Item.Properties().maxStackSize(stackSize).group(tabs[0].internal)); // .setTEISR()
         internal.setRegistryName(identifier);
         this.creativeTabs = tabs;
 
@@ -92,7 +93,9 @@ public class ItemBase {
         @Override
         public void fillItemGroup(ItemGroup tab, NonNullList<net.minecraft.item.ItemStack> items) {
             CreativeTab myTab = tab != ItemGroup.SEARCH ? new CreativeTab(tab) : null;
-            items.addAll(getItemVariants(myTab).stream().map((ItemStack stack) -> stack.internal).collect(Collectors.toList()));
+            if (ModCore.hasResources) {
+                items.addAll(getItemVariants(myTab).stream().map((ItemStack stack) -> stack.internal).collect(Collectors.toList()));
+            }
         }
 
         @Override
@@ -108,8 +111,10 @@ public class ItemBase {
         @OnlyIn(Dist.CLIENT)
         public final void addInformation(net.minecraft.item.ItemStack stack, @Nullable net.minecraft.world.World worldIn, List<ITextComponent> tooltip, ITooltipFlag flagIn) {
             super.addInformation(stack, worldIn, tooltip, flagIn);
-            applyCustomName(new ItemStack(stack));
-            tooltip.addAll(ItemBase.this.getTooltip(new ItemStack(stack)).stream().map(StringTextComponent::new).collect(Collectors.toList()));
+            if (ModCore.hasResources) {
+                applyCustomName(new ItemStack(stack));
+                tooltip.addAll(ItemBase.this.getTooltip(new ItemStack(stack)).stream().map(StringTextComponent::new).collect(Collectors.toList()));
+            }
         }
 
         @Override

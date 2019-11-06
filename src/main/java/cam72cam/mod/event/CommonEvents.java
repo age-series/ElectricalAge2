@@ -30,7 +30,7 @@ public class CommonEvents {
 
     public static final class Block {
         public static final Event<Runnable> REGISTER = new Event<>();
-        public static final Event<EventBus.BlockBrokenEvent> BROKEN = new Event<>();
+        public static final Event<EventBusForge.BlockBrokenEvent> BROKEN = new Event<>();
     }
 
     public static final class Tile {
@@ -47,15 +47,11 @@ public class CommonEvents {
 
     public static final class Entity {
         public static final Event<Runnable> REGISTER = new Event<>();
-        public static final Event<EventBus.EntityJoinEvent> JOIN = new Event<>();
+        public static final Event<EventBusForge.EntityJoinEvent> JOIN = new Event<>();
     }
 
-    @Mod.EventBusSubscriber(modid = ModCore.MODID)
-    public static final class EventBus {
-        static {
-            registerEvents();
-        }
-
+    @Mod.EventBusSubscriber(modid = ModCore.MODID, bus = Mod.EventBusSubscriber.Bus.FORGE)
+    public static final class EventBusForge {
         // World
         @SubscribeEvent
         public static void onWorldLoad(WorldEvent.Load event) {
@@ -74,14 +70,15 @@ public class CommonEvents {
             }
         }
 
-        @SubscribeEvent
-        public static void registerBlocks(RegistryEvent.Register<net.minecraft.block.Block> event) {
-            Block.REGISTER.execute(Runnable::run);
+        @FunctionalInterface
+        public interface EntityJoinEvent {
+            boolean onJoin(net.minecraft.world.World world, net.minecraft.entity.Entity entity);
         }
-
         @SubscribeEvent
-        public static void registerTiles(RegistryEvent.Register<net.minecraft.tileentity.TileEntityType<?>> event) {
-            Tile.REGISTER.execute(Runnable::run);
+        public static void onEntityJoin(EntityJoinWorldEvent event) {
+            if (!Entity.JOIN.executeCancellable(x -> x.onJoin(event.getWorld(), event.getEntity()))) {
+                event.setCanceled(true);
+            }
         }
 
         @FunctionalInterface
@@ -93,6 +90,24 @@ public class CommonEvents {
             if (!Block.BROKEN.executeCancellable(x -> x.onBroken(event.getWorld().getWorld(), event.getPos(), event.getPlayer()))) {
                 event.setCanceled(true);
             }
+        }
+
+    }
+
+    @Mod.EventBusSubscriber(modid = ModCore.MODID, bus = Mod.EventBusSubscriber.Bus.MOD)
+    public static final class EventBusMod {
+        static {
+            registerEvents();
+        }
+
+        @SubscribeEvent
+        public static void registerBlocks(RegistryEvent.Register<net.minecraft.block.Block> event) {
+            Block.REGISTER.execute(Runnable::run);
+        }
+
+        @SubscribeEvent
+        public static void registerTiles(RegistryEvent.Register<net.minecraft.tileentity.TileEntityType<?>> event) {
+            Tile.REGISTER.execute(Runnable::run);
         }
 
         @SubscribeEvent
@@ -108,17 +123,6 @@ public class CommonEvents {
         @SubscribeEvent
         public static void registerEntities(RegistryEvent.Register<EntityType<?>> event) {
             Entity.REGISTER.execute(Runnable::run);
-        }
-
-        @FunctionalInterface
-        public interface EntityJoinEvent {
-            boolean onJoin(net.minecraft.world.World world, net.minecraft.entity.Entity entity);
-        }
-        @SubscribeEvent
-        public static void onEntityJoin(EntityJoinWorldEvent event) {
-            if (!Entity.JOIN.executeCancellable(x -> x.onJoin(event.getWorld(), event.getEntity()))) {
-                event.setCanceled(true);
-            }
         }
     }
 }

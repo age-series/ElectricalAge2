@@ -1,6 +1,7 @@
 package cam72cam.mod.resource;
 
 import net.minecraft.util.ResourceLocation;
+import net.minecraftforge.fml.loading.moddiscovery.ExplodedDirectoryLocator;
 import org.apache.commons.io.FilenameUtils;
 
 import java.io.IOException;
@@ -15,11 +16,11 @@ public class Identifier {
     }
 
     public Identifier(String ident) {
-        this(new ResourceLocation(ident));
+        this(new ResourceLocation(ident.toLowerCase()));
     }
 
     public Identifier(String domain, String path) {
-        this(new ResourceLocation(domain, path));
+        this(new ResourceLocation(domain.toLowerCase(), path.toLowerCase()));
     }
 
     @Override

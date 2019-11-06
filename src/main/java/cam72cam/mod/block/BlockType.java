@@ -81,7 +81,7 @@ public abstract class BlockType {
 
     protected class BlockInternal extends net.minecraft.block.Block {
         public BlockInternal() {
-            super(Block.Properties.create(settings.material.internal).sound(settings.material.soundType).hardnessAndResistance(settings.hardness));
+            super(Block.Properties.create(settings.material.internal).sound(settings.material.soundType).hardnessAndResistance(settings.hardness).variableOpacity());
             setRegistryName(new ResourceLocation(settings.modID, settings.name));
         }
 
