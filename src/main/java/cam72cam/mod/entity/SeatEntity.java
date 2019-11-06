@@ -11,6 +11,7 @@ import net.minecraft.network.IPacket;
 import net.minecraft.network.PacketBuffer;
 import net.minecraft.network.play.server.SSpawnObjectPacket;
 import net.minecraft.util.ResourceLocation;
+import net.minecraft.util.registry.Registry;
 import net.minecraftforge.fml.common.registry.IEntityAdditionalSpawnData;
 import net.minecraftforge.fml.network.NetworkHooks;
 
@@ -18,9 +19,16 @@ import java.util.UUID;
 
 public class SeatEntity extends Entity implements IEntityAdditionalSpawnData {
     static final ResourceLocation ID = new ResourceLocation(ModCore.MODID, "seat");
-    public static final EntityType<?> TYPE = EntityType.Builder.create(SeatEntity::new, EntityClassification.MISC).setShouldReceiveVelocityUpdates(false).setTrackingRange(512).setUpdateInterval(20).immuneToFire().build(SeatEntity.ID.toString());
+    public static final EntityType<?> TYPE;
     static {
-        TYPE.setRegistryName(ID);
+        TYPE = EntityType.Builder.create(SeatEntity::new, EntityClassification.MISC)
+                .setShouldReceiveVelocityUpdates(false)
+                .setTrackingRange(512)
+                .setUpdateInterval(20)
+                .immuneToFire()
+                .setCustomClientFactory((msg, world) -> new SeatEntity(Registry.ENTITY_TYPE.getByValue(msg.getTypeId()), world))
+                .build(SeatEntity.ID.toString())
+                .setRegistryName(ID);
     }
     private UUID parent;
     private UUID passenger;
@@ -56,7 +64,7 @@ public class SeatEntity extends Entity implements IEntityAdditionalSpawnData {
     @Override
     public void tick() {
         ticks ++;
-        if (world.isRemote || ticks < 5) {
+        if (ticks < 5) {
             return;
         }
 
