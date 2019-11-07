@@ -6,6 +6,7 @@ import cam72cam.mod.math.Vec3d;
 import cam72cam.mod.math.Vec3i;
 import com.mojang.blaze3d.platform.GLX;
 import net.minecraft.client.Minecraft;
+import net.minecraft.util.math.EntityRayTraceResult;
 import net.minecraft.util.math.RayTraceResult;
 
 public class MinecraftClient {
@@ -29,9 +30,11 @@ public class MinecraftClient {
     }
 
     public static Entity getEntityMouseOver() {
-        net.minecraft.entity.Entity ent = Minecraft.getInstance().pointedEntity;
-        if (ent != null) {
-            return getPlayer().getWorld().getEntity(ent.getUniqueID(), Entity.class);
+        if (Minecraft.getInstance().objectMouseOver instanceof EntityRayTraceResult) {
+            net.minecraft.entity.Entity ent = ((EntityRayTraceResult) Minecraft.getInstance().objectMouseOver).getEntity();
+            if (ent != null) {
+                return getPlayer().getWorld().getEntity(ent.getUniqueID(), Entity.class);
+            }
         }
         return null;
     }

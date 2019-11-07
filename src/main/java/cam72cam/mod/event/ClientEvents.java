@@ -57,13 +57,13 @@ public class ClientEvents {
 
         @SubscribeEvent
         public static void onClick(InputEvent.MouseInputEvent event) {
-            int attackID = Minecraft.getInstance().gameSettings.keyBindAttack.getKey().getKeyCode() + 100;
-            int useID = Minecraft.getInstance().gameSettings.keyBindUseItem.getKey().getKeyCode() + 100;
+            int attackID = Minecraft.getInstance().gameSettings.keyBindAttack.getKey().getKeyCode();
+            int useID = Minecraft.getInstance().gameSettings.keyBindUseItem.getKey().getKeyCode();
 
             if ((event.getButton() == attackID || event.getButton() == useID) && event.getAction() == 1) {
                 Hand button = attackID == event.getButton() ? Hand.SECONDARY : Hand.PRIMARY;
                 if (!CLICK.executeCancellable(x -> x.apply(button))) {
-                    event.setCanceled(true);
+                    //event.setCanceled(true);
                 }
             }
         }
