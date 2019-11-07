@@ -12,6 +12,7 @@ import net.minecraft.block.Block;
 import net.minecraft.block.BlockRenderType;
 import net.minecraft.block.BlockState;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.util.BlockRenderLayer;
 import net.minecraft.util.Direction;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.AxisAlignedBB;
@@ -168,12 +169,14 @@ public abstract class BlockType {
             return settings.redstoneProvider;
         }
 
-        /* TODO
-        @SideOnly(Side.CLIENT)
-        public BlockRenderLayer getBlockLayer() {
+        @Override
+        public BlockRenderLayer getRenderLayer() {
             return BlockRenderLayer.CUTOUT_MIPPED;
         }
-        */
 
+        @Override
+        public boolean func_220074_n(BlockState state) {
+            return true;
+        }
     }
 }
