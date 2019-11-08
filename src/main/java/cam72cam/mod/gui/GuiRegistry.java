@@ -18,6 +18,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.zip.CRC32;
 
 
 public class GuiRegistry {
@@ -43,8 +44,15 @@ public class GuiRegistry {
         });
     }
 
+    private int intFromName(String s) {
+        CRC32 hasher = new CRC32();
+        hasher.update(s.length());
+        hasher.update(s.getBytes());
+        return (int) hasher.getValue();
+    }
+
     public GUIType register(String name, Supplier<IScreen> ctr) {
-        int id = name.hashCode();
+        int id = intFromName(name);
         registry.put(id, event -> {
             if (event.isServer) {
                 return null;
@@ -55,7 +63,7 @@ public class GuiRegistry {
     }
 
     public <T extends BlockEntity> GUIType registerBlock(Class<T> cls, Function<T, IScreen> ctr) {
-        int id = cls.toString().hashCode();
+        int id = intFromName(cls.toString());
         registry.put(id, event -> {
             if (event.isServer) {
                 return null;
@@ -75,7 +83,7 @@ public class GuiRegistry {
     }
 
     public <T extends Entity> GUIType registerEntityContainer(Class<T> cls, Function<T, IContainer> ctr) {
-        int id = ("container" + cls.toString()).hashCode();
+        int id = intFromName(("container" + cls.toString()));
         registry.put(id, event -> {
             T entity = event.player.getWorld().getEntity(event.entityIDorX, cls);
             if (entity == null) {
@@ -91,7 +99,7 @@ public class GuiRegistry {
     }
 
     public <T extends BlockEntity> GUIType registerBlockContainer(Class<T> cls, Function<T, IContainer> ctr) {
-        int id = ("container" + cls.toString()).hashCode();
+        int id = intFromName(("container" + cls.toString()));
         registry.put(id, event -> {
             T entity = event.player.getWorld().getBlockEntity(new Vec3i(event.entityIDorX, event.y, event.z), cls);
             if (entity == null) {
