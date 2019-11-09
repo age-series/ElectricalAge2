@@ -14,7 +14,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-class ScreenBuilder extends GuiScreen implements IScreenBuilder {
+public class ScreenBuilder extends GuiScreen implements IScreenBuilder {
     private final IScreen screen;
     private Map<GuiButton, Button> buttonMap = new HashMap<>();
     private List<GuiTextField> textFields = new ArrayList<>();
@@ -27,12 +27,11 @@ class ScreenBuilder extends GuiScreen implements IScreenBuilder {
 
     @Override
     public void close() {
-        screen.onClose();
-
         this.mc.displayGuiScreen(null);
         if (this.mc.currentScreen == null) {
             this.mc.setIngameFocus();
         }
+        screen.onClose();
     }
 
     @Override

@@ -35,4 +35,8 @@ public class TextField {
     public void setText(String s) {
         textfield.setText(s);
     }
+
+    public void setVisible(Boolean visible) {
+        textfield.setVisible(visible);
+    }
 }
