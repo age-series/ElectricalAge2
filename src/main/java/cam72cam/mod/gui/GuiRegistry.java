@@ -8,6 +8,7 @@ import cam72cam.mod.gui.container.ClientContainerBuilder;
 import cam72cam.mod.gui.container.IContainer;
 import cam72cam.mod.gui.container.ServerContainerBuilder;
 import cam72cam.mod.math.Vec3i;
+import cam72cam.mod.resource.Identifier;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.world.World;
 import net.minecraftforge.fml.common.network.IGuiHandler;
@@ -23,9 +24,9 @@ import java.util.zip.CRC32;
 
 public class GuiRegistry {
     private static Map<Integer, Function<CreateEvent, Object>> registry = new HashMap<>();
+    public static GuiRegistry INSTANCE = new GuiRegistry();
 
-    public GuiRegistry(ModCore.Mod mod) {
-        //TODO support for multiple mods using different ID ranges
+    public GuiRegistry() {
     }
 
     public static void registration() {
@@ -51,8 +52,8 @@ public class GuiRegistry {
         return (int) hasher.getValue();
     }
 
-    public GUIType register(String name, Supplier<IScreen> ctr) {
-        int id = intFromName(name);
+    public GUIType register(Identifier name, Supplier<IScreen> ctr) {
+        int id = intFromName(name.toString());
         registry.put(id, event -> {
             if (event.isServer) {
                 return null;
