@@ -1,5 +1,6 @@
 package cam72cam.mod.render;
 
+import cam72cam.mod.ModCore;
 import cam72cam.mod.block.BlockEntity;
 import cam72cam.mod.block.BlockType;
 import cam72cam.mod.block.BlockTypeEntity;
@@ -54,6 +55,10 @@ public class BlockRender {
         ClientRegistry.bindTileEntitySpecialRenderer(TileEntity.class, new TileEntityRenderer<TileEntity>() {
             @Override
             public void render(TileEntity te, double x, double y, double z, float partialTicks, int destroyStage) {
+                if (ModCore.isInReload()) {
+                    return;
+                }
+
                 BlockEntity instance = te.instance();
                 if (instance == null) {
                     return;

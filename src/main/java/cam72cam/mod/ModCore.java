@@ -12,11 +12,13 @@ import cam72cam.mod.net.PacketDirection;
 import cam72cam.mod.render.BlockRender;
 import cam72cam.mod.text.Command;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.texture.AtlasTexture;
 import net.minecraft.profiler.IProfiler;
 import net.minecraft.resources.IFutureReloadListener;
 import net.minecraft.resources.IResourceManager;
 import net.minecraft.resources.SimpleReloadableResourceManager;
 import net.minecraft.util.Unit;
+import net.minecraft.util.Util;
 import net.minecraft.world.World;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.fml.DistExecutor;
@@ -48,6 +50,7 @@ public class ModCore {
     public static ModCore instance;
     public static boolean hasResources;
     static List<Supplier<Mod>> modCtrs = new ArrayList<>();
+    private static boolean isInReload;
 
     private List<Mod> mods;
     private Logger logger;
@@ -149,6 +152,10 @@ public class ModCore {
         }
     }
 
+    public static boolean isInReload() {
+        return isInReload;
+    }
+
 
     static {
         ModCore.register(Internal::new);
@@ -195,6 +202,7 @@ public class ModCore {
         public void clientEvent(ModEvent event) {
             switch (event) {
                 case SETUP:
+                    /*
                     ((SimpleReloadableResourceManager) Minecraft.getInstance().getResourceManager()).addReloadListener((SynchronousResourceReloadListener)resourceManager -> {
                         if (skipN > 0) {
                             skipN--;
@@ -203,6 +211,7 @@ public class ModCore {
                         ModCore.instance.mods.forEach(mod -> mod.clientEvent(ModEvent.RELOAD));
                         ClientEvents.fireReload();
                     });
+                    */
                     BlockRender.onPostColorSetup();
                     //ClientEvents.fireReload();
                     break;
@@ -213,6 +222,17 @@ public class ModCore {
         @Override
         public void serverEvent(ModEvent event) {
         }
+    }
+
+    static int i = 1;
+    public static void testReload() {
+        if (i % 4 == 0) { // 4 sheets, we fire on the last one
+            ModCore.isInReload = true;
+            proxy.event(ModEvent.RELOAD);
+            ClientEvents.fireReload();
+            ModCore.isInReload = false;
+        }
+        i++;
     }
 
     public static void debug(String msg, Object... params) {

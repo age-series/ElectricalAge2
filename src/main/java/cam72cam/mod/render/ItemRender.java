@@ -1,6 +1,7 @@
 package cam72cam.mod.render;
 
 import cam72cam.mod.MinecraftClient;
+import cam72cam.mod.ModCore;
 import cam72cam.mod.event.ClientEvents;
 import cam72cam.mod.gui.Progress;
 import cam72cam.mod.item.ItemBase;
@@ -56,7 +57,7 @@ public class ItemRender {
         ClientEvents.MODEL_BAKE.subscribe((ModelBakeEvent event) -> event.getModelRegistry().put(new ModelResourceLocation(item.getRegistryName().internal, ""), new BakedItemModel(model)));
 
         if (model instanceof ISpriteItemModel) {
-            ClientEvents.MODEL_CREATE.subscribe(() -> {
+            ClientEvents.RELOAD.subscribe(() -> {
                 List<ItemStack> variants = item.getItemVariants(null);
                 Progress.Bar bar = Progress.push(item.getClass().getSimpleName() + " Icon", variants.size());
                 for (ItemStack stack : variants) {
@@ -207,7 +208,7 @@ public class ItemRender {
              * This is probably really fragile if someone calls getQuads
              * before actually setting up the correct GL context.
              */
-            if (side == null) {
+            if (side == null && !ModCore.isInReload()) {
                 model.applyTransform(type);
                 std.renderCustom();
             }
