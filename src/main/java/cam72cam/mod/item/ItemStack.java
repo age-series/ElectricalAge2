@@ -112,7 +112,7 @@ public class ItemStack {
     }
 
     public int getBurnTime() {
-        return AbstractFurnaceTileEntity.getBurnTimes().getOrDefault(internal, 0);
+        return AbstractFurnaceTileEntity.getBurnTimes().getOrDefault(internal.getItem(), 0);
     }
 
     public int getLimit() {
