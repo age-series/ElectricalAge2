@@ -1,6 +1,6 @@
 package cam72cam.mod.config;
 
-import net.minecraftforge.fml.common.Loader;
+import net.minecraftforge.fml.loading.FMLPaths;
 import org.apache.commons.lang3.StringUtils;
 
 import java.lang.annotation.Annotation;
@@ -43,7 +43,7 @@ public class ConfigFile {
         public ConfigInstance(Class<?> cls) {
             this.pc = new PropertyClass(cls);
             File file = pc.getAnnotation(File.class);
-            this.path = Paths.get(Loader.instance().getConfigDir().toString(), file.value());
+            this.path = Paths.get(FMLPaths.CONFIGDIR.get().toString(), file.value());
         }
 
         public void read() {

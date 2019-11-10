@@ -31,7 +31,7 @@ public class ModCoreCommand extends Command {
         if (args.length == 2 && "entity".equals(args[0]) && "list".equals(args[1])) {
             Map<String, Integer> counts = new HashMap<>();
             for (Entity entity : world.getEntities(Entity.class)) {
-                String id = entity.internal.getName();
+                String id = entity.internal.getName().getString();
                 if (!counts.containsKey(id)) {
                     counts.put(id, 0);
                 }

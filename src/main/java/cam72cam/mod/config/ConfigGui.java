@@ -3,7 +3,7 @@ package cam72cam.mod.config;
 import cam72cam.mod.gui.*;
 import cam72cam.mod.util.Hand;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiScreen;
+import net.minecraft.client.gui.screen.Screen;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -29,7 +29,7 @@ public class ConfigGui implements IScreen {
             widgets.add(screen -> new Button(screen, 0 - 100,  finalI * 20, 200, 20, type.getSimpleName()) {
                 @Override
                 public void onClick(Hand hand) {
-                    Minecraft.getMinecraft().displayGuiScreen(new ScreenBuilder(new ConfigGui(ConfigGui.this, ci.pc, ci)));
+                    Minecraft.getInstance().displayGuiScreen(new ScreenBuilder(new ConfigGui(ConfigGui.this, ci.pc, ci)));
                 }
             });
             i++;
@@ -56,7 +56,7 @@ public class ConfigGui implements IScreen {
                     Button btn = new Button(screen, 0 - 100, offsetI * 20, 200, 20, property.getName()) {
                         @Override
                         public void onClick(Hand hand) {
-                            Minecraft.getMinecraft().displayGuiScreen(new ScreenBuilder(new ConfigGui(ConfigGui.this, (ConfigFile.PropertyClass) property, ci)));
+                            Minecraft.getInstance().displayGuiScreen(new ScreenBuilder(new ConfigGui(ConfigGui.this, (ConfigFile.PropertyClass) property, ci)));
                         }
                     };
                     onPage.accept(finalI, btn::setVisible);
@@ -239,7 +239,7 @@ public class ConfigGui implements IScreen {
 
     @Override
     public void draw(IScreenBuilder builder) {
-        ((GuiScreen)builder).drawBackground(0);
+        ((Screen)builder).renderBackground(0);
 
         String name = "";
         ConfigGui iter = this;

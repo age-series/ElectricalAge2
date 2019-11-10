@@ -61,7 +61,7 @@ public abstract class Button {
     }
 
     public String getText() {
-        return button.displayString;
+        return button.getMessage();
     }
     public void setText(String text) {
         button.setMessage(text);
@@ -89,7 +89,7 @@ public abstract class Button {
     }
 
     public void setEnabled(boolean b) {
-        button.enabled = b;
+        button.active = b;
     }
 
     ;

@@ -40,8 +40,4 @@ public class TextField extends Button {
     public void onClick(Hand hand) {
 
     }
-
-    public void setVisible(Boolean visible) {
-        textfield.setVisible(visible);
-    }
 }
