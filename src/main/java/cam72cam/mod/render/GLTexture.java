@@ -1,5 +1,6 @@
 package cam72cam.mod.render;
 
+import cam72cam.mod.ModCore;
 import cam72cam.mod.event.ClientEvents;
 import net.minecraft.client.renderer.texture.TextureUtil;
 import net.minecraftforge.fml.common.Loader;
@@ -83,7 +84,7 @@ public class GLTexture {
             while (queue.size() != 0) {
                 try {
                     Thread.sleep(1000);
-                    System.out.println("Waiting for free write slot...");
+                    ModCore.info("Waiting for free write slot...");
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
@@ -105,7 +106,7 @@ public class GLTexture {
 
     private void transition(TextureState state) {
         this.state = state;
-        //System.out.println(state.name() + " " + texLoc);
+        //ModCore.info(state.name() + " " + texLoc);
     }
 
     private IntBuffer imageToPixels(BufferedImage image) {

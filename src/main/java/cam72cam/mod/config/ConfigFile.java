@@ -1,5 +1,6 @@
 package cam72cam.mod.config;
 
+import cam72cam.mod.ModCore;
 import net.minecraftforge.fml.common.Loader;
 import org.apache.commons.lang3.StringUtils;
 
@@ -191,7 +192,7 @@ public class ConfigFile {
                             }
                             field.set(null, array);
                         } catch (IllegalAccessException | NullPointerException e) {
-                            System.out.println("Error reading field " + field);
+                            ModCore.error("Error reading field " + field);
                             e.printStackTrace();
                         }
                         return;
@@ -222,7 +223,7 @@ public class ConfigFile {
                                 data.put(key, val);
                             }
                         } catch (IllegalAccessException | NullPointerException e) {
-                            System.out.println("Error reading field " + field);
+                            ModCore.error("Error reading field " + field);
                             e.printStackTrace();
                         }
                         return;
@@ -236,7 +237,7 @@ public class ConfigFile {
             try {
                 field.set(null, decode(field.getType(), line.split("=", 2)[1]));
             } catch (IllegalAccessException | NullPointerException e) {
-                System.out.println("Error reading field " + field);
+                ModCore.error("Error reading field " + field);
                 e.printStackTrace();
             }
         }
