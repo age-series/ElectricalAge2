@@ -128,6 +128,14 @@ public class ItemRender {
         fb.framebufferClear();
         fb.bindFramebuffer(true);
 
+        GL11.glMatrixMode(GL11.GL_PROJECTION);
+        GL11.glPushMatrix();
+        GL11.glLoadIdentity();
+
+        GL11.glMatrixMode(GL11.GL_MODELVIEW);
+        GL11.glPushMatrix();
+        GL11.glLoadIdentity();
+
         GLBoolTracker depth = new GLBoolTracker(GL11.GL_DEPTH_TEST, true);
         int oldDepth = GL11.glGetInteger(GL11.GL_DEPTH_FUNC);
         GL11.glDepthFunc(GL11.GL_LESS);
@@ -142,6 +150,12 @@ public class ItemRender {
         fb.deleteFramebuffer();
         GL11.glDepthFunc(oldDepth);
         depth.restore();
+
+        GL11.glMatrixMode(GL11.GL_MODELVIEW);
+        GL11.glPopMatrix();
+        GL11.glMatrixMode(GL11.GL_PROJECTION);
+        GL11.glPopMatrix();
+        GL11.glMatrixMode(GL11.GL_MODELVIEW);
 
         iconSheet.setSprite(id, buff);
     }
