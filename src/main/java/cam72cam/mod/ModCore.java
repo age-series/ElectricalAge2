@@ -182,8 +182,6 @@ public class ModCore {
                     break;
                 case SETUP:
                     //World.MAX_ENTITY_RADIUS = Math.max(World.MAX_ENTITY_RADIUS, 32);
-
-                    GuiRegistry.registration();
                     break;
                 case START:
                     break;

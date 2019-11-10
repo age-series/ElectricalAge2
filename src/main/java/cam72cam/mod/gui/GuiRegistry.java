@@ -23,7 +23,10 @@ import net.minecraft.inventory.container.INamedContainerProvider;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.text.ITextComponent;
 import net.minecraft.util.text.StringTextComponent;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.api.distmarker.OnlyIn;
 import net.minecraftforge.common.extensions.IForgeContainerType;
+import net.minecraftforge.fml.DistExecutor;
 import net.minecraftforge.fml.network.NetworkHooks;
 
 import javax.annotation.Nullable;
@@ -46,28 +49,14 @@ public class GuiRegistry {
 
     public static void registerEvents() {
         CommonEvents.CONTAINER_REGISTRY.subscribe(reg -> reg.register(TYPE));
+    }
+
+    @OnlyIn(Dist.CLIENT)
+    public static void registerClientEvents() {
         ClientEvents.REGISTER_ENTITY.subscribe(() -> ScreenManager.registerFactory(TYPE, ClientContainerBuilder::new));
     }
 
     public GuiRegistry() {
-    }
-
-    public static void registration() {
-        /*
-        NetworkRegistry.INSTANCE.registerGuiHandler(ModCore.instance, new IGuiHandler() {
-            @Nullable
-            @Override
-            public Object getServerGuiElement(int ID, PlayerEntity player, World world, int x, int y, int z) {
-                return registry.get(ID).apply(new CreateEvent(true, new Player(player), x, y, z));
-            }
-
-            @Nullable
-            @Override
-            public Object getClientGuiElement(int ID, PlayerEntity player, World world, int x, int y, int z) {
-                return registry.get(ID).apply(new CreateEvent(false, new Player(player), x, y, z));
-            }
-        });
-        */
     }
 
     @FunctionalInterface
@@ -91,26 +80,33 @@ public class GuiRegistry {
         return (int) hasher.getValue();
     }
 
+    @OnlyIn(Dist.CLIENT)
+    private static void openScreen(IScreen screen) {
+        Minecraft.getInstance().displayGuiScreen(new ScreenBuilder(screen));
+    }
+
     public static GUI register(Identifier name, Supplier<IScreen> ctr) {
         int id = intFromName(name.toString());
         // TODO server packet with ID
-        return (player) -> Minecraft.getInstance().displayGuiScreen(new ScreenBuilder(ctr.get()));
+        return (player) -> DistExecutor.runWhenOn(Dist.CLIENT, () -> () -> openScreen(ctr.get()));
     }
 
     public static <T extends BlockEntity> BlockGUI registerBlock(Class<T> cls, Function<T, IScreen> ctr) {
         int id = intFromName(cls.toString());
         // TODO server packet with ID
         return (player, pos) -> {
-            T entity = player.getWorld().getBlockEntity(pos, cls);
-            if (entity == null) {
-                return;
-            }
-            IScreen screen = ctr.apply(entity);
-            if (screen == null) {
-                return;
-            }
+            DistExecutor.runWhenOn(Dist.CLIENT, () -> () -> {
+                T entity = player.getWorld().getBlockEntity(pos, cls);
+                if (entity == null) {
+                    return;
+                }
+                IScreen screen = ctr.apply(entity);
+                if (screen == null) {
+                    return;
+                }
 
-            Minecraft.getInstance().displayGuiScreen(new ScreenBuilder(screen));
+                openScreen(screen);
+            });
         };
     }
 

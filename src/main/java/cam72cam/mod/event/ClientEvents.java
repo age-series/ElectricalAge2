@@ -2,6 +2,7 @@ package cam72cam.mod.event;
 
 import cam72cam.mod.ModCore;
 import cam72cam.mod.entity.EntityRegistry;
+import cam72cam.mod.gui.GuiRegistry;
 import cam72cam.mod.input.Keyboard;
 import cam72cam.mod.input.Mouse;
 import cam72cam.mod.render.EntityRenderer;
@@ -30,6 +31,7 @@ public class ClientEvents {
         Keyboard.registerClientEvents();
         GlobalRender.registerClientEvents();
         Audio.registerClientCallbacks();
+        GuiRegistry.registerClientEvents();
     }
 
     public static void fireReload() {
