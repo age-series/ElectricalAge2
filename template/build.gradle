@@ -28,7 +28,7 @@ repositories {
 }
 
 
-version = "#MODVERSION#_1.14.2"
+version = "#MODVERSION#_1.14.4"
 group = "cam72cam.universalmodcoremod" // http://maven.apache.org/guides/mini/guide-naming-conventions.html
 archivesBaseName = "#MODNAME#"
 
