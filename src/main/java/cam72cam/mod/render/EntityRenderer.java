@@ -5,6 +5,7 @@ import cam72cam.mod.entity.Entity;
 import cam72cam.mod.entity.ModdedEntity;
 import cam72cam.mod.entity.SeatEntity;
 import cam72cam.mod.event.ClientEvents;
+import cam72cam.mod.math.Vec3d;
 import cam72cam.mod.world.World;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.culling.ICamera;
@@ -59,7 +60,12 @@ public class EntityRenderer extends net.minecraft.client.renderer.entity.EntityR
         List<Entity> entities = world.getEntities(Entity.class);
         for (Entity entity : entities) {
             // Duplicate forge logic and render entity if the chunk is not rendered but entity is visible (MC entitysize issues/optimization)
-            AxisAlignedBB chunk = new AxisAlignedBB(entity.getBlockPosition().toChunkMin().internal, entity.getBlockPosition().toChunkMax().internal);
+            double yoff = Math.floor(entity.getPosition().y / 16f);
+            Vec3d min = entity.getBlockPosition().toChunkMin();
+            min = new Vec3d(min.x, yoff, min.z);
+            Vec3d max = entity.getBlockPosition().toChunkMax();
+            max = new Vec3d(max.x, yoff + 16, max.z);
+            AxisAlignedBB chunk = new AxisAlignedBB(min.internal, max.internal);
             if (!camera.isBoundingBoxInFrustum(chunk) && camera.isBoundingBoxInFrustum(entity.internal.getRenderBoundingBox())) {
                 Minecraft.getInstance().getRenderManager().renderEntityStatic(entity.internal, partialTicks, true);
             }

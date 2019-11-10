@@ -478,7 +478,7 @@ public class World {
 
     public boolean canEntityCollideWith(Vec3i bp, String damageType) {
         Block block = internal.getBlockState(bp.internal).getBlock();
-        return block instanceof IConditionalCollision &&
+        return ! (block instanceof IConditionalCollision) ||
                 ((IConditionalCollision) block).canCollide(internal, bp.internal, internal.getBlockState(bp.internal), new DamageSource(damageType));
     }
 

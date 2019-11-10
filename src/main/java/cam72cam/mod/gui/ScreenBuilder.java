@@ -12,7 +12,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
-class ScreenBuilder extends Screen implements IScreenBuilder {
+public class ScreenBuilder extends Screen implements IScreenBuilder {
     private final IScreen screen;
     private Map<Widget, Button> buttonMap = new HashMap<net.minecraft.client.gui.widget.Widget, Button>();
 
@@ -25,12 +25,11 @@ class ScreenBuilder extends Screen implements IScreenBuilder {
 
     @Override
     public void close() {
-        screen.onClose();
-
         this.minecraft.displayGuiScreen(null);
         if (this.minecraft.currentScreen == null) {
             this.minecraft.setGameFocused(true);
         }
+        screen.onClose();
     }
 
     @Override

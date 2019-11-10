@@ -1,6 +1,5 @@
 package cam72cam.mod.gui;
 
-import cam72cam.mod.ModCore;
 import cam72cam.mod.block.BlockEntity;
 import cam72cam.mod.entity.Entity;
 import cam72cam.mod.entity.Player;
@@ -8,35 +7,21 @@ import cam72cam.mod.gui.container.ClientContainerBuilder;
 import cam72cam.mod.gui.container.IContainer;
 import cam72cam.mod.gui.container.ServerContainerBuilder;
 import cam72cam.mod.math.Vec3i;
+import cam72cam.mod.resource.Identifier;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.ScreenManager;
 import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.entity.player.PlayerInventory;
-import net.minecraft.entity.player.ServerPlayerEntity;
-import net.minecraft.inventory.container.Container;
-import net.minecraft.inventory.container.ContainerType;
-import net.minecraft.inventory.container.INamedContainerProvider;
-import net.minecraft.util.text.ITextComponent;
-import net.minecraft.util.text.StringTextComponent;
-import net.minecraft.world.World;
-import net.minecraftforge.fml.common.network.IGuiHandler;
-import net.minecraftforge.fml.network.NetworkHooks;
-import net.minecraftforge.fml.network.NetworkRegistry;
-import net.minecraftforge.registries.ForgeRegistries;
 
-import javax.annotation.Nullable;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.zip.CRC32;
 
 
 public class GuiRegistry {
     private static Map<Integer, Function<CreateEvent, Object>> registry = new HashMap<>();
 
-    public GuiRegistry(ModCore.Mod mod) {
-        //TODO support for multiple mods using different ID ranges
+    public GuiRegistry() {
     }
 
     public static void registration() {
@@ -57,19 +42,40 @@ public class GuiRegistry {
         */
     }
 
-    public GUIType register(String name, Supplier<IScreen> ctr) {
-        int id = name.hashCode();
+    @FunctionalInterface
+    public interface GUI {
+        void open(Player player);
+    }
+
+    @FunctionalInterface
+    public interface EntityGUI {
+        void open(Player player, Entity entity);
+    }
+    @FunctionalInterface
+    public interface BlockGUI {
+        void open(Player player, Vec3i pos);
+    }
+
+    private static int intFromName(String s) {
+        CRC32 hasher = new CRC32();
+        hasher.update(s.length());
+        hasher.update(s.getBytes());
+        return (int) hasher.getValue();
+    }
+
+    public static GUI register(Identifier name, Supplier<IScreen> ctr) {
+        int id = intFromName(name.toString());
         registry.put(id, event -> {
             if (event.isServer) {
                 return null;
             }
             return new ScreenBuilder(ctr.get());
         });
-        return new GUIType(id);
+        return (player) -> Minecraft.getInstance().displayGuiScreen((Screen)registry.get(id).apply(new CreateEvent(false, player, 0, 0, 0)));
     }
 
-    public <T extends BlockEntity> GUIType registerBlock(Class<T> cls, Function<T, IScreen> ctr) {
-        int id = cls.toString().hashCode();
+    public static <T extends BlockEntity> BlockGUI registerBlock(Class<T> cls, Function<T, IScreen> ctr) {
+        int id = intFromName(cls.toString());
         registry.put(id, event -> {
             if (event.isServer) {
                 return null;
@@ -85,11 +91,11 @@ public class GuiRegistry {
 
             return new ScreenBuilder(screen);
         });
-        return new GUIType(id);
+        return (player, pos) -> Minecraft.getInstance().displayGuiScreen((Screen)registry.get(id).apply(new CreateEvent(false, player, pos.x, pos.y, pos.z)));
     }
 
-    public <T extends Entity> GUIType registerEntityContainer(Class<T> cls, Function<T, IContainer> ctr) {
-        int id = ("container" + cls.toString()).hashCode();
+    public static <T extends Entity> EntityGUI registerEntityContainer(Class<T> cls, Function<T, IContainer> ctr) {
+        int id = intFromName(("container" + cls.toString()));
         registry.put(id, event -> {
             T entity = event.player.getWorld().getEntity(event.entityIDorX, cls);
             if (entity == null) {
@@ -101,11 +107,11 @@ public class GuiRegistry {
             }
             return new ClientContainerBuilder(server);
         });
-        return new GUIType(id);
+        return (player, ent) -> Minecraft.getInstance().displayGuiScreen((Screen)registry.get(id).apply(new CreateEvent(false, player, ent.internal.getEntityId(), 0, 0)));
     }
 
-    public <T extends BlockEntity> GUIType registerBlockContainer(Class<T> cls, Function<T, IContainer> ctr) {
-        int id = ("container" + cls.toString()).hashCode();
+    public static <T extends BlockEntity> BlockGUI registerBlockContainer(Class<T> cls, Function<T, IContainer> ctr) {
+        int id = intFromName(("container" + cls.toString()));
 
         registry.put(id, event -> {
             T entity = event.player.getWorld().getBlockEntity(new Vec3i(event.entityIDorX, event.y, event.z), cls);
@@ -118,42 +124,7 @@ public class GuiRegistry {
             }
             return new ClientContainerBuilder(server);
         });
-        return new GUIType(id);
-    }
-
-    public void openGUI(Player player, GUIType type) {
-        Minecraft.getInstance().displayGuiScreen((Screen) registry.get(type.id).apply(new CreateEvent(false, player, 0, 0, 0)));
-    }
-
-    public void openGUI(Player player, Entity ent, GUIType type) {
-        Minecraft.getInstance().displayGuiScreen((Screen) registry.get(type.id).apply(new CreateEvent(false, player, ent.internal.getEntityId(), 0, 0)));
-    }
-
-    public void openGUI(Player player, Vec3i pos, GUIType type) {
-        /*
-        NetworkHooks.openGui((ServerPlayerEntity) player.internal, new INamedContainerProvider() {
-            @Override
-            public ITextComponent getDisplayName() {
-                return new StringTextComponent( "WAT");
-            }
-
-            @Nullable
-            @Override
-            public Container createMenu(int p_createMenu_1_, PlayerInventory p_createMenu_2_, PlayerEntity p_createMenu_3_) {
-                return (ServerContainerBuilder) registry.get(type);
-            }
-        }, pos.internal);
-        */
-
-        Minecraft.getInstance().displayGuiScreen((Screen) registry.get(type.id).apply(new CreateEvent(false, player, pos.x, pos.y, pos.z)));
-    }
-
-    public static class GUIType {
-        private final int id;
-
-        private GUIType(int id) {
-            this.id = id;
-        }
+        return (player, pos) -> Minecraft.getInstance().displayGuiScreen((Screen)registry.get(id).apply(new CreateEvent(false, player, pos.x, pos.y, pos.z)));
     }
 
     private static class CreateEvent {

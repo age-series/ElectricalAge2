@@ -60,6 +60,9 @@ public abstract class Button {
         builder.addButton(this);
     }
 
+    public String getText() {
+        return button.displayString;
+    }
     public void setText(String text) {
         button.setMessage(text);
     }
@@ -83,6 +86,10 @@ public abstract class Button {
 
     public void setVisible(boolean b) {
         button.visible = b;
+    }
+
+    public void setEnabled(boolean b) {
+        button.enabled = b;
     }
 
     ;
