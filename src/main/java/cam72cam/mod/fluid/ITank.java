@@ -11,7 +11,7 @@ import java.util.function.Consumer;
 public interface ITank {
     static ITank getTank(ItemStack inputCopy, Consumer<ItemStack> onUpdate) {
         LazyOptional<IFluidHandlerItem> handler = FluidUtil.getFluidHandler(inputCopy.internal);
-        if (handler.isPresent()) {
+        if (!handler.isPresent()) {
             return null;
         }
         IFluidHandlerItem internal = handler.orElse(null);

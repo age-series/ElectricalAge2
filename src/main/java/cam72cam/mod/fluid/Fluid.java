@@ -1,5 +1,6 @@
 package cam72cam.mod.fluid;
 
+import cam72cam.mod.resource.Identifier;
 import net.minecraft.util.ResourceLocation;
 import net.minecraftforge.registries.ForgeRegistries;
 
@@ -21,6 +22,7 @@ public class Fluid {
     }
 
     public static Fluid getFluid(String type) {
+        type = new Identifier(type).toString();
         if (!registryCache.containsKey(type)) {
             net.minecraft.fluid.Fluid fluid = ForgeRegistries.FLUIDS.getValue(new ResourceLocation(type));
             if (fluid == null) {
