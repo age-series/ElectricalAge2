@@ -138,7 +138,7 @@ public class World {
     }
 
     public boolean doesBlockCollideWith(Vec3i bp, IBoundingBox bb) {
-        IBoundingBox bbb = IBoundingBox.from(internal.getBlockState(bp.internal).getShape(internal, bp.internal).getBoundingBox());
+        IBoundingBox bbb = IBoundingBox.from(internal.getBlockState(bp.internal).getShape(internal, bp.internal).getBoundingBox().offset(bp.internal.down()));
         return bb.intersects(bbb);
     }
 
