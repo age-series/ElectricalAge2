@@ -25,6 +25,11 @@ public class ItemStackHandler implements IInventory {
             }
 
             @Override
+            public boolean isItemValid(int slot, @Nonnull net.minecraft.item.ItemStack stack) {
+                return checkSlot.test(slot, new ItemStack(stack));
+            }
+
+            @Override
             protected void onContentsChanged(int slot) {
                 super.onContentsChanged(slot);
                 ItemStackHandler.this.onContentsChanged(slot);

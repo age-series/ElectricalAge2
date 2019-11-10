@@ -104,7 +104,7 @@ public class ItemStack {
     }
 
     public boolean isFluidContainer() {
-        return FluidUtil.getFluidHandler(internal) != null;
+        return FluidUtil.getFluidHandler(internal).isPresent();
     }
 
     public boolean isFlammable() {
