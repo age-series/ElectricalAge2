@@ -6,6 +6,7 @@ import cam72cam.mod.item.ItemStackHandler;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.inventory.container.Container;
+import net.minecraft.inventory.container.ContainerType;
 import net.minecraft.inventory.container.Slot;
 import net.minecraftforge.items.SlotItemHandler;
 
@@ -29,8 +30,8 @@ public class ServerContainerBuilder extends Container implements IContainerBuild
     private int rowSlots = 9;
     private int totalSlots;
 
-    public ServerContainerBuilder(PlayerInventory playerInventory, IContainer container) {
-        super(null, 0); //TODO
+    public ServerContainerBuilder(int id, ContainerType<ServerContainerBuilder> type, PlayerInventory playerInventory, IContainer container) {
+        super(type, id);
         this.playerInventory = playerInventory;
 
         this.slotsX = container.getSlotsX();

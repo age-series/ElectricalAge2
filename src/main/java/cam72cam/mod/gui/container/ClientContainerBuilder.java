@@ -9,6 +9,8 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screen.inventory.ContainerScreen;
 import net.minecraft.client.renderer.texture.AtlasTexture;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
+import net.minecraft.entity.player.PlayerInventory;
+import net.minecraft.util.text.ITextComponent;
 import net.minecraft.util.text.StringTextComponent;
 import org.lwjgl.opengl.GL11;
 
@@ -30,7 +32,7 @@ public class ClientContainerBuilder extends ContainerScreen<ServerContainerBuild
     private int centerX;
     private int centerY;
 
-    public ClientContainerBuilder(ServerContainerBuilder serverContainer) {
+    public ClientContainerBuilder(ServerContainerBuilder serverContainer, PlayerInventory p_create_2_, ITextComponent p_create_3_) {
         super(serverContainer, serverContainer.playerInventory, new StringTextComponent(""));
         this.server = serverContainer;
         this.xSize = paddingRight + serverContainer.slotsX * slotSize + paddingLeft;

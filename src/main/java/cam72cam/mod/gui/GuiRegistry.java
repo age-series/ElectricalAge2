@@ -1,16 +1,32 @@
 package cam72cam.mod.gui;
 
+import cam72cam.mod.ModCore;
 import cam72cam.mod.block.BlockEntity;
 import cam72cam.mod.entity.Entity;
 import cam72cam.mod.entity.Player;
+import cam72cam.mod.event.ClientEvents;
+import cam72cam.mod.event.CommonEvents;
 import cam72cam.mod.gui.container.ClientContainerBuilder;
 import cam72cam.mod.gui.container.IContainer;
 import cam72cam.mod.gui.container.ServerContainerBuilder;
 import cam72cam.mod.math.Vec3i;
 import cam72cam.mod.resource.Identifier;
+import cam72cam.mod.world.World;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.client.gui.ScreenManager;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.entity.player.PlayerInventory;
+import net.minecraft.entity.player.ServerPlayerEntity;
+import net.minecraft.inventory.container.Container;
+import net.minecraft.inventory.container.ContainerType;
+import net.minecraft.inventory.container.INamedContainerProvider;
+import net.minecraft.util.ResourceLocation;
+import net.minecraft.util.text.ITextComponent;
+import net.minecraft.util.text.StringTextComponent;
+import net.minecraftforge.common.extensions.IForgeContainerType;
+import net.minecraftforge.fml.network.NetworkHooks;
 
+import javax.annotation.Nullable;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
@@ -19,7 +35,19 @@ import java.util.zip.CRC32;
 
 
 public class GuiRegistry {
-    private static Map<Integer, Function<CreateEvent, Object>> registry = new HashMap<>();
+    private static Map<Integer, Function<CreateEvent, ServerContainerBuilder>> registry = new HashMap<>();
+
+    private static final ContainerType<ServerContainerBuilder> TYPE = IForgeContainerType.create(
+            (id, inv, data) -> registry.get(data.readInt()).apply(new CreateEvent(id, inv, data.readInt(), data.readInt(), data.readInt()))
+    );
+    static {
+        TYPE.setRegistryName(new ResourceLocation(ModCore.MODID, "alltheguis"));
+    }
+
+    public static void registerEvents() {
+        CommonEvents.CONTAINER_REGISTRY.subscribe(reg -> reg.register(TYPE));
+        ClientEvents.REGISTER_ENTITY.subscribe(() -> ScreenManager.registerFactory(TYPE, ClientContainerBuilder::new));
+    }
 
     public GuiRegistry() {
     }
@@ -65,78 +93,107 @@ public class GuiRegistry {
 
     public static GUI register(Identifier name, Supplier<IScreen> ctr) {
         int id = intFromName(name.toString());
-        registry.put(id, event -> {
-            if (event.isServer) {
-                return null;
-            }
-            return new ScreenBuilder(ctr.get());
-        });
-        return (player) -> Minecraft.getInstance().displayGuiScreen((Screen)registry.get(id).apply(new CreateEvent(false, player, 0, 0, 0)));
+        // TODO server packet with ID
+        return (player) -> Minecraft.getInstance().displayGuiScreen(new ScreenBuilder(ctr.get()));
     }
 
     public static <T extends BlockEntity> BlockGUI registerBlock(Class<T> cls, Function<T, IScreen> ctr) {
         int id = intFromName(cls.toString());
-        registry.put(id, event -> {
-            if (event.isServer) {
-                return null;
-            }
-            T entity = event.player.getWorld().getBlockEntity(new Vec3i(event.entityIDorX, event.y, event.z), cls);
+        // TODO server packet with ID
+        return (player, pos) -> {
+            T entity = player.getWorld().getBlockEntity(pos, cls);
             if (entity == null) {
-                return null;
+                return;
             }
             IScreen screen = ctr.apply(entity);
             if (screen == null) {
-                return null;
+                return;
             }
 
-            return new ScreenBuilder(screen);
-        });
-        return (player, pos) -> Minecraft.getInstance().displayGuiScreen((Screen)registry.get(id).apply(new CreateEvent(false, player, pos.x, pos.y, pos.z)));
+            Minecraft.getInstance().displayGuiScreen(new ScreenBuilder(screen));
+        };
     }
 
     public static <T extends Entity> EntityGUI registerEntityContainer(Class<T> cls, Function<T, IContainer> ctr) {
         int id = intFromName(("container" + cls.toString()));
         registry.put(id, event -> {
-            T entity = event.player.getWorld().getEntity(event.entityIDorX, cls);
+            T entity = World.get(event.inv.player.world).getEntity(event.entityIDorX, cls);
             if (entity == null) {
                 return null;
             }
-            ServerContainerBuilder server = new ServerContainerBuilder(event.player.internal.inventory, ctr.apply(entity));
-            if (event.isServer) {
-                return server;
-            }
-            return new ClientContainerBuilder(server);
+            return new ServerContainerBuilder(event.id, TYPE, event.inv, ctr.apply(entity));
         });
-        return (player, ent) -> Minecraft.getInstance().displayGuiScreen((Screen)registry.get(id).apply(new CreateEvent(false, player, ent.internal.getEntityId(), 0, 0)));
+
+        return (player, ent) -> {
+            if (!(player.internal instanceof ServerPlayerEntity)) {
+                System.out.println("PROBS SHOULD SEND PKT");
+                return;
+            }
+            NetworkHooks.openGui((ServerPlayerEntity) player.internal, new INamedContainerProvider() {
+                @Override
+                public ITextComponent getDisplayName() {
+                    return new StringTextComponent("");
+                }
+
+                @Nullable
+                @Override
+                public Container createMenu(int p_createMenu_1_, PlayerInventory p_createMenu_2_, PlayerEntity p_createMenu_3_) {
+                    return registry.get(id).apply(new CreateEvent(p_createMenu_1_, p_createMenu_2_, ent.getId(), 0, 0));
+                }
+            }, (buff) -> {
+                buff.writeInt(id);
+                buff.writeInt(ent.getId());
+                buff.writeInt(0);
+                buff.writeInt(0);
+            });
+        };
     }
 
     public static <T extends BlockEntity> BlockGUI registerBlockContainer(Class<T> cls, Function<T, IContainer> ctr) {
         int id = intFromName(("container" + cls.toString()));
 
         registry.put(id, event -> {
-            T entity = event.player.getWorld().getBlockEntity(new Vec3i(event.entityIDorX, event.y, event.z), cls);
+            T entity = World.get(event.inv.player.world).getBlockEntity(new Vec3i(event.entityIDorX, event.y, event.z), cls);
             if (entity == null) {
                 return null;
             }
-            ServerContainerBuilder server = new ServerContainerBuilder(event.player.internal.inventory, ctr.apply(entity));
-            if (event.isServer) {
-                return server;
-            }
-            return new ClientContainerBuilder(server);
+            return new ServerContainerBuilder(event.id, TYPE, event.inv, ctr.apply(entity));
         });
-        return (player, pos) -> Minecraft.getInstance().displayGuiScreen((Screen)registry.get(id).apply(new CreateEvent(false, player, pos.x, pos.y, pos.z)));
+        return (player, pos) -> {
+            if (!(player.internal instanceof ServerPlayerEntity)) {
+                System.out.println("PROBS SHOULD SEND PKT");
+                return;
+            }
+            NetworkHooks.openGui((ServerPlayerEntity) player.internal, new INamedContainerProvider() {
+                @Override
+                public ITextComponent getDisplayName() {
+                    return new StringTextComponent("");
+                }
+
+                @Nullable
+                @Override
+                public Container createMenu(int p_createMenu_1_, PlayerInventory p_createMenu_2_, PlayerEntity p_createMenu_3_) {
+                    return registry.get(id).apply(new CreateEvent(p_createMenu_1_, p_createMenu_2_, pos.x, pos.y, pos.z));
+                }
+            }, (buff) -> {
+                buff.writeInt(id);
+                buff.writeInt(pos.x);
+                buff.writeInt(pos.y);
+                buff.writeInt(pos.z);
+            });
+        };
     }
 
     private static class CreateEvent {
-        final boolean isServer;
-        final Player player;
+        final PlayerInventory inv;
         final int entityIDorX;
         final int y;
         final int z;
+        final int id;
 
-        private CreateEvent(boolean isServer, Player player, int entityIDorX, int y, int z) {
-            this.isServer = isServer;
-            this.player = player;
+        private CreateEvent(int id, PlayerInventory inv, int entityIDorX, int y, int z) {
+            this.id = id;
+            this.inv = inv;
             this.entityIDorX = entityIDorX;
             this.y = y;
             this.z = z;
