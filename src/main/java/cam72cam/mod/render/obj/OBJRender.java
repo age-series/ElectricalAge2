@@ -1,5 +1,6 @@
 package cam72cam.mod.render.obj;
 
+import cam72cam.mod.ModCore;
 import cam72cam.mod.math.Vec3d;
 import cam72cam.mod.model.obj.Material;
 import cam72cam.mod.model.obj.OBJModel;
@@ -123,7 +124,7 @@ public class OBJRender {
                     a = currentMTL.Kd.get(3);
                 }
             } else {
-                System.out.println(String.format("Missing group %s", mtlName));
+                ModCore.warn(String.format("Missing group %s", mtlName));
             }
 
             for (int[] point : model.points(face)) {

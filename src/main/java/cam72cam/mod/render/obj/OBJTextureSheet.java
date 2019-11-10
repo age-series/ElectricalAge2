@@ -157,7 +157,6 @@ public class OBJTextureSheet {
         int iconSize = 1024;
         if (image.getWidth() * image.getHeight() > iconSize * iconSize) {
             float scale = (float) (iconSize * iconSize) / (image.getWidth() * image.getHeight());
-            System.out.println(scale);
             icon = new GLTexture(path + "_icon.png", scaleImage(image, (int) (image.getWidth() * scale), (int) (image.getHeight() * scale)), 30, true);
         } else {
             icon = new GLTexture(path + "_icon.png", image, 30, true);

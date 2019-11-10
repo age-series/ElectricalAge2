@@ -59,6 +59,10 @@ public class EntityRenderer extends net.minecraft.client.renderer.entity.EntityR
         World world = MinecraftClient.getPlayer().getWorld();
         List<Entity> entities = world.getEntities(Entity.class);
         for (Entity entity : entities) {
+            if (!(entity.internal instanceof ModdedEntity)) {
+                continue;
+            }
+
             // Duplicate forge logic and render entity if the chunk is not rendered but entity is visible (MC entitysize issues/optimization)
             double yoff = Math.floor(entity.getPosition().y / 16f);
             Vec3d min = entity.getBlockPosition().toChunkMin();
