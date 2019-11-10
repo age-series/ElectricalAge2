@@ -69,7 +69,7 @@ public class ClientContainerBuilder extends ContainerScreen<ServerContainerBuild
         if (handler != null && handler.getSlotCount() > slotID) {
             super.blit(centerX + x, centerY + y, paddingLeft, topOffset, slotSize, slotSize);
         } else {
-            drawRect(centerX + x, centerY + y, centerX + slotSize, centerY + slotSize, 0xFF444444);
+            drawRect(centerX + x, centerY + y, slotSize, slotSize, 0xFF444444);
         }
     }
 
@@ -187,7 +187,7 @@ public class ClientContainerBuilder extends ContainerScreen<ServerContainerBuild
         x += centerX + 1 + paddingLeft;
         y += centerY + 1;
 
-        drawRect(x, y + (int)(16 - 16 * height), 16,  16, color);
+        drawRect(x, y + (int)(16 - 16 * height), 16,  16 * height, color);
 
 
         // TODO better sprite map, but this kinda sucks between versions.  maybe add an enum...
