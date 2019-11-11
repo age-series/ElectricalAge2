@@ -299,7 +299,7 @@ public class TileEntity extends net.minecraft.tileentity.TileEntity {
                 }
             }).cast();
         }
-        return null;
+        return LazyOptional.empty();
     }
 
     /*
