@@ -16,7 +16,11 @@ public class CustomTranslations {
 
     @OnlyIn(Dist.CLIENT)
     private static String clientLang() {
-        return Minecraft.getInstance().getLanguageManager().getCurrentLanguage().getCode();
+        try {
+            return Minecraft.getInstance().getLanguageManager().getCurrentLanguage().getCode();
+        } catch (NullPointerException ex) {
+            return "en_us";
+        }
     }
     private static String serverLang() {
         // Yes I know this sucks, it will take a bunch of refactoring to fix
