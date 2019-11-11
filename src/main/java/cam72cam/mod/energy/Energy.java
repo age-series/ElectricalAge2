@@ -29,7 +29,7 @@ public class Energy implements IEnergy {
 
     @Override
     public int getCurrent() {
-        return stored + 512;
+        return stored;
     }
 
     @Override
