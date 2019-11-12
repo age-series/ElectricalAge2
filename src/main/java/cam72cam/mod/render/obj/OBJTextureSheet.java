@@ -29,11 +29,11 @@ public class OBJTextureSheet {
     private int sheetHeight = 0;
     private OBJModel model;
 
-    OBJTextureSheet(OBJModel model) {
-        this(model, null);
+    OBJTextureSheet(OBJModel model, int cacheSeconds) {
+        this(model, null, cacheSeconds);
     }
 
-    OBJTextureSheet(OBJModel model, String texPrefix) {
+    OBJTextureSheet(OBJModel model, String texPrefix, int cacheSeconds) {
         this.model = model;
 
 
@@ -151,14 +151,14 @@ public class OBJTextureSheet {
         }
 
         String path = model.modelLoc.getPath().replace("/", ".") + texPrefix;
-        this.texture = new GLTexture(path + ".png", image, 5, false);
+        this.texture = new GLTexture(path + ".png", image, cacheSeconds, false);
 
         int iconSize = 1024;
         if (image.getWidth() * image.getHeight() > iconSize * iconSize) {
             float scale = (float) (iconSize * iconSize) / (image.getWidth() * image.getHeight());
             icon = new GLTexture(path + "_icon.png", scaleImage(image, (int) (image.getWidth() * scale), (int) (image.getHeight() * scale)), 30, true);
         } else {
-            icon = new GLTexture(path + "_icon.png", image, 30, true);
+            icon = new GLTexture(path + "_icon.png", image, cacheSeconds * 2, true);
         }
 
         ModCore.info(GPUInfo.debug().replace("%", "%%"));
