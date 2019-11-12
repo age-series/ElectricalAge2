@@ -22,13 +22,16 @@ public class OBJRender {
     }
 
     public OBJRender(OBJModel model, Collection<String> textureNames) {
+        this(model, textureNames, 30);
+    }
+    public OBJRender(OBJModel model, Collection<String> textureNames, int cacheSeconds) {
         this.model = model;
         if (textureNames != null && textureNames.size() > 1) {
             for (String name : textureNames) {
-                this.textures.put(name, new OBJTextureSheet(model, name));
+                this.textures.put(name, new OBJTextureSheet(model, name, cacheSeconds));
             }
         } else {
-            this.textures.put(null, new OBJTextureSheet(model));
+            this.textures.put(null, new OBJTextureSheet(model, cacheSeconds));
         }
     }
 

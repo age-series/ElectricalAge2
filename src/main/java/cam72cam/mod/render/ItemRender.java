@@ -1,5 +1,6 @@
 package cam72cam.mod.render;
 
+import cam72cam.mod.Config;
 import cam72cam.mod.MinecraftClient;
 import cam72cam.mod.ModCore;
 import cam72cam.mod.event.ClientEvents;
@@ -39,7 +40,7 @@ import java.util.Random;
 
 public class ItemRender {
     private static final List<BakedQuad> EMPTY = new ArrayList<>();
-    private static final SpriteSheet iconSheet = new SpriteSheet(128);
+    private static final SpriteSheet iconSheet = new SpriteSheet(Config.SpriteSize);
 
     public static void register(ItemBase item, Identifier tex) {
         ClientEvents.MODEL_BAKE.subscribe(event -> event.getModelRegistry().put(new ModelResourceLocation(item.getRegistryName().internal, ""), new ItemLayerModel(ImmutableList.of(
