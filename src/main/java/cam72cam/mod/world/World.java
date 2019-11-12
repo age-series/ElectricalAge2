@@ -458,11 +458,11 @@ public class World {
     }
 
     public ItemStack getItemStack(Vec3i pos) {
+        BlockState state = internal.getBlockState(pos.internal);
         try {
-            BlockState state = internal.getBlockState(pos.internal);
             return new ItemStack(state.getBlock().getPickBlock(state, new BlockRayTraceResult(net.minecraft.util.math.Vec3d.ZERO, Direction.DOWN, pos.internal, false), internal, pos.internal, null));
         } catch (Exception ex) {
-            return new ItemStack(state.getBlock(), 1, state.getBlock().getMetaFromState(state));
+            return new ItemStack(state.getBlock());
         }
     }
 
