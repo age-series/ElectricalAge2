@@ -446,13 +446,17 @@ public class World {
 
     public ItemStack getItemStack(Vec3i pos) {
         IBlockState state = internal.getBlockState(pos.internal);
-        return new ItemStack(
-                state.getBlock().getPickBlock(
-                        state,
-                        new RayTraceResult(new net.minecraft.util.math.Vec3d(pos.internal), EnumFacing.UP, pos.internal), internal, pos.internal,
-                        null
-                )
-        );
+        try {
+            return new ItemStack(
+                    state.getBlock().getPickBlock(
+                            state,
+                            new RayTraceResult(new net.minecraft.util.math.Vec3d(pos.internal), EnumFacing.UP, pos.internal), internal, pos.internal,
+                            null
+                    )
+            );
+        } catch (Exception ex) {
+            return new ItemStack(state.getBlock(), 1, state.getBlock().getMetaFromState(state));
+        }
     }
 
     public List<ItemStack> getDroppedItems(IBoundingBox bb) {
