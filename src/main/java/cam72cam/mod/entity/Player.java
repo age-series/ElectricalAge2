@@ -51,18 +51,7 @@ public class Player extends Entity {
     }
 
     public void useFood(int i) {
-        int saturation = (int)(internal.getFoodStats().getSaturationLevel());
-        if (saturation > 0) {
-            int remainder = Math.max(0, i - saturation);
-            saturation = Math.max(0, saturation - i);
-            internal.getFoodStats().setFoodSaturationLevel(saturation);
-            if (remainder == 0) {
-                return;
-            }
-
-            i = remainder;
-        }
-        internal.getFoodStats().setFoodLevel(Math.max(0, internal.getFoodStats().getFoodLevel() - i));
+        internal.addExhaustion(i);
     }
 
     public IInventory getInventory() {
