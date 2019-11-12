@@ -144,9 +144,13 @@ public class TileEntity extends net.minecraft.tileentity.TileEntity {
     @Override
     public final void handleUpdateTag(NBTTagCompound tag) {
         hasTileData = true;
-        this.readFromNBT(tag);
-        this.readUpdate(new TagCompound(tag));
-        super.handleUpdateTag(tag);
+        try {
+            this.readFromNBT(tag);
+            this.readUpdate(new TagCompound(tag));
+        } catch (Exception ex) {
+            ModCore.error("IN UPDATE: %s", tag);
+            ModCore.catching(ex);
+        }
         world.internal.markBlockRangeForRenderUpdate(getPos(), getPos());
     }
 
