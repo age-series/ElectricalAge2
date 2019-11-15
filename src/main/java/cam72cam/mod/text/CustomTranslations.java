@@ -31,9 +31,11 @@ public class CustomTranslations {
         return DistExecutor.runForDist(() -> CustomTranslations::clientLang, () -> CustomTranslations::serverLang);
     }
 
-
     public static Map<String, String> getTranslations() {
-        String lang = getLang();
+        return getTranslations(getLang());
+    }
+
+    public static Map<String, String> getTranslations(String lang) {
         if (!translations.containsKey(lang)) {
             try {
                 String langStr = lang.split("_")[0] + "_" + lang.split("_")[1].toUpperCase();
@@ -53,6 +55,7 @@ public class CustomTranslations {
                 input.close();
             } catch (Exception ex) {
                 ex.printStackTrace();
+                translations.put(lang, getTranslations("en_us"));
             }
         }
         return translations.get(lang);
