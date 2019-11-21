@@ -109,8 +109,9 @@ public class ItemRender {
                     GL11.glRotated(90, 0, 1, 0);
                     break;
                 case HEAD:
+                    GL11.glTranslated(-0.5, 1, 0);
                     GL11.glScaled(2, 2, 2);
-                    GL11.glTranslated(0, 1, 0);
+                    break;
             }
         }
     }
