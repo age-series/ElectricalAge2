@@ -2,7 +2,7 @@ package cam72cam.#MODID#;
 
 import cam72cam.mod.ModCore;
 
-@net.minecraftforge.fml.common.Mod(modid = Mod.MODID, name = Mod.NAME, version = Mod.VERSION, dependencies = "required-before:universalmodcore", acceptedMinecraftVersions = "[1.12,1.13)")
+@net.minecraftforge.fml.common.Mod(Mod.MODID)
 public class Mod {
     public static final String MODID = "#MODID#";
     public static final String NAME = "#MODNAME#";
@@ -21,6 +21,9 @@ public class Mod {
         } catch (Exception e) {
             throw new RuntimeException("Could not load mod " + MODID, e);
         }
+    }
+    public static void hackRegistration() {
+        System.out.println("[" + NAME + "] Hello UniversalModCore");
     }
 }
 
