@@ -47,12 +47,12 @@ public class Audio {
         CommonEvents.World.UNLOAD.subscribe(world -> soundManager.stop());
     }
 
-    public static void playSound(Vec3d pos, StandardSound sound, SoundCategory category, float volume, float pitch) {
-        MinecraftClient.getPlayer().getWorld().internal.playSound(pos.x, pos.y, pos.z, sound.event, category.category, volume, pitch, false);
+    public static void playSound(World world, Vec3d pos, StandardSound sound, SoundCategory category, float volume, float pitch) {
+        world.internal.playSound(pos.x, pos.y, pos.z, sound.event, category.category, volume, pitch, false);
     }
 
-    public static void playSound(Vec3i pos, StandardSound sound, SoundCategory category, float volume, float pitch) {
-        playSound(new Vec3d(pos), sound, category, volume, pitch);
+    public static void playSound(World world, Vec3i pos, StandardSound sound, SoundCategory category, float volume, float pitch) {
+        playSound(world, new Vec3d(pos), sound, category, volume, pitch);
     }
 
     public static ISound newSound(Identifier oggLocation, boolean repeats, float attenuationDistance, float scale) {
