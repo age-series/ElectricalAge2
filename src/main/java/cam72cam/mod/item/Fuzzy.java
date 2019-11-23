@@ -28,7 +28,7 @@ public class Fuzzy {
     public static final Fuzzy STONE_SLAB = new Fuzzy("slabStone").addAll(new Fuzzy(ItemTags.SLABS.getId().toString()));
     public static final Fuzzy STONE_BRICK = new Fuzzy("brickStone").addAll(new Fuzzy(ItemTags.STONE_BRICKS.getId().toString()));
     public static final Fuzzy SAND = new Fuzzy("sand").addAll(new Fuzzy(ItemTags.SAND.getId().toString()));
-    public static final Fuzzy PISTON = new Fuzzy("piston").add(Blocks.PISTON);
+    public static final Fuzzy PISTON = new Fuzzy("piston").add(Items.PISTON);
 
     public static final Fuzzy GOLD_INGOT = new Fuzzy("ingotGold").add(Items.GOLD_INGOT);
     public static final Fuzzy STEEL_INGOT = new Fuzzy("ingotSteel").addAll(new Fuzzy("c:steel_ingot"));
