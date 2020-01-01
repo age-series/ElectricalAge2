@@ -4,7 +4,7 @@ Just some development notes:
 
 ## Project Structure
 
-* org.eln
+* org.eln2
     * math: all sorts of mathy stuff
     * mc: any basic Minecrafty code
     * nbt: all NBT versions of the sim code
@@ -12,13 +12,13 @@ Just some development notes:
     
 **NOTE**: DO NOT PUT MINECRAFT IMPORTS IN THE SIM CODE
 
-INSTEAD, CREATE A CLASS IN `org.eln.nbt` TO EXTEND THE FUNCTIONALITY
+INSTEAD, CREATE A CLASS IN `org.eln2.nbt` TO EXTEND THE FUNCTIONALITY
 
 In the future, there may be other dirs such as:
 
-* org.eln.render
+* org.eln2.render
 
-* org.eln.mc
+* org.eln2.mc
     * item
     * block
     * singleenode
