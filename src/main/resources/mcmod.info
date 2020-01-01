@@ -1,0 +1,16 @@
+[
+{
+  "modid": "electrical-age",
+  "name": "Electrical Age 2.0",
+  "description": "The Ported One",
+  "version": "${version}",
+  "mcversion": "${mcversion}",
+  "url": "http://ll.ja13.org",
+  "updateUrl": "http://ll.ja13.org",
+  "authorList": ["jrddunbr"],
+  "credits": "",
+  "logoFile": "",
+  "screenshots": [],
+  "dependencies": []
+}
+]
