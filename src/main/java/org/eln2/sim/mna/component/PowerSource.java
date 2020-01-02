@@ -48,15 +48,15 @@ public class PowerSource extends VoltageSource implements IRootSystemPreStepProc
     }
 
     @Override
-    public void addedTo(SubSystem s) {
-        super.addedTo(s);
+    public void setSubSystem(SubSystem s) {
+        super.setSubSystem(s);
         getSubSystem().getRoot().addProcess(this);
         s.addProcess(this);
     }
 
     @Override
     public void rootSystemPreStepProcess() {
-        SubSystem.Th t = aPin.getSubSystem().getTh(aPin, this);
+        SubSystem.Th t = getAPin().getSubSystem().getTh(getAPin(), this);
 
         double U = (Math.sqrt(t.U * t.U + 4 * P * t.R) + t.U) / 2;
         U = Math.min(Math.min(U, Umax), t.U + t.R * Imax);
@@ -67,7 +67,7 @@ public class PowerSource extends VoltageSource implements IRootSystemPreStepProc
     }
 
     public double getEffectiveP() {
-        return getBipoleU() * getCurrent();
+        return getU() * getCurrent();
     }
 
     /*

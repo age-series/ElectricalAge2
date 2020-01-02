@@ -40,14 +40,14 @@ public class DelayInterSystem extends Component implements ISubSystemProcessI {
 
     @Override
     public void quitSubSystem() {
-        subSystem.removeProcess(this);
+        getSubSystem().removeProcess(this);
 
         super.quitSubSystem();
     }
 
     @Override
-    public void addedTo(SubSystem s) {
-        super.addedTo(s);
+    public void setSubSystem(SubSystem s) {
+        super.setSubSystem(s);
         s.addProcess(this);
     }
 

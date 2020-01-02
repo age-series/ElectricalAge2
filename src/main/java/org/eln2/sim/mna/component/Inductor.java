@@ -51,10 +51,10 @@ public class Inductor extends Bipole implements ISubSystemProcessI {//, INBTTRea
     public void applyTo(SubSystem s) {
         ldt = -l / s.getDt();
 
-        s.addToA(aPin, currentState, 1);
-        s.addToA(bPin, currentState, -1);
-        s.addToA(currentState, aPin, 1);
-        s.addToA(currentState, bPin, -1);
+        s.addToA(getAPin(), currentState, 1);
+        s.addToA(getBPin(), currentState, -1);
+        s.addToA(currentState, getAPin(), 1);
+        s.addToA(currentState, getBPin(), -1);
         s.addToA(currentState, currentState, ldt);
     }
 
@@ -65,14 +65,14 @@ public class Inductor extends Bipole implements ISubSystemProcessI {//, INBTTRea
 
     @Override
     public void quitSubSystem() {
-        subSystem.states.remove(getCurrentState());
-        subSystem.removeProcess(this);
+        getSubSystem().states.remove(getCurrentState());
+        getSubSystem().removeProcess(this);
         super.quitSubSystem();
     }
 
     @Override
-    public void addedTo(SubSystem s) {
-        super.addedTo(s);
+    public void setSubSystem(SubSystem s) {
+        super.setSubSystem(s);
         s.addState(getCurrentState());
         s.addProcess(this);
     }

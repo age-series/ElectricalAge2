@@ -48,7 +48,7 @@ public class Resistor extends Bipole {
     }
 
     public double getU() {
-        return (aPin == null ? 0 : aPin.state) - (bPin == null ? 0 : bPin.state);
+        return (getAPin() == null ? 0 : getAPin().state) - (getBPin() == null ? 0 : getBPin().state);
     }
 
     public Resistor setR(double r) {
@@ -94,10 +94,10 @@ public class Resistor extends Bipole {
 
     @Override
     public void applyTo(SubSystem s) {
-        s.addToA(aPin, aPin, rInv);
-        s.addToA(aPin, bPin, -rInv);
-        s.addToA(bPin, bPin, rInv);
-        s.addToA(bPin, aPin, -rInv);
+        s.addToA(getAPin(), getAPin(), rInv);
+        s.addToA(getAPin(), getBPin(), -rInv);
+        s.addToA(getBPin(), getBPin(), rInv);
+        s.addToA(getBPin(), getAPin(), -rInv);
     }
 
     @Override

@@ -139,11 +139,11 @@ public class RootSystem {
                 }
                 State sNext = null;
 
-                if (sPtr != rPtr.aPin)
-                    sNext = rPtr.aPin;
-                else if (sPtr != rPtr.bPin) sNext = rPtr.bPin;
+                if (sPtr != rPtr.getAPin())
+                    sNext = rPtr.getAPin();
+                else if (sPtr != rPtr.getBPin()) sNext = rPtr.getBPin();
 
-                if (sNext == null || sNext == sRoot || stateScope.contains(sNext) == false) break;
+                if (sNext == null || sNext == sRoot || !stateScope.contains(sNext)) break;
 
                 sPtr = sNext;
             }
@@ -167,11 +167,11 @@ public class RootSystem {
 
                 State sNext = null;
 
-                if (sPtr != rPtr.aPin)
-                    sNext = rPtr.aPin;
-                else if (sPtr != rPtr.bPin) sNext = rPtr.bPin;
+                if (sPtr != rPtr.getAPin())
+                    sNext = rPtr.getAPin();
+                else if (sPtr != rPtr.getBPin()) sNext = rPtr.getBPin();
 
-                if (sNext == null || stateScope.contains(sNext) == false) break;
+                if (sNext == null || !stateScope.contains(sNext)) break;
 
                 sPtr = sNext;
             }
@@ -232,7 +232,7 @@ public class RootSystem {
 
             Resistor r = (Resistor) c;
             // If a pin is disconnected, we can't be intersystem
-            if(r.aPin == null || r.bPin == null) continue;
+            if(r.getAPin() == null || r.getBPin() == null) continue;
 
             new InterSystemAbstraction(this, r);
             ic.remove();
@@ -421,6 +421,10 @@ public class RootSystem {
         }
 
         s.step();
+        for (SubSystem sa: s.systems) {
+            System.out.println(sa);
+        }
+        System.out.println(r11.getU());
     }
 
     public int getSubSystemCount() {

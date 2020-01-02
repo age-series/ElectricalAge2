@@ -37,24 +37,26 @@ public class VoltageSource extends Bipole implements ISubSystemProcessI {//, INB
 
     @Override
     public void quitSubSystem() {
-        subSystem.states.remove(getCurrentState());
-        subSystem.removeProcess(this);
+        getSubSystem().states.remove(getCurrentState());
+        getSubSystem().removeProcess(this);
         super.quitSubSystem();
     }
 
     @Override
-    public void addedTo(SubSystem s) {
-        super.addedTo(s);
-        s.addState(getCurrentState());
-        s.addProcess(this);
+    public void setSubSystem(SubSystem s) {
+        super.setSubSystem(s);
+        if(s != null) {
+            s.addState(getCurrentState());
+            s.addProcess(this);
+        }
     }
 
     @Override
     public void applyTo(SubSystem s) {
-        s.addToA(aPin, getCurrentState(), 1.0);
-        s.addToA(bPin, getCurrentState(), -1.0);
-        s.addToA(getCurrentState(), aPin, 1.0);
-        s.addToA(getCurrentState(), bPin, -1.0);
+        s.addToA(getAPin(), getCurrentState(), 1.0);
+        s.addToA(getBPin(), getCurrentState(), -1.0);
+        s.addToA(getCurrentState(), getAPin(), 1.0);
+        s.addToA(getCurrentState(), getBPin(), -1.0);
     }
 
     @Override

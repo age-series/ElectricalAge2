@@ -21,15 +21,15 @@ public class Delay extends Bipole implements ISubSystemProcessI {
     }
 
     @Override
-    public void addedTo(SubSystem s) {
-        super.addedTo(s);
+    public void setSubSystem(SubSystem s) {
+        super.setSubSystem(s);
         s.addProcess(this);
     }
 
     @Override
     public void applyTo(SubSystem s) {
-        s.addToA(aPin, aPin, conductance);
-        s.addToA(bPin, bPin, conductance);
+        s.addToA(getAPin(), getAPin(), conductance);
+        s.addToA(getBPin(), getBPin(), conductance);
     }
 
 	/*@Override
@@ -46,15 +46,15 @@ public class Delay extends Bipole implements ISubSystemProcessI {
 
     @Override
     public void simProcessI(SubSystem s) {
-        double iA = aPin.state * conductance + oldIa;
-        double iB = bPin.state * conductance + oldIb;
+        double iA = getAPin().state * conductance + oldIa;
+        double iB = getAPin().state * conductance + oldIb;
         double iTarget = (iA - iB) / 2;
 
-        double aPinI = iTarget - (aPin.state + bPin.state) * 0.5 * conductance;
-        double bPinI = -iTarget - (aPin.state + bPin.state) * 0.5 * conductance;
+        double aPinI = iTarget - (getAPin().state + getBPin().state) * 0.5 * conductance;
+        double bPinI = -iTarget - (getAPin().state + getBPin().state) * 0.5 * conductance;
 
-        s.addToI(aPin, -aPinI);
-        s.addToI(bPin, -bPinI);
+        s.addToI(getAPin(), -aPinI);
+        s.addToI(getBPin(), -bPinI);
 
         oldIa = aPinI;
         oldIb = bPinI;

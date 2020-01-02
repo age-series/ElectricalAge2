@@ -36,27 +36,27 @@ public class Transformer extends Bipole {
 
     @Override
     public void quitSubSystem() {
-        subSystem.states.remove(aCurrentState);
-        subSystem.states.remove(bCurrentState);
+        getSubSystem().states.remove(aCurrentState);
+        getSubSystem().states.remove(bCurrentState);
         super.quitSubSystem();
     }
 
     @Override
-    public void addedTo(SubSystem s) {
-        super.addedTo(s);
+    public void setSubSystem(SubSystem s) {
+        super.setSubSystem(s);
         s.addState(aCurrentState);
         s.addState(bCurrentState);
     }
 
     @Override
     public void applyTo(SubSystem s) {
-        s.addToA(bPin, bCurrentState, 1.0);
-        s.addToA(bCurrentState, bPin, 1.0);
-        s.addToA(bCurrentState, aPin, -ratio);
+        s.addToA(getBPin(), bCurrentState, 1.0);
+        s.addToA(bCurrentState, getBPin(), 1.0);
+        s.addToA(bCurrentState, getAPin(), -ratio);
 
-        s.addToA(aPin, aCurrentState, 1.0);
-        s.addToA(aCurrentState, aPin, 1.0);
-        s.addToA(aCurrentState, bPin, -1 / ratio);
+        s.addToA(getAPin(), aCurrentState, 1.0);
+        s.addToA(aCurrentState, getAPin(), 1.0);
+        s.addToA(aCurrentState, getBPin(), -1 / ratio);
 
         s.addToA(aCurrentState, aCurrentState, 1.0);
         s.addToA(aCurrentState, bCurrentState, ratio);

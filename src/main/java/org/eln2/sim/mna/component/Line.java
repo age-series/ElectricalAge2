@@ -70,8 +70,8 @@ public class Line extends Resistor implements ISubSystemProcessFlush, IAbstracto
         } else {
             Resistor first = resistors.getFirst();
             Resistor last = resistors.getLast();
-            State stateBefore = first.aPin == states.getFirst() ? first.bPin : first.aPin;
-            State stateAfter = last.aPin == states.getLast() ? last.bPin : last.aPin;
+            State stateBefore = first.getAPin() == states.getFirst() ? first.getBPin() : first.getAPin();
+            State stateAfter = last.getAPin() == states.getLast() ? last.getBPin() : last.getAPin();
             //stateBefore.remove(first);
             //stateAfter.remove(last);
 
@@ -88,7 +88,7 @@ public class Line extends Resistor implements ISubSystemProcessFlush, IAbstracto
             root.addProcess(l);
 
             for (Resistor r : resistors) {
-                r.abstractedBy = l;
+                r.setAbstractedBy(l);
                 l.ofInterSystem |= r.canBeReplacedByInterSystem();
             }
 
@@ -101,7 +101,7 @@ public class Line extends Resistor implements ISubSystemProcessFlush, IAbstracto
     @Override
     public void returnToRootSystem(RootSystem root) {
         for (Resistor r : resistors) {
-            r.abstractedBy = null;
+            r.setAbstractedBy(null);
         }
 
         for (State s : states) {
@@ -118,8 +118,8 @@ public class Line extends Resistor implements ISubSystemProcessFlush, IAbstracto
 
     @Override
     public void simProcessFlush() {
-        double i = (aPin.state - bPin.state) * getRInv();
-        double u = aPin.state;
+        double i = (getAPin().state - getBPin().state) * getRInv();
+        double u = getAPin().state;
         Iterator<Resistor> ir = resistors.iterator();
         Iterator<State> is = states.iterator();
 
@@ -133,9 +133,9 @@ public class Line extends Resistor implements ISubSystemProcessFlush, IAbstracto
     }
 
     @Override
-    public void addedTo(SubSystem s) {
+    public void setSubSystem(SubSystem s) {
         s.addProcess(this);
-        super.addedTo(s);
+        super.setSubSystem(s);
     }
 
     @Override
@@ -146,7 +146,7 @@ public class Line extends Resistor implements ISubSystemProcessFlush, IAbstracto
     public void dirty(Component component) {
         recalculateR();
         if (isAbstracted())
-            abstractedBy.dirty(this);
+            getAbstractedBy().dirty(this);
     }
 
     @Override

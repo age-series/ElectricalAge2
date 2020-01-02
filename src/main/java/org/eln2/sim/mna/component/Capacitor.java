@@ -35,28 +35,28 @@ public class Capacitor extends Bipole implements ISubSystemProcessI {
     public void applyTo(SubSystem s) {
         cdt = c / s.getDt();
 
-        s.addToA(aPin, aPin, cdt);
-        s.addToA(aPin, bPin, -cdt);
-        s.addToA(bPin, bPin, cdt);
-        s.addToA(bPin, aPin, -cdt);
+        s.addToA(getAPin(), getAPin(), cdt);
+        s.addToA(getAPin(), getBPin(), -cdt);
+        s.addToA(getBPin(), getBPin(), cdt);
+        s.addToA(getBPin(), getAPin(), -cdt);
     }
 
     @Override
     public void simProcessI(SubSystem s) {
-        double add = (s.getXSafe(aPin) - s.getXSafe(bPin)) * cdt;
-        s.addToI(aPin, add);
-        s.addToI(bPin, -add);
+        double add = (s.getXSafe(getAPin()) - s.getXSafe(getBPin())) * cdt;
+        s.addToI(getAPin(), add);
+        s.addToI(getBPin(), -add);
     }
 
     @Override
     public void quitSubSystem() {
-        subSystem.removeProcess(this);
+        getSubSystem().removeProcess(this);
         super.quitSubSystem();
     }
 
     @Override
-    public void addedTo(SubSystem s) {
-        super.addedTo(s);
+    public void setSubSystem(SubSystem s) {
+        super.setSubSystem(s);
         s.addProcess(this);
     }
 

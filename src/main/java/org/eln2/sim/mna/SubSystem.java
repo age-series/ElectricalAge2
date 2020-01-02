@@ -65,7 +65,7 @@ public class SubSystem {
 
     public void addComponent(Component c) {
         component.add(c);
-        c.addedTo(this);
+        c.setSubSystem(this);
         invalidate();
     }
 
@@ -313,6 +313,8 @@ public class SubSystem {
         for (int idx = 0; idx < 100; idx++) {
             s.step();
         }
+
+        System.out.println(s);
 
         System.out.println("END");
 

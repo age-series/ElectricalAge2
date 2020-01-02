@@ -19,16 +19,6 @@ import java.util.List;
 import java.util.Set;
 
 public class Simulator /* ,IPacketHandler */ {
-
-    private static Simulator instance = null;
-
-    public static Simulator getInstance() {
-        if (instance == null) {
-            instance = new Simulator(0.05, 0.05, 1, 0.05);
-        }
-        return instance;
-    }
-
     public RootSystem mna;
 
     private ArrayList<IProcess> slowProcessList;
@@ -453,7 +443,7 @@ public class Simulator /* ,IPacketHandler */ {
         destructableSet.clear();
 
         slowNsStack += System.nanoTime() - stackStart;
-        avgTickTime += 1.0 / 20 * ((int) (System.nanoTime() - startTime) / 1000);
+        avgTickTime += 1.0 / 20 * ((int) (System.nanoTime() - startTime) / 1000.0);
 
 		/*stackStart = System.nanoTime();
 		for (int idx = 0; idx < 100; idx++) {

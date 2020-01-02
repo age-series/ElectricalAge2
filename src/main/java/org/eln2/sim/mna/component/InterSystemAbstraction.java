@@ -33,8 +33,8 @@ public class InterSystemAbstraction implements IAbstractor, IDestructor {
         this.interSystemResistor = interSystemResistor;
         this.root = root;
 
-        aState = interSystemResistor.aPin;
-        bState = interSystemResistor.bPin;
+        aState = interSystemResistor.getAPin();
+        bState = interSystemResistor.getBPin();
         aSystem = aState.getSubSystem();
         bSystem = bState.getSubSystem();
 
@@ -65,7 +65,7 @@ public class InterSystemAbstraction implements IAbstractor, IDestructor {
         aSystem.breakDestructor.add(this);
         bSystem.breakDestructor.add(this);
 
-        interSystemResistor.abstractedBy = this;
+        interSystemResistor.setAbstractedBy(this);
 
         thevnaCalc = new DelayInterSystem2.ThevnaCalculator(aNewDelay, bNewDelay);
         root.addProcess(thevnaCalc);
@@ -104,7 +104,7 @@ public class InterSystemAbstraction implements IAbstractor, IDestructor {
 
         root.removeProcess(thevnaCalc);
 
-        interSystemResistor.abstractedBy = null;
+        interSystemResistor.setAbstractedBy(null);
 
         aSystem.component.add(interSystemResistor);
     }
