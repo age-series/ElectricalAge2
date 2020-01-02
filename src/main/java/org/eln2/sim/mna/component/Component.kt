@@ -13,7 +13,7 @@ abstract class Component {
     open var name: String = ""
     open var subSystem: SubSystem? = null
         get() {
-            return abstractedBy?.abstractorSubSystem?: field
+            return abstractedBy?.getAbstractorSubSystem()?: field
         }
     open var abstractedBy: IAbstractor? = null
 

@@ -1,10 +1,10 @@
-package org.eln2.sim.mna.misc;
+package org.eln2.sim.mna.misc
 
 /*
 NOTE: DO NOT IMPORT MINECRAFT CODE IN THIS CLASS
 EXTEND IT INSTEAD IN THE org.eln.nbt DIRECTORY
  */
 
-public interface IDestructor {
-    void destruct();
+interface IDestructor {
+    fun destruct()
 }
