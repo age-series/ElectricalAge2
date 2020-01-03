@@ -11,6 +11,12 @@ abstract class Bipole: Component {
     open var aPin: State? = null
     open var bPin: State? = null
 
+    open var u: Double
+        set(u) {}
+        get() {
+            return (aPin?.state?: 0.0) - (bPin?.state?: 0.0)
+        }
+
     constructor()
     constructor(aPin: State?, bPin: State?) {
         connectTo(aPin, bPin)
@@ -20,8 +26,8 @@ abstract class Bipole: Component {
         breakConnection()
         this.aPin = aPin
         this.bPin = bPin
-        aPin?.add(this)
-        bPin?.add(this)
+        aPin?.components?.add(this)
+        bPin?.components?.add(this)
         return this
     }
 
@@ -33,19 +39,15 @@ abstract class Bipole: Component {
     }
 
     override fun breakConnection() {
-        if (aPin != null) aPin!!.remove(this)
-        if (bPin != null) bPin!!.remove(this)
+        aPin?.components?.remove(this)
+        bPin?.components?.remove(this)
     }
 
     override fun getConnectedStates(): Array<State?>? {
         return arrayOf(aPin, bPin)
     }
 
-    abstract fun getCurrent(): Double
-
-    open fun getU(): Double {
-        return (aPin?.state?: 0.0) - (bPin?.state?: 0.0)
-    }
+    abstract fun getI(): Double
 
     override fun toString(): String {
         return "[" + aPin + " " + this.javaClass.simpleName + " " + bPin + "]"

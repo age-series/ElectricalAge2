@@ -93,7 +93,7 @@ public class Line extends Resistor implements ISubSystemProcessFlush, IAbstracto
             }
 
             for (State s : states) {
-                s.abstractedBy = l;
+                s.setAbstractedBy(l);
             }
         }
     }
@@ -105,7 +105,7 @@ public class Line extends Resistor implements ISubSystemProcessFlush, IAbstracto
         }
 
         for (State s : states) {
-            s.abstractedBy = null;
+            s.setAbstractedBy(null);
         }
 
         restoreResistorIntoCircuit();
@@ -118,8 +118,8 @@ public class Line extends Resistor implements ISubSystemProcessFlush, IAbstracto
 
     @Override
     public void simProcessFlush() {
-        double i = (getAPin().state - getBPin().state) * getRInv();
-        double u = getAPin().state;
+        double i = (getAPin().getState() - getBPin().getState()) * getRInv();
+        double u = getAPin().getState();
         Iterator<Resistor> ir = resistors.iterator();
         Iterator<State> is = states.iterator();
 
@@ -127,7 +127,7 @@ public class Line extends Resistor implements ISubSystemProcessFlush, IAbstracto
             State s = is.next();
             Resistor r = ir.next();
             u -= r.getR() * i;
-            s.state = u;
+            s.setState(u);
             //u -= r.getR() * i;
         }
     }

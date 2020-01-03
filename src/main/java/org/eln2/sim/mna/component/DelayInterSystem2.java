@@ -17,7 +17,7 @@ public class DelayInterSystem2 extends VoltageSource {
     public boolean thevnaCalc = false;
 
     public DelayInterSystem2() {
-        super(null);
+        super();
     }
 
     public void set(DelayInterSystem2 other) {

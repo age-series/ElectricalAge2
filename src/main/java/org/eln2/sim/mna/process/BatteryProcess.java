@@ -48,7 +48,7 @@ public class BatteryProcess implements IProcess {
     public void process(double time) {
         double lastQ = Q;
         double wasteQ = 0;
-        Q = Math.max(Q - voltageSource.getCurrent() * time / QNominal, 0);
+        Q = Math.max(Q - voltageSource.getI() * time / QNominal, 0);
         if (Q > lastQ && !isRechargeable) {
             System.out.println("Battery is recharging when it shouldn't!");
             wasteQ = Q - lastQ;
@@ -57,7 +57,7 @@ public class BatteryProcess implements IProcess {
         double voltage = computeVoltage();
         voltageSource.setU(voltage);
         if (wasteQ > 0 && thermalLoad != null) {
-            thermalLoad.movePowerTo(Math.abs(voltageSource.getCurrent() * voltage));
+            thermalLoad.movePowerTo(Math.abs(voltageSource.getI() * voltage));
         }
     }
 

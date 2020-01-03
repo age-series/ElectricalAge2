@@ -72,7 +72,7 @@ public class InterSystemAbstraction implements IAbstractor, IDestructor {
     }
 
     void calibrate() {
-        double u = (aState.state + bState.state) / 2;
+        double u = (aState.getState() + bState.getState()) / 2;
         aNewDelay.setU(u);
         bNewDelay.setU(u);
 

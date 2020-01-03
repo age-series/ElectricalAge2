@@ -21,9 +21,9 @@ public class ElectricalLoadHeatThermalLoad implements IProcess {
 
     @Override
     public void process(double time) {
-        if (r.isNotSimulated()) return;
+        if (r.getNotSimulated()) return;
         double I = r.getI();
-        load.movePowerTo(I * I * r.getRs() * 2);
+        load.movePowerTo(I * I * r.getR() * 2);
     }
 
 	/*double powerMax = 100000;

@@ -29,8 +29,8 @@ public class Inductor extends Bipole implements ISubSystemProcessI {//, INBTTRea
     }
 
     @Override
-    public double getCurrent() {
-        return currentState.state;
+    public double getI() {
+        return currentState.getState();
     }
 
     public double getL() {
@@ -43,7 +43,7 @@ public class Inductor extends Bipole implements ISubSystemProcessI {//, INBTTRea
     }
 
     public double getE() {
-        final double i = getCurrent();
+        final double i = getI();
         return i * i * l / 2;
     }
 
@@ -60,7 +60,7 @@ public class Inductor extends Bipole implements ISubSystemProcessI {//, INBTTRea
 
     @Override
     public void simProcessI(SubSystem s) {
-        s.addToI(currentState, ldt * currentState.state);
+        s.addToI(currentState, ldt * currentState.getState());
     }
 
     @Override
@@ -97,6 +97,6 @@ public class Inductor extends Bipole implements ISubSystemProcessI {//, INBTTRea
      */
 
     public void resetStates() {
-        currentState.state = 0;
+        currentState.setState(0);
     }
 }

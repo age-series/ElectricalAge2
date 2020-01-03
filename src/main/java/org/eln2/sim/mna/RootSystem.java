@@ -64,7 +64,7 @@ public class RootSystem {
     }
 
     public void addState(State s) {
-        for (Component c : (ArrayList<Component>) s.getConnectedComponentsNotAbstracted().clone()) {
+        for (Component c : (ArrayList<Component>) s.getComponentsNotAbstracted().clone()) {
             if (c.getSubSystem() != null)
                 breakSystems(c.getSubSystem());
         }
@@ -101,8 +101,8 @@ public class RootSystem {
     }
 
     private boolean isValidForLine(State s) {
-        if (!s.canBeSimplifiedByLine()) return false;
-        List<Component> sc = s.getConnectedComponentsNotAbstracted();
+        if (!s.getCanBeSimplifiedByLine()) return false;
+        List<Component> sc = s.getComponentsNotAbstracted();
         if (sc.size() != 2) return false;
         for (Component c : sc) {
             if (!(c instanceof Resistor)) {
@@ -129,9 +129,9 @@ public class RootSystem {
             State sRoot = stateScope.iterator().next();
 
             State sPtr = sRoot;
-            Resistor rPtr = (Resistor) sPtr.getConnectedComponentsNotAbstracted().get(0);
+            Resistor rPtr = (Resistor) sPtr.getComponentsNotAbstracted().get(0);
             while (true) {
-                for (Component c : sPtr.getConnectedComponentsNotAbstracted()) {
+                for (Component c : sPtr.getComponentsNotAbstracted()) {
                     if (c != rPtr) {
                         rPtr = (Resistor) c;
                         break;
@@ -156,7 +156,7 @@ public class RootSystem {
             while (true) {
                 lineStates.add(sPtr);
                 stateScope.remove(sPtr);
-                for (Component c : sPtr.getConnectedComponentsNotAbstracted()) {
+                for (Component c : sPtr.getComponentsNotAbstracted()) {
                     if (c != rPtr) {
                         rPtr = (Resistor) c;
                         break;
@@ -203,7 +203,7 @@ public class RootSystem {
     private void generateSystems() {
         LinkedList<State> firstState = new LinkedList<State>();
         for (State s : addStates) {
-            if (s.mustBeFarFromInterSystem()) {
+            if (s.getMustBeFarFromInterSystem()) {
                 firstState.add(s);
             }
         }
@@ -300,13 +300,13 @@ public class RootSystem {
     }
 
     private void buildSubSystem(LinkedList<State> roots, Set<Component> componentSet, Set<State> stateSet) {
-        boolean privateSystem = roots.getFirst().isPrivateSubSystem();
+        boolean privateSystem = roots.getFirst().getPrivateSubSystem();
 
         while (!roots.isEmpty()) {
             State sExplored = roots.pollFirst();
             stateSet.add(sExplored);
 
-            for (Component c : sExplored.getConnectedComponentsNotAbstracted()) {
+            for (Component c : sExplored.getComponentsNotAbstracted()) {
                 if (privateSystem == false && roots.size() + stateSet.size() > maxSubSystemSize && c.canBeReplacedByInterSystem()) {
                     continue;
                 }
@@ -318,7 +318,7 @@ public class RootSystem {
                         noGo = true;
                         break;
                     }
-                    if (sNext.isPrivateSubSystem() != privateSystem) {
+                    if (sNext.getPrivateSubSystem() != privateSystem) {
                         noGo = true;
                         break;
                     }
@@ -389,10 +389,21 @@ public class RootSystem {
         s.addState(n1 = new VoltageState());
         s.addState(n2 = new VoltageState());
 
-        s.addComponent((u1 = new VoltageSource("")).setU(1).connectTo(n1, null));
+        u1 = new VoltageSource();
+        u1.setU(1);
+        u1.connectTo(n1, null);
 
-        s.addComponent((r1 = new Resistor()).setR(10).connectTo(n1, n2));
-        s.addComponent((r2 = new Resistor()).setR(20).connectTo(n2, null));
+        s.addComponent(u1);
+
+        r1 = new Resistor();
+        r1.setR(10);
+        r1.connectTo(n1, n2);
+        r2 = new Resistor();
+        r2.setR(20);
+        r2.connectTo(n2, null);
+
+        s.addComponent(r1);
+        s.addComponent(r2);
 
         VoltageState n11, n12;
         VoltageSource u11;
@@ -401,20 +412,38 @@ public class RootSystem {
         s.addState(n11 = new VoltageState());
         s.addState(n12 = new VoltageState());
 
-        s.addComponent((u11 = new VoltageSource("")).setU(1).connectTo(n11, null));
+        u11 = new VoltageSource();
+        u11.setU(1);
+        u11.connectTo(n11, null);
 
-        s.addComponent((r11 = new Resistor()).setR(10).connectTo(n11, n12));
-        s.addComponent((r12 = new Resistor()).setR(30).connectTo(n12, null));
+        s.addComponent(u11);
+
+        r11 = new Resistor();
+        r11.setR(10);
+        r11.connectTo(n11, n12);
+        r12 = new Resistor();
+        r12.setR(30);
+        r12.connectTo(n12, null);
+
+        s.addComponent(r11);
+        s.addComponent(r12);
 
         InterSystem i01;
 
-        s.addComponent((i01 = new InterSystem()).setR(10).connectTo(n2, n12));
+        i01 = new InterSystem();
+        i01.setR(10);
+        i01.connectTo(n2, n12);
+
+        s.addComponent(i01);
 
         for (int i = 0; i < 50; i++) {
             s.step();
         }
 
-        s.addComponent((r13 = new Resistor()).setR(30).connectTo(n12, null));
+        r13 = new Resistor();
+        r13.setR(30);
+        r13.connectTo(n12, null);
+        s.addComponent(r13);
 
         for (int i = 0; i < 50; i++) {
             s.step();

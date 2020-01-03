@@ -259,12 +259,12 @@ public class SubSystem {
         if (!singularMatrix) {
             for (int idx = 0; idx < stateCount; idx++) {
                 //statesTab[idx].state = Xtemp.getEntry(idx, 0);
-                statesTab[idx].state = XtempData[idx];
+                statesTab[idx].setState(XtempData[idx]);
 
             }
         } else {
             for (int idx = 0; idx < stateCount; idx++) {
-                statesTab[idx].state = 0;
+                statesTab[idx].setState(0);
             }
         }
 
@@ -302,11 +302,24 @@ public class SubSystem {
         //	s.addState(n4 = new VoltageState());
         //	s.addState(n5 = new VoltageState());
 
-        s.addComponent((u1 = new VoltageSource("")).setU(1).connectTo(n1, null));
+        u1 = new VoltageSource();
+        u1.setU(1);
+        u1.connectTo(n1, null);
 
-        s.addComponent((r1 = new Resistor()).setR(10).connectTo(n1, n2));
-        s.addComponent((d1 = new Delay()).set(1).connectTo(n2, n3));
-        s.addComponent((r2 = new Resistor()).setR(10).connectTo(n3, null));
+        s.addComponent(u1);
+
+        r1 = new Resistor();
+        r1.setR(10);
+        r1.connectTo(n1, n2);
+        d1 = new Delay();
+        d1.set(1);
+        d1.connectTo(n2, n3);
+        r2 = new Resistor();
+        r2.setR(10);
+        r2.connectTo(n3, null);
+        s.addComponent(r1);
+        s.addComponent(d1);
+        s.addComponent(r2);
         //s.addComponent((d2 = new Delay()).set(10).connectTo(n4, n5));
         //s.addComponent((r2 = new Resistor()).setR(10).connectTo(n5, null));
 
@@ -328,11 +341,11 @@ public class SubSystem {
     }
 
     public void setX(State s, double value) {
-        s.state = value;
+        s.setState(value);
     }
 
     public double getX(State s) {
-        return s.state;
+        return s.getState();
     }
 
     public double getXSafe(State bPin) {
@@ -390,7 +403,7 @@ public class SubSystem {
 
     public Th getTh(State d, VoltageSource voltageSource) {
         Th th = new Th();
-        double originalU = d.state;
+        double originalU = d.getState();
 
         double aU = 10;
         voltageSource.setU(aU);

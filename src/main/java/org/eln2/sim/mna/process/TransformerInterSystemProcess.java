@@ -42,7 +42,7 @@ public class TransformerInterSystemProcess implements IRootSystemPreStepProcess 
 
     Th getTh(State d, VoltageSource voltageSource) {
         Th th = new Th();
-        double originalU = d.state;
+        double originalU = d.getState();
 
         double aU = 10;
         voltageSource.setU(aU);

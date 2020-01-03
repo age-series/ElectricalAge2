@@ -22,7 +22,7 @@ public class Capacitor extends Bipole implements ISubSystemProcessI {
     }
 
     @Override
-    public double getCurrent() {
+    public double getI() {
         return 0;
     }
 

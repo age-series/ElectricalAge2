@@ -123,7 +123,7 @@ public class DelayInterSystem extends Component implements ISubSystemProcessI {
                 double aPinI = iTarget - uTarget * conductance;
                 s.addToI(pin, -aPinI);
             } else {
-                double uTarget = other.pin.state * 0.5 + pin.state * 0.5;
+                double uTarget = other.pin.getState() * 0.5 + pin.getState() * 0.5;
                 //uTarget = 0;
                 double aPinI = iTarget - uTarget * conductance;
                 s.addToI(pin, -aPinI);
