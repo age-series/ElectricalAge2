@@ -8,7 +8,7 @@ EXTEND IT INSTEAD IN THE org.eln.nbt DIRECTORY
 import org.eln2.sim.mna.state.ElectricalLoad
 import org.eln2.sim.mna.state.State
 
-open class ElectricalConnection(open var l1: ElectricalLoad? = null, open var l2: ElectricalLoad? = null): InterSystem {
+open class ElectricalConnection(open var l1: ElectricalLoad? = null, open var l2: ElectricalLoad? = null): InterSystem() {
     fun notifyRsChange() {
         val R = (aPin as ElectricalLoad).r + (bPin as ElectricalLoad).r
         r = R
