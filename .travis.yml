@@ -6,7 +6,7 @@ dist: trusty
 sudo: false
 
 install:
-  - gradle setupDecompWorkspace
+  - ./gradlew setupDecompWorkspace
 
 # Caching Gradle
 before_cache:
