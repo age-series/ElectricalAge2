@@ -1,10 +1,8 @@
-package org.eln2.sim.process;
+package org.eln2.sim.thermal
 
 /*
 NOTE: DO NOT IMPORT MINECRAFT CODE IN THIS CLASS
 EXTEND IT INSTEAD IN THE org.eln.nbt DIRECTORY
  */
 
-public interface IProcess {
-    void process(double time);
-}
+class ThermalConnection(var l1: ThermalLoad, var l2: ThermalLoad)

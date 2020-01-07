@@ -164,8 +164,8 @@ public class Simulator /* ,IPacketHandler */ {
 
     public void addThermalConnection(ThermalConnection connection) {
         if (connection != null) {
-            if (connection.L1.isSlow() == connection.L2.isSlow()) {
-                if (connection.L1.isSlow())
+            if (connection.getL1().isSlow() == connection.getL2().isSlow()) {
+                if (connection.getL1().isSlow())
                     thermalSlowConnectionList.add(connection);
                 else
                     thermalFastConnectionList.add(connection);
@@ -510,12 +510,12 @@ public class Simulator /* ,IPacketHandler */ {
     void thermalStep(double dt, Iterable<ThermalConnection> connectionList, Iterable<IProcess> processList, Iterable<ThermalLoad> loadList) {
         for (ThermalConnection c : connectionList) {
             double i;
-            i = (c.L2.Tc - c.L1.Tc) / ((c.L2.Rs + c.L1.Rs));
-            c.L1.PcTemp += i;
-            c.L2.PcTemp -= i;
+            i = (c.getL2().Tc - c.getL1().Tc) / ((c.getL2().Rs + c.getL1().Rs));
+            c.getL1().PcTemp += i;
+            c.getL2().PcTemp -= i;
 
-            c.L1.PrsTemp += Math.abs(i);
-            c.L2.PrsTemp += Math.abs(i);
+            c.getL1().PrsTemp += Math.abs(i);
+            c.getL2().PrsTemp += Math.abs(i);
         }
         if (processList != null) {
             for (IProcess process : processList) {
