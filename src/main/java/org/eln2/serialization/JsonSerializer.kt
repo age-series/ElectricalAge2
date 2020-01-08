@@ -1,5 +1,9 @@
 package org.eln2.serialization
 
+/*
+NOTE: This code is strictly experimental
+ */
+
 class JsonSerializer: StateSerializer, ILazySerializer {
 
     private var backingJson = ""

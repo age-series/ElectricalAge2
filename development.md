@@ -31,7 +31,7 @@ will possibly make a lot more sense after reading that book.
     * `nbt`: all NBT serializations of the sim code
     * `sim`: all sorts of simulation code (mna, electrical, thermal)
 * `cam72cam.mod`: UniversalModLib (Library code)
-    
+
 **NOTE**: DO NOT PUT MINECRAFT IMPORTS IN THE SIM CODE
 
 INSTEAD, CREATE A CLASS IN `org.eln2.nbt` TO EXTEND THE FUNCTIONALITY
