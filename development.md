@@ -126,43 +126,76 @@ I say models and textures, but these are basic as almost all of these items will
 - [ ] Verify that Inductors work as they should IRL
 - [ ] Verify that Batteries work as they should IRL
 
-Note: Beyond this point, checkboxes have not been determined. They will be added later as we see fit.
-
 ## Phase 3: MultiNode
 
-Add a block such as the autominer.
+- [ ] autominer
+- [ ] solar panels
 
 ## Phase 4: SixNode
 
-Add cables, switches, resistors, etc.
+- [ ] "New" SixNode
+    - [ ] cables
+    - [ ] switches
+    - [ ] resistors
+    - [ ] inductors
+    - [ ] capacitors
+    - [ ] lamp sockets
+    - [ ] lamp supply
+- [ ] Remove Single* or at least delist it (shadow registry)
+- [ ] API v1.0
 
-Remove Single* or at least delist it (shadow registry) from normal builds.
+## Phase 5: Alpha Release and debugging
 
-## Phase 5: Some basic content
+- [ ] Remove Developer Lockdown
+- [ ] Initial rounds of bugfixing
 
-12v, 200v, 480v? 16kV, 125kV power transmission. Pole update material.
+## Phase 6: Machines and equipment
 
-Basic lamp sockets and lamp supplies?
+In no particular order:
 
-API v1.0 has to be completed and verified
-
-## Phase 6: Alpha Release and debugging
-
-***Remove Developer Lockdown***
-
-Release to public and initial rounds of bugfixing
-
-Stable API must be developed before this point.
-
-<!-- This phase missing is an inside joke -->
-
-## Phase 8: Shaft Networks and Machines
-
-Build larger amounts of energy, generators, turbines, etc.
-
-Methods for making steam and oil processing will happen here.
-
-## Phase 9: Survival Crafting and Balance
-
-Everything else.
+- [ ] mod integration
+    - [ ] pay back IR folks by making electric trains a bit more electric
+        - [ ] cantenaries (over track wires)
+    - [ ] oredict
+- [ ] Machines
+    - [ ] crusher - 100v to 800v
+    - [ ] roller - 100v to 800v
+    - [ ] press - 100v to 400v
+    - [ ] air compressor - 12v to 400v
+    - [ ] saw  - 12v to 200v
+    - [ ] experimental teleporter
+- [ ] Pole update material:
+    - [ ] data cables, fiber (Sigbus, OC/CC)
+        - [ ] fiber box
+    - [ ] 200v, 480v? (lower wires)
+    - [ ] 16kV (standard height poles)
+    - [ ] 125kV power transmission (extra height poles and power transmission)
+    - [ ] 220kV power transmission (power transfer towers)
+- [ ] Underground cable transmission
+    - [ ] manholes
+    - [ ] underground fiber
+        - [ ] fiber box
+    - [ ] <2kV cables/sigbus
+        - [ ] Ground transformer
+- [ ] Shaft Networks:
+    - [ ] generator
+    - [ ] motor
+    - [ ] turbines
+    - [ ] clutch
+    - [ ] static shaft
+    - [ ] shaft machines
+        - [ ] crusher
+        - [ ] roller
+        - [ ] saw
+        - [ ] air compressor
+- [ ] Steam and Oil Processing
+    - [ ] Oil fields
+    - [ ] Oil rigs (factorio-esque with diminishing returns)
+    - [ ] Oil Processing Tanks
+    - [ ] Biofuel Processing
+    - [ ] Solar Tower (generates steam from heat)
+    - [ ] *Nuclear Reactor* (generates hot coolant)
+        - [ ] Liquid Heat Exchangers (uses hot coolant and water to make steam and cold coolant)
+    - [ ] More efficient gas turbine operationv (~60% return in lost heat energy)
+        - [ ]Gas Heat Exchangers - uses exhaust from gas turbines to heat water to make steam
 
