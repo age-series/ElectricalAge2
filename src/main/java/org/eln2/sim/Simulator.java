@@ -510,12 +510,12 @@ public class Simulator /* ,IPacketHandler */ {
     void thermalStep(double dt, Iterable<ThermalConnection> connectionList, Iterable<IProcess> processList, Iterable<ThermalLoad> loadList) {
         for (ThermalConnection c : connectionList) {
             double i;
-            i = (c.getL2().Tc - c.getL1().Tc) / ((c.getL2().Rs + c.getL1().Rs));
-            c.getL1().PcTemp += i;
-            c.getL2().PcTemp -= i;
+            i = (c.getL2().getT() - c.getL1().getTc()) / ((c.getL2().getRs() + c.getL1().getRs()));
+            c.getL1().setPcTemp(c.getL1().getPcTemp() + i);
+            c.getL2().setPcTemp(c.getL2().getPcTemp() - i);
 
-            c.getL1().PrsTemp += Math.abs(i);
-            c.getL2().PrsTemp += Math.abs(i);
+            c.getL1().setPrsTemp(c.getL1().getPrsTemp() + Math.abs(i));
+            c.getL2().setPrsTemp(c.getL2().getPrsTemp() + Math.abs(i));
         }
         if (processList != null) {
             for (IProcess process : processList) {
@@ -523,16 +523,18 @@ public class Simulator /* ,IPacketHandler */ {
             }
         }
         for (ThermalLoad load : loadList) {
-            load.PcTemp -= load.Tc / load.Rp;
+            load.setPcTemp(load.getPcTemp() - (load.getTc() / load.getC()));
 
-            load.Tc += load.PcTemp * dt / load.C;
+            load.setTc(load.getTc() + load.getPcTemp() * dt / load.getC());
+            // TODO: This is terrible
+            //load.Tc += load.PcTemp * dt / load.C;
 
-            load.Pc = load.PcTemp;
-            load.Prs = load.PrsTemp;
-            load.Psp = load.PspTemp;
-            load.PcTemp = 0;
-            load.PrsTemp = 0;
-            load.PspTemp = 0;
+            load.setPc(load.getPcTemp());
+            load.setPrs(load.getPrsTemp());
+            load.setPsp(load.getPspTemp());
+            load.setPcTemp(0.0);
+            load.setPrsTemp(0.0);
+            load.setPspTemp(0.0);
         }
     }
 }

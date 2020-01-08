@@ -182,7 +182,7 @@ public class RootSystem {
             }
 
             //stateScope.removeAll(lineStates);
-            Line.newLine(this, lineResistors, lineStates);
+            new Line(this, lineResistors, lineStates);
         }
     }
 

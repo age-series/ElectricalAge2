@@ -1,11 +1,10 @@
-package org.eln2.sim.mna.process;
+package org.eln2.sim.process;
 
 /*
 NOTE: DO NOT IMPORT MINECRAFT CODE IN THIS CLASS
 EXTEND IT INSTEAD IN THE org.eln.nbt DIRECTORY
  */
 
-import org.eln2.sim.process.IProcess;
 import org.eln2.sim.thermal.ThermalLoad;
 
 public abstract class BatterySlowProcess implements IProcess {
