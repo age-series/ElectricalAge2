@@ -1,10 +1,10 @@
-package org.eln2.serialization
+package org.eln2.serialization.generic
 
 /*
 NOTE: This code is strictly experimental
  */
 
-class JsonSerializer: StateSerializer, ILazySerializer {
+class JsonSerializer: ISerialize, ISerializeLazily {
 
     private var backingJson = ""
 
@@ -53,11 +53,11 @@ class JsonSerializer: StateSerializer, ILazySerializer {
         TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
 
-    override fun getNested(key: String): StateSerializer? {
+    override fun getNested(key: String): ISerialize? {
         TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
 
-    override fun setNested(key: String, value: StateSerializer) {
+    override fun setNested(key: String, value: ISerialize) {
         TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
 

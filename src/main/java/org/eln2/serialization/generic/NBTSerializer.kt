@@ -1,13 +1,13 @@
-package org.eln2.serialization
+package org.eln2.serialization.generic
 
 /*
 NOTE: This code is strictly experimental
  */
 
 import net.minecraft.nbt.NBTTagCompound
+import net.minecraft.nbt.NBTTagList
 
-
-class NBTSerializer: StateSerializer {
+class NBTSerializer: ISerialize {
 
     private val backingNBT: NBTTagCompound
 
@@ -44,17 +44,21 @@ class NBTSerializer: StateSerializer {
         backingNBT.setString(key, value)
     }
 
-    override fun getNested(key: String): StateSerializer? {
+    override fun getNested(key: String): ISerialize? {
         if (backingNBT.hasKey(key))
             return NBTSerializer(backingNBT.getCompoundTag(key))
         return null
     }
 
-    override fun setNested(key: String, value: StateSerializer) {
+    override fun setNested(key: String, value: ISerialize) {
         if (value is NBTSerializer) {
-            throw Error("Error! Not implemented yet!")
+            setNested(key, value)
         } else {
             throw Error("Error! Cannot set nested when the nesting classes are not the same type!")
         }
+    }
+
+    fun setNested(key: String, value: NBTSerializer) {
+        backingNBT.setTag(key, value.backingNBT)
     }
 }
