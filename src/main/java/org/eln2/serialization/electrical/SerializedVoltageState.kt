@@ -7,7 +7,7 @@ EXTEND IT INSTEAD IN THE org.eln.nbt DIRECTORY
 
 import org.eln2.serialization.generic.IHaveState
 import org.eln2.serialization.generic.ISerialize
-import org.eln2.sim.mna.state.VoltageState
+import org.eln2.oldsim.electrical.mna.state.VoltageState
 
 class SerializedVoltageState(var name: String) : VoltageState(), IHaveState {
     override fun save(ss: ISerialize) {
