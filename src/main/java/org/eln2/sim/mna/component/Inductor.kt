@@ -42,23 +42,22 @@ open class Inductor: Bipole, ISubSystemProcessI {
         s.addToA(currentState, currentState, ldt)
     }
 
-    override fun simProcessI(s: SubSystem?) {
-        if (s == null) return
+    override fun simProcessI(s: SubSystem) {
         val ldt = -l / s.dt
         s.addToI(currentState, ldt * currentState.state)
     }
 
-    override fun quitSubSystem() {
-        subSystem!!.states.remove(currentState)
-        subSystem!!.removeProcess(this)
-        super.quitSubSystem()
+    override fun quitSubSystem(s: SubSystem) {
+        s.removeState(currentState)
+        s.processI.remove(this)
+        super.quitSubSystem(s)
     }
 
     override var subSystem: SubSystem? = null
         set(s) {
             field = s
             s?.addState(currentState)
-            s?.addProcess(this)
+            s?.processI?.add(this)
         }
 
     open fun resetStates() {

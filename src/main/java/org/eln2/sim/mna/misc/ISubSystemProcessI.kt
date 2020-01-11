@@ -8,5 +8,5 @@ EXTEND IT INSTEAD IN THE org.eln.nbt DIRECTORY
  */
 
 interface ISubSystemProcessI {
-    fun simProcessI(s: SubSystem?)
+    fun simProcessI(s: SubSystem)
 }

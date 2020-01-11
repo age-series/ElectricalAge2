@@ -36,10 +36,10 @@ class Transformer: Bipole {
             s?.addState(bCurrentState)
         }
 
-    override fun quitSubSystem() {
-        subSystem!!.states.remove(aCurrentState)
-        subSystem!!.states.remove(bCurrentState)
-        super.quitSubSystem()
+    override fun quitSubSystem(s: SubSystem) {
+        s.removeState(aCurrentState)
+        s.removeState(bCurrentState)
+        super.quitSubSystem(s)
     }
 
     override fun applyTo(s: SubSystem) {

@@ -29,7 +29,7 @@ open class Delay: Bipole, ISubSystemProcessI {
     override var subSystem: SubSystem? = null
         set(s) {
             field =s
-            s?.addProcess(this)
+            s?.processI?.add(this)
         }
 
     override fun applyTo(s: SubSystem) {
@@ -49,14 +49,14 @@ open class Delay: Bipole, ISubSystemProcessI {
 		oldIa = -aPinI;
 		oldIb = -bPinI;
 	}*/
-    override fun simProcessI(s: SubSystem?) {
+    override fun simProcessI(s: SubSystem) {
         val iA = aPin!!.state * conductance + oldIa
         val iB = aPin!!.state * conductance + oldIb
         val iTarget = (iA - iB) / 2
         val aPinI = iTarget - (aPin!!.state + bPin!!.state) * 0.5 * conductance
         val bPinI = -iTarget - (aPin!!.state + bPin!!.state) * 0.5 * conductance
-        s?.addToI(aPin, -aPinI)
-        s?.addToI(bPin, -bPinI)
+        s.addToI(aPin, -aPinI)
+        s.addToI(bPin, -bPinI)
         oldIa = aPinI
         oldIb = bPinI
     }

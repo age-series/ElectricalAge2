@@ -34,17 +34,16 @@ open class Capacitor: Bipole, ISubSystemProcessI {
         s.addToA(bPin, aPin, -cdt)
     }
 
-    override fun simProcessI(s: SubSystem?) {
-        if (s== null) return
+    override fun simProcessI(s: SubSystem) {
         val cdt = c / s.dt
-        val add: Double = (s.getXSafe(aPin) - s.getXSafe(bPin)) * cdt
+        val add: Double = (aPin?.state?: 0.0) - (bPin?.state?: 0.0) * cdt
         s.addToI(aPin, add)
         s.addToI(bPin, -add)
     }
 
-    override fun quitSubSystem() {
-        subSystem!!.removeProcess(this)
-        super.quitSubSystem()
+    override fun quitSubSystem(s: SubSystem) {
+        s.processI.remove(this)
+        super.quitSubSystem(s)
     }
 
     open fun getE(): Double {

@@ -6,6 +6,7 @@ EXTEND IT INSTEAD IN THE org.eln.nbt DIRECTORY
  */
 
 import org.eln2.sim.mna.SubSystem
+import org.eln2.sim.mna.Th
 import org.eln2.sim.mna.misc.IRootSystemPreStepProcess
 import org.eln2.sim.mna.state.State
 
@@ -22,21 +23,18 @@ class PowerSource: VoltageSource, IRootSystemPreStepProcess {
     override var subSystem: SubSystem? = null
         set(s) {
             field = s
-            s?.root?.addProcess(this)
-            s?.addProcess(this)
+            s?.rootSystem?.queuedProcessPre?.add(this)
+            s?.processI?.add(this)
         }
 
-    override fun quitSubSystem() {
-        subSystem?.root?.removeProcess(this)
-        super.quitSubSystem()
+    override fun quitSubSystem(s: SubSystem) {
+        s.rootSystem?.queuedProcessPre?.remove(this)
+        super.quitSubSystem(s)
     }
 
     override fun rootSystemPreStepProcess() {
-        val t = aPin?.subSystem?.getTh(aPin, this)
-        if (t == null) {
-            u = 0.0
-            return
-        }
+        val aPinCached = aPin
+        val t = Th.getTh(aPinCached, this)
         var U = (Math.sqrt(t.U * t.U + 4 * p * t.R) + t.U) / 2
         U = Math.min(Math.min(U, UMax), t.U + t.R * IMax)
         if (java.lang.Double.isNaN(U)) U = 0.0

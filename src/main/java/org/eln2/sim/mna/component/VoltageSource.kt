@@ -23,17 +23,17 @@ open class VoltageSource: Bipole, ISubSystemProcessI {
         }
         set(p) {}
 
-    override fun quitSubSystem() {
-        subSystem?.states?.remove(currentState)
-        subSystem?.removeProcess(this)
-        super.quitSubSystem()
+    override fun quitSubSystem(s: SubSystem) {
+        s.removeState(currentState)
+        s.processI.remove(this)
+        super.quitSubSystem(s)
     }
 
     override var subSystem: SubSystem? = null
         set(s) {
             field = s
             s?.addState(currentState)
-            s?.addProcess(this)
+            s?.processI?.remove(this)
         }
 
     override fun applyTo(s: SubSystem) {
@@ -43,8 +43,8 @@ open class VoltageSource: Bipole, ISubSystemProcessI {
         s.addToA(currentState, bPin, -1.0)
     }
 
-    override fun simProcessI(s: SubSystem?) {
-        s?.addToI(currentState, u)
+    override fun simProcessI(s: SubSystem) {
+        s.addToI(currentState, u)
     }
 
     override fun getI(): Double {

@@ -47,7 +47,7 @@ open class State {
     }
 
     fun returnToRootSystem(root: RootSystem) {
-        root.addStates.add(this)
+        root.queuedStates.add(this)
     }
 
     fun getNotSimulated(): Boolean {
@@ -55,7 +55,8 @@ open class State {
     }
 
     override fun toString(): String {
-        return "(" + this.id + "," + this.javaClass.simpleName + ")"
+        return "(${this.id}, ${this.state})"
+        //return "(" + this.id + "," + this.javaClass.simpleName + ")"
     }
 }
 
@@ -68,6 +69,16 @@ open class VoltageState : State() {
         set(s) {
             state = s
         }
+
+    override fun toString(): String {
+        return "(${this.id}, ${this.state}V)"
+        //return "(" + this.id + "," + this.javaClass.simpleName + ")"
+    }
 }
 
-open class CurrentState : State()
+open class CurrentState : State() {
+    override fun toString(): String {
+        return "(${this.id}, ${this.state}A)"
+        //return "(" + this.id + "," + this.javaClass.simpleName + ")"
+    }
+}

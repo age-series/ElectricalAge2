@@ -17,11 +17,11 @@ class Line(root: RootSystem, private val resistors: LinkedList<Resistor>, privat
         val stateBefore = if (resistors.first.aPin === states.first) resistors.first.bPin else resistors.first.aPin
         val stateAfter = if (resistors.last.aPin === states.last) resistors.last.bPin else resistors.last.aPin
         recalculateR()
-        root.addComponents.removeAll(resistors)
-        root.addStates.removeAll(states)
-        root.addComponents.add(this)
+        root.queuedComponents.removeAll(resistors)
+        root.queuedStates.removeAll(states)
+        root.queuedComponents.add(this)
         connectTo(stateBefore, stateAfter)
-        root.addProcess(this)
+        root.queuedProcessF.add(this)
         resistors.forEach {
             it.abstractedBy = this
             this.ofInterSystem = this.ofInterSystem or it.canBeReplacedByInterSystem()
@@ -31,7 +31,7 @@ class Line(root: RootSystem, private val resistors: LinkedList<Resistor>, privat
 
     override var subSystem: SubSystem? = null
         set(s) {
-            s?.addProcess(this)
+            s?.processF?.add(this)
             field = s
         }
 
@@ -46,7 +46,7 @@ class Line(root: RootSystem, private val resistors: LinkedList<Resistor>, privat
         return ofInterSystem
     }
 
-    override fun quitSubSystem() {}
+    override fun quitSubSystem(s: SubSystem) {}
 
     override fun dirty(component: Component?) {
         recalculateR()
@@ -75,9 +75,9 @@ class Line(root: RootSystem, private val resistors: LinkedList<Resistor>, privat
             s.abstractedBy = null
         }
         restoreResistorIntoCircuit()
-        root.addStates.addAll(states)
-        root.addComponents.addAll(resistors)
-        root.removeProcess(this)
+        root.queuedStates.addAll(states)
+        root.queuedComponents.addAll(resistors)
+        root.queuedProcessF.remove(this)
     }
 
     private fun restoreResistorIntoCircuit() {

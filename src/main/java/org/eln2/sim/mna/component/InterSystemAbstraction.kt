@@ -28,10 +28,10 @@ class InterSystemAbstraction(private var root: RootSystem, private var interSyst
     init {
         aState = interSystemResistor.aPin
         bState = interSystemResistor.bPin
-        aSystem = aState!!.subSystem
-        bSystem = bState!!.subSystem
-        aSystem!!.interSystemConnectivity.add(bSystem)
-        bSystem!!.interSystemConnectivity.add(aSystem)
+        aSystem = aState!!.subSystem?: throw Error()
+        bSystem = bState!!.subSystem?: throw Error()
+        aSystem!!.interSystemConnectivity.add(bSystem!!)
+        bSystem!!.interSystemConnectivity.add(aSystem!!)
         aNewState = VoltageState()
         aNewResistor = Resistor()
         aNewDelay = DelayInterSystem()
@@ -53,7 +53,7 @@ class InterSystemAbstraction(private var root: RootSystem, private var interSyst
         bSystem!!.breakDestructor.add(this)
         interSystemResistor.abstractedBy = this
         thevnaCalc = ThevnaCalculator(aNewDelay, bNewDelay)
-        root.addProcess(thevnaCalc)
+        root.queuedProcessPre.add(thevnaCalc)
     }
 
     fun calibrate() {
@@ -82,8 +82,9 @@ class InterSystemAbstraction(private var root: RootSystem, private var interSyst
         bSystem!!.removeComponent(bNewDelay)
         bSystem!!.removeComponent(bNewResistor)
         bSystem!!.removeState(bNewState)
-        root.removeProcess(thevnaCalc)
+        root.queuedProcessPre.remove(thevnaCalc)
         interSystemResistor.abstractedBy = null
-        aSystem!!.component.add(interSystemResistor)
+        val aSys = aSystem
+        aSys?.addComponent(interSystemResistor)
     }
 }

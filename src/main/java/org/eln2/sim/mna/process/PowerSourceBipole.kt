@@ -7,20 +7,21 @@ EXTEND IT INSTEAD IN THE org.eln.nbt DIRECTORY
 
 // NOTE: THIS CLASS SUCKS (I think - jrd)
 
+import org.eln2.sim.mna.Th
 import org.eln2.sim.mna.component.VoltageSource
 import org.eln2.sim.mna.misc.IRootSystemPreStepProcess
 import org.eln2.sim.mna.misc.MnaConst
 import org.eln2.sim.mna.state.State
 
-open class PowerSourceBipole(val aPin: State?, val bPin: State?, val aSrc: VoltageSource?, val bSrc: VoltageSource?) : IRootSystemPreStepProcess {
+open class PowerSourceBipole(val aPin: State?, val bPin: State?, val aSrc: VoltageSource, val bSrc: VoltageSource) : IRootSystemPreStepProcess {
 
     open var p = 0.0
     open var uMax = 0.0
 
     override fun rootSystemPreStepProcess() {
-        val a = aPin!!.subSystem!!.getTh(aPin, aSrc)
-        val b = bPin!!.subSystem!!.getTh(bPin, bSrc)
-        if (java.lang.Double.isNaN(a.U)) {
+        val a = Th.getTh(aPin, aSrc)
+        val b = Th.getTh(bPin, bSrc)
+        if (java.lang.Double.isNaN(a?.U?: 0.0)) {
             a.U = 0.0
             a.R = MnaConst.highImpedance
         }
@@ -31,18 +32,17 @@ open class PowerSourceBipole(val aPin: State?, val bPin: State?, val aSrc: Volta
         val Uth = a.U - b.U
         val Rth = a.R + b.R
         if (Uth >= uMax) {
-            aSrc!!.u = a.U
-            bSrc!!.u = b.U
+            aSrc.u = a.U
+            bSrc.u = b.U
         } else {
             var U = (Math.sqrt(Uth * Uth + 4 * p * Rth) + Uth) / 2
             U = Math.min(Math.min(U, uMax), Uth + Rth * uMax)
             if (java.lang.Double.isNaN(U)) U = 0.0
             val I = (Uth - U) / Rth
-            aSrc!!.u = a.U - I * a.R
-            bSrc!!.u = b.U + I * b.R
+            aSrc.u = a.U - I * a.R
+            bSrc.u = b.U + I * b.R
         }
     }
-
 }
 
 /*

@@ -8,6 +8,7 @@ EXTEND IT INSTEAD IN THE org.eln.nbt DIRECTORY
 import org.eln2.sim.mna.RootSystem
 import org.eln2.sim.mna.SubSystem
 import org.eln2.sim.mna.state.State
+import java.lang.Exception
 
 abstract class Component {
     open var name: String = ""
@@ -30,16 +31,17 @@ abstract class Component {
     open fun breakConnection() {}
 
     open fun returnToRootSystem(root: RootSystem) {
-        root.addComponents.add(this)
+        root.queuedComponents.add(this)
     }
 
     open fun dirty() {
         if (abstractedBy != null) {
             abstractedBy!!.dirty(this)
-        } else subSystem?.invalidate()
+        } else subSystem?.matrixValid = false
     }
 
-    open fun quitSubSystem() {
+    open fun quitSubSystem(s: SubSystem) {
+        if (s != subSystem) throw Exception("These subsystems are not the same!")
         subSystem = null
     }
 

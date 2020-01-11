@@ -132,7 +132,7 @@ class Simulator (var callPeriod: Double, var electricalPeriod: Double, var elect
                     "TF ${thermalFastNsStack/1000} " +
                     "TS ${thermalSlowNsStack/1000} " +
                     "S ${slowNsStack/1000} " +
-                    "SS ${mna.subSystemCount} " +
+                    "SS ${mna.getSubSystemCount()} " +
                     "EP ${electricalProcessList.size} " +
                     "TFL ${thermalFastLoadList.size} " +
                     "TFC ${thermalFastConnectionList.size} " +
