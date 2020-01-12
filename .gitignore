@@ -1,0 +1,28 @@
+.gradle
+.classpath
+.project
+.settings
+.metadata
+bin
+/build
+eclipse
+/run
+/logs
+/config
+/saves
+*.json
+*.bat
+options.txt
+/out
+/classes
+/UniversalModCore
+
+# IntelliJ
+.idea
+*.iml
+*.ipr
+*.iws
+
+# Blender backup files
+*.blend1
+*.blend2
