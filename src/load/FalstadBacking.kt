@@ -25,24 +25,34 @@ O 432 128 496 128 1
 O 432 208 496 208 1
 O 432 288 496 288 1
 """
-            val parseFalstad = parseFalstad(falstad)
+            val falstad2 = """${'$'} 1 0.000005 10.20027730826997 50 5 50
+r 256 176 256 304 0 100
+172 304 176 304 128 0 7 5 5 0 0 0.5 Voltage
+g 256 336 256 352 0
+w 256 304 256 336 1
+r 352 176 352 304 0 1000
+w 352 304 352 336 1
+g 352 336 352 352 0
+w 304 176 352 176 0
+w 256 176 304 176 0
+"""
+
+            val parseFalstad = parseFalstad(falstad2)
             parseFalstad.first.forEach { println(it.detail()) }
             parseFalstad.second.forEach { println(it.detail()) }
         }
 
         /**
-         * parseFalstad - transpiled the Falstad language into the Dot language
-         *
-         * NOTE: will remove state information (such as the prepared voltage of a device or the current across a device)
+         * parseFalstad
          *
          * @param str The input string using the Falstad language
-         * @return The output string using the dot language (feed this into parseDot)
+         * @return components and nodes
          */
         fun parseFalstad(str: String): Pair<List<Component>,List<Node>> {
 
             val cmds = str.split("\n")
             val components = mutableListOf<Component>()
-            val nodemap = mutableMapOf<Pair<Int, Int>, Node>()
+            val nodemap = mutableMapOf<String, Node>()
 
             val commands = mutableListOf<String>()
 
@@ -79,9 +89,6 @@ O 432 288 496 288 1
                     "h" -> {
                         // === Hint Statement ===
                     }
-                    "" -> {
-                        // probably a comment was taken in, do nothing.
-                    }
                     else -> {
                         if (cs.size >= 6) {
                             val comp = componentBuilder(cs, nodemap)
@@ -91,63 +98,65 @@ O 432 288 496 288 1
                 }
             }
 
-            return Pair(components, nodemap.map { it.value })
+            return Pair(components, nodemap.map { it.value }.distinct())
         }
 
-        fun componentBuilder(c: List<String>, nodemap: MutableMap<Pair<Int, Int>, Node>): Component? {
+        fun componentBuilder(c: List<String>, nodemap: MutableMap<String, Node>): Component? {
             val type = c[0]
             val aPin = Pair(c[1].toInt(), c[2].toInt())
+            val aPinStr = "${aPin.first}.${aPin.second}"
             val bPin = Pair(c[3].toInt(), c[4].toInt())
+            val bPinStr = "${bPin.first}.${bPin.second}"
             when(type) {
                 "g" -> {
                     // ground (one pin)
-                    if (nodemap[aPin] == null) {
-                        nodemap[aPin] = Node()
+                    if (nodemap[aPinStr] == null) {
+                        nodemap[aPinStr] = Node(aPin)
                     }
 
                     val int = VoltageSource()
                     int.u = 0.0
-                    int.nodes.add(nodemap[aPin])
+                    int.nodes.add(nodemap[aPinStr])
                     int.nodes.add(null)
 
                     return int
                 }
                 "r" -> {
                     // resistor
-                    if (nodemap[aPin] == null) {
-                        nodemap[aPin] = Node()
+                    if (nodemap[aPinStr] == null) {
+                        nodemap[aPinStr] = Node(aPin)
                     }
-                    if (nodemap[bPin] == null) {
-                        nodemap[bPin] = Node()
+                    if (nodemap[bPinStr] == null) {
+                        nodemap[bPinStr] = Node(bPin)
                     }
 
                     val int = Resistor()
                     int.r = c[6].toDouble()
-                    int.nodes.add(nodemap[aPin])
-                    int.nodes.add(nodemap[bPin])
+                    int.nodes.add(nodemap[aPinStr])
+                    int.nodes.add(nodemap[bPinStr])
 
                     return int
                 }
                 "R" -> {
                     // voltage rail (one pin)
-                    if (nodemap[aPin] == null) {
-                        nodemap[aPin] = Node()
+                    if (nodemap[aPinStr] == null) {
+                        nodemap[aPinStr] = Node(aPin)
                     }
 
                     val int = VoltageSource()
                     int.u = c[8].toDouble()
-                    int.nodes.add(nodemap[aPin])
+                    int.nodes.add(nodemap[aPinStr])
                     int.nodes.add(null)
 
                     return int
                 }
-                "s", "S" -> {
+                "s"-> {
                     // switch
-                    if (nodemap[aPin] == null) {
-                        nodemap[aPin] = Node()
+                    if (nodemap[aPinStr] == null) {
+                        nodemap[aPinStr] = Node(aPin)
                     }
-                    if (nodemap[bPin] == null) {
-                        nodemap[bPin] = Node()
+                    if (nodemap[bPinStr] == null) {
+                        nodemap[bPinStr] = Node(bPin)
                     }
                     /*
 
@@ -160,6 +169,10 @@ O 432 288 496 288 1
                     return int
                     */
                 }
+                "S" -> {
+                    //switch (but wye)
+
+                }
                 "t" -> {
                     // transistor
 
@@ -169,40 +182,40 @@ O 432 288 496 288 1
                     // NOTE: This is special because we're connecting the nodes together instead of making a 0 ohm resistor
                     // Optionally, one could instead make this a "cable" with ~0.1 ohms
                     val sharedNode: Node
-                    if ((nodemap[aPin] == null) and (nodemap[bPin] == null)) {
-                        sharedNode = Node()
-                        nodemap[aPin] = sharedNode
-                        nodemap[bPin] = sharedNode
-                    } else if ((nodemap[aPin] != null) and (nodemap[bPin] == null)) {
-                        sharedNode = nodemap[aPin]!!
-                        nodemap[bPin] = sharedNode
-                    } else if ((nodemap[aPin] == null) and (nodemap[bPin] != null)) {
-                        sharedNode = nodemap[bPin]!!
-                        nodemap[aPin] = sharedNode
+                    if ((nodemap[aPinStr] == null) and (nodemap[bPinStr] == null)) {
+                        sharedNode = Node("node${aPin.first}.${aPin.second}.${bPin.first}.${bPin.second}")
+                        nodemap[aPinStr] = sharedNode
+                        nodemap[bPinStr] = sharedNode
+                    } else if ((nodemap[aPinStr] != null) and (nodemap[bPinStr] == null)) {
+                        sharedNode = nodemap[aPinStr]!!
+                        nodemap[bPinStr] = sharedNode
+                    } else if ((nodemap[aPinStr] == null) and (nodemap[bPinStr] != null)) {
+                        sharedNode = nodemap[bPinStr]!!
+                        nodemap[aPinStr] = sharedNode
                     } else {
                         // TODO: Ohhh shite. Time to iterate over components.
                         println("Uh oh! Looks like we have placed all components before wires! Falling back to 0.01 ohm resistor as wire..")
                         val int = Resistor()
                         int.r = 0.01
-                        int.nodes.add(nodemap[aPin])
-                        int.nodes.add(nodemap[bPin])
+                        int.nodes.add(nodemap[aPinStr])
+                        int.nodes.add(nodemap[bPinStr])
                     }
 
                     return null
                 }
                 "c" -> {
                     // capacitor
-                    if (nodemap[aPin] == null) {
-                        nodemap[aPin] = Node()
+                    if (nodemap[aPinStr] == null) {
+                        nodemap[aPinStr] = Node(aPin)
                     }
-                    if (nodemap[bPin] == null) {
-                        nodemap[bPin] = Node()
+                    if (nodemap[bPinStr] == null) {
+                        nodemap[bPinStr] = Node(bPin)
                     }
 
                     val int = Capacitor()
                     int.c = c[6].toDouble()
-                    int.nodes.add(nodemap[aPin])
-                    int.nodes.add(nodemap[bPin])
+                    int.nodes.add(nodemap[aPinStr])
+                    int.nodes.add(nodemap[bPinStr])
                 }
                 "209" -> {
                     // polar capacitor?
@@ -210,45 +223,45 @@ O 432 288 496 288 1
                 }
                 "l" -> {
                     // inductor
-                    if (nodemap[aPin] == null) {
-                        nodemap[aPin] = Node()
+                    if (nodemap[aPinStr] == null) {
+                        nodemap[aPinStr] = Node(aPin)
                     }
-                    if (nodemap[bPin] == null) {
-                        nodemap[bPin] = Node()
+                    if (nodemap[bPinStr] == null) {
+                        nodemap[bPinStr] = Node(bPin)
                     }
 
                     val int = Inductor()
                     int.h = c[6].toDouble()
-                    int.nodes.add(nodemap[aPin])
-                    int.nodes.add(nodemap[bPin])
+                    int.nodes.add(nodemap[aPinStr])
+                    int.nodes.add(nodemap[bPinStr])
 
                     return int
                 }
                 "v" -> {
                     // voltage source (two pin)
-                    if (nodemap[aPin] == null) {
-                        nodemap[aPin] = Node()
+                    if (nodemap[aPinStr] == null) {
+                        nodemap[aPinStr] = Node(aPin)
                     }
-                    if (nodemap[bPin] == null) {
-                        nodemap[bPin] = Node()
+                    if (nodemap[bPinStr] == null) {
+                        nodemap[bPinStr] = Node(bPin)
                     }
 
                     val int = VoltageSource()
                     int.u = c[8].toDouble()
-                    int.nodes.add(nodemap[aPin])
-                    int.nodes.add(nodemap[bPin])
+                    int.nodes.add(nodemap[aPinStr])
+                    int.nodes.add(nodemap[bPinStr])
 
                     return int
                 }
                 "172" -> {
                     // voltage source (one pin, uses Adjustable slider on right
-                    if (nodemap[aPin] == null) {
-                        nodemap[aPin] = Node()
+                    if (nodemap[aPinStr] == null) {
+                        nodemap[aPinStr] = Node(aPin)
                     }
 
                     val int = VoltageSource()
                     int.u = c[8].toDouble()
-                    int.nodes.add(nodemap[aPin])
+                    int.nodes.add(nodemap[aPinStr])
                     int.nodes.add(null)
 
                     return int
@@ -363,11 +376,11 @@ O 432 288 496 288 1
                 }
                 "I" -> {
                     // Inverter
-                    if (nodemap[aPin] == null) {
-                        nodemap[aPin] = Node()
+                    if (nodemap[aPinStr] == null) {
+                        nodemap[aPinStr] = Node()
                     }
-                    if (nodemap[bPin] == null) {
-                        nodemap[bPin] = Node()
+                    if (nodemap[bPinStr] == null) {
+                        nodemap[bPinStr] = Node()
                     }
 
                     /*
@@ -387,15 +400,16 @@ O 432 288 496 288 1
                     if (pinList == null) {
                         return null
                     }
+                    val pinListStr = pinList.map {"${it.first}.${it.second}"}
 
-                    if (nodemap[pinList[0]] == null) {
-                        nodemap[pinList[0]] = Node()
+                    if (nodemap[pinListStr[0]] == null) {
+                        nodemap[pinListStr[0]] = Node()
                     }
-                    if (nodemap[pinList[1]] == null) {
-                        nodemap[pinList[1]] = Node()
+                    if (nodemap[pinListStr[1]] == null) {
+                        nodemap[pinListStr[1]] = Node()
                     }
-                    if (nodemap[pinList[2]] == null) {
-                        nodemap[pinList[2]] = Node()
+                    if (nodemap[pinListStr[2]] == null) {
+                        nodemap[pinListStr[2]] = Node()
                     }
 
                     /*
@@ -416,15 +430,16 @@ O 432 288 496 288 1
                     if (pinList == null) {
                         return null
                     }
+                    val pinListStr = pinList.map {"${it.first}.${it.second}"}
 
-                    if (nodemap[pinList[0]] == null) {
-                        nodemap[pinList[0]] = Node()
+                    if (nodemap[pinListStr[0]] == null) {
+                        nodemap[pinListStr[0]] = Node()
                     }
-                    if (nodemap[pinList[1]] == null) {
-                        nodemap[pinList[1]] = Node()
+                    if (nodemap[pinListStr[1]] == null) {
+                        nodemap[pinListStr[1]] = Node()
                     }
-                    if (nodemap[pinList[2]] == null) {
-                        nodemap[pinList[2]] = Node()
+                    if (nodemap[pinListStr[2]] == null) {
+                        nodemap[pinListStr[2]] = Node()
                     }
 
                     /*
@@ -445,15 +460,16 @@ O 432 288 496 288 1
                     if (pinList == null) {
                         return null
                     }
+                    val pinListStr = pinList.map {"${it.first}.${it.second}"}
 
-                    if (nodemap[pinList[0]] == null) {
-                        nodemap[pinList[0]] = Node()
+                    if (nodemap[pinListStr[0]] == null) {
+                        nodemap[pinListStr[0]] = Node()
                     }
-                    if (nodemap[pinList[1]] == null) {
-                        nodemap[pinList[1]] = Node()
+                    if (nodemap[pinListStr[1]] == null) {
+                        nodemap[pinListStr[1]] = Node()
                     }
-                    if (nodemap[pinList[2]] == null) {
-                        nodemap[pinList[2]] = Node()
+                    if (nodemap[pinListStr[2]] == null) {
+                        nodemap[pinListStr[2]] = Node()
                     }
 
                     /*
@@ -474,15 +490,16 @@ O 432 288 496 288 1
                     if (pinList == null) {
                         return null
                     }
+                    val pinListStr = pinList.map {"${it.first}.${it.second}"}
 
-                    if (nodemap[pinList[0]] == null) {
-                        nodemap[pinList[0]] = Node()
+                    if (nodemap[pinListStr[0]] == null) {
+                        nodemap[pinListStr[0]] = Node()
                     }
-                    if (nodemap[pinList[1]] == null) {
-                        nodemap[pinList[1]] = Node()
+                    if (nodemap[pinListStr[1]] == null) {
+                        nodemap[pinListStr[1]] = Node()
                     }
-                    if (nodemap[pinList[2]] == null) {
-                        nodemap[pinList[2]] = Node()
+                    if (nodemap[pinListStr[2]] == null) {
+                        nodemap[pinListStr[2]] = Node()
                     }
 
                     /*
@@ -503,15 +520,16 @@ O 432 288 496 288 1
                     if (pinList == null) {
                         return null
                     }
+                    val pinListStr = pinList.map {"${it.first}.${it.second}"}
 
-                    if (nodemap[pinList[0]] == null) {
-                        nodemap[pinList[0]] = Node()
+                    if (nodemap[pinListStr[0]] == null) {
+                        nodemap[pinListStr[0]] = Node()
                     }
-                    if (nodemap[pinList[1]] == null) {
-                        nodemap[pinList[1]] = Node()
+                    if (nodemap[pinListStr[1]] == null) {
+                        nodemap[pinListStr[1]] = Node()
                     }
-                    if (nodemap[pinList[2]] == null) {
-                        nodemap[pinList[2]] = Node()
+                    if (nodemap[pinListStr[2]] == null) {
+                        nodemap[pinListStr[2]] = Node()
                     }
 
                     /*
