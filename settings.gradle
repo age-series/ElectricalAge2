@@ -1,5 +1,0 @@
-sourceControl {
-	gitRepository("https://github.com/TeamOpenIndustry/UniversalModCore.git") {
-		producesModule("cam72cam.universalmodcore:UniversalModCore")
-	}
-}

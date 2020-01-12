@@ -1,9 +1,7 @@
 language: java
 
+os: linux
 dist: trusty
-
-# Container-based infrastructure
-sudo: false
 
 install:
   - ./gradlew setupDecompWorkspace

@@ -15,6 +15,7 @@ eclipse
 options.txt
 /out
 /classes
+/UniversalModCore
 
 # IntelliJ
 .idea
