@@ -8,6 +8,7 @@ abstract class Component: IDetail {
     abstract fun stampMatrix(c: Circuit)
     abstract fun stampRight(c: Circuit)
     abstract fun update(c: Circuit)
+    // TODO: Consider adding var i: Double and var p: Double but have no backing field
 
     abstract var name: String
     abstract var nodes: MutableList<Node?>
