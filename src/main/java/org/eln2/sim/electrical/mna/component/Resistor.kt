@@ -5,23 +5,38 @@ import org.eln2.sim.electrical.mna.Node
 
 open class Resistor: Component() {
     override var name: String = "r"
-    override var nodes: MutableList<Node?> = mutableListOf()
+    override val nodeCount: Int = 2
 
-    var r: Double = 0.0
+    open var r: Double = 1.0
+    val u: Double
+        get() = if(isInCircuit) node(0).potential - node(1).potential else 0.0
+    val i: Double
+        get() = u / r
+    val p: Double
+        get() = i * u
 
     override fun detail(): String {
         return "[resistor r:$r]"
     }
 
-    override fun stampMatrix(c: Circuit) {
-        //doot
+    override fun stamp() {
+        if(!isInCircuit) return
+        node(0).stampResistor(node(1), r)
     }
+}
 
-    override fun stampRight(c: Circuit) {
-        //doot
-    }
+open class DynamicResistor: Resistor() {
+    override var name = "rs"
 
-    override fun update(c: Circuit) {
-        // this calls stamp when needed.
-    }
+    override var r: Double
+        get() = super.r
+        set(value) {
+            // Remove our contribution to the matrix (using a negative resistance... should work)
+            super.r = -super.r
+            super.stamp()
+
+            // Add our new contribution
+            super.r = value
+            super.stamp()
+        }
 }

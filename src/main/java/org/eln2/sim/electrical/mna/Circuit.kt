@@ -1,74 +1,326 @@
 package org.eln2.sim.electrical.mna
 
+import org.apache.commons.math3.linear.*
 import org.eln2.sim.IProcess
-import org.eln2.sim.electrical.mna.component.Component
-import org.eln2.sim.electrical.mna.component.Resistor
-import org.eln2.sim.electrical.mna.component.VoltageSource
+import org.eln2.sim.electrical.mna.component.*
+import java.lang.IllegalArgumentException
+import java.lang.ref.WeakReference
+import java.util.*
+
+val MATRIX_FORMAT = RealMatrixFormat("", "", "\t", "\n", "", "\t")
 
 class Circuit {
 
-    private var matrixChanged: Boolean = false
-    private var rightSideChanged: Boolean = false
+    private var matrixChanged = false
+    private var rightSideChanged = false
+    private var componentsChanged = false
+    // These ones below are called from Component methods
+    internal var connectivityChanged = false
 
-    val nodes = mutableListOf<Node>()
+    // Don't ever add this to any node lists; its index is always invalid.
+    var ground = NodeRef(GroundNode(this))
+    
+    var maxSubSteps = 100
+    var slack = 0.001
+    
     val components = mutableListOf<Component>()
+    val compNodeMap = WeakHashMap<NodeRef, Component>()
+    // These don't merge, but keep this collection weak anyway so the size reflects component removal.
+    val compVsMap = WeakHashMap<VSource, Component>()
 
-    val preProcess = mutableListOf<IProcess>()
-    val postProcess = mutableListOf<IProcess>()
+    val preProcess = WeakHashMap<IProcess, Unit>()
+    val postProcess = WeakHashMap<IProcess, Unit>()
 
-    private fun prepareMatrix() {
-        // get a list of nodes from the components themselves. Iterate across them or whatever?
+    // These fields are only for the solver--don't use them casually elsewhere
+    private var matrix: RealMatrix? = null
+    private var knowns: RealVector? = null
+    private var solver: DecompositionSolver? = null
+    private var nodes: List<WeakReference<Node>> = emptyList()
+    private var vsources: List<WeakReference<VSource>> = emptyList()
 
-        // build the matrix of that size. Try to be generic enough that it's simple to load into either of the Matrix libraries or perhaps make some easy way to load into them
-
-        // this will call stamp if the components need them called. The class decides?
-        components.forEach { it.update(this) }
+    /* From Falstad: declare that a potential change dV in node b changes the current in node a by x*dV, complicated
+       slightly by independent voltage sources. The unit of x is "Mhos", reciprocal Ohms, a unit of conductance.
+     */
+    fun stampMatrix(a: Int, b: Int, x: Double) {
+        println("C.sM $a $b $x")
+        if(a < 0 || b < 0) return
+        matrix!!.addToEntry(a, b, x)
+        matrixChanged = true
+    }
+    
+    fun stampKnown(i: Int, x: Double) {
+        println("C.sK $i $x")
+        if(i < 0) return
+        knowns!!.addToEntry(i, x)
+        rightSideChanged = true
     }
 
-    private fun factorMatrixA() {
-        // do the factorization
+    fun stampVoltageChange(i: Int, x: Double) {
+        stampKnown(i + nodes.size, x)
+    }
+
+    fun stampResistor(a: Int, b: Int, r: Double) {
+        println("C.sR $a $b $r")
+        val c = 1 / r
+        if(!c.isFinite()) throw IllegalArgumentException("resistance $r is invalid")
+        // Contribute positively to the on-diagonal elements
+        stampMatrix(a, a, c)
+        stampMatrix(b, b, c)
+        // If both are non-ground, contribute negatively to the off-diagonal elements
+        stampMatrix(a, b, -c)
+        stampMatrix(b, a, -c)
+    }
+    
+    fun stampVoltageSource(pos: Int, neg: Int, num: Int, v: Double) {
+        val vs = num + nodes.size
+        stampMatrix(vs, neg, -1.0)
+        stampMatrix(vs, pos, 1.0)
+        stampMatrix(neg, vs, 1.0)
+        stampMatrix(pos, vs, -1.0)
+        stampKnown(vs, v)
+    }
+    
+    fun stampCurrentSource(pos: Int, neg: Int, i: Double) {
+        stampKnown(pos, -i)
+        stampKnown(neg, i)
+    }
+    
+    fun add(vararg comps: Component) {
+        for(comp in comps) add(comp)
+    }
+
+    fun add(comp: Component): Component {
+        components.add(comp)
+        componentsChanged = true
+        // This is the ONLY place where this should be set.
+        comp.circuit = this
+        for(i in 0 until comp.nodeCount) {
+            val n = NodeRef(Node(this))
+            compNodeMap.put(n, comp)
+            comp.nodes.add(n)
+        }
+        for(i in 0 until comp.vsCount) {
+            val vs = VSource(this)
+            compVsMap.put(vs, comp)
+            comp.vsources.add(vs)
+        }
+        comp.added()
+        return comp
+    }
+
+    // Step 1: Whenever the number of components, or their nodal connectivity (not resistances, e.g.) changes, allocate
+    // a matrix of appropriate size.
+    protected fun buildMatrix() {
+        println("C.bM")
+        val nodeSet: MutableSet<Node> = mutableSetOf()
+        val vsourceSet: MutableSet<VSource> = mutableSetOf()
+
+        components.forEach {
+            nodeSet.addAll(it.nodes.map { it.node }.filter { it != ground.node })
+            vsourceSet.addAll(it.vsources)
+        }
+
+        nodes = nodeSet.map { WeakReference(it) }.toList()
+        vsources = vsourceSet.map { WeakReference(it) }.toList()
+
+        for((i, n) in nodes.withIndex()) n.get()!!.index = i
+        for((i, v) in vsources.withIndex()) v.get()!!.index = i
+
+        println("C.bM: n $nodes vs $vsources")
+        
+        // Null out the solver--it's definitely not valid anymore.
+        solver = null
+
+        // Acknowledge that changes have been dealt with
+        componentsChanged = false
+        connectivityChanged = false
+
+        // Set other cascading changes so the solver runs for at least one iteration.
+        matrixChanged = true
+        rightSideChanged = true
+
+        // Is there anything to do?
+        if(nodes.isEmpty() || vsources.isEmpty()) {
+            matrix = null
+            return
+        }
+
+        val size = nodes.size + vsources.size
+        println("C.bM: size $size")
+        matrix = MatrixUtils.createRealMatrix(size, size)
+        knowns = ArrayRealVector(size)
+
+        // Ask each component to contribute its steady state to the matrix
+        println("C.bM: stamp all $components")
+        components.forEach { println("C.bM: stamp $it"); it.stamp() }
+    }
+
+    // Step 2: With the conductance and connectivity matrix populated, solve.
+    private fun factorMatrix() {
+        println("C.fM")
+        solver = if(matrix != null) LUDecomposition(matrix).solver else null
         matrixChanged = false
     }
 
-    // The function may change depending on how we need these results to be put whereever... the solve(pin) is what was in Eln.
+    // Step 3: With known current and voltage sources, solve for unknowns (node potentials and source currents).
     private fun computeResult() {
-        // compute the other stuff. Faster than factoring. :)
+        println("C.cR")
         rightSideChanged = false
+        if(solver == null) return
+        try {
+            val unknowns = solver!!.solve(knowns)
+
+            // Copy data back out to the references for Component use
+            for((i, n) in nodes.withIndex()) {
+                n.get()!!.potential = unknowns.getEntry(i)
+            }
+            // Microoptimization: pull this member access into a local variable for this tight loop
+            val sz = nodes.size
+            for((i, v) in vsources.withIndex()) {
+                v.get()!!.current = -unknowns.getEntry(i + sz)
+            }
+        } catch(e: SingularMatrixException) {
+            println("Singular: ${matrix}")
+            if(matrix != null) print(MATRIX_FORMAT.format(matrix))
+        }
     }
 
     fun step(dt: Double) {
-        preProcess.forEach { it.process(dt) }
-        if (matrixChanged) {
-            prepareMatrix()
-            factorMatrixA()
+        if(componentsChanged || connectivityChanged) {
+            buildMatrix()
         }
-        if (matrixChanged or rightSideChanged) {
-            computeResult()
+        
+        preProcess.keys.forEach { it.process(dt) }
+        components.forEach { it.preStep(dt) }
+        
+        for(substep in 0 until maxSubSteps) {
+            if(!(matrixChanged || rightSideChanged)) break  // Nothing to do
+
+            val mc = matrixChanged  // Cache this because it gets overwritten by factorMatrix
+
+            if (mc) {
+                factorMatrix()
+            }
+
+            if (mc || rightSideChanged) {
+                computeResult()
+            }
+
+            for(comp in components) comp.simStep()  // Allow non-linear components to request another substep
         }
-        postProcess.forEach { it.process(dt) }
+
+        components.forEach { it.postStep(dt) }
+        postProcess.keys.forEach { it.process(dt) }
     }
 
     companion object {
         @JvmStatic
         fun main(args: Array<String>) {
-            //todo: some test here
+            main_1()
+            println("---")
+            main_2()
+            println("---")
+            main_3()
+            println("---")
+        }
+        
+        fun main_1() {
+            println("main_1: === Basic circuit test ===")
             val c = Circuit()
 
             val vs = VoltageSource()
-            val n1 = Node()
             val r1 = Resistor()
 
-            vs.nodes[0] = null
-            vs.nodes[1] = n1
-            vs.u = 10.0
+            c.add(vs)
+            c.add(r1)
 
-            r1.nodes[0] = n1
-            r1.nodes[1] = null
+            vs.connect(1, r1, 0)
+            vs.connect(0, r1, 1)
+            vs.connect(1, c.ground)
+
+            vs.u = 10.0
             r1.r = 100.0
 
             c.step(0.5)
 
-            //print(r1.getI())
+            print("main_1: matrix:\n${MATRIX_FORMAT.format(c.matrix)}")
+
+            for(comp in c.components) {
+                println("main_1: comp $comp name ${comp.name} nodes ${comp.nodes} vs ${comp.vsources}")
+                for(node in comp.nodes) {
+                    println("\t node $node index ${node.node.index} ground ${node.node.isGround} potential ${node.node.potential}")
+                }
+            }
+
+            for(node in c.nodes) {
+                println("main_1: node ${node.get()} index ${node.get()?.index} potential ${node.get()?.potential}")
+            }
+
+            println("main_1: vs current: ${vs.i}\nmain_1: r1 current: ${r1.i}")
+        }
+        
+        fun main_2() {
+            println("main_2: === Capacitors and Inductors ===")
+            val c = Circuit()
+
+            val vs = VoltageSource()
+            val c1 = Capacitor()
+            val l1 = Inductor()
+            val r1 = Resistor()
+            val r2 = Resistor()
+
+            c.add(vs, c1, l1, r1, r2)
+
+            vs.connect(1, c.ground)
+            vs.connect(0, r1, 0)
+            vs.connect(0, r2, 0)
+            r1.connect(1, c1, 0)
+            r2.connect(1, l1, 0)
+            c1.connect(1, c.ground)
+            l1.connect(1, c.ground)
+
+            vs.u = 10.0
+            r1.r = 10.0
+            r2.r = 10.0
+            c1.c = 1e-5
+            l1.h = 1e-5
+
+            var t = 0.0
+            val st = 0.05
+            for(i in 0 until 25) {
+                c.step(st)
+                t += st
+                println("main_2: t=$t c1.i=${c1.i} l1.i=${l1.i} r1(c1).u=${r1.u} r2(l1).u=${r2.u} vs.i=${vs.i}")
+            }
+        }
+
+        fun main_3() {
+            println("main_3: === Diodes ===")
+            val c = Circuit()
+
+            val vs = VoltageSource()
+            val r = Resistor()
+            val d = Diode()
+
+            c.add(vs, r, d)
+            
+            vs.connect(1, c.ground)
+            vs.connect(0, d, 0)
+            d.connect(1, r, 0)
+            r.connect(1, c.ground)
+
+            r.r = 10.0
+
+            var t = 0.0
+            val st = 0.05
+            for(i in -10 .. 10) {
+                vs.u = i.toDouble()
+                c.step(st)
+                if(i == -10) println("main_3: matrix: ${MATRIX_FORMAT.format(c.matrix)}")
+                t += st
+                println("main_3: t=$t vs.u=${vs.u} r.i=${r.i} r.p=${r.p}")
+                println("... knowns=${c.knowns}")
+            }
         }
     }
 }
