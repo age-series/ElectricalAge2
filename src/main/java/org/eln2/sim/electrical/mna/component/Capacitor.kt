@@ -3,9 +3,8 @@ package org.eln2.sim.electrical.mna.component
 import org.eln2.sim.electrical.mna.Circuit
 import org.eln2.sim.electrical.mna.Node
 
-open class Capacitor: Component() {
+open class Capacitor: Port() {
     override var name: String = "c"
-    override val nodeCount = 2
 
     var c: Double = 0.0
     var ts: Double = 0.05  // A safe default
@@ -14,7 +13,7 @@ open class Capacitor: Component() {
     internal var i: Double = 0.0
         set(value) {
             if(isInCircuit)
-                circuit!!.stampCurrentSource(node(0).index, node(1).index, value - field)
+                circuit!!.stampCurrentSource(pos.index, neg.index, value - field)
             field = value
         }
     var lastI: Double = 0.0
@@ -25,14 +24,14 @@ open class Capacitor: Component() {
 
     override fun preStep(dt: Double) {
         ts = dt
-        i = (node(1).potential - node(0).potential) / eqR
+        i = (-u) / eqR
     }
 
     override fun postStep(dt: Double) {
-        lastI = (node(0).potential - node(1).potential) / eqR + i
+        lastI = u / eqR + i
     }
 
     override fun stamp() {
-        node(0).stampResistor(node(1), eqR)
+        pos.stampResistor(neg, eqR)
     }
 }

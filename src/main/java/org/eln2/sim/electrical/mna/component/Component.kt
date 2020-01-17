@@ -81,3 +81,16 @@ abstract class Component: IDetail {
         circuit!!.connectivityChanged = true
     }
 }
+
+abstract class Port: Component() {
+    override val nodeCount = 2
+    
+    // The orientation here is arbitrary, but helps keep signs consistent.
+    open val pos: Node
+        get() = node(0)
+    open val neg: Node
+        get() = node(1)
+
+    open val u: Double
+        get() = if(isInCircuit) pos.potential - neg.potential else 0.0
+}

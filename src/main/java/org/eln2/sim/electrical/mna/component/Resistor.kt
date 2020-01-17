@@ -3,16 +3,13 @@ package org.eln2.sim.electrical.mna.component
 import org.eln2.sim.electrical.mna.Circuit
 import org.eln2.sim.electrical.mna.Node
 
-open class Resistor: Component() {
+open class Resistor: Port() {
     override var name: String = "r"
-    override val nodeCount: Int = 2
 
     open var r: Double = 1.0
-    val u: Double
-        get() = if(isInCircuit) node(0).potential - node(1).potential else 0.0
-    val i: Double
+    open val i: Double
         get() = u / r
-    val p: Double
+    open val p: Double
         get() = i * u
 
     override fun detail(): String {
