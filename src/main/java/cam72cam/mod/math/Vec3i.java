@@ -33,10 +33,7 @@ public class Vec3i {
 
     @Override
     public boolean equals(Object o) {
-        if (o instanceof Vec3i) {
-            return ((Vec3i) o).internal.equals(this.internal);
-        }
-        return false;
+        return o instanceof Vec3i && ((Vec3i) o).internal.equals(this.internal);
     }
 
     public Vec3i offset(Facing facing, int offset) {
