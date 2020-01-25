@@ -187,14 +187,14 @@ public class ModCore {
     }
 
     public static void debug(String msg, Object... params) {
-        if (instance == null || instance.logger == null) {
-            System.out.println("DEBUG: " + String.format(msg, params));
-            return;
-        }
+        if (Config.DebugLogging) {
+            if (instance == null || instance.logger == null) {
+                System.out.println("DEBUG: " + String.format(msg, params));
+                return;
+            }
 
-        /*TODO if (ConfigDebug.debugLog) {
             instance.logger.info(String.format(msg, params));
-        }*/
+        }
     }
 
     public static void info(String msg, Object... params) {
