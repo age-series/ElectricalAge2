@@ -25,8 +25,8 @@ public class GLTexture {
     private static Map<String, GLTexture> textures = new HashMap<>();
     private final File texLoc;
     private final int cacheSeconds;
-    private final int width;
-    private final int height;
+    private int width;
+    private int height;
     private int glTexID;
     private long lastUsed;
     private IntBuffer pixels;
@@ -53,52 +53,71 @@ public class GLTexture {
         });
     }
 
-    public GLTexture(String name, BufferedImage image, int cacheSeconds, boolean upload) {
-
+    public static File cacheFile(String name) {
         File cacheDir = Paths.get(Loader.instance().getConfigDir().getParentFile().getPath(), "cache", "universalmodcore").toFile();
         cacheDir.mkdirs();
 
-        this.texLoc = new File(cacheDir, name);
+        return new File(cacheDir, name);
+    }
+
+    public GLTexture(String name, BufferedImage image, int cacheSeconds, boolean upload) {
+        this.texLoc = cacheFile(name);
         this.cacheSeconds = cacheSeconds;
-        this.width = image.getWidth();
-        this.height = image.getHeight();
 
-        transition(TextureState.NEW);
+        if (image != null) {
+            this.width = image.getWidth();
+            this.height = image.getHeight();
 
+            transition(TextureState.NEW);
 
-        transition(TextureState.WRITING);
-        if (upload) {
-            try {
-                ImageIO.write(image, "png", texLoc);
-            } catch (IOException e) {
-                internalError = new RuntimeException(e);
-                transition(TextureState.ERROR);
-                throw internalError;
-            }
-            transition(TextureState.UNALLOCATED);
-
-            this.pixels = imageToPixels(image);
-            transition(TextureState.READ);
-            tryUpload();
-        } else {
-            while (queue.size() != 0) {
-                try {
-                    Thread.sleep(1000);
-                    ModCore.info("Waiting for free write slot...");
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-            }
-            saveImage.submit(() -> {
+            transition(TextureState.WRITING);
+            if (upload) {
                 try {
                     ImageIO.write(image, "png", texLoc);
-                    transition(TextureState.UNALLOCATED);
                 } catch (IOException e) {
-                    internalError = new RuntimeException("Unable to save image " + texLoc, e);
+                    internalError = new RuntimeException(e);
                     transition(TextureState.ERROR);
                     throw internalError;
                 }
-            });
+                transition(TextureState.UNALLOCATED);
+
+                this.pixels = imageToPixels(image);
+                transition(TextureState.READ);
+                tryUpload();
+            } else {
+                while (queue.size() != 0) {
+                    try {
+                        Thread.sleep(1000);
+                        ModCore.info("Waiting for free write slot...");
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+                saveImage.submit(() -> {
+                    try {
+                        ImageIO.write(image, "png", texLoc);
+                        transition(TextureState.UNALLOCATED);
+                    } catch (IOException e) {
+                        internalError = new RuntimeException("Unable to save image " + texLoc, e);
+                        transition(TextureState.ERROR);
+                        throw internalError;
+                    }
+                });
+            }
+        } else {
+            transition(TextureState.UNALLOCATED);
+            if (upload) {
+                for (int i = 0; i< 100; i++) {
+                    if (tryUpload()) {
+                        break;
+                    }
+                    try {
+                        Thread.sleep(10);
+                    } catch (InterruptedException e) {
+                        // PASS
+                    }
+                }
+            }
         }
 
         textures.put(texLoc.toString(), this);
@@ -112,6 +131,8 @@ public class GLTexture {
     private IntBuffer imageToPixels(BufferedImage image) {
         // Will dump out inside a loading thread if prematurely free'd
         assert state == TextureState.READ;
+        width = image.getWidth();
+        height = image.getHeight();
 
         int[] pixels = new int[image.getWidth() * image.getHeight()];
         image.getRGB(0, 0, image.getWidth(), image.getHeight(), pixels, 0, image.getWidth());

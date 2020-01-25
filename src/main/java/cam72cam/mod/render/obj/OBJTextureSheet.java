@@ -24,18 +24,17 @@ public class OBJTextureSheet {
 
     private final GLTexture icon;
     private final GLTexture texture;
+    private final boolean isCached;
     private Map<String, SubTexture> mappings;
     private int sheetWidth = 0;
     private int sheetHeight = 0;
     private OBJModel model;
 
-    OBJTextureSheet(OBJModel model, int cacheSeconds) {
-        this(model, null, cacheSeconds);
-    }
-
     OBJTextureSheet(OBJModel model, String texPrefix, int cacheSeconds) {
         this.model = model;
 
+        String path = model.modelLoc.getPath().replace("/", ".") + texPrefix;
+        this.isCached = GLTexture.cacheFile(path + ".png").exists();
 
         model.offsetU = new byte[model.faceVerts.length / 9];
         model.offsetV = new byte[model.faceVerts.length / 9];
@@ -150,15 +149,14 @@ public class OBJTextureSheet {
             currentX += tex.getAbsoluteWidth();
         }
 
-        String path = model.modelLoc.getPath().replace("/", ".") + texPrefix;
-        this.texture = new GLTexture(path + ".png", image, cacheSeconds, false);
+        this.texture = new GLTexture(path + ".png", isCached ? null : image, cacheSeconds, false);
 
         int iconSize = 1024;
         if (image.getWidth() * image.getHeight() > iconSize * iconSize) {
             float scale = (float) (iconSize * iconSize) / (image.getWidth() * image.getHeight());
-            icon = new GLTexture(path + "_icon.png", scaleImage(image, (int) (image.getWidth() * scale), (int) (image.getHeight() * scale)), 30, true);
+            icon = new GLTexture(path + "_icon.png", isCached ? null : scaleImage(image, (int) (image.getWidth() * scale), (int) (image.getHeight() * scale)), 30, true);
         } else {
-            icon = new GLTexture(path + "_icon.png", image, cacheSeconds * 2, true);
+            icon = new GLTexture(path + "_icon.png", isCached ? null : image, cacheSeconds * 2, true);
         }
 
         ModCore.info(GPUInfo.debug().replace("%", "%%"));
@@ -329,6 +327,11 @@ public class OBJTextureSheet {
         void upload(Graphics2D graphics, int originX, int originY) {
             this.originX = originX;
             this.originY = originY;
+
+            if (isCached) {
+                image = null;
+                return;
+            }
 
             for (int cU = 0; cU < copiesU(); cU++) {
                 for (int cV = 0; cV < copiesV(); cV++) {

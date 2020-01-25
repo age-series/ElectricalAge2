@@ -29,8 +29,11 @@ import org.lwjgl.opengl.GL12;
 
 import javax.annotation.Nullable;
 import javax.vecmath.Matrix4f;
-import javax.vecmath.Vector3f;
+import java.io.File;
+import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -125,6 +128,19 @@ public class ItemRender {
     private static void createSprite(String id, StandardModel model) {
         int width = iconSheet.spriteSize;
         int height = iconSheet.spriteSize;
+        File sprite = GLTexture.cacheFile(id.replace("/", ".") + "_" + "sprite" + iconSheet.spriteSize + ".raw");
+        if (sprite.exists()) {
+            try {
+                ByteBuffer buff = ByteBuffer.allocateDirect(4 * width * height);
+                buff.put(ByteBuffer.wrap(Files.readAllBytes(sprite.toPath())));
+                buff.flip();
+                iconSheet.setSprite(id, buff);
+                return;
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
         Framebuffer fb = new Framebuffer(width, height, true);
         fb.setFramebufferColor(0, 0, 0, 0);
         fb.framebufferClear();
@@ -160,6 +176,14 @@ public class ItemRender {
         GL11.glMatrixMode(GL11.GL_MODELVIEW);
 
         iconSheet.setSprite(id, buff);
+
+        try {
+            byte[] data = new byte[buff.capacity()];
+            buff.get(data);
+            Files.write(sprite.toPath(), data);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     static class BakedItemModel implements IBakedModel {
