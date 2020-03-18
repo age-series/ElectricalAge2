@@ -4,6 +4,7 @@ import org.eln2.sim.electrical.mna.Node
 import org.eln2.sim.electrical.mna.component.*
 
 class FalstadBacking {
+    /*
     companion object {
 
         @JvmStatic
@@ -743,4 +744,5 @@ w 256 176 304 176 0
             return pinList
         }
     }
+     */
 }
