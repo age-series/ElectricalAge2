@@ -3,19 +3,19 @@
 .project
 .settings
 .metadata
-bin
-/build
-eclipse
-/run
-/logs
-/config
-/saves
+*/bin
+*/build
+*/eclipse
+*/run
+*/logs
+*/config
+*/saves
 *.json
 *.bat
 options.txt
-/out
-/classes
-/UniversalModCore
+*/out
+*/classes
+*/UniversalModCore
 
 # IntelliJ
 .idea
