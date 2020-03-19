@@ -1,8 +1,8 @@
-package org.eln2.sim.electrical.mna
+package org.eln2.core.sim.electrical.mna
 
 import org.apache.commons.math3.linear.*
-import org.eln2.sim.IProcess
-import org.eln2.sim.electrical.mna.component.*
+import org.eln2.core.sim.IProcess
+import org.eln2.core.sim.electrical.mna.component.*
 import java.io.FileOutputStream
 import java.io.PrintStream
 import java.lang.IllegalArgumentException

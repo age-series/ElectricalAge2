@@ -1,4 +1,4 @@
-package org.eln2.sim.electrical.mna.component
+package org.eln2.core.sim.electrical.mna.component
 
 import kotlin.math.abs
 import kotlin.math.exp

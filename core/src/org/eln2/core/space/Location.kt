@@ -1,4 +1,4 @@
-package org.eln2.space
+package org.eln2.core.space
 
 import kotlin.math.abs
 

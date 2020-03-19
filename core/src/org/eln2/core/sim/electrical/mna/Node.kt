@@ -1,4 +1,4 @@
-package org.eln2.sim.electrical.mna
+package org.eln2.core.sim.electrical.mna
 
 open class Node(var circuit: Circuit): IDetail {
     open var potential: Double = 0.0

@@ -1,7 +1,7 @@
-package org.eln2.load
+package org.eln2.core.load
 
-import org.eln2.sim.electrical.mna.Node
-import org.eln2.sim.electrical.mna.component.*
+import org.eln2.core.sim.electrical.mna.Node
+import org.eln2.core.sim.electrical.mna.component.*
 
 class FalstadBacking {
     /*

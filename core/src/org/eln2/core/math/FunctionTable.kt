@@ -1,4 +1,4 @@
-package org.eln2.math
+package org.eln2.core.math
 
 /*
 NOTE: DO NOT IMPORT MINECRAFT CODE IN THIS CLASS

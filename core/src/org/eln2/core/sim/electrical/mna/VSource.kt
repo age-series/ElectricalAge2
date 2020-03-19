@@ -1,6 +1,6 @@
-package org.eln2.sim.electrical.mna
+package org.eln2.core.sim.electrical.mna
 
-import org.eln2.sim.electrical.mna.IDetail
+import org.eln2.core.sim.electrical.mna.IDetail
 
 class VSource(var circuit: Circuit): IDetail {
     var current: Double = 0.0

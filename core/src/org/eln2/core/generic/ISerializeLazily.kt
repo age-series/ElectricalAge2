@@ -1,4 +1,4 @@
-package org.eln2.serialization.generic
+package org.eln2.core.generic
 
 /*
 NOTE: This code is strictly experimental

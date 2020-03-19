@@ -1,6 +1,6 @@
-package org.eln2.sim.electrical.mna.component
+package org.eln2.core.sim.electrical.mna.component
 
-import org.eln2.sim.electrical.mna.*
+import org.eln2.core.sim.electrical.mna.*
 
 abstract class Component: IDetail {
     /* Ask this component to contribute (initial) values to the MNA matrices. */
