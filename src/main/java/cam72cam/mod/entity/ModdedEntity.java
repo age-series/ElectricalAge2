@@ -181,6 +181,7 @@ public class ModdedEntity extends Entity implements IEntityAdditionalSpawnData {
             cam72cam.mod.entity.Entity passenger = self.getWorld().getEntity(entity);
             passengerPositions.put(entity.getUniqueID(), iRidable.getMountOffset(passenger, calculatePassengerOffset(passenger)));
             entity.startRiding(seat);
+            //updateSeat(seat); Don't do this here, can cause StackOverflow
             updateSeat(seat);
             world.addEntity(seat);
             self.sendToObserving(new PassengerPositionsPacket(this));

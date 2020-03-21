@@ -40,11 +40,11 @@ public class MinecraftClient {
     }
 
     public static Vec3i getBlockMouseOver() {
-        return Minecraft.getInstance().objectMouseOver.getType() == RayTraceResult.Type.BLOCK ? new Vec3i(new Vec3d(Minecraft.getInstance().objectMouseOver.getHitVec())) : null;
+        return Minecraft.getInstance().objectMouseOver != null && Minecraft.getInstance().objectMouseOver.getType() == RayTraceResult.Type.BLOCK ? new Vec3i(new Vec3d(Minecraft.getInstance().objectMouseOver.getHitVec())) : null;
     }
 
     public static Vec3d getPosMouseOver() {
-        return Minecraft.getInstance().objectMouseOver.getType() == RayTraceResult.Type.BLOCK ? new Vec3d(Minecraft.getInstance().objectMouseOver.getHitVec()) : null;
+        return Minecraft.getInstance().objectMouseOver != null && Minecraft.getInstance().objectMouseOver.getType() == RayTraceResult.Type.BLOCK ? new Vec3d(Minecraft.getInstance().objectMouseOver.getHitVec()) : null;
     }
 
     public static boolean isPaused() {

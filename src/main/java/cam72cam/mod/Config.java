@@ -8,4 +8,7 @@ import cam72cam.mod.config.ConfigFile;
 public class Config {
     @ConfigFile.Comment("Size of each sprite in the texture sheet")
     public static int SpriteSize = 128;
+
+    @ConfigFile.Comment("Enable Debug Logging")
+    public static boolean DebugLogging = false;
 }

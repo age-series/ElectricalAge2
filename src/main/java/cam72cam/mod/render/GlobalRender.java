@@ -13,6 +13,7 @@ import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.culling.ClippingHelperImpl;
 import net.minecraft.client.renderer.culling.Frustum;
 import net.minecraft.client.renderer.culling.ICamera;
 import net.minecraft.client.renderer.tileentity.TileEntityRenderer;
@@ -91,7 +92,9 @@ public class GlobalRender {
     }
 
     static ICamera getCamera(float partialTicks) {
-        ICamera camera = new Frustum();
+        ClippingHelperImpl ch = new ClippingHelperImpl();
+        ch.init();
+        ICamera camera = new Frustum(ch); // Must be new instance per Johni0702 otherwise will be affected by weird global state!
         Vec3d cameraPos = getCameraPos(partialTicks);
         camera.setPosition(cameraPos.x, cameraPos.y, cameraPos.z);
         return camera;

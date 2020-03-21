@@ -436,9 +436,19 @@ public class World {
 
     /* Capabilities */
     public IInventory getInventory(Vec3i offset) {
+        for (Facing value : Facing.values()) {
+            IInventory inv = getInventory(offset, value);
+            if (inv != null) {
+                return inv;
+            }
+        }
+        return getInventory(offset, null);
+    }
+    public IInventory getInventory(Vec3i offset, Facing dir) {
         net.minecraft.tileentity.TileEntity te = internal.getTileEntity(offset.internal);
-        if (te != null && te.getCapability(CapabilityItemHandler.ITEM_HANDLER_CAPABILITY, null).isPresent()) {
-            IItemHandler inv = te.getCapability(CapabilityItemHandler.ITEM_HANDLER_CAPABILITY, null).orElse(null);
+        Direction face = dir != null ? dir.internal : null;
+        if (te != null && te.getCapability(CapabilityItemHandler.ITEM_HANDLER_CAPABILITY, face).isPresent()) {
+            IItemHandler inv = te.getCapability(CapabilityItemHandler.ITEM_HANDLER_CAPABILITY, face).orElse(null);
             if (inv instanceof IItemHandlerModifiable) {
                 return IInventory.from((IItemHandlerModifiable) inv);
             }
@@ -447,9 +457,20 @@ public class World {
     }
 
     public ITank getTank(Vec3i offset) {
+        for (Facing value : Facing.values()) {
+            ITank tank = getTank(offset, value);
+            if (tank != null) {
+                return tank;
+            }
+        }
+        return getTank(offset, null);
+    }
+
+    public ITank getTank(Vec3i offset, Facing dir) {
         net.minecraft.tileentity.TileEntity te = internal.getTileEntity(offset.internal);
-        if (te != null && te.getCapability(CapabilityFluidHandler.FLUID_HANDLER_CAPABILITY, null).isPresent()) {
-            IFluidHandler tank = te.getCapability(CapabilityFluidHandler.FLUID_HANDLER_CAPABILITY, null).orElse(null);
+        Direction face = dir != null ? dir.internal : null;
+        if (te != null && te.getCapability(CapabilityFluidHandler.FLUID_HANDLER_CAPABILITY, face).isPresent()) {
+            IFluidHandler tank = te.getCapability(CapabilityFluidHandler.FLUID_HANDLER_CAPABILITY, face).orElse(null);
             if (tank != null) {
                 return ITank.getTank(tank);
             }

@@ -110,7 +110,7 @@ sourceSets {
 }
 
 dependencies {
-	minecraft 'net.minecraftforge:forge:1.14.4-28.1.38'
+	minecraft 'net.minecraftforge:forge:1.14.4-28.2.0'
     // you may put jars on which you depend on in ./libs
     // or you may define them like so..
     //compile "some.group:artifact:version:classifier"
