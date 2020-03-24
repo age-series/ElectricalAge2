@@ -12,32 +12,26 @@ import org.lwjgl.opengl.GL11;
 import java.util.*;
 
 public class OBJRender {
-    public final String version;
     public OBJModel model;
     public Map<String, OBJTextureSheet> textures = new HashMap<>();
     private int prevTexture = -1;
     private VBA vba;
 
     public OBJRender(OBJModel model) {
-        this(model, "");
+        this(model, null);
     }
 
-    public OBJRender(OBJModel model, String version) {
-        this(model, version, null);
+    public OBJRender(OBJModel model, Collection<String> textureNames) {
+        this(model, textureNames, 30);
     }
-
-    public OBJRender(OBJModel model, String version, Collection<String> textureNames) {
-        this(model, textureNames, version, 30);
-    }
-    public OBJRender(OBJModel model, Collection<String> textureNames, String version, int cacheSeconds) {
+    public OBJRender(OBJModel model, Collection<String> textureNames, int cacheSeconds) {
         this.model = model;
-        this.version = version;
         if (textureNames != null && textureNames.size() > 1) {
             for (String name : textureNames) {
-                this.textures.put(name, new OBJTextureSheet(model, name + version, cacheSeconds));
+                this.textures.put(name, new OBJTextureSheet(model, name, cacheSeconds));
             }
         } else {
-            this.textures.put(null, new OBJTextureSheet(model, version, cacheSeconds));
+            this.textures.put(null, new OBJTextureSheet(model, "", cacheSeconds));
         }
     }
 

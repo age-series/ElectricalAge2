@@ -7,6 +7,8 @@ import cam72cam.mod.model.obj.Vec2f;
 import cam72cam.mod.render.GLTexture;
 import cam72cam.mod.render.GPUInfo;
 import cam72cam.mod.resource.Identifier;
+import com.google.common.hash.Hashing;
+import com.google.common.hash.HashingInputStream;
 import net.minecraft.client.renderer.texture.TextureUtil;
 import net.minecraft.util.math.MathHelper;
 import org.lwjgl.opengl.GL11;
@@ -16,6 +18,9 @@ import java.awt.image.BufferedImage;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.*;
 import java.util.List;
 
@@ -29,12 +34,13 @@ public class OBJTextureSheet {
     private int sheetWidth = 0;
     private int sheetHeight = 0;
     private OBJModel model;
+    public long hash = 0;
 
     OBJTextureSheet(OBJModel model, String texPrefix, int cacheSeconds) {
         this.model = model;
 
-        String path = model.modelLoc.getPath().replace("/", ".") + texPrefix;
-        this.isCached = GLTexture.cacheFile(path + ".png").exists();
+        // Start with the model hash and add on what we discover when processing resources
+        this.hash = model.hash;
 
         model.offsetU = new byte[model.faceVerts.length / 9];
         model.offsetV = new byte[model.faceVerts.length / 9];
@@ -149,7 +155,27 @@ public class OBJTextureSheet {
             currentX += tex.getAbsoluteWidth();
         }
 
+        String path = model.modelLoc.getPath().replace("/", ".") + texPrefix;
+        boolean cached = GLTexture.cacheFile(path + ".png").exists() && GLTexture.cacheFile(path + ".sha256").exists();
+
+        if (cached) {
+            try
+            {
+                float origHash = Float.parseFloat(new String(Files.readAllBytes(GLTexture.cacheFile(path + ".sha256").toPath())));
+                cached = origHash == hash;
+            }
+            catch (IOException e)
+            {
+                cached = false;
+                ModCore.catching(e);
+            }
+        }
+
+
+        this.isCached = cached;
+
         this.texture = new GLTexture(path + ".png", isCached ? null : image, cacheSeconds, false);
+        ModCore.info("HASH " + path + " : " + hash);
 
         int iconSize = 1024;
         if (image.getWidth() * image.getHeight() > iconSize * iconSize) {
@@ -158,6 +184,16 @@ public class OBJTextureSheet {
         } else {
             icon = new GLTexture(path + "_icon.png", isCached ? null : image, cacheSeconds * 2, true);
         }
+
+        if (!isCached) {
+            try {
+                Files.write(GLTexture.cacheFile(path + ".sha256").toPath(), (hash + "").getBytes(), StandardOpenOption.WRITE, StandardOpenOption.CREATE);
+            } catch (IOException e) {
+                ModCore.catching(e);
+            }
+        }
+
+        ModCore.info(path + " : " + isCached);
 
         ModCore.info(GPUInfo.debug().replace("%", "%%"));
     }
@@ -265,8 +301,10 @@ public class OBJTextureSheet {
             } catch (FileNotFoundException ex) {
                 input = fallback.getResourceStream();
             }
-            BufferedImage image = TextureUtil.readBufferedImage(input);
-            input.close();
+            HashingInputStream hashed = new HashingInputStream(Hashing.sha256(), input);
+            BufferedImage image = TextureUtil.readBufferedImage(hashed);
+            hash += hashed.hash().asLong();
+
 
             realWidth = image.getWidth();
             realHeight = image.getHeight();
@@ -278,10 +316,12 @@ public class OBJTextureSheet {
         }
 
         SubTexture(String name, int r, int g, int b, int a) {
+            int cint = (a << 24) | (r << 16) | (g << 8) | b;
+            hash += cint;
             image = new BufferedImage(8, 8, BufferedImage.TYPE_INT_ARGB);
             for (int x = 0; x < 8; x++) {
                 for (int y = 0; y < 8; y++) {
-                    image.setRGB(x, y, (a << 24) | (r << 16) | (g << 8) | b);
+                    image.setRGB(x, y, cint);
                 }
             }
             realWidth = image.getWidth();
