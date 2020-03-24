@@ -2,6 +2,8 @@ package cam72cam.mod.model.obj;
 
 import cam72cam.mod.math.Vec3d;
 import cam72cam.mod.resource.Identifier;
+import com.google.common.hash.Hashing;
+import com.google.common.hash.HashingInputStream;
 import org.apache.commons.lang3.ArrayUtils;
 
 import java.io.BufferedReader;
@@ -27,6 +29,8 @@ public class OBJModel {
     //public Map<Integer, String> mtlLookup = new HashMap<Integer, String>();
     public float darken;
 
+    public final long hash;
+
     private Map<String, Vec3d> mins = new HashMap<>();
     private Map<String, Vec3d> maxs = new HashMap<>();
 
@@ -35,7 +39,8 @@ public class OBJModel {
     }
 
     public OBJModel(Identifier modelLoc, float darken, double scale) throws Exception {
-        InputStream input = modelLoc.getResourceStream();
+        long hash = 0;
+        HashingInputStream input = new HashingInputStream(Hashing.sha256(), modelLoc.getResourceStream());
         BufferedReader reader = new BufferedReader(new InputStreamReader(input));
         this.darken = darken;
         this.modelLoc = modelLoc;
@@ -142,6 +147,7 @@ public class OBJModel {
         }
 
         reader.close(); // closes input
+        hash += input.hash().asLong();
 
         this.vertices = ArrayUtils.toPrimitive(vertices.toArray(new Float[0]));
         this.vertexNormals = ArrayUtils.toPrimitive(vertexNormals.toArray(new Float[0]));
@@ -150,6 +156,7 @@ public class OBJModel {
         this.faceMTLs = faceMTLs.toArray(new String[0]);
 
         if (materialPaths.size() == 0) {
+            this.hash = hash;
             return;
         }
 
@@ -157,7 +164,7 @@ public class OBJModel {
 
             Material currentMTL = null;
 
-            input = modelLoc.getRelative(materialPath).getResourceStream();
+            input = new HashingInputStream(Hashing.sha256(), modelLoc.getRelative(materialPath).getResourceStream());
             reader = new BufferedReader(new InputStreamReader(input));
             while ((line = reader.readLine()) != null) {
                 if (line.startsWith("#")) {
@@ -239,6 +246,7 @@ public class OBJModel {
                 materials.put(currentMTL.name, currentMTL);
             }
             reader.close(); // closes input
+            hash += input.hash().asLong();
         }
 
         for (String group : groups()) {
@@ -271,6 +279,7 @@ public class OBJModel {
             }
             maxs.put(group, max);
         }
+        this.hash = hash;
     }
 
     private static int[] parsePoint(String point) {
