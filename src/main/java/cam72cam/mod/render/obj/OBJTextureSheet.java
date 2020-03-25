@@ -175,7 +175,6 @@ public class OBJTextureSheet {
         this.isCached = cached;
 
         this.texture = new GLTexture(path + ".png", isCached ? null : image, cacheSeconds, false);
-        ModCore.info("HASH " + path + " : " + hash);
 
         int iconSize = 1024;
         if (image.getWidth() * image.getHeight() > iconSize * iconSize) {
@@ -192,8 +191,6 @@ public class OBJTextureSheet {
                 ModCore.catching(e);
             }
         }
-
-        ModCore.info(path + " : " + isCached);
 
         ModCore.info(GPUInfo.debug().replace("%", "%%"));
     }
