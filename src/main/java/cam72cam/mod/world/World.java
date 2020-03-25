@@ -50,9 +50,9 @@ public class World {
     public final net.minecraft.world.World internal;
     public final boolean isClient;
     public final boolean isServer;
-    private final List<Entity> entities;
     private final Map<Integer, Entity> entityByID;
     private final Map<UUID, Entity> entityByUUID;
+    private final Map<Class<?>, List<Entity>> entitiesByClass;
     private long ticks;
 
     /* World Initialization */
@@ -61,7 +61,7 @@ public class World {
         internal = world;
         isClient = world.isRemote;
         isServer = !world.isRemote;
-        entities = new ArrayList<>();
+        entitiesByClass = new HashMap<>();
         entityByID = new HashMap<>();
         entityByUUID = new HashMap<>();
     }
@@ -144,13 +144,16 @@ public class World {
         } else {
             entity = new Entity(entityIn);
         }
-        entities.add(entity);
+        entitiesByClass.putIfAbsent(entity.getClass(), new ArrayList<>());
+        entitiesByClass.get(entity.getClass()).add(entity);
         entityByID.put(entityIn.getEntityId(), entity);
         entityByUUID.put(entity.getUUID(), entity);
     }
 
     void onEntityRemoved(net.minecraft.entity.Entity entity) {
-        entities.stream().filter(x -> x.getUUID().equals(entity.getUniqueID())).findFirst().ifPresent(entities::remove);
+        for (List<Entity> value : entitiesByClass.values()) {
+            value.removeAll(value.stream().filter(inner -> inner.getUUID().equals(entity.getUniqueID())).collect(Collectors.toList()));
+        }
         entityByID.remove(entity.getEntityId());
         entityByUUID.remove(entity.getUniqueID());
     }
@@ -190,7 +193,20 @@ public class World {
     }
 
     public <T extends Entity> List<T> getEntities(Predicate<T> filter, Class<T> type) {
-        return entities.stream().map(entity -> entity.as(type)).filter(Objects::nonNull).filter(filter).collect(Collectors.toList());
+        List<T> list = new ArrayList<>();
+        for (Class<?> key : entitiesByClass.keySet()) {
+            if (type.isAssignableFrom(key)) {
+                for (Entity entity : entitiesByClass.get(key)) {
+                    T as = entity.as(type);
+                    if (as != null) {
+                        if (filter.test(as)) {
+                            list.add(as);
+                        }
+                    }
+                }
+            }
+        }
+        return list;
     }
 
     public boolean spawnEntity(Entity ent) {
