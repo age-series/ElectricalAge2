@@ -102,7 +102,7 @@ public class World {
         });
 
         CommonEvents.World.TICK.subscribe(world -> {
-            get(world).entities.stream().filter(x -> !x.internal.isAddedToWorld()).collect(Collectors.toList()).forEach(x -> get(world).onEntityRemoved(x.internal));
+            get(world).entityByID.values().stream().filter(x -> !x.internal.isAddedToWorld()).collect(Collectors.toList()).forEach(x -> get(world).onEntityRemoved(x.internal));
 
             onTicks.forEach(fn -> fn.accept(get(world)));
             get(world).ticks++;
