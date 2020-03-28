@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
@@ -28,7 +29,9 @@ class Data {
 
         public InputStream getResourceStream(Identifier location) throws IOException {
             InputStream chosen = null;
-            for (InputStream strm : getResourceStreamAll(location)) {
+            List<InputStream> resources = getResourceStreamAll(location);
+            Collections.reverse(resources);
+            for (InputStream strm : resources) {
                 if (chosen == null) {
                     chosen = strm;
                 } else {
