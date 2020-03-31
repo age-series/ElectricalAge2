@@ -84,5 +84,3 @@ processResources {
         exclude 'mcmod.info'
     }
 }
-
-apply from: 'mod.gradle'
