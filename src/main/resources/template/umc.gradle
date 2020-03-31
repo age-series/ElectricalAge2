@@ -30,7 +30,7 @@ apply plugin: net.minecraftforge.gradle.user.patcherUser.forge.ForgePlugin
 //Only edit below this line, the above code adds and enables the necessary things for Forge to be setup.
 
 
-version = "#VERSION#_1.12.2"
+version = "#VERSION#-1.12.2-forge"
 group = "#PACKAGE#" // http://maven.apache.org/guides/mini/guide-naming-conventions.html
 archivesBaseName = "#NAME#"
 
