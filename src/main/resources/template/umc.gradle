@@ -32,7 +32,7 @@ apply plugin: net.minecraftforge.gradle.user.patcherUser.forge.ForgePlugin
 
 version = "#VERSION#-1.12.2-forge"
 group = "#PACKAGE#" // http://maven.apache.org/guides/mini/guide-naming-conventions.html
-archivesBaseName = "#NAME#"
+archivesBaseName = "#CLASS#"
 
 sourceCompatibility = targetCompatibility = '1.8' // Need this here so eclipse task generates correctly.
 compileJava {
