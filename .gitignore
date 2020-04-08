@@ -26,3 +26,12 @@ options.txt
 # Blender backup files
 *.blend1
 *.blend2
+
+# C# projects
+*.csproj
+*.csproj.user
+*.sln
+App.config
+
+# Build artifacts
+*/obj/
