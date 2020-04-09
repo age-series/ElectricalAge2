@@ -1,10 +1,10 @@
 package org.eln2.load
 
-import org.eln2.sim.electrical.mna.Node
+import org.eln2.sim.electrical.mna.Circuit
 import org.eln2.sim.electrical.mna.component.*
 
 class FalstadBacking {
-    /*
+
     companion object {
 
         @JvmStatic
@@ -39,41 +39,38 @@ w 256 176 304 176 0
 """
 
             val parseFalstad = parseFalstad(falstad2)
-            parseFalstad.first.forEach { println(it.detail()) }
-            parseFalstad.second.forEach { println(it.detail()) }
         }
 
         /**
          * parseFalstad
          *
          * @param str The input string using the Falstad language
-         * @return components and nodes
+         * @return circuit
          */
-        fun parseFalstad(str: String): Pair<List<Component>,List<Node>> {
+        fun parseFalstad(str: String): Circuit {
 
-            val cmds = str.split("\n")
-            val components = mutableListOf<Component>()
-            val nodemap = mutableMapOf<String, Node>()
+            val lines = str.split("\n")
+            val componentDefs = mutableListOf<String>()
 
-            val commands = mutableListOf<String>()
+            val circuit = Circuit()
+            val componentMap = mutableMapOf<Pair<Int, Int>, MutableMap<Component, Int>>()
 
             // put all w's first
-            cmds.filter {it.isNotEmpty()}.filter{it[0] == 'w'}.forEach { commands.add(it) }
-            cmds.filter {it.isNotEmpty()}.filter{it[0] != 'w'}.forEach { commands.add(it) }
+            lines.filter {it.isNotEmpty()}.filter{it[0] == 'w'}.forEach { componentDefs.add(it) }
+            lines.filter {it.isNotEmpty()}.filter{it[0] != 'w'}.forEach { componentDefs.add(it) }
 
-            for (c in commands) {
-                var cl = c
-                if ("//" in c) {
-                    cl = cl.split("//")[0]
+            for (componentDef in componentDefs) {
+                var componentDefLocal = componentDef
+                if ("//" in componentDef) {
+                    componentDefLocal = componentDefLocal.split("//")[0]
                 }
-                if ("%" in c) {
-                    cl = cl.split("%")[0]
+                if ("%" in componentDef) {
+                    componentDefLocal = componentDefLocal.split("%")[0]
                 }
 
-                var cs = cl.split(" ")
-                cs = cs.map { it.trim() }
+                val componentPropertyList = componentDefLocal.split(" ").map { it.trim() }
 
-                when (cs[0]) {
+                when (componentPropertyList[0]) {
                     // ==== NON COMPONENTS
                     "$" -> {
                         // === Initializer Statement ===
@@ -91,27 +88,23 @@ w 256 176 304 176 0
                         // === Hint Statement ===
                     }
                     else -> {
-                        if (cs.size >= 6) {
-                            val comp = componentBuilder(cs, nodemap)
-                            if (comp != null) components.add(comp)
+                        if (componentPropertyList.size >= 6) {
+                            componentBuilder(componentPropertyList, circuit, componentMap)
                         }
                     }
                 }
             }
-
-            return Pair(components, nodemap.map { it.value }.distinct())
+            return circuit
         }
 
-        fun componentBuilder(c: List<String>, nodemap: MutableMap<String, Node>): Component? {
+        fun componentBuilder(c: List<String>, circuit: Circuit, nodeMap: MutableMap<Pair<Int,Int>,MutableMap<Component,Int>>) {
             val type = c[0]
             val aPin = Pair(c[1].toInt(), c[2].toInt())
-            val aPinStr = "${aPin.first}.${aPin.second}"
             val bPin = Pair(c[3].toInt(), c[4].toInt())
-            val bPinStr = "${bPin.first}.${bPin.second}"
-            when(type) {
+            when(type) {/*
                 "g" -> {
                     // ground (one pin)
-                    if (nodemap[aPinStr] == null) {
+                    if (lolnodemap[aPinStr] == null) {
                         nodemap[aPinStr] = Node(aPin)
                     }
 
@@ -267,6 +260,8 @@ w 256 176 304 176 0
 
                     return int
                 }
+                */
+                /*
                 "174" -> {
                     // "pot"
                 }
@@ -682,9 +677,9 @@ w 256 176 304 176 0
                 }
                 "411" -> {
                     // Audio Input
-                }
+                }*/
             }
-            return null
+            return TODO()
         }
 
         fun logicGatePins(aPin: Pair<Int, Int>, bPin: Pair<Int, Int>): List<Pair<Int, Int>>? {
@@ -744,5 +739,4 @@ w 256 176 304 176 0
             return pinList
         }
     }
-     */
 }
