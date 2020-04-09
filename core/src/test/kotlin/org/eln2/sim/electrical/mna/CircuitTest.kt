@@ -82,7 +82,7 @@ internal class CircuitTest {
         }
         fp.close()
 
-        val expected = FileInputStream("testdata/main_2.dat").readAllBytes()
+        val expected = FileInputStream("testdata/main_2.dat").readBytes()
         org.junit.jupiter.api.Assertions.assertArrayEquals(expected, actual.toByteArray())
     }
 
@@ -125,7 +125,7 @@ internal class CircuitTest {
             fp.println("$t\t${vs.u}\t${r1.i}\t${r1.p}\t${r2.i}\t${r2.p}\t${r3.i}\t${r3.p}")
         }
 
-        val expected = FileInputStream("testdata/main_3.dat").readAllBytes()
+        val expected = FileInputStream("testdata/main_2.dat").readBytes()
         Assertions.assertArrayEquals(expected, actual.toByteArray())
     }
 }
