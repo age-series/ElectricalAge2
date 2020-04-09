@@ -2,21 +2,37 @@ package org.eln2.space
 
 import kotlin.math.abs
 
-data class Vec(val x: Int, val y: Int, val z: Int) {
-    operator fun unaryMinus() = Vec(-x, -y, -z)
-    operator fun plus(other: Vec) = Vec(x + other.x, y + other.y, z + other.z)
-    operator fun minus(other: Vec) = this + (-other)
-    operator fun times(other: Int) = Vec(x * other, y * other, z * other)
+data class Vec2i(val x: Int, val y: Int) {
+    operator fun unaryMinus() = Vec2i(-x, -y)
+    operator fun plus(other: Vec2i) = Vec2i(x + other.x, y + other.y)
+    operator fun minus(other: Vec2i) = this + (-other)
+    operator fun times(scalar: Int) = Vec2i(x * scalar, y * scalar)
+
+    val isZero: Boolean get() = this == ZERO
+
+    companion object {
+        val ZERO = Vec2i(0, 0)
+        val XU = Vec2i(1, 0)
+        val YU = Vec2i(0, 1)
+    }
+
+}
+
+data class Vec3i(val x: Int, val y: Int, val z: Int) {
+    operator fun unaryMinus() = Vec3i(-x, -y, -z)
+    operator fun plus(other: Vec3i) = Vec3i(x + other.x, y + other.y, z + other.z)
+    operator fun minus(other: Vec3i) = this + (-other)
+    operator fun times(other: Int) = Vec3i(x * other, y * other, z * other)
 
     val isZero: Boolean get() = (x == 0) && (y == 0) && (z == 0)
     
-    fun l1norm(v: Vec): Int = abs(v.x - x) + abs(v.y - y) + abs(v.z - z)
+    fun l1norm(v: Vec3i): Int = abs(v.x - x) + abs(v.y - y) + abs(v.z - z)
 
     companion object {
-        val ZERO = Vec(0, 0, 0)
-        val XU = Vec(1, 0, 0)
-        val YU = Vec(0, 1, 0)
-        val ZU = Vec(0, 0, 1)
+        val ZERO = Vec3i(0, 0, 0)
+        val XU = Vec3i(1, 0, 0)
+        val YU = Vec3i(0, 1, 0)
+        val ZU = Vec3i(0, 0, 1)
     }
 }
 
@@ -50,7 +66,7 @@ enum class Axis(val int: Int) {
         }
 
         // This is allowed to return nonsensical results along perfect diagonals.
-        fun fromVecMajor(v: Vec): Axis {
+        fun fromVecMajor(v: Vec3i): Axis {
             var (x, y, z) = v
             x = abs(x); y = abs(y); z = abs(z)
             val max = arrayOf(x, y, z).max()
@@ -62,12 +78,12 @@ enum class Axis(val int: Int) {
         }
 
         /* Microoptimization: avoid the overhead from constructing these repeatedly */
-        val X_VEC = Vec.XU
-        val Y_VEC = Vec.YU
-        val Z_VEC = Vec.ZU
+        val X_VEC = Vec3i.XU
+        val Y_VEC = Vec3i.YU
+        val Z_VEC = Vec3i.ZU
     }
     
-    val vec: Vec get() = when(this) {
+    val vec3i: Vec3i get() = when(this) {
         X -> X_VEC
         Y -> Y_VEC
         Z -> Z_VEC
@@ -108,7 +124,7 @@ enum class PlanarFace(val int: Int) {
 
         fun fromAxis(a: Axis, n: Boolean): PlanarFace = fromInt(a.int + if(n) 3 else 0)
         
-        fun fromVec(v: Vec): PlanarFace {
+        fun fromVec(v: Vec3i): PlanarFace {
             val axis = Axis.fromVecMajor(v)
             return fromAxis(axis, when(axis) {
                 Axis.X -> v.x < 0
@@ -117,7 +133,7 @@ enum class PlanarFace(val int: Int) {
             })
         }
         
-        fun fromNormal(v: Vec): PlanarFace = fromVec(v).inverse
+        fun fromNormal(v: Vec3i): PlanarFace = fromVec(v).inverse
 
         /* See the microopt in Axis above */
         val XP_VEC = Axis.X_VEC
@@ -150,14 +166,14 @@ enum class PlanarFace(val int: Int) {
     }
 
     // "Vector": the vec that points out of the block center toward this face.
-    val vec: Vec get() = if(neg) when(axis) {
+    val vec3i: Vec3i get() = if(neg) when(axis) {
         Axis.X -> PlanarFace.XN_VEC
         Axis.Y -> PlanarFace.YN_VEC
         Axis.Z -> PlanarFace.ZN_VEC
-    } else axis.vec
+    } else axis.vec3i
 
     // "Normal": the vec that points, normal to this face, toward the block center.
-    val normal: Vec get() = if(neg) axis.vec else when(axis) {
+    val normal: Vec3i get() = if(neg) axis.vec3i else when(axis) {
         Axis.X -> PlanarFace.XN_VEC
         Axis.Y -> PlanarFace.YN_VEC
         Axis.Z -> PlanarFace.ZN_VEC
@@ -167,75 +183,75 @@ enum class PlanarFace(val int: Int) {
 }
 
 interface Locator {
-    val vec: Vec
+    val vec3i: Vec3i
     fun neighbors(): List<Locator>
     /* When overriding this, put more specific tests in more specific locators, as a rule */
     fun canConnect(other: Locator): Boolean = true
 }
 
 /* Support for "simple nodes" that take an entire block. */
-data class BlockPos(override val vec: Vec): Locator {
+data class BlockPos(override val vec3i: Vec3i): Locator {
     companion object {
         val CONNECTIVITY_DELTAS = arrayListOf(
                 // Cardinal directions on the horizontal plane (Y-normal)
-                Vec(1, 0, 0), Vec(-1, 0, 0), Vec(0, 0, 1), Vec(0, 0, -1),
+                Vec3i(1, 0, 0), Vec3i(-1, 0, 0), Vec3i(0, 0, 1), Vec3i(0, 0, -1),
                 // Up a block
-                Vec(1, 1, 0), Vec(-1, 1, 0), Vec(0, 1, 1), Vec(0, 1, -1),
+                Vec3i(1, 1, 0), Vec3i(-1, 1, 0), Vec3i(0, 1, 1), Vec3i(0, 1, -1),
                 // Down a block
-                Vec(1, -1, 0), Vec(-1, -1, 0), Vec(0, -1, 1), Vec(0, -1, -1)
+                Vec3i(1, -1, 0), Vec3i(-1, -1, 0), Vec3i(0, -1, 1), Vec3i(0, -1, -1)
         )
     }
 
     override fun neighbors(): List<Locator> = CONNECTIVITY_DELTAS.map { translate(it) }
 
-    fun translate(v: Vec) = BlockPos(vec + v)
+    fun translate(v: Vec3i) = BlockPos(vec3i + v)
 }
 
 /* Support for surface-mounted nodes, up to six per block. */
-data class SurfacePos(override val vec: Vec, val face: PlanarFace): Locator {
+data class SurfacePos(override val vec3i: Vec3i, val face: PlanarFace): Locator {
    companion object {
        // On the same plane:
        val PLANAR_DELTAS = arrayListOf(
-               Vec(1, 0, 0), Vec(-1, 0, 0), Vec(0, 0, 1), Vec(0, 0, -1)
+               Vec3i(1, 0, 0), Vec3i(-1, 0, 0), Vec3i(0, 0, 1), Vec3i(0, 0, -1)
        )
        // On adjacent planes:
        val ADJACENT_DELTAS = arrayListOf(
                // SurfacePos locators can connect to adjacent planes on the same block:
-               Vec(0, 0, 0),
+               Vec3i(0, 0, 0),
                // One unit down (anti-normal) in cardinal directions ("wrapping around")
-               Vec(1, -1, 0), Vec(-1, -1, 0), Vec(0, -1, 1), Vec(0, -1, -1)
+               Vec3i(1, -1, 0), Vec3i(-1, -1, 0), Vec3i(0, -1, 1), Vec3i(0, -1, -1)
        )
    } 
 
     // Preserve chirality: invert _two_ components, or none.
     // There's very little thought in the permutation otherwise, however; if those need to be changed, they can be.
-    fun toReference(v: Vec): Vec = when(face) {
-        PlanarFace.XN -> Vec(v.y, v.x, v.z)
-        PlanarFace.XP -> Vec(-v.y, -v.x, v.z)
-        PlanarFace.YP -> Vec(-v.x, -v.y, v.z)
+    fun toReference(v: Vec3i): Vec3i = when(face) {
+        PlanarFace.XN -> Vec3i(v.y, v.x, v.z)
+        PlanarFace.XP -> Vec3i(-v.y, -v.x, v.z)
+        PlanarFace.YP -> Vec3i(-v.x, -v.y, v.z)
         PlanarFace.YN -> v
-        PlanarFace.ZN -> Vec(v.x, v.z, v.y)
-        PlanarFace.ZP -> Vec(-v.x, v.z, -v.y)
+        PlanarFace.ZN -> Vec3i(v.x, v.z, v.y)
+        PlanarFace.ZP -> Vec3i(-v.x, v.z, -v.y)
     }
     
-    fun translate(v: Vec) = SurfacePos(vec + toReference(v), face)
+    fun translate(v: Vec3i) = SurfacePos(vec3i + toReference(v), face)
 
     override fun neighbors(): List<Locator> = (PLANAR_DELTAS
             .map { translate(it) }  // Other adjacent blocks on the same plane
         +
-            face.adjacencies.map { SurfacePos(vec, it) }  // Connections within the same block
+            face.adjacencies.map { SurfacePos(vec3i, it) }  // Connections within the same block
         +
-            face.adjacencies.map { SurfacePos(vec + face.vec + it.normal, it) }  // "Wrapping" (L1=2) connections
+            face.adjacencies.map { SurfacePos(vec3i + face.vec3i + it.normal, it) }  // "Wrapping" (L1=2) connections
     )
 
     override fun canConnect(other: Locator): Boolean = when(other) {
-        is SurfacePos -> when(other.vec.l1norm(vec)) {
+        is SurfacePos -> when(other.vec3i.l1norm(vec3i)) {
             0 -> other.face != face && other.face != face.inverse
             1 -> face == other.face
             2 -> {
-                val delta = other.vec - vec
+                val delta = other.vec3i - vec3i
                 val other_norm = delta + face.normal
-                println("SP.cC: L1=2: delta $delta other_norm $other_norm face.normal ${face.normal} this.vec $vec other.vec ${other.vec} other.face ${other.face} PF.fN(on) ${PlanarFace.fromNormal(other_norm)}")
+                println("SP.cC: L1=2: delta $delta other_norm $other_norm face.normal ${face.normal} this.vec $vec3i other.vec ${other.vec3i} other.face ${other.face} PF.fN(on) ${PlanarFace.fromNormal(other_norm)}")
                 other.face == PlanarFace.fromNormal(other_norm)
             }
             else -> error("Illegal norm")

@@ -43,12 +43,12 @@ class ConnectedComponent(val space: Space) {
 open class Space {
     val components: WeakHashMap<ConnectedComponent, Unit> = WeakHashMap()
     val objectLocators: MutableMap<Locator, Object> = mutableMapOf()
-    val locatorVectors: MutableMap<Vec, MutableSet<Locator>> = mutableMapOf()  // XXX A Multimap would be better
+    val locatorVectors: MutableMap<Vec3i, MutableSet<Locator>> = mutableMapOf()  // XXX A Multimap would be better
 
     fun add(obj: Object) {
         dprintln("add: $obj at ${obj.locator}")
         objectLocators[obj.locator] = obj
-        locatorVectors.getOrPut(obj.locator.vec, { mutableSetOf() }).add(obj.locator)
+        locatorVectors.getOrPut(obj.locator.vec3i, { mutableSetOf() }).add(obj.locator)
         val concom = ConnectedComponent(this)
         concom.add(obj)
         components[concom] = Unit
@@ -69,7 +69,7 @@ open class Space {
             it.concom = null
             // Also remove from the locators so merge() doesn't observe a null concom
             objectLocators.remove(it.locator)
-            locatorVectors[it.locator.vec]!!.remove(it.locator)  // XXX leaks the possibly-empty set
+            locatorVectors[it.locator.vec3i]!!.remove(it.locator)  // XXX leaks the possibly-empty set
         }
 
         // Rescan and merge new components
@@ -80,7 +80,7 @@ open class Space {
     
     protected fun merge(obj: Object) {
         obj.locator.neighbors().forEach {
-            locatorVectors[it.vec]?.forEach {
+            locatorVectors[it.vec3i]?.forEach {
                 val objb = objectLocators[it]
                 dprintln("merge: consider loc $it obj $objb")
                 if (objb != null && obj.locator.canConnect(it) && it.canConnect(obj.locator) && obj.canConnectTo(objb, true) && objb.canConnectTo(obj, false)) {
@@ -130,7 +130,7 @@ open class Space {
 
             val line = ArrayList<Object>()
             for (i in 0 until 10) {
-                val o = Object(BlockPos(Vec(i, 0, 0)))
+                val o = Object(BlockPos(Vec3i(i, 0, 0)))
                 line.add(o)
                 space.add(o)
             }
@@ -176,7 +176,7 @@ open class Space {
             val line = ArrayList<Object>()
             
             for(i in 0 until 5) {
-                val o = Object(SurfacePos(Vec(i, 0, 0), PlanarFace.YN))
+                val o = Object(SurfacePos(Vec3i(i, 0, 0), PlanarFace.YN))
                 line.add(o)
                 space.add(o)
             }
@@ -186,7 +186,7 @@ open class Space {
             println()
             println("--- adding a side ---")
             
-            val side = Object(SurfacePos(Vec(4, 0, 0), PlanarFace.XP))
+            val side = Object(SurfacePos(Vec3i(4, 0, 0), PlanarFace.XP))
             space.add(side)
 
             describe(space)
@@ -194,8 +194,8 @@ open class Space {
             println()
             println("--- adding wrapping sides ---")
 
-            val wrsidep = Object(SurfacePos(Vec(1, -1, 0), PlanarFace.XP))
-            val wrsiden = Object(SurfacePos(Vec(-1, -1, 0), PlanarFace.XN))
+            val wrsidep = Object(SurfacePos(Vec3i(1, -1, 0), PlanarFace.XP))
+            val wrsiden = Object(SurfacePos(Vec3i(-1, -1, 0), PlanarFace.XN))
             space.add(wrsidep, wrsidep)
 
             describe(space)
@@ -203,7 +203,7 @@ open class Space {
             println()
             println("--- adding inverse face ---")
             
-            val inv = Object(SurfacePos(Vec(3, 0, 0), PlanarFace.YP))
+            val inv = Object(SurfacePos(Vec3i(3, 0, 0), PlanarFace.YP))
             space.add(inv)
 
             describe(space)
@@ -213,12 +213,12 @@ open class Space {
             println("main_3: Interoperability tests")
 
             val space = Space()
-            val so = Object(SurfacePos(Vec(5, 0, 0), PlanarFace.YN))
+            val so = Object(SurfacePos(Vec3i(5, 0, 0), PlanarFace.YN))
             space.add(so)
 
             println("--- adding a blockpos on the adjacent plane ---")
             
-            val bpa = Object(BlockPos(Vec(5, 0, 1)))
+            val bpa = Object(BlockPos(Vec3i(5, 0, 1)))
             space.add(bpa)
 
             describe(space)
@@ -226,7 +226,7 @@ open class Space {
             println()
             println("--- adding a wrapped blockpos ---")
 
-            val bpw = Object(BlockPos(Vec(6, 1, 0)))
+            val bpw = Object(BlockPos(Vec3i(6, 1, 0)))
             space.add(bpw)
 
             describe(space)
