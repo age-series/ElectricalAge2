@@ -35,3 +35,6 @@ App.config
 
 # Build artifacts
 */obj/
+
+# Gnuplot files
+*.dat
