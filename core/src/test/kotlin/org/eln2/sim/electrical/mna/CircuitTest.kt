@@ -147,7 +147,7 @@ internal class CircuitTest {
         fp.close()
 
         val expected = FileInputStream("testdata/main_2.dat").readBytes()
-        org.junit.jupiter.api.Assertions.assertArrayEquals(expected, actual.toByteArray())
+        Assertions.assertArrayEquals(expected, actual.toByteArray())
     }
 
     @Test
