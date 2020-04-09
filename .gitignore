@@ -1,21 +1,22 @@
+# Ignore Gradle project-specific cache directory
 .gradle
 .classpath
 .project
 .settings
 .metadata
-*/bin
-*/build
+
+# Build and run artifacts
+build
+/dist
 */eclipse
 */run
 */logs
 */config
 */saves
-*.json
-*.bat
 options.txt
 */out
 */classes
-*/UniversalModCore
+*/obj/
 
 # IntelliJ
 .idea
@@ -32,9 +33,3 @@ options.txt
 *.csproj.user
 *.sln
 App.config
-
-# Build artifacts
-*/obj/
-
-# Gnuplot files
-*.dat
