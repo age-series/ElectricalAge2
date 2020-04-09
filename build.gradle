@@ -28,7 +28,7 @@ repositories {
 }
 
 
-version = version_major + '.' + version_minor + '.' + version_patch
+version = "0.1.0-1.14.4-forge"
 group = "cam72cam.universalmodcore" // http://maven.apache.org/guides/mini/guide-naming-conventions.html
 archivesBaseName = "UniversalModCore"
 
@@ -102,7 +102,7 @@ minecraft {
 }
 
 dependencies {
-	minecraft 'net.minecraftforge:forge:1.14.4-28.1.38'
+    minecraft 'net.minecraftforge:forge:1.14.4-28.2.0'
     // you may put jars on which you depend on in ./libs
     // or you may define them like so..
     //compile "some.group:artifact:version:classifier"
@@ -132,7 +132,7 @@ jar {
             "Specification-Vendor": "",
             "Specification-Version": "1", // We are version 1 of ourselves
             "Implementation-Title": project.name,
-            "Implementation-Version": "${version}",
+            "Implementation-Version": "0.1.0",
             "Implementation-Vendor" :"",
             "Implementation-Timestamp": new Date().format("yyyy-MM-dd'T'HH:mm:ssZ")
         ])

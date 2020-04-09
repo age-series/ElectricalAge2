@@ -48,7 +48,7 @@ import java.util.stream.Collectors;
 public class ModCore {
     public static final String MODID = "universalmodcore";
     public static final String NAME = "UniversalModCore";
-    public static final String VERSION = "1.0.0";
+    public static final String VERSION = "0.1.0";
     public static ModCore instance;
     public static boolean hasResources;
     static List<Supplier<Mod>> modCtrs = new ArrayList<>();
@@ -56,10 +56,6 @@ public class ModCore {
 
     private List<Mod> mods;
     private Logger logger;
-
-    static {
-        cam72cam.immersiverailroading.Mod.hackRegistration();
-    }
 
     public static void register(Supplier<Mod> ctr) {
         modCtrs.add(ctr);

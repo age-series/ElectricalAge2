@@ -1,0 +1,28 @@
+modLoader="javafml"
+loaderVersion="[28,)"
+
+[[mods]]
+modId="#ID#"
+version="${file.jarVersion}"
+displayName="#NAME#"
+
+[[dependencies.#ID#]]
+    modId="forge"
+    mandatory=true
+    versionRange="[28,)"
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.#ID#]]
+    modId="minecraft"
+    mandatory=true
+    versionRange="[1.14.4]"
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.#ID#]]
+    modId="universalmodcore"
+    mandatory=true
+    versionRange="[#UMC_API#,#UMC_API_NEXT#)"
+    ordering="AFTER"
+    side="BOTH"

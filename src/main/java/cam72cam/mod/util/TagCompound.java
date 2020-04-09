@@ -48,7 +48,8 @@ public class TagCompound {
     }
 
     public void setInteger(String key, int value) {
-        internal.putInt(key, value);
+        internal.putLong(key, value);
+        //internal.putInt(key, value);
     }
 
     public long getLong(String key) {
