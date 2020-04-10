@@ -42,7 +42,7 @@ subprojects {
 }
 
 // By default build everything, put it somewhere convenient, and run the tests.
-defaultTasks = listOf("bundle", "test")
+defaultTasks = mutableListOf("bundle", "test")
 
 tasks {
     create<Copy>("bundle") {
@@ -58,8 +58,8 @@ tasks {
         into("dist")
     }
 
-    create<Wrapper>("wrapper") {
-        gradleVersion = "4.10.3"
+    named<Wrapper>("wrapper") {
+        gradleVersion = "5.6.4"
         distributionType = Wrapper.DistributionType.ALL
     }
 }
