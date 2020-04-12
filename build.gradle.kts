@@ -7,21 +7,31 @@ plugins {
 
 allprojects {
 	version = "0.1.0"
-}
-
-java {
-	sourceCompatibility = JavaVersion.VERSION_1_8
-	targetCompatibility = JavaVersion.VERSION_1_8
+	group = "net.electricalage"
 }
 
 subprojects {
+	buildscript {
+		repositories {
+			jcenter()
+			mavenCentral()
+		}
+	}
+
 	repositories {
+		jcenter()
 		mavenCentral()
 	}
+
 	// We assume all subprojects use Java/Kotlin.
 	apply {
 		plugin("java")
 		plugin("kotlin")
+	}
+
+	java {
+		sourceCompatibility = JavaVersion.VERSION_1_8
+		targetCompatibility = JavaVersion.VERSION_1_8
 	}
 
 	dependencies {
