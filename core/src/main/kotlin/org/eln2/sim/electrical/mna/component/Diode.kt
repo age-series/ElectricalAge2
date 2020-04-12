@@ -1,5 +1,6 @@
 package org.eln2.sim.electrical.mna.component
 
+import org.eln2.debug.dprintln
 import kotlin.math.abs
 import kotlin.math.exp
 import kotlin.math.ln
@@ -15,13 +16,13 @@ class IdealDiode: DynamicResistor() {
     override fun simStep() {
         // Theorem: changing the resistance should never lead to a change in sign of the current for a *SINGLE* timestep
         // as long as that is valid, this won't oscillate:
-        println("D.sS: in u=$u r=$r")
+        dprintln("D.sS: in u=$u r=$r")
         if(u > 0) {
             if(r > minR) r = minR
         } else {
             if(r < maxR) r = maxR
         }
-        println("D.sS: out u=$u r=$r")
+        dprintln("D.sS: out u=$u r=$r")
     }
 }
 
@@ -73,7 +74,7 @@ data class DiodeData(
     fun vZOffsetAt(temp: Double, current: Double = -5e-3) = if(!isZener) 0.0 else breakdownVoltage - ln(-(1.0 + current/satCurrent)) * thermalVoltage(temp)
 
     fun solveIter(temp: Double, vnew: Double, vold: Double): Double {
-        println("DD.sI: temp=$temp vnew=$vnew vold=$vold")
+        dprintln("DD.sI: temp=$temp vnew=$vnew vold=$vold")
         var vnew = vnew
         var vold = vold
         val vt = thermalVoltage(temp)
@@ -93,7 +94,7 @@ data class DiodeData(
         } else if(vnew < 0 && isZener) {
             val zoff = vZOffsetAt(temp)
             val vzc = vZCritAt(temp)
-            println("DD.sI: zoff=$zoff vzc=$vzc")
+            dprintln("DD.sI: zoff=$zoff vzc=$vzc")
             vnew = -vnew - zoff
             vold = -vold - zoff
 
@@ -113,7 +114,7 @@ data class DiodeData(
             vnew = -(vnew + zoff)
         }
 
-        println("DD.sI: out=$vnew")
+        dprintln("DD.sI: out=$vnew")
         return vnew
     }
 }
