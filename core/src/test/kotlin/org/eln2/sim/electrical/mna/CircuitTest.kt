@@ -7,8 +7,9 @@ import org.junit.jupiter.api.Test
 import org.opentest4j.AssertionFailedError
 import kotlin.math.sign
 
+const val EPSILON = 1e-9
+
 internal class CircuitTest {
-	val EPSILON = 1e-9
 
 	class TrivialResistiveCircuit {
 		val c = Circuit()
