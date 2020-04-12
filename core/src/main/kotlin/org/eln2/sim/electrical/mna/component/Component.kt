@@ -80,6 +80,10 @@ abstract class Component: IDetail {
         }
         circuit!!.connectivityChanged = true
     }
+
+    override fun toString(): String {
+        return "${this::class.java.simpleName} ${nodes.map{ "${it.node.detail()}"}}"
+    }
 }
 
 abstract class Port: Component() {

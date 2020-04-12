@@ -215,4 +215,16 @@ class Circuit {
         components.forEach { it.postStep(dt) }
         postProcess.keys.forEach { it.process(dt) }
     }
+
+    override fun toString(): String {
+        var ret= ""
+        ret += components.map{ "$it" }
+        ret += "\n"
+        ret += nodes.map{ "$it" }
+        ret += "\n"
+        ret += vsources.map{ "$it" }
+        ret += "\n"
+        ret += matrix.toString()
+        return ret
+    }
 }

@@ -1,11 +1,17 @@
 package org.eln2.load
 
 import org.eln2.sim.electrical.mna.Circuit
+import org.eln2.sim.electrical.mna.Node
+import org.eln2.sim.electrical.mna.NodeRef
 import org.eln2.sim.electrical.mna.component.*
+import org.eln2.space.Vec2i
+import java.lang.Exception
 
 class FalstadBacking {
 
     companion object {
+
+        var id: Int = 0
 
         @JvmStatic
         fun main(args: Array<String>) {
@@ -39,6 +45,7 @@ w 256 176 304 176 0
 """
 
             val parseFalstad = parseFalstad(falstad2)
+            print(parseFalstad)
         }
 
         /**
@@ -53,7 +60,8 @@ w 256 176 304 176 0
             val componentDefs = mutableListOf<String>()
 
             val circuit = Circuit()
-            val componentMap = mutableMapOf<Pair<Int, Int>, MutableMap<Component, Int>>()
+            val componentMap = mutableMapOf<Vec2i, MutableMap<Component, Int>>()
+            val pinLookupTable = mutableMapOf<Vec2i, Int>()
 
             // put all w's first
             lines.filter {it.isNotEmpty()}.filter{it[0] == 'w'}.forEach { componentDefs.add(it) }
@@ -89,79 +97,86 @@ w 256 176 304 176 0
                     }
                     else -> {
                         if (componentPropertyList.size >= 6) {
-                            componentBuilder(componentPropertyList, circuit, componentMap)
+                            componentBuilder(componentPropertyList, circuit, componentMap, pinLookupTable)
                         }
                     }
                 }
             }
+            /*for (node in componentMap) {
+                val components = node.value
+                println(components)
+                for (comp in components) {
+                    for (comp2 in components) {
+                        if (comp2 != comp) {
+                            println(comp.value)
+                            println(comp.value)
+                            comp.key.connect(comp.value, comp2.key, comp2.value)
+                        }
+                    }
+                }
+            }*/
+            for (component in componentMap.map{it.value}.map {it.keys}) {
+                component.forEach{println(it)}
+            }
+            for (component in circuit.components) {
+                println(component)
+            }
             return circuit
         }
 
-        fun componentBuilder(c: List<String>, circuit: Circuit, nodeMap: MutableMap<Pair<Int,Int>,MutableMap<Component,Int>>) {
+        fun getPinId(pin: Vec2i, lt: MutableMap<Vec2i, Int>): Int {
+            if (pin !in lt) {
+                lt[pin] = id
+                id += 1
+            }
+            return lt[pin]?: throw Exception("What the heck! You ATE my ID")
+        }
+
+        fun componentBuilder(c: List<String>, circuit: Circuit, nodeMap: MutableMap<Vec2i,MutableMap<Component, Int>>, lt: MutableMap<Vec2i, Int>): Set<Pair<Vec2i,Vec2i>> {
             val type = c[0]
-            val aPin = Pair(c[1].toInt(), c[2].toInt())
-            val bPin = Pair(c[3].toInt(), c[4].toInt())
-            when(type) {/*
+            val aPin = Vec2i(c[1].toInt(), c[2].toInt())
+            val bPin = Vec2i(c[3].toInt(), c[4].toInt())
+            if (nodeMap[aPin] == null) nodeMap[aPin] = mutableMapOf()
+            val aId = getPinId(aPin, lt)
+            val bId = getPinId(bPin, lt)
+            if (nodeMap[bPin] == null) nodeMap[bPin] = mutableMapOf()
+            val sameNodeList = mutableSetOf<Pair<Vec2i,Vec2i>>()
+            when(type) {
                 "g" -> {
                     // ground (one pin)
-                    if (lolnodemap[aPinStr] == null) {
-                        nodemap[aPinStr] = Node(aPin)
+                    if (nodeMap[aPin] == null) {
+                        nodeMap[aPin]!!
                     }
-
-                    val int = VoltageSource()
-                    int.u = 0.0
-                    int.nodes.add(nodemap[aPinStr])
-                    int.nodes.add(null)
-
-                    return int
                 }
                 "r" -> {
                     // resistor
-                    if (nodemap[aPinStr] == null) {
-                        nodemap[aPinStr] = Node(aPin)
-                    }
-                    if (nodemap[bPinStr] == null) {
-                        nodemap[bPinStr] = Node(bPin)
-                    }
+                    val resistor = Resistor()
+                    resistor.r = c[6].toDouble()
+                    circuit.add(resistor)
 
-                    val int = Resistor()
-                    int.r = c[6].toDouble()
-                    int.nodes.add(nodemap[aPinStr])
-                    int.nodes.add(nodemap[bPinStr])
-
-                    return int
+                    nodeMap[aPin]!![resistor] = aId
+                    resistor.connect(0, NodeRef(Node(circuit)))
+                    nodeMap[bPin]!![resistor] = bId
+                    resistor.connect(1, NodeRef(Node(circuit)))
                 }
                 "R" -> {
                     // voltage rail (one pin)
-                    if (nodemap[aPinStr] == null) {
-                        nodemap[aPinStr] = Node(aPin)
-                    }
+                    val voltageSource = VoltageSource()
+                    voltageSource.u = c[8].toDouble()
+                    circuit.add(voltageSource)
 
-                    val int = VoltageSource()
-                    int.u = c[8].toDouble()
-                    int.nodes.add(nodemap[aPinStr])
-                    int.nodes.add(null)
-
-                    return int
+                    nodeMap[aPin]!![voltageSource] = aId
                 }
                 "s"-> {
                     // switch
-                    if (nodemap[aPinStr] == null) {
-                        nodemap[aPinStr] = Node(aPin)
-                    }
-                    if (nodemap[bPinStr] == null) {
-                        nodemap[bPinStr] = Node(bPin)
-                    }
-                    /*
 
-                    TODO: Uncomment when ResistorSwitch becomes a thing.
+                    // TODO: Change to ResistorSwitch
+                    val switch = DynamicResistor()
+                    switch.r = 1.0
+                    circuit.add(switch)
 
-                    val int = ResistorSwitch()
-                    int.nodes.add(nodemap[aPin])
-                    int.nodes.add(nodemap[bPin])
-
-                    return int
-                    */
+                    nodeMap[aPin]!![switch] = aId
+                    nodeMap[bPin]!![switch] = bId
                 }
                 "S" -> {
                     //switch (but wye)
@@ -173,94 +188,60 @@ w 256 176 304 176 0
                 }
                 "w" -> {
                     // wire
-                    // NOTE: This is special because we're connecting the nodes together instead of making a 0 ohm resistor
-                    // Optionally, one could instead make this a "cable" with ~0.1 ohms
-                    val sharedNode: Node
-                    if ((nodemap[aPinStr] == null) and (nodemap[bPinStr] == null)) {
-                        sharedNode = Node("node${aPin.first}.${aPin.second}.${bPin.first}.${bPin.second}")
-                        nodemap[aPinStr] = sharedNode
-                        nodemap[bPinStr] = sharedNode
-                    } else if ((nodemap[aPinStr] != null) and (nodemap[bPinStr] == null)) {
-                        sharedNode = nodemap[aPinStr]!!
-                        nodemap[bPinStr] = sharedNode
-                    } else if ((nodemap[aPinStr] == null) and (nodemap[bPinStr] != null)) {
-                        sharedNode = nodemap[bPinStr]!!
-                        nodemap[aPinStr] = sharedNode
-                    } else {
-                        // TODO: Ohhh shite. Time to iterate over components.
-                        println("Uh oh! Looks like we have placed all components before wires! Falling back to 0.01 ohm resistor as wire..")
-                        val int = Resistor()
-                        int.r = 0.01
-                        int.nodes.add(nodemap[aPinStr])
-                        int.nodes.add(nodemap[bPinStr])
-                    }
 
-                    return null
+                    sameNodeList.add(Pair(aPin, bPin))
                 }
                 "c" -> {
                     // capacitor
-                    if (nodemap[aPinStr] == null) {
-                        nodemap[aPinStr] = Node(aPin)
-                    }
-                    if (nodemap[bPinStr] == null) {
-                        nodemap[bPinStr] = Node(bPin)
-                    }
 
-                    val int = Capacitor()
-                    int.c = c[6].toDouble()
-                    int.nodes.add(nodemap[aPinStr])
-                    int.nodes.add(nodemap[bPinStr])
+                    val capacitor = Capacitor()
+                    capacitor.c = c[6].toDouble()
+                    circuit.add(capacitor)
+
+                    nodeMap[aPin]!![capacitor] = aId
+                    nodeMap[bPin]!![capacitor] = bId
                 }
                 "209" -> {
                     // polar capacitor?
                     // Perhaps this could be a electrolytic capacitor, in which case, program a VoltageWatchdog on a regular cap
+
+                    val capacitor = Capacitor()
+                    capacitor.c = c[6].toDouble()
+                    circuit.add(capacitor)
+
+                    nodeMap[aPin]!![capacitor] = aId
+                    nodeMap[bPin]!![capacitor] = bId
                 }
                 "l" -> {
                     // inductor
-                    if (nodemap[aPinStr] == null) {
-                        nodemap[aPinStr] = Node(aPin)
-                    }
-                    if (nodemap[bPinStr] == null) {
-                        nodemap[bPinStr] = Node(bPin)
-                    }
 
-                    val int = Inductor()
-                    int.h = c[6].toDouble()
-                    int.nodes.add(nodemap[aPinStr])
-                    int.nodes.add(nodemap[bPinStr])
+                    val inductor = Inductor()
+                    inductor.h = c[6].toDouble()
+                    circuit.add(inductor)
 
-                    return int
+                    nodeMap[aPin]!![inductor] = aId
+                    nodeMap[bPin]!![inductor] = bId
                 }
                 "v" -> {
                     // voltage source (two pin)
-                    if (nodemap[aPinStr] == null) {
-                        nodemap[aPinStr] = Node(aPin)
-                    }
-                    if (nodemap[bPinStr] == null) {
-                        nodemap[bPinStr] = Node(bPin)
-                    }
 
-                    val int = VoltageSource()
-                    int.u = c[8].toDouble()
-                    int.nodes.add(nodemap[aPinStr])
-                    int.nodes.add(nodemap[bPinStr])
+                    val voltageSource = VoltageSource()
+                    voltageSource.u = c[8].toDouble()
+                    circuit.add(voltageSource)
 
-                    return int
+                    nodeMap[aPin]!![voltageSource] = aId
+                    nodeMap[bPin]!![voltageSource] = bId
                 }
                 "172" -> {
                     // voltage source (one pin, uses Adjustable slider on right
-                    if (nodemap[aPinStr] == null) {
-                        nodemap[aPinStr] = Node(aPin)
-                    }
 
-                    val int = VoltageSource()
-                    int.u = c[8].toDouble()
-                    int.nodes.add(nodemap[aPinStr])
-                    int.nodes.add(null)
+                    val voltageSource = VoltageSource()
+                    voltageSource.u = c[8].toDouble()
+                    circuit.add(voltageSource)
 
-                    return int
+                    nodeMap[aPin]!![voltageSource] = aId
                 }
-                */
+
                 /*
                 "174" -> {
                     // "pot"
@@ -679,12 +660,12 @@ w 256 176 304 176 0
                     // Audio Input
                 }*/
             }
-            return TODO()
+            return sameNodeList
         }
 
-        fun logicGatePins(aPin: Pair<Int, Int>, bPin: Pair<Int, Int>): List<Pair<Int, Int>>? {
+        fun logicGatePins(aPin: Vec2i, bPin: Vec2i): List<Vec2i>? {
             // the ordering is top, bottom, and then bPin
-            val pinList = mutableListOf<Pair<Int, Int>>()
+            val pinList = mutableListOf<Vec2i>()
 
             /*
 
@@ -704,32 +685,32 @@ w 256 176 304 176 0
 
              */
 
-            val aX = aPin.first
-            val aY = aPin.second
-            val bX = aPin.first
-            val bY = aPin.second
+            val aX = aPin.x
+            val aY = aPin.y
+            val bX = aPin.x
+            val bY = aPin.y
 
             if (aX == bX) {
                 // the component is in the X plane which means the signals are offset in the Y plane.
                 if (aY > bY) {
                     // facing down, first pin is larger than the second
-                    pinList.add(Pair(aX + 16, aY))
-                    pinList.add(Pair(aX - 16, aY))
+                    pinList.add(Vec2i(aX + 16, aY))
+                    pinList.add(Vec2i(aX - 16, aY))
                 } else {
                     // facing up, first pin is smaller than the second
-                    pinList.add(Pair(aX - 16, aY))
-                    pinList.add(Pair(aX + 16, aY))
+                    pinList.add(Vec2i(aX - 16, aY))
+                    pinList.add(Vec2i(aX + 16, aY))
                 }
 
             } else if (aY == bY) {
                 if (aX > bX) {
                     // facing left, first pin is larger than the second
-                    pinList.add(Pair(aX, aY + 16))
-                    pinList.add(Pair(aX, aY - 16))
+                    pinList.add(Vec2i(aX, aY + 16))
+                    pinList.add(Vec2i(aX, aY - 16))
                 } else {
                     // facing right, first pin is smaller than the second
-                    pinList.add(Pair(aX, aY - 16))
-                    pinList.add(Pair(aX, aY + 16))
+                    pinList.add(Vec2i(aX, aY - 16))
+                    pinList.add(Vec2i(aX, aY + 16))
                 }
             } else {
                 println("Error! The positioning of the logic gate makes it impossible to be connected.")
