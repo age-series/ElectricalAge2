@@ -40,6 +40,10 @@ subprojects {
 		named<Test>("test") {
 			useJUnitPlatform()
 
+			// *Always* run tests.
+			// Ideally we'd cache the test output and print that instead, but this will do for now.
+			outputs.upToDateWhen { false }
+
 			// Print pass/fail for all tests to console, and exceptions if there are any.
 			testLogging {
 				events = setOf(TestLogEvent.FAILED, TestLogEvent.PASSED, TestLogEvent.SKIPPED, TestLogEvent.STANDARD_ERROR)
