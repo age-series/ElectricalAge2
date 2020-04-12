@@ -15,7 +15,7 @@ jobs:
     # This workflow contains a single job called "build"
     build:
         # The type of runner that the job will run on
-        runs-on: self-hosted
+        runs-on: ubuntu-latest
 
         # Steps represent a sequence of tasks that will be executed as part of the job
         steps:
@@ -34,5 +34,4 @@ jobs:
             -   name: codacy-coverage-reporter
                 uses: codacy/codacy-coverage-reporter-action@0.1.0
                 with:
-                    # 
                     project-token: ${{ secrets.CODACY_PROJECT_TOKEN }}
