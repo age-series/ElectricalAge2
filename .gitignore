@@ -33,3 +33,6 @@ options.txt
 *.csproj.user
 *.sln
 App.config
+
+# Project Specific
+core/*.dat
