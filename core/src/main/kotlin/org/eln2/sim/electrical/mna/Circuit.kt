@@ -4,10 +4,7 @@ import org.apache.commons.math3.linear.*
 import org.eln2.debug.dprint
 import org.eln2.debug.dprintln
 import org.eln2.sim.IProcess
-import org.eln2.sim.electrical.mna.component.*
-import java.io.FileOutputStream
-import java.io.PrintStream
-import java.lang.IllegalArgumentException
+import org.eln2.sim.electrical.mna.component.Component
 import java.lang.ref.WeakReference
 import java.util.*
 

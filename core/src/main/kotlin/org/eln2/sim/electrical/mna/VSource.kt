@@ -1,7 +1,5 @@
 package org.eln2.sim.electrical.mna
 
-import org.eln2.sim.electrical.mna.IDetail
-
 class VSource(var circuit: Circuit): IDetail {
     var current: Double = 0.0
     var index: Int = -1  // Assigned by Circuit

@@ -1,8 +1,5 @@
 package org.eln2.sim.electrical.mna.component
 
-import org.eln2.sim.electrical.mna.Circuit
-import org.eln2.sim.electrical.mna.Node
-
 open class Inductor: Port() {
     override var name: String = "l"
 

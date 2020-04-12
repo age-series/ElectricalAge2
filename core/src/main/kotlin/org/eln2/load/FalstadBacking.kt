@@ -5,7 +5,6 @@ import org.eln2.sim.electrical.mna.Node
 import org.eln2.sim.electrical.mna.NodeRef
 import org.eln2.sim.electrical.mna.component.*
 import org.eln2.space.Vec2i
-import java.lang.Exception
 
 class FalstadBacking {
 

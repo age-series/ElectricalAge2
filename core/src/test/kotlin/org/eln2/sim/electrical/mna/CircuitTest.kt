@@ -1,10 +1,10 @@
 package org.eln2.sim.electrical.mna
 
-import org.eln2.sim.electrical.mna.component.*
+import org.eln2.sim.electrical.mna.component.Resistor
+import org.eln2.sim.electrical.mna.component.VoltageSource
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.opentest4j.AssertionFailedError
-import java.util.function.Supplier
 import kotlin.math.sign
 
 internal class CircuitTest {
