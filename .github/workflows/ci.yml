@@ -30,3 +30,9 @@ jobs:
 
             -   name: Run tests
                 run: ./gradlew test
+            
+            -   name: codacy-coverage-reporter
+                uses: codacy/codacy-coverage-reporter-action@0.1.0
+                with:
+                    # 
+                    project-token: ${{ secrets.CODACY_PROJECT_TOKEN }}
