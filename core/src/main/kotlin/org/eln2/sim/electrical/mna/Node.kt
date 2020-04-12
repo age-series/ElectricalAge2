@@ -1,5 +1,7 @@
 package org.eln2.sim.electrical.mna
 
+import org.eln2.debug.dprintln
+
 open class Node(var circuit: Circuit): IDetail {
     open var potential: Double = 0.0
     open var index: Int = -1  // Assigned by Circuit
@@ -19,7 +21,7 @@ open class Node(var circuit: Circuit): IDetail {
     open fun mergePrecedence(other: Node): Int = 0
     
     fun stampResistor(to: Node, r: Double) {
-        println("N.sR $to $r")
+        dprintln("N.sR $to $r")
         circuit.stampResistor(index, to.index, r)
     }
 }

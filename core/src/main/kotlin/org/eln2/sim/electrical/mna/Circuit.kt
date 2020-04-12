@@ -1,6 +1,7 @@
 package org.eln2.sim.electrical.mna
 
 import org.apache.commons.math3.linear.*
+import org.eln2.debug.dprint
 import org.eln2.debug.dprintln
 import org.eln2.sim.IProcess
 import org.eln2.sim.electrical.mna.component.*
@@ -155,7 +156,7 @@ class Circuit {
 
         // Ask each component to contribute its steady state to the matrix
         dprintln("C.bM: stamp all $components")
-        components.forEach { println("C.bM: stamp $it"); it.stamp() }
+        components.forEach { dprintln("C.bM: stamp $it"); it.stamp() }
     }
 
     // Step 2: With the conductance and connectivity matrix populated, solve.
@@ -184,7 +185,7 @@ class Circuit {
             }
         } catch(e: SingularMatrixException) {
             dprintln("Singular: ${matrix}")
-            if(matrix != null) print(MATRIX_FORMAT.format(matrix))
+            if(matrix != null) dprint(MATRIX_FORMAT.format(matrix))
         }
     }
 
