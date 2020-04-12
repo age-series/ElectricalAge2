@@ -1,4 +1,5 @@
 # eln2
+![CI](https://github.com/eln2/eln2/workflows/CI/badge.svg)
 
 This is the home of the Eln2 minecraft mod for 1.12.
 

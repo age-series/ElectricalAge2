@@ -6,5 +6,5 @@ EXTEND IT INSTEAD IN THE org.eln.nbt DIRECTORY
  */
 
 interface IProcess {
-    fun process(time: Double)
+	fun process(time: Double)
 }

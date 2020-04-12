@@ -1,5 +1,5 @@
 plugins {
-    `java-library`
+	`java-library`
 }
 
 // TODO(svein): Shadow this, but do it such that we don't get one copy per subproject.
