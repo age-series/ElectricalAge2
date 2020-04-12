@@ -1,24 +1,24 @@
 target:core:
-  - core/**/*
-  - ./*
+    - core/**/*
+    - ./*
 
 target:shared:
-  - shared/**/*
+    - shared/**/*
 
 target:minecraft:
-  - integration-mc*/**/*
+    - integration-mc*/**/*
 
 target:vintagestory:
-  - integration-vs/**/*
+    - integration-vs/**/*
 
 type:documentation:
-  - '*.md'
+    - '*.md'
 
 type:code:
-  - '*.kt'
-  - '*.java'
+    - '*.kt'
+    - '*.java'
 
 type:build:
-  - '*.kts'
-  - '*gradle*'
-  - .github/**/*
+    - '*.kts'
+    - '*gradle*'
+    - .github/**/*
