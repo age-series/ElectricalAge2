@@ -24,7 +24,7 @@ object Eln2 {
 	private val LOGGER = LogManager.getLogger()!!
 
 	@SubscribeEvent
-	private fun setup(event: FMLCommonSetupEvent) {
+	fun setup(event: FMLCommonSetupEvent) {
 		// some preinit code
 		LOGGER.info("HELLO FROM PREINIT")
 		LOGGER.info("DIRT BLOCK >> {}", Blocks.DIRT.registryName)
