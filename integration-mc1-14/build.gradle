@@ -15,6 +15,13 @@ apply plugin: 'net.minecraftforge.gradle'
 
 archivesBaseName = "eln2"
 
+repositories {
+	maven {
+		name = 'kotlinforforge'
+		url = 'https://thedarkcolour.github.io/KotlinForForge/'
+	}
+}
+
 minecraft {
     // The mappings can be changed at any time, and must be in the following format.
     // snapshot_YYYYMMDD   Snapshot are built nightly.
@@ -87,6 +94,9 @@ dependencies {
     // The userdev artifact is a special name and will get all sorts of transformations applied to it.
     minecraft 'net.minecraftforge:forge:1.14.4-28.2.3'
 
+	// Set up Kotlin
+	implementation 'thedarkcolour:kotlinforforge:1+'
+
     // You may put jars on which you depend on in ./libs or you may define them like so..
     // compile "some.group:artifact:version:classifier"
     // compile "some.group:artifact:version"
@@ -104,6 +114,17 @@ dependencies {
     // For more info...
     // http://www.gradle.org/docs/current/userguide/artifact_dependencies_tutorial.html
     // http://www.gradle.org/docs/current/userguide/dependency_management.html
+}
+
+compileKotlin {
+	kotlinOptions {
+		jvmTarget = '1.8'
+	}
+
+	// Required to run in dev environment
+	copy {
+		from "$buildDir/classes/kotlin/main" into "$buildDir/classes/java/main"
+	}
 }
 
 // Example for how to get properties into the manifest for reading by the runtime..
