@@ -3,14 +3,13 @@ import org.gradle.api.tasks.testing.logging.TestLogEvent
 plugins {
 	java
 	kotlin("jvm") version "1.3.71" apply false
+	jacoco
 }
 
 allprojects {
 	version = "0.1.0"
 	group = "net.electricalage"
-}
 
-subprojects {
 	buildscript {
 		repositories {
 			jcenter()
@@ -22,11 +21,14 @@ subprojects {
 		jcenter()
 		mavenCentral()
 	}
+}
 
+subprojects {
 	// We assume all subprojects use Java/Kotlin.
 	apply {
 		plugin("java")
 		plugin("kotlin")
+		plugin("jacoco")
 	}
 
 	java {
@@ -72,8 +74,7 @@ subprojects {
 			}
 
 			// Print a nice summary afterwards.
-			afterSuite(KotlinClosure2<TestDescriptor, TestResult, Unit>({
-				desc, result ->
+			afterSuite(KotlinClosure2<TestDescriptor, TestResult, Unit>({ desc, result ->
 				if (desc.parent == null) { // will match the outermost suite
 					val output = "Results: ${result.resultType} (${result.testCount} tests, ${result.successfulTestCount} passed, ${result.failedTestCount} failed, ${result.skippedTestCount} skipped)"
 					val startItem = "|  "
@@ -82,6 +83,13 @@ subprojects {
 					println('\n' + "- ".repeat(repeatLength) + '\n' + startItem + output + endItem + '\n' + "-".repeat(repeatLength))
 				}
 			}))
+		}
+
+		jacocoTestReport {
+			reports {
+				xml.isEnabled = true
+				csv.isEnabled = false
+			}
 		}
 	}
 }
