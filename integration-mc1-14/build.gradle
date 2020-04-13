@@ -23,69 +23,77 @@ repositories {
 }
 
 minecraft {
-    // The mappings can be changed at any time, and must be in the following format.
-    // snapshot_YYYYMMDD   Snapshot are built nightly.
-    // stable_#            Stables are built at the discretion of the MCP team.
-    // Use non-default mappings at your own risk. they may not always work.
-    // Simply re-run your setup task after changing the mappings to update your workspace.
-    mappings channel: 'snapshot', version: '20190719-1.14.3'
-    // makeObfSourceJar = false // an Srg named sources jar is made by default. uncomment this to disable.
-    
-    // accessTransformer = file('src/main/resources/META-INF/accesstransformer.cfg')
+	// The mappings can be changed at any time, and must be in the following format.
+	// snapshot_YYYYMMDD   Snapshot are built nightly.
+	// stable_#            Stables are built at the discretion of the MCP team.
+	// Use non-default mappings at your own risk. they may not always work.
+	// Simply re-run your setup task after changing the mappings to update your workspace.
+	mappings channel: 'snapshot', version: '20190719-1.14.3'
 
-    // Default run configurations.
-    // These can be tweaked, removed, or duplicated as needed.
-    runs {
-        client {
-            workingDirectory project.file('run')
+	// Default run configurations.
+	// These can be tweaked, removed, or duplicated as needed.
+	runs {
+		client {
+			workingDirectory project.file('run')
 
-            // Recommended logging data for a userdev environment
-            property 'forge.logging.markers', 'SCAN,REGISTRIES,REGISTRYDUMP'
+			// Recommended logging data for a userdev environment
+			property 'forge.logging.markers', 'SCAN,REGISTRIES,REGISTRYDUMP'
 
-            // Recommended logging level for the console
-            property 'forge.logging.console.level', 'debug'
+			// Recommended logging level for the console
+			property 'forge.logging.console.level', 'debug'
 
-            mods {
-                eln2 {
-                    source sourceSets.main
-                }
-            }
-        }
+			mods {
+				eln2 {
+					source sourceSets.main
+				}
+			}
+		}
 
-        server {
-            workingDirectory project.file('run')
+		server {
+			workingDirectory project.file('run')
 
-            // Recommended logging data for a userdev environment
-            property 'forge.logging.markers', 'SCAN,REGISTRIES,REGISTRYDUMP'
+			// Recommended logging data for a userdev environment
+			property 'forge.logging.markers', 'SCAN,REGISTRIES,REGISTRYDUMP'
 
-            // Recommended logging level for the console
-            property 'forge.logging.console.level', 'debug'
+			// Recommended logging level for the console
+			property 'forge.logging.console.level', 'debug'
 
-            mods {
-                eln2 {
-                    source sourceSets.main
-                }
-            }
-        }
+			mods {
+				eln2 {
+					source sourceSets.main
+				}
+			}
+		}
 
-        data {
-            workingDirectory project.file('run')
+		data {
+			workingDirectory project.file('run')
 
-            // Recommended logging data for a userdev environment
-            property 'forge.logging.markers', 'SCAN,REGISTRIES,REGISTRYDUMP'
+			// Recommended logging data for a userdev environment
+			property 'forge.logging.markers', 'SCAN,REGISTRIES,REGISTRYDUMP'
 
-            // Recommended logging level for the console
-            property 'forge.logging.console.level', 'debug'
+			// Recommended logging level for the console
+			property 'forge.logging.console.level', 'debug'
 
-            args '--mod', 'eln2', '--all', '--output', file('src/generated/resources/')
+			args '--mod', 'eln2', '--all', '--output', file('src/generated/resources/')
 
-            mods {
-                eln2 {
-                    source sourceSets.main
-                }
-            }
-        }
-    }
+			mods {
+				eln2 {
+					source sourceSets.main
+				}
+			}
+		}
+	}
+}
+
+shadowJar {
+	minimize()
+
+	// This is how you'd shade a jar file.
+	// Let's not shade this one, however.
+	//	dependencies {
+	//		include(dependency('cam72cam.universalmodcore:umc1-14'))
+	//	}
+	//	relocate 'cam72cam.mod', 'net.electricalage.eln2.cam72cam.mod'
 }
 
 dependencies {
@@ -96,6 +104,10 @@ dependencies {
 
 	// Set up Kotlin
 	implementation 'thedarkcolour:kotlinforforge:1+'
+
+	// UMC exists as a (modified) git subtree in this repository. Include that.
+	compile "cam72cam.universalmodcore:umc1-14"
+
 
     // You may put jars on which you depend on in ./libs or you may define them like so..
     // compile "some.group:artifact:version:classifier"
