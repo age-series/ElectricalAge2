@@ -20,6 +20,7 @@ import org.apache.logging.log4j.LogManager
  * It mostly contains the Forge setup boilerplate.
  */
 @Mod("eln2")
+@Mod.EventBusSubscriber(bus = Mod.EventBusSubscriber.Bus.MOD)
 object Eln2 {
 	private val LOGGER = LogManager.getLogger()!!
 
@@ -27,6 +28,7 @@ object Eln2 {
 	fun setup(event: FMLCommonSetupEvent) {
 		// some preinit code
 		LOGGER.info("HELLO FROM PREINIT")
+		LOGGER.info("HELLO from ${cam72cam.mod.ModCore.MODID}")
 		LOGGER.info("DIRT BLOCK >> {}", Blocks.DIRT.registryName)
 	}
 
