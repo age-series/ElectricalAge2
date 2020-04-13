@@ -1,3 +1,8 @@
+// ForgeGradle isn't set up to work with gradle.build.kts files.
+// The easiest way out is to use gradle.build for Forge, but put any customization in separate .kts files.
+//
+// Keep that in mind when modifying this file.
+
 buildscript {
     repositories {
         maven { url = 'https://files.minecraftforge.net/maven' }
