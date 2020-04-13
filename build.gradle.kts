@@ -4,6 +4,8 @@ plugins {
 	java
 	kotlin("jvm") version "1.3.71" apply false
 	jacoco
+	id("com.github.johnrengelman.shadow") version "5.2.0"
+	idea
 }
 
 allprojects {
@@ -29,6 +31,8 @@ subprojects {
 		plugin("java")
 		plugin("kotlin")
 		plugin("jacoco")
+		plugin("com.github.johnrengelman.shadow")
+		plugin("idea")
 	}
 
 	java {
@@ -104,12 +108,14 @@ tasks {
 
 		evaluationDependsOnChildren()
 
-		getTasksByName("jar", true).forEach {
-			// Ignore the root jar task, it's useless and conflicting.
-			if (it.path != ":jar") {
-				from(it)
+		getTasksByName("shadowJar", true)
+			.plus(getTasksByName("jar", true))
+			.forEach {
+				// Ignore the root jar tasks, they're useless and conflicting.
+				if (it.project.rootProject != it.project) {
+					from(it)
+				}
 			}
-		}
 
 		into("dist")
 	}
