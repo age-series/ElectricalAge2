@@ -14,8 +14,16 @@ import net.minecraftforge.fml.event.lifecycle.InterModProcessEvent
 import net.minecraftforge.fml.event.server.FMLServerStartingEvent
 import org.apache.logging.log4j.LogManager
 
+/**
+ * This is the root class for Electrical Age.
+ *
+ * It mostly contains the Forge setup boilerplate.
+ */
 @Mod("eln2")
-class Eln2 {
+object Eln2 {
+	private val LOGGER = LogManager.getLogger()!!
+
+	@SubscribeEvent
 	private fun setup(event: FMLCommonSetupEvent) {
 		// some preinit code
 		LOGGER.info("HELLO FROM PREINIT")
@@ -24,14 +32,14 @@ class Eln2 {
 
 	private fun doClientStuff(event: FMLClientSetupEvent) {
 		// do something that can only be done on the client
-		LOGGER.info("Got game settings {}", event.minecraftSupplier.get().gameSettings)
+		LOGGER.info("HELLO, Got game settings {}", event.minecraftSupplier.get().gameSettings)
 	}
 
 	private fun enqueueIMC(event: InterModEnqueueEvent) {
 		// some example code to dispatch IMC to another mod
 		InterModComms.sendTo("eln2", "helloworld") {
-			LOGGER.info("Hello world from the MDK")
-			"Hello world"
+			LOGGER.info("HELLO world from the MDK")
+			"HELLO world"
 		}
 	}
 
@@ -41,18 +49,27 @@ class Eln2 {
 			it.getMessageSupplier<String>().get()
 		}
 
-		LOGGER.info("Got IMC {}", message)
+		LOGGER.info("HELLO, Got IMC {}", message)
 	}
 
-	// You can use SubscribeEvent and let the Event Bus discover methods to call
+	/**
+	 * Server startup event handler.
+	 *
+	 * This is called after most configuration is already done, right as the server begins ticking.
+	 */
 	@SubscribeEvent
 	fun onServerStarting(event: FMLServerStartingEvent?) {
 		// do something when the server starts
 		LOGGER.info("HELLO from server starting")
 	}
 
-	// You can use EventBusSubscriber to automatically subscribe events on the contained class (this is subscribing to the MOD
-	// Event bus for receiving Registry Events)
+	/**
+	 * Registry event handler.
+	 *
+	 * You can use EventBusSubscriber to automatically subscribe events on objects other than the main mod object.
+	 * (This is subscribing to the MOD Event bus for receiving Registry Events)
+	 */
+	@Mod.EventBusSubscriber(bus = Mod.EventBusSubscriber.Bus.MOD)
 	object RegistryEvents {
 		@SubscribeEvent
 		fun onBlocksRegistry(blockRegistryEvent: RegistryEvent.Register<Block?>?) {
@@ -61,22 +78,17 @@ class Eln2 {
 		}
 	}
 
-	companion object {
-		// Directly reference a log4j logger.
-		private val LOGGER = LogManager.getLogger()!!
-	}
-
 	init {
-		// Register the setup method for modloading
+		// Explicitly register certain methods for certain events.
+		// @SubscribeEvent should also work.
 		thedarkcolour.kotlinforforge.forge.MOD_CONTEXT
 			.getEventBus().apply {
-				addListener { event: FMLCommonSetupEvent -> setup(event) }
 				addListener { event: InterModEnqueueEvent -> enqueueIMC(event) }
 				addListener { event: InterModProcessEvent -> processIMC(event) }
 				addListener { event: FMLClientSetupEvent -> doClientStuff(event) }
 			}
 
-		// Register ourselves for server and other game events we are interested in
+		// Register ourselves for Forge events as well.
 		MinecraftForge.EVENT_BUS.register(this)
 	}
 }
