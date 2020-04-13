@@ -97,6 +97,6 @@ abstract class Port : Component() {
 	open val neg: Node
 		get() = node(1)
 
-	open val u: Double
+	open val potential: Double
 		get() = if (isInCircuit) pos.potential - neg.potential else 0.0
 }

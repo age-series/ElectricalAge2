@@ -24,7 +24,7 @@ open class Inductor : Port() {
 	}
 
 	override fun postStep(dt: Double) {
-		i += u / eqR
+		i += potential / eqR
 	}
 
 	override fun stamp() {
