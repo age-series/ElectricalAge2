@@ -105,7 +105,10 @@ tasks {
 		evaluationDependsOnChildren()
 
 		getTasksByName("jar", true).forEach {
-			from(it)
+			// Ignore the root jar task, it's useless and conflicting.
+			if (it.path != ":jar") {
+				from(it)
+			}
 		}
 
 		into("dist")
