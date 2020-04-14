@@ -80,20 +80,23 @@ open class Space {
 		}
 	}
 
+	private fun canConnect(obj: Object, objb: Object, locator: Locator) =
+		obj.locator.canConnect(locator) && locator.canConnect(obj.locator) && obj.canConnectTo(objb, true) && objb.canConnectTo(obj, false)
+
 	protected fun merge(obj: Object) {
 		obj.locator.neighbors().forEach {
-			locatorVectors[it.vec3i]?.forEach {
-				val objb = objectLocators[it]
-				dprintln("merge: consider loc $it obj $objb")
-				if (objb != null && obj.locator.canConnect(it) && it.canConnect(obj.locator) && obj.canConnectTo(objb, true) && objb.canConnectTo(obj, false)) {
+			locatorVectors[it.vec3i]?.forEach { loc ->
+				val objb = objectLocators[loc]
+				dprintln("merge: consider loc $loc obj $objb")
+				if (objb != null && canConnect(obj, objb, loc)) {
 					dprintln("merge: merging")
 					obj.connectTo(objb, true)
 					objb.connectTo(obj, false)
 				} else if (objb != null) {
-					if (!obj.locator.canConnect(it)) dprintln("merge: failed: this locator (${obj.locator}) can't connect to other locator ($it)")
-					if (!it.canConnect(obj.locator)) dprintln("merge: failed: other locator ($it) can't connect to this locator (${obj.locator})")
-					if (!obj.canConnectTo(objb, true)) dprintln("merge: failed: this object ($obj @ ${obj.locator}) can't connect to other object ($objb @ $it)")
-					if (!objb.canConnectTo(obj, false)) dprintln("merge: failed: other object ($objb @ $it) can't connect to this object ($obj @ ${obj.locator})")
+					if (!obj.locator.canConnect(loc)) dprintln("merge: failed: this locator (${obj.locator}) can't connect to other locator ($loc)")
+					if (!loc.canConnect(obj.locator)) dprintln("merge: failed: other locator ($loc) can't connect to this locator (${obj.locator})")
+					if (!obj.canConnectTo(objb, true)) dprintln("merge: failed: this object ($obj @ ${obj.locator}) can't connect to other object ($objb @ $loc)")
+					if (!objb.canConnectTo(obj, false)) dprintln("merge: failed: other object ($objb @ $loc) can't connect to this object ($obj @ ${obj.locator})")
 				}
 			}
 		}

@@ -39,7 +39,7 @@ class Circuit {
 	internal var knowns: RealVector? = null
 	internal var solver: DecompositionSolver? = null
 	internal var nodes: List<WeakReference<Node>> = emptyList()
-	internal var vsources: List<WeakReference<VSource>> = emptyList()
+	internal var voltageSources: List<WeakReference<VSource>> = emptyList()
 
 	/* From Falstad: declare that a potential change dV in node b changes the current in node a by x*dV, complicated
 	   slightly by independent voltage sources. The unit of x is "Mhos", reciprocal Ohms, a unit of conductance.
@@ -116,20 +116,20 @@ class Circuit {
 	protected fun buildMatrix() {
 		dprintln("C.bM")
 		val nodeSet: MutableSet<Node> = mutableSetOf()
-		val vsourceSet: MutableSet<VSource> = mutableSetOf()
+		val voltageSourceSet: MutableSet<VSource> = mutableSetOf()
 
 		components.forEach {
 			nodeSet.addAll(it.nodes.map { it.node }.filter { it != ground.node })
-			vsourceSet.addAll(it.vsources)
+			voltageSourceSet.addAll(it.vsources)
 		}
 
 		nodes = nodeSet.map { WeakReference(it) }.toList()
-		vsources = vsourceSet.map { WeakReference(it) }.toList()
+		voltageSources = voltageSourceSet.map { WeakReference(it) }.toList()
 
 		for ((i, n) in nodes.withIndex()) n.get()!!.index = i
-		for ((i, v) in vsources.withIndex()) v.get()!!.index = i
+		for ((i, v) in voltageSources.withIndex()) v.get()!!.index = i
 
-		dprintln("C.bM: n $nodes vs $vsources")
+		dprintln("C.bM: n $nodes vs $voltageSources")
 
 		// Null out the solver--it's definitely not valid anymore.
 		solver = null
@@ -143,12 +143,12 @@ class Circuit {
 		rightSideChanged = true
 
 		// Is there anything to do?
-		if (nodes.isEmpty() || vsources.isEmpty()) {
+		if (nodes.isEmpty() || voltageSources.isEmpty()) {
 			matrix = null
 			return
 		}
 
-		val size = nodes.size + vsources.size
+		val size = nodes.size + voltageSources.size
 		dprintln("C.bM: size $size")
 		matrix = MatrixUtils.createRealMatrix(size, size)
 		knowns = ArrayRealVector(size)
@@ -179,7 +179,7 @@ class Circuit {
 			}
 			// Microoptimization: pull this member access into a local variable for this tight loop
 			val sz = nodes.size
-			for ((i, v) in vsources.withIndex()) {
+			for ((i, v) in voltageSources.withIndex()) {
 				v.get()!!.current = -unknowns.getEntry(i + sz)
 			}
 		} catch (e: SingularMatrixException) {
@@ -199,13 +199,10 @@ class Circuit {
 		for (substep in 0 until maxSubSteps) {
 			if (!(matrixChanged || rightSideChanged)) break  // Nothing to do
 
-			val mc = matrixChanged  // Cache this because it gets overwritten by factorMatrix
-
-			if (mc) {
+			if (matrixChanged) {
 				factorMatrix()
-			}
-
-			if (mc || rightSideChanged) {
+				computeResult()
+			} else if (rightSideChanged) {
 				computeResult()
 			}
 
@@ -222,7 +219,7 @@ class Circuit {
 		ret += "\n"
 		ret += nodes.map { "$it" }
 		ret += "\n"
-		ret += vsources.map { "$it" }
+		ret += voltageSources.map { "$it" }
 		ret += "\n"
 		ret += matrix.toString()
 		return ret
