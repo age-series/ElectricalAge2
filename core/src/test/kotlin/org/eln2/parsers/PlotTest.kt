@@ -20,7 +20,6 @@ internal class PlotTest {
 		importedData.zip(reimportedData).forEach { innerList ->
 			Assertions.assertEquals(innerList.first.size, innerList.second.size)
 			innerList.first.zip(innerList.second).forEach {
-				println("(${it.first}, ${it.second})")
 				Assertions.assertEquals(it.first, it.second)
 			}
 		}
