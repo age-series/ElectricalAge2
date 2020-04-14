@@ -1,7 +1,5 @@
 package org.eln2.parsers
 
-import java.util.*
-
 /**
  Gnuplot Parser Class
 
@@ -18,21 +16,21 @@ class Gnuplot {
          * @param data: Gnuplot plot string
          * @return Doubly Linked List with Doubles
          */
-        fun import(data: String): LinkedList<LinkedList<Double>> {
-            val list = LinkedList<LinkedList<Double>>()
+        fun import(data: String): ArrayList<ArrayList<Double>> {
+            val list = ArrayList<ArrayList<Double>>()
             for (line in data.split("\n")) {
                 if (line.trim().isNotEmpty() && line.trim()[0] != '#') {
                     // If you get this far, it's not a comment and it's not an empty line. There exists DATA!
-                    val innerList = LinkedList<Double>()
+                    val innerList = ArrayList<Double>()
                     // We allow for tabs or spaces to be used as delimiters because the documentation says "whitespace"
                     // I presume that means not newlines, since they use those to separate rows of data.
                     for (field in line.split(" ","\t")) {
                         val dbl = field.trim().toDoubleOrNull()
                         if (dbl != null) {
-                            innerList.addLast(dbl)
+                            innerList.add(dbl)
                         }
                     }
-                    list.addLast(innerList)
+                    list.add(innerList)
                 }
             }
             return list
@@ -48,7 +46,7 @@ class Gnuplot {
          * @param separator: Separates out the data on lines. Should be space or tab character.
          * @return Gnuplot plot string
          */
-        fun export(data: LinkedList<LinkedList<Double>>, header: String = "", separator: Char =' '): String {
+        fun export(data: ArrayList<ArrayList<Double>>, header: String = "", separator: Char =' '): String {
             var output = header
             output += data.map { row -> "${row.map { field -> "$field$separator"}.toString().trim()}\n" }
             return output
