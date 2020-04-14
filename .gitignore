@@ -33,6 +33,7 @@ options.txt
 *.csproj.user
 *.sln
 App.config
+obj/
 
 # Rust Projects
 logcollector/target/
