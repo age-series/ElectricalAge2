@@ -21,11 +21,11 @@ open class Capacitor : Port() {
 
 	override fun preStep(dt: Double) {
 		ts = dt
-		i = (-u) / eqR
+		i = (-potential) / eqR
 	}
 
 	override fun postStep(dt: Double) {
-		lastI = u / eqR + i
+		lastI = potential / eqR + i
 	}
 
 	override fun stamp() {

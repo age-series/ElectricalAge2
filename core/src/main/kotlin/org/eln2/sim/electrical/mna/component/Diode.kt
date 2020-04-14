@@ -10,19 +10,19 @@ class IdealDiode : DynamicResistor() {
 	override var name = "d"
 	override val nodeCount = 2
 
-	var minR = 1e-3
-	var maxR = 1e10
+	var minimumResistance = 1e-3
+	var maximumResistance = 1e10
 
 	override fun simStep() {
 		// Theorem: changing the resistance should never lead to a change in sign of the current for a *SINGLE* timestep
 		// as long as that is valid, this won't oscillate:
-		dprintln("D.sS: in u=$u r=$r")
-		if (u > 0) {
-			if (r > minR) r = minR
+		dprintln("D.sS: in u=$potential r=$resistance")
+		if (potential > 0) {
+			if (resistance > minimumResistance) resistance = minimumResistance
 		} else {
-			if (r < maxR) r = maxR
+			if (resistance < maximumResistance) resistance = maximumResistance
 		}
-		dprintln("D.sS: out u=$u r=$r")
+		dprintln("D.sS: out u=$potential r=$resistance")
 	}
 }
 
@@ -60,74 +60,75 @@ data class DiodeData(
 	}
 
 	val isZener: Boolean get() = breakdownVoltage != 0.0
-	fun vScaleAt(temp: Double) = emissionCoef * thermalVoltage(temp)
-	fun vdCoefAt(temp: Double) = 1.0 / vScaleAt(temp)
-	fun fwDropAt(temp: Double) = ln(1.0 / satCurrent + 1.0) * vScaleAt(temp)
-	fun vCritAt(temp: Double): Double {
-		val vs = vScaleAt(temp)
-		return vs * ln(vs / (sqrt2 * satCurrent))
+	fun voltageScaleAt(temp: Double) = emissionCoef * thermalVoltage(temp)
+	fun voltageDiodeCoefficientAt(temp: Double) = 1.0 / voltageScaleAt(temp)
+	fun fwDropAt(temp: Double) = ln(1.0 / satCurrent + 1.0) * voltageScaleAt(temp)
+	fun voltageCriticalAt(temp: Double): Double {
+		val voltageThermalScaled = voltageScaleAt(temp)
+		return voltageThermalScaled * ln(voltageThermalScaled / (sqrt2 * satCurrent))
 	}
 
-	fun vZCritAt(temp: Double): Double {
-		val vt = thermalVoltage(temp)
-		return vt * ln(vt / (sqrt2 * satCurrent))
+	fun voltageCriticalZenerAt(temp: Double): Double {
+		val voltageThermal = thermalVoltage(temp)
+		return voltageThermal * ln(voltageThermal / (sqrt2 * satCurrent))
 	}
 
 	// The current is expressed as a _negative_ current
-	fun vZOffsetAt(temp: Double, current: Double = -5e-3) = if (!isZener) 0.0 else breakdownVoltage - ln(-(1.0 + current / satCurrent)) * thermalVoltage(temp)
+	fun zenerOffsetAt(temp: Double, current: Double = -5e-3) = if (!isZener) 0.0 else breakdownVoltage - ln(-(1.0 + current / satCurrent)) * thermalVoltage(temp)
 
 	fun solveIter(temp: Double, vnew: Double, vold: Double): Double {
-		dprintln("DD.sI: temp=$temp vnew=$vnew vold=$vold")
-		var vnew = vnew
-		var vold = vold
-		val vt = thermalVoltage(temp)
-		val vsc = vScaleAt(temp)
-		val vcr = vCritAt(temp)
-		if (vnew > vcr && abs(vnew - vold) > 2.0 * vsc) {
-			vnew = if (vold > 0) {
-				val tmp = 1.0 + (vnew - vold) / vsc
-				if (tmp > 0) {
-					vold + vsc * ln(tmp)
-				} else {
-					vcr
-				}
-			} else {
-				vsc * ln(vnew / vsc)
-			}
-		} else if (vnew < 0 && isZener) {
-			val zoff = vZOffsetAt(temp)
-			val vzc = vZCritAt(temp)
-			dprintln("DD.sI: zoff=$zoff vzc=$vzc")
-			vnew = -vnew - zoff
-			vold = -vold - zoff
+		dprintln("DD.sI: temp=$temp voltageNew=$vnew voltageOld=$vold")
+		var voltageNew = vnew
+		var voltageOld = vold
+		val voltageThermal = thermalVoltage(temp)
+		val voltageThermalScaled = voltageScaleAt(temp)
+		val voltageCritical = voltageCriticalAt(temp)
 
-			if (vnew > vzc && abs(vnew - vold) > 2.0 * vt) {
-				vnew = if (vold > 0) {
-					val tmp = 1.0 + (vnew - vold) / vt
-					if (tmp > 0) {
-						vold + vt * ln(tmp)
+		if (voltageNew < 0 && isZener) {
+			val zenerOffset = zenerOffsetAt(temp)
+			val voltageCriticalZener = voltageCriticalZenerAt(temp)
+			dprintln("DD.sI: zenerOffset=$zenerOffset voltageCriticalZener=$voltageCriticalZener")
+			voltageNew = -voltageNew - zenerOffset
+			voltageOld = -voltageOld - zenerOffset
+
+			if (voltageNew > voltageCriticalZener && abs(voltageNew - voltageOld) > 2.0 * voltageThermal) {
+				val tmp = 1.0 + (voltageNew - voltageOld) / voltageThermal
+				voltageNew =
+					if (voltageOld > 0 && tmp > 0) {
+						voltageOld + voltageThermal * ln(tmp)
+					} else if (voltageOld > 0) {
+						voltageCriticalZener
 					} else {
-						vzc
+						voltageThermal * ln(voltageNew / voltageThermal)
 					}
-				} else {
-					vt * ln(vnew / vt)
-				}
 			}
 
-			vnew = -(vnew + zoff)
+			voltageNew = -(voltageNew + zenerOffset)
+		} else {
+			if (voltageNew > voltageCritical && abs(voltageNew - voltageOld) > 2.0 * voltageThermalScaled) {
+				val tmp = 1.0 + (voltageNew - voltageOld) / voltageThermalScaled
+				voltageNew =
+					if (voltageOld > 0 && tmp > 0) {
+						voltageOld + voltageThermalScaled * ln(tmp)
+					} else if (voltageOld > 0) {
+						voltageCritical
+					} else {
+						voltageThermalScaled * ln(voltageNew / voltageThermalScaled)
+					}
+			}
 		}
 
-		dprintln("DD.sI: out=$vnew")
-		return vnew
+		dprintln("DD.sI: voltageOut=$voltageNew")
+		return voltageNew
 	}
 }
 
 class RealisticDiode(var model: DiodeData) : DynamicResistor() {
 	var temp = 300.0
 
-	var lastU = 0.0
+	var lastPotential = 0.0
 
-	override var i: Double = 0.0
+	override var current: Double = 0.0
 		set(value) {
 			if (isInCircuit)
 				circuit!!.stampCurrentSource(pos.index, neg.index, value - field)
@@ -135,30 +136,32 @@ class RealisticDiode(var model: DiodeData) : DynamicResistor() {
 		}
 
 	override fun simStep() {
-		println("RD.sS: u=$u lastU=$lastU")
-		if (abs(u - lastU) < circuit!!.slack) return
+		println("RD.sS: u=$potential lastU=$lastPotential")
+		if (abs(potential - lastPotential) < circuit!!.slack) return
 
-		val newU = model.solveIter(temp, u, lastU)
-		lastU = u
-		println("RD.sS: newU=$newU")
+		val newPotential = model.solveIter(temp, potential, lastPotential)
+		lastPotential = potential
+		println("RD.sS: newU=$newPotential")
 
-		val vdc = model.vdCoefAt(temp)
-		val ex = exp(newU * vdc)
-		val geq = model.satCurrent * 0.01 + if (newU >= 0.0 || !model.isZener) {
-			vdc * model.satCurrent * ex
-		} else {
-			val vzc = DiodeData.zenerCoefficient(temp)
-			vdc * ex + vzc * exp((-newU - model.vZOffsetAt(temp)) * vzc)
-		}
-		val nc = if (newU >= 0.0 || !model.isZener) {
-			(ex - 1.0) * model.satCurrent - geq * newU
-		} else {
-			(ex - exp((-newU - model.vZOffsetAt(temp)) * DiodeData.zenerCoefficient(temp)) - 1.0) * model.satCurrent + geq * (-newU)
-		}
+		val voltageDiodeCoefficient = model.voltageDiodeCoefficientAt(temp)
+		val ex = exp(newPotential * voltageDiodeCoefficient)
+		val conductance =
+			model.satCurrent * 0.01 + if (newPotential >= 0.0 || !model.isZener) {
+				voltageDiodeCoefficient * model.satCurrent * ex
+			} else {
+				val zenerCoefficient = DiodeData.zenerCoefficient(temp)
+				voltageDiodeCoefficient * ex + zenerCoefficient * exp((-newPotential - model.zenerOffsetAt(temp)) * zenerCoefficient)
+			}
+		val newCurrent =
+			if (newPotential >= 0.0 || !model.isZener) {
+				(ex - 1.0) * model.satCurrent - conductance * newPotential
+			} else {
+				(ex - exp((-newPotential - model.zenerOffsetAt(temp)) * DiodeData.zenerCoefficient(temp)) - 1.0) * model.satCurrent + conductance * (-newPotential)
+			}
 
-		println("RD.sS: geq=$geq r=${1 / geq} i=$nc")
+		println("RD.sS: geq=$conductance r=${1 / conductance} i=$newCurrent")
 
-		r = 1 / geq
-		i = nc
+		resistance = 1 / conductance
+		current = newCurrent
 	}
 }

@@ -21,8 +21,8 @@ internal class CircuitTest {
 			vs.connect(1, r1, 1)
 			vs.connect(0, r1, 0)
 			vs.connect(1, c.ground)
-			vs.u = 10.0
-			r1.r = 5.0
+			vs.potential = 10.0
+			r1.resistance = 5.0
 		}
 	}
 
@@ -30,9 +30,9 @@ internal class CircuitTest {
 	fun parity() {
 		val ts = TrivialResistiveCircuit()
 		for (u in -10..10) {
-			ts.vs.u = u.toDouble()
+			ts.vs.potential = u.toDouble()
 			ts.c.step(0.5)
-			assertEquals(sign(ts.vs.u), sign(ts.r1.i))
+			assertEquals(sign(ts.vs.potential), sign(ts.r1.current))
 		}
 	}
 
@@ -40,9 +40,9 @@ internal class CircuitTest {
 	fun ohmLaw() {
 		val ts = TrivialResistiveCircuit()
 		for (r in 1..10) {
-			ts.r1.r = r.toDouble()
+			ts.r1.resistance = r.toDouble()
 			ts.c.step(0.5)
-			assertEquals(ts.r1.i, ts.vs.u / r, EPSILON)
+			assertEquals(ts.r1.current, ts.vs.potential / r, EPSILON)
 		}
 	}
 
@@ -51,10 +51,10 @@ internal class CircuitTest {
 	fun kirchoffCurrentLaw() {
 		val ts = TrivialResistiveCircuit()
 		for (r in 1..10) {
-			ts.r1.r = r.toDouble()
+			ts.r1.resistance = r.toDouble()
 			ts.c.step(0.5)
 			try {
-				assertEquals(-ts.vs.i, ts.r1.i, EPSILON) { "r:${ts.r1.r} u:${ts.vs.u}" }
+				assertEquals(-ts.vs.i, ts.r1.current, EPSILON) { "r:${ts.r1.resistance} u:${ts.vs.potential}" }
 			} catch (e: AssertionFailedError) {
 				println("expected failure in kCL: $e")
 			}
@@ -65,9 +65,9 @@ internal class CircuitTest {
 	fun kirchoffVoltageLaw() {
 		val ts = TrivialResistiveCircuit()
 		for (r in 1..10) {
-			ts.r1.r = r.toDouble()
+			ts.r1.resistance = r.toDouble()
 			ts.c.step(0.5)
-			assertEquals(ts.vs.u, ts.r1.u, EPSILON)
+			assertEquals(ts.vs.potential, ts.r1.potential, EPSILON)
 		}
 	}
 

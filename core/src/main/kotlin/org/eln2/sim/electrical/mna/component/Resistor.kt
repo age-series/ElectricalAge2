@@ -3,34 +3,34 @@ package org.eln2.sim.electrical.mna.component
 open class Resistor : Port() {
 	override var name: String = "r"
 
-	open var r: Double = 1.0
-	open val i: Double
-		get() = u / r
+	open var resistance: Double = 1.0
+	open val current: Double
+		get() = potential / resistance
 	open val p: Double
-		get() = i * u
+		get() = current * potential
 
 	override fun detail(): String {
-		return "[resistor r:$r]"
+		return "[resistor r:$resistance]"
 	}
 
 	override fun stamp() {
 		if (!isInCircuit) return
-		node(0).stampResistor(node(1), r)
+		node(0).stampResistor(node(1), resistance)
 	}
 }
 
 open class DynamicResistor : Resistor() {
 	override var name = "rs"
 
-	override var r: Double
-		get() = super.r
+	override var resistance: Double
+		get() = super.resistance
 		set(value) {
 			// Remove our contribution to the matrix (using a negative resistance... should work)
-			super.r = -super.r
+			super.resistance = -super.resistance
 			super.stamp()
 
 			// Add our new contribution
-			super.r = value
+			super.resistance = value
 			super.stamp()
 		}
 }

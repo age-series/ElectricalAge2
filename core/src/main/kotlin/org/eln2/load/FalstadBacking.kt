@@ -150,7 +150,7 @@ w 256 176 304 176 0
 				"r" -> {
 					// resistor
 					val resistor = Resistor()
-					resistor.r = c[6].toDouble()
+					resistor.resistance = c[6].toDouble()
 					circuit.add(resistor)
 
 					nodeMap[aPin]!![resistor] = aId
@@ -161,7 +161,7 @@ w 256 176 304 176 0
 				"R" -> {
 					// voltage rail (one pin)
 					val voltageSource = VoltageSource()
-					voltageSource.u = c[8].toDouble()
+					voltageSource.potential = c[8].toDouble()
 					circuit.add(voltageSource)
 
 					nodeMap[aPin]!![voltageSource] = aId
@@ -171,7 +171,7 @@ w 256 176 304 176 0
 
 					// TODO: Change to ResistorSwitch
 					val switch = DynamicResistor()
-					switch.r = 1.0
+					switch.resistance = 1.0
 					circuit.add(switch)
 
 					nodeMap[aPin]!![switch] = aId
@@ -225,7 +225,7 @@ w 256 176 304 176 0
 					// voltage source (two pin)
 
 					val voltageSource = VoltageSource()
-					voltageSource.u = c[8].toDouble()
+					voltageSource.potential = c[8].toDouble()
 					circuit.add(voltageSource)
 
 					nodeMap[aPin]!![voltageSource] = aId
@@ -235,7 +235,7 @@ w 256 176 304 176 0
 					// voltage source (one pin, uses Adjustable slider on right
 
 					val voltageSource = VoltageSource()
-					voltageSource.u = c[8].toDouble()
+					voltageSource.potential = c[8].toDouble()
 					circuit.add(voltageSource)
 
 					nodeMap[aPin]!![voltageSource] = aId
