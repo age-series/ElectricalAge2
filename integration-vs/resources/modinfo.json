@@ -1,0 +1,11 @@
+{
+    "type": "code",
+    "modid": "eln2",
+    "name": "Eln2",
+    "author": "jrddunbr & caeleron",
+    "description": "Electricity, in your base!",
+    "version": "0.1.0",
+    "dependency": {
+      "game": ""
+    }
+  }
