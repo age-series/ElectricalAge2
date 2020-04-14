@@ -34,5 +34,8 @@ options.txt
 *.sln
 App.config
 
+# Rust Projects
+logcollector/target/
+
 # Project Specific
 core/*.dat
