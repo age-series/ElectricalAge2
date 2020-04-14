@@ -1,0 +1,25 @@
+{
+  "name": "eln2-ci-minecraft-server-test",
+  "author": {
+    "name": "Svein",
+    "email": "svein@google.com"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "start-dev": "tsc && node dist/index.js"
+  },
+  "version": "0.0.1",
+  "dependencies": {
+    "ci-minecraft-forge-server-test": "^1.4.0",
+    "semver": "^5.5.0"
+  },
+  "devDependencies": {
+    "@types/node": "^8.0.31",
+    "@types/semver": "^5.5.0",
+    "tslint": "^5.10.0",
+    "tslint-microsoft-contrib": "^5.0.3",
+    "typescript": "^2.5.3"
+  },
+  "private": true
+}

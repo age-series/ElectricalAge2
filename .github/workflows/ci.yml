@@ -62,8 +62,14 @@ jobs:
                 with:
                     project-token: ${{ secrets.CODACY_PROJECT_TOKEN }}
 
-            -   name: Build integration tests
-                run: npm install
+            -   name: Install integration tests
+                run: cd integrationTest && npm install -G && tsc
 
             -   name: Run integration tests
-                run: npm start
+                run: |
+                        cd integrationTest
+                        rm -f ~/.npm/_logs/*.log
+                        if ! npm start; then
+                                cat ~/.npm/_logs/*.log
+                                exit 1
+                        fi

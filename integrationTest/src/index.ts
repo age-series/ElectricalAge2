@@ -2,23 +2,23 @@ import { readFile } from 'fs';
 import { join, resolve as pathResolve } from 'path';
 import { exit } from 'process';
 
-import { CIMinecraftForgeServerTest } from 'forge-server-test';
+import { CIMinecraftForgeServerTest } from 'ci-minecraft-forge-server-test';
 
-const buildLibsDirectory = pathResolve('integration-mc1-14', 'build', 'libs');
-const serverDirectory = pathResolve('integration-mc1-14', 'run');
+const baseDir = pathResolve('..', 'integration-mc1-14')
+const buildLibsDirectory = pathResolve(baseDir, 'build', 'libs');
+const serverDirectory = pathResolve(baseDir, 'run');
 
-// Minecraft and Forge versions
 let minecraftVersion = null;
 let forgeVersion = null;
-// Path to mod .jar file
+
 let modFilepath = null;
 
-// Get the Minecraft, Forge and mod versions from build.gradle
 function getVersions() {
     return new Promise((resolve, reject) => {
-        readFile(pathResolve('integration-mc1-14', 'build.gradle'), 'UTF-8', (err, data) => {
+        readFile(pathResolve(baseDir, 'build.gradle'), 'UTF-8', (err, data) => {
             if (err != null) {
                 reject(err);
+
                 return;
             }
 
@@ -43,34 +43,37 @@ function getVersions() {
 
             if (minecraftVersion == null || forgeVersion == null) {
                 reject('Could not find Minecraft and/or Forge version');
+
                 return;
             }
 
             if (modVersion == null) {
                 reject('Could not find mod version');
+
                 return;
             }
 
-            modFilepath = join(buildLibsDirectory, `ModName-mc${minecraftVersion}-${modVersion}.jar`);
+            modFilepath = join(buildLibsDirectory, `eln2-${modVersion}.jar`);
+
             resolve();
         });
     });
 }
 
-// Create instance of ci-minecraft-forge-server-test
 const tester = new CIMinecraftForgeServerTest();
 getVersions()
     .then(() => {
         tester
-            .setVersions(minecraftVersion, forgeVersion) // Set versions
-            .acceptEULA()                                // Accept Minecraft's EULA
-            .useServerProperties()                       // Use ci-minecraft-forge-server-test's server.properties file
-            .setServerDirectory(serverDirectory)         // Set the directory for the server
-            .addLocalMod(modFilepath)                    // Add the mod
-            .addCommand('forge tps');                    // Add command to run
+            .setVersions(minecraftVersion, forgeVersion)
+            .acceptEULA()
+            .useServerProperties()
+            .setServerDirectory(serverDirectory)
+            .addLocalMod(modFilepath)
+            .setDelayBeforeCommands(5000)
+            .addCommand(`/say Hello from ${minecraftVersion}`);
 
-        return tester.installForge()                     // Install Forge
-            .then(() => tester.runServer());             // Run the server
+        return tester.installForge()
+            .then(() => tester.runServer());
     })
     .catch(err => {
         console.error(err);

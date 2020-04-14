@@ -23,9 +23,11 @@ repositories {
 }
 
 // These are (also) used by the integration tests.
+// Its parser is very dumb. Keep this exact format.
+// TODO(svein): Do *something* about this.
 def mcVersion = '1.14.4'
-def forgeVersion = "${mcVersion}-28.2.3"
-def modVersion = version
+def forgeVersion = '1.14.4-28.2.3'
+def modVersion = '0.1.0'
 
 minecraft {
 	// The mappings can be changed at any time, and must be in the following format.
