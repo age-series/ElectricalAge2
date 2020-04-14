@@ -5,6 +5,6 @@ NOTE: This code is strictly experimental
  */
 
 interface IHaveState {
-    fun save(ss: ISerialize)
-    fun load(ss: ISerialize)
+	fun save(ss: ISerialize)
+	fun load(ss: ISerialize)
 }
