@@ -1,0 +1,15 @@
+{
+  "name": "integration-test",
+  "description": "Minecraft Forge server testing for CI",
+  "author": {
+    "name": "Svein",
+    "email": "svein@google.com"
+  },
+  "version": "1.0.0",
+  "scripts": {
+    "start": "run-integration-tests.js"
+  },
+  "dependencies": {
+    "ci-minecraft-forge-server-test": "file://forge-server-test"
+  }
+}

@@ -22,6 +22,11 @@ repositories {
 	}
 }
 
+// These are (also) used by the integration tests.
+def mcVersion = '1.14.4'
+def forgeVersion = "${mcVersion}-28.2.3"
+def modVersion = version
+
 minecraft {
 	// The mappings can be changed at any time, and must be in the following format.
 	// snapshot_YYYYMMDD   Snapshot are built nightly.
@@ -100,7 +105,7 @@ dependencies {
     // Specify the version of Minecraft to use, If this is any group other then 'net.minecraft' it is assumed
     // that the dep is a ForgeGradle 'patcher' dependency. And it's patches will be applied.
     // The userdev artifact is a special name and will get all sorts of transformations applied to it.
-    minecraft 'net.minecraftforge:forge:1.14.4-28.2.3'
+    minecraft "net.minecraftforge:forge:${forgeVersion}"
 
 	// Set up Kotlin
 	implementation 'thedarkcolour:kotlinforforge:1+'
@@ -147,7 +152,7 @@ jar {
             "Specification-Vendor": "eln2-team",
             "Specification-Version": "1", // We are version 1 of ourselves
             "Implementation-Title": project.name,
-            "Implementation-Version": "${version}",
+            "Implementation-Version": "${modVersion}",
             "Implementation-Vendor" :"eln2-team",
             "Implementation-Timestamp": new Date().format("yyyy-MM-dd'T'HH:mm:ssZ")
         ])

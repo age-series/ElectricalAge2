@@ -25,7 +25,8 @@ jobs:
                 with:
                     java-version: 8
 
-            -   uses: actions/cache@v1
+            -   name: Cache Gradle build
+                uses: actions/cache@v1
                 with:
                     path: ~/.gradle/caches
                     key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*') }}
@@ -35,16 +36,34 @@ jobs:
                     restore-keys: |
                         ${{ runner.os }}-gradle-
 
+            -   name: Cache NodeJS modules
+                uses: actions/cache@v1
+                env:
+                    cache-name: cache-node-modules
+                with:
+                    path: ~/.npm
+                    key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
+                    restore-keys: |
+                        ${{ runner.os }}-build-${{ env.cache-name }}-
+                        ${{ runner.os }}-build-
+                        ${{ runner.os }}-
+
             -   name: Build the project
                 run: ./gradlew bundle
 
-            -   name: Run tests
+            -   name: Run unit tests
                 run: ./gradlew test
 
             -   name: Generate coverage reports
                 run: ./gradlew jacocoTestReport
             
-            -   name: codacy-coverage-reporter
+            -   name: Report Codacy code coverage
                 uses: codacy/codacy-coverage-reporter-action@0.1.0
                 with:
                     project-token: ${{ secrets.CODACY_PROJECT_TOKEN }}
+
+            -   name: Build integration tests
+                run: npm install
+
+            -   name: Run integration tests
+                run: npm start
