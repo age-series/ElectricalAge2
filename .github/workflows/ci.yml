@@ -15,7 +15,7 @@ jobs:
     # This workflow contains a single job called "build"
     build:
         # The type of runner that the job will run on
-        runs-on: self-hosted
+        runs-on: ubuntu-latest
 
         # Steps represent a sequence of tasks that will be executed as part of the job
         steps:
@@ -25,8 +25,26 @@ jobs:
                 with:
                     java-version: 8
 
+            -   uses: actions/cache@v1
+                with:
+                    path: ~/.gradle/caches
+                    key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*') }}
+                    # This allows restoring a *non-matching* cache on a cache miss, and considers it a match even if
+                    # (anything but) the gradle files have changed. Since it's the gradle cache directory
+                    # we're restoring, this is still acceptable and potentially useful.
+                    restore-keys: |
+                        ${{ runner.os }}-gradle-
+
             -   name: Build the project
                 run: ./gradlew bundle
 
             -   name: Run tests
                 run: ./gradlew test
+
+            -   name: Generate coverage reports
+                run: ./gradlew jacocoTestReport
+            
+            -   name: codacy-coverage-reporter
+                uses: codacy/codacy-coverage-reporter-action@0.1.0
+                with:
+                    project-token: ${{ secrets.CODACY_PROJECT_TOKEN }}
