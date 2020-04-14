@@ -1,0 +1,25 @@
+modLoader="javafml"
+loaderVersion="[28,)"
+issueTrackerURL="https://github.com/TeamOpenIndustry/UniversalModCore/issues"
+
+[[mods]]
+modId="universalmodcore"
+version="${file.jarVersion}"
+displayName="Universal Mod Core"
+displayURL="https://github.com/TeamOpenIndustry/UniversalModCore"
+authors="cam72cam"
+description="Universal Mod API (Minecraft version agnostic)"
+
+[[dependencies.universalmodcore]]
+    modId="forge"
+    mandatory=true
+    versionRange="[28,)"
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.universalmodcore]]
+    modId="minecraft"
+    mandatory=true
+    versionRange="[1.14.4]"
+    ordering="NONE"
+    side="BOTH"

@@ -6,5 +6,5 @@ EXTEND IT INSTEAD IN THE org.eln.nbt DIRECTORY
  */
 
 interface IFunction {
-    fun getValue(x: Double): Double
+	fun getValue(x: Double): Double
 }
