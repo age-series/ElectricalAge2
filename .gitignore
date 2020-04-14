@@ -37,5 +37,8 @@ App.config
 # Rust Projects
 logcollector/target/
 
+# Ignore logs from testing the log collector
+logcollector/*.log
+
 # Project Specific
 core/*.dat
