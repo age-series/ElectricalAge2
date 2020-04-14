@@ -48,7 +48,11 @@ class Gnuplot {
          */
         fun export(data: ArrayList<ArrayList<Double>>, header: String = "", separator: Char =' '): String {
             var output = header
-            output += data.map { row -> "${row.map { field -> "$field$separator"}.toString().trim()}\n" }
+            output += data.map { row ->
+				"${
+					row.map { field -> "$field$separator"}.fold("", {acc, it -> acc + it}).trim()
+				}\n"
+			}.fold("", {acc, it -> acc + it})
             return output
         }
     }
