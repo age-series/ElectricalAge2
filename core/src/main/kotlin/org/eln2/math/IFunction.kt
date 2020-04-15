@@ -1,10 +1,15 @@
 package org.eln2.math
 
-/*
-NOTE: DO NOT IMPORT MINECRAFT CODE IN THIS CLASS
-EXTEND IT INSTEAD IN THE org.eln.nbt DIRECTORY
+/**
+ * IFunction
+ *
+ * Interface for any function with one variable in, and one variable out (eg, linear functions, piecewise, log, exp,..)
  */
-
 interface IFunction {
+	/**
+	 * getValue
+	 * @param x The input variable
+	 * @return The output variable
+	 */
 	fun getValue(x: Double): Double
 }
