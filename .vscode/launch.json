@@ -12,8 +12,8 @@
 			"--addOrigin", "${workspaceFolder}/integration-vs/resources/assets"
 		],
 		"console": "internalConsole",
-		"internalConsoleOptions": "openOnSessionStart",
-	},{
+		"internalConsoleOptions": "openOnSessionStart"
+	}, {
 		"name": "Launch Client (.NET)",
 		"type": "clr",
 		"request": "launch",
@@ -25,6 +25,6 @@
 			"--addOrigin", "${workspaceFolder}/integration-vs/resources/assets"
 		],
 		"console": "internalConsole",
-		"internalConsoleOptions": "openOnSessionStart",
+		"internalConsoleOptions": "openOnSessionStart"
 	}]
 }
