@@ -9,7 +9,7 @@
 		"args": [
 			"--playstyle", "surviveandbuild",
 			"--openWorld", "modding test world",
-			"--addOrigin", "${workspaceFolder}/integration-vs/resources/assets",
+			"--addOrigin", "${workspaceFolder}/integration-vs/resources/assets"
 		],
 		"console": "internalConsole",
 		"internalConsoleOptions": "openOnSessionStart",
