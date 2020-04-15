@@ -1,7 +1,26 @@
 package org.eln2.debug
 
-var DEBUG = System.getenv("MODS_ELN_DEBUG") != null || System.getProperty("mods.eln.debug") != null
+/**
+ * Debug_Flags: List of acceptable flags that will enable the DEBUG flag from the system environment.
+ */
+val DEBUG_FLAGS = listOf("mods.eln.debug", "eln2.core.debug", "eln2.all.debug")
 
+/**
+ * Debug: If this is true, debug prints will print out
+ */
+var DEBUG = System.getenv().filterKeys { key -> DEBUG_FLAGS.any { it.toLowerCase() == key.toLowerCase() } }.isNotEmpty()
+
+/**
+ * dprintln: Print's empty newline if DEBUG = True
+ */
 fun dprintln() = if (DEBUG) println() else Unit
+/**
+ * dprintln: Print's object (toString) followed by newline if DEBUG = True
+ * @param debug_string The Object you want to print.
+ */
 fun dprintln(a: Any?) = if (DEBUG) println(a) else Unit
+/**
+ * dprint: Print's object (toString) (with no newline)if DEBUG = True
+ * @param debug_string The object you want to print
+ */
 fun dprint(a: Any?) = if (DEBUG) print(a) else Unit
