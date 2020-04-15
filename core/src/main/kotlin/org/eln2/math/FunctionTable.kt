@@ -1,14 +1,19 @@
 package org.eln2.math
 
-/*
-NOTE: DO NOT IMPORT MINECRAFT CODE IN THIS CLASS
-EXTEND IT INSTEAD IN THE org.eln.nbt DIRECTORY
+/**
+ * Function Table
+ *
+ * Defines a function based on the values in a table.
  */
-
 open class FunctionTable(var point: DoubleArray, var xMax: Double) : IFunction {
 	var xMaxInv: Double
 	var xDelta: Double
 
+	/**
+	 * getValue: Given a value, get the corresponding value, linearly fit between two closest points on either side.
+	 * @param x: Given value
+	 * @return y: Value for that x, linearly fit between the two closest points on either side
+	 */
 	override fun getValue(x: Double): Double {
 		var lx = x
 		lx *= xMaxInv
@@ -28,6 +33,12 @@ open class FunctionTable(var point: DoubleArray, var xMax: Double) : IFunction {
 	}
 	*/
 
+	/**
+	 * duplicate: Create a copy of this function table
+	 * @param xFactor Scale x by scalar factor (make wider/thinner)
+	 * @param yFactor Scale y by scalar factor (make taller/shorter)
+	 * @return New Function Table instance
+	 */
 	fun duplicate(xFactor: Double, yFactor: Double): FunctionTable {
 		val pointCpy = DoubleArray(point.size)
 		for (idx in point.indices) {
