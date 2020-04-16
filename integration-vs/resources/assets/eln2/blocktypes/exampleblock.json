@@ -1,0 +1,14 @@
+{
+	"code": "exampleblock",
+	"creativeinventory": { "general": ["*"] },
+	"blockmaterial": "Stone",
+	"drawtype": "Cube",
+	"textures": {
+		"all": { "base": "game:block/stone/rock/granite1" }
+	},
+	"resistance": 3.5,
+	"sounds": {
+		"place": "game:block/anvil",
+		"walk": "game:walk/stone"
+	}
+}
