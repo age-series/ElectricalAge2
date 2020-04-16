@@ -5,16 +5,13 @@ import org.eln2.compute.asmComputer.operators.*
 class AsmComputer {
 
 	// used to store integers
-	val intRegisters = mutableMapOf<String, Int>()
+	val intRegisters: MutableMap<String, IntRegister> = mutableMapOf<String, IntRegister>()
 
 	// used to store doubles
-	val doubleRegisters = mutableMapOf<String, Double>()
+	val doubleRegisters: MutableMap<String, DoubleRegister> = mutableMapOf<String, DoubleRegister>()
 
 	// used to store strings
-	val stringRegisters = mutableMapOf<String, StringBuffer>()
-
-	// combination of all registers (for searching)
-	val allRegisters: Map<String, Any> = intRegisters + doubleRegisters + stringRegisters
+	val stringRegisters: MutableMap<String, StringRegister> = mutableMapOf<String, StringRegister>()
 
 	// map of all possible operators by opcode
 	val operators: MutableMap<String, Operator>
@@ -24,22 +21,24 @@ class AsmComputer {
 	// Why we are in this state if it's errored.
 	var currStateReasoning = ""
 	// The code to run
-	var code = ""
+	var codeRegister = "cra"
 	// The code to run, split by newline
 	private var codeLines: List<String> = listOf()
 	// The pointer to the line of code to run from codeLines
 	var ptr = 0
 
 	init {
-		"abcdefgh".forEach { intRegisters["i$it"] = 0 }
-		"xyz".forEach { doubleRegisters["d$it"] = 0.0 }
-		"xyz".forEach { stringRegisters["s$it"] = StringBuffer(32) }
+		"abcdefgh".forEach { intRegisters["i$it"] = IntRegister() }
+		"xyz".forEach { doubleRegisters["d$it"] = DoubleRegister() }
+		"xyz".forEach { stringRegisters["s$it"] = StringRegister(1024) }
+		"ab".forEach{ stringRegisters["cr$it"] = StringRegister(4096) }
+
+		val operatorListing = listOf(NoOp(), AddI(), AddD(), SubI(), SubD(), Move(), CodeSwitch())
 		operators = mutableMapOf()
-		operators["noop"] = NoOp()
-		operators["addi"] = AddI()
-		operators["addd"] = AddD()
-		operators["subi"] = SubI()
-		operators["subd"] = SubD()
+
+		operatorListing.forEach {
+			operators[it.OPCODE] = it
+		}
 	}
 
 	/**
@@ -49,7 +48,14 @@ class AsmComputer {
 		if (this.currState == State.Errored) return
 		currState = State.Running
 		currStateReasoning = ""
-		codeLines = code.split("\n")
+		if (codeRegister !in listOf("cra", "crb")) {
+			currState = State.Errored
+			currStateReasoning = "Code Register must be cra or crb, found $codeRegister"
+		}
+		val cra = stringRegisters["cra"]?.contents
+		val crb = stringRegisters["crb"]?.contents
+		val codeRegisters = mapOf(Pair("cra", cra), Pair("crb", crb))
+			codeLines = (codeRegisters[codeRegister] ?: "").split("\n")
 		if (codeLines.size < ptr) {
 			currState = State.Stopped
 			currStateReasoning = "End of code"
@@ -73,58 +79,87 @@ class AsmComputer {
 	}
 }
 
-/**
- * States of our computer
- */
+// States of our computer
 enum class State {
-	/**
-	 * The computer is running
-	 */
+	// The computer is running
 	Running,
 
-	/**
-	 * The computer is stopped on an instruction (paused?)
-	 */
+	// The computer is stopped on an instruction (paused?)
 	Stopped,
 
-	/**
-	 * An invalid instruction was passed.
-	 */
+	// An invalid instruction was passed.
 	Errored,
 
-	/**
-	 * The computer is waiting for data
-	 */
+	// The computer is waiting for data
 	Data,
 }
 
-
-class StringBuffer(
-	/**
-	 * size: Maximum size of the buffer
-	 */
-	val size: Int) {
-
-	private var _contents: String = ""
-
-	/**
-	 * The actual data of the string is stored here. You can touch contents like a normal string, except that you can't
-	 * set the data to be longer than the buffer size.
-	 */
-	var contents
-		/**
-		 * Get the contents
-		 * @return Returns current contents
-		 */
-		get() = _contents
-		/**
-		 * Set the contents. Does nothing if the size is longer than size.
-		 * @param contents The new contents to set
-		 */
-		set(contents) {
-			// Only set the string if the size is smaller than the buffer we provide.
-			if (contents.length <= size) _contents = contents
+open class IntRegister(v: Int = 0) {
+	var _contents: Int = v
+	open var contents: Int
+		get() {
+			return _contents
 		}
+		set(value) {
+			_contents = value
+		}
+
+	override fun toString(): String {
+		return contents.toString()
+	}
+}
+class ReadOnlyIntRegister(v: Int = 0): IntRegister(v) {
+	override var contents: Int
+		get() {
+			return _contents
+		}
+		set(value) {
+			// do nothing
+		}
+}
+open class DoubleRegister(v: Double = 0.0) {
+	var _contents: Double = v
+	open var contents: Double
+		get() {
+			return _contents
+		}
+		set(value) {
+			_contents = value
+		}
+	override fun toString(): String {
+		return contents.toString()
+	}
+}
+class ReadOnlyDoubleRegister(v: Double = 0.0): DoubleRegister(v) {
+	override var contents: Double
+	get() {
+		return _contents
+	}
+	set(value) {
+		// do nothing
+	}
+}
+open class StringRegister(var size: Int, v: String = "") {
+	var _contents: String = v
+	open var contents: String
+	get() {
+		return _contents
+	}
+	set(value) {
+		if (value.length <= size) _contents = value
+	}
+	override fun toString(): String {
+		return contents
+	}
+}
+class ReadOnlyStringRegister(v: String = ""): StringRegister(0, v) {
+	override var contents: String
+	get() {
+		return _contents
+	}
+	set(value) {
+		// do nothing
+	}
 }
 
 /**
@@ -178,4 +213,11 @@ abstract class Operator {
 	 * @param asmComputer The computer instance we're running on.
 	 */
 	abstract fun run(opList: List<String>, asmComputer: AsmComputer)
+
+	fun findRegisterType(register: String, asmComputer: AsmComputer): Any? {
+		if (register in asmComputer.intRegisters) return IntRegister::class
+		if (register in asmComputer.doubleRegisters) return DoubleRegister::class
+		if (register in asmComputer.stringRegisters) return StringRegister::class
+		return null
+	}
 }
