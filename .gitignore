@@ -29,10 +29,10 @@ options.txt
 *.blend2
 
 # C# projects
-*.csproj
 *.csproj.user
-*.sln
 App.config
+obj/
+bin/
 
 # Rust Projects
 logcollector/target/
