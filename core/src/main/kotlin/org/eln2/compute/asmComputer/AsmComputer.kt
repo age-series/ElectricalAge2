@@ -33,7 +33,8 @@ class AsmComputer {
 		"xyz".forEach { stringRegisters["s$it"] = StringRegister(1024) }
 		"ab".forEach{ stringRegisters["cr$it"] = StringRegister(4096) }
 
-		val operatorListing = listOf(NoOp(), AddI(), AddD(), SubI(), SubD(), Move(), CodeSwitch())
+		val operatorListing = listOf(NoOp(), AddI(), AddD(), SubI(), SubD(), Move(), CodeSwitch(),
+		CopyStringPart(), StringLength(), Label(), Jump())
 		operators = mutableMapOf()
 
 		operatorListing.forEach {
@@ -57,15 +58,18 @@ class AsmComputer {
 		val codeRegisters = mapOf(Pair("cra", cra), Pair("crb", crb))
 			codeLines = (codeRegisters[codeRegister] ?: "").split("\n")
 		if (codeLines.size < ptr) {
+			println("end of code: ${codeLines.size} < $ptr")
 			currState = State.Stopped
 			currStateReasoning = "End of code"
 			ptr = 0
+			return
 		}
 		val currentOperation = codeLines[ptr]
 		val fullSplit = currentOperation.split(" ")
 		val opcode = fullSplit[0]
 		val argList = fullSplit.drop(1)
 		if (opcode in operators) {
+			//println("Exec: $fullSplit")
 			operators[opcode]?.validateThenRun(argList.joinToString(" "), this)
 			if (currState == State.Errored) {
 				println("Computer entered errored State: $currStateReasoning")
@@ -75,6 +79,7 @@ class AsmComputer {
 		} else {
 			currState = State.Errored
 			currStateReasoning = "Opcode not found: $opcode"
+			print("Opcode not found: $opcode")
 		}
 	}
 }
@@ -151,6 +156,15 @@ open class StringRegister(var size: Int, v: String = "") {
 	override fun toString(): String {
 		return contents
 	}
+
+	fun toStringNumbers(): String {
+		val codeLines = contents.split("\n")
+		var lines = ""
+		for (x in codeLines.indices) {
+			lines += "$x ${codeLines[x]}\n"
+		}
+		return lines
+	}
 }
 class ReadOnlyStringRegister(v: String = ""): StringRegister(0, v) {
 	override var contents: String
@@ -198,10 +212,10 @@ abstract class Operator {
 	 * @param asmComputer The computer instance we're running on
 	 */
 	fun validateThenRun(opString: String, asmComputer: AsmComputer) {
-		val argList = opString.split(" ")
+		val argList = opString.split(" ").filter {it.isNotBlank()}
 		if (argList.size > MAX_ARGS || argList.size < MIN_ARGS) {
 			asmComputer.currState = State.Errored
-			asmComputer.currStateReasoning = "Invalid number of arguments"
+			asmComputer.currStateReasoning = "Invalid number of arguments: ${argList.size}"
 		}
 		this.run(opList = argList, asmComputer = asmComputer)
 	}

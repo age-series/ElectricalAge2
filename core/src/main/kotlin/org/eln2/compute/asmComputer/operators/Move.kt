@@ -8,14 +8,6 @@ open class Move: Operator() {
 	override val MAX_ARGS = 2
 	override val COST = 0.0
 	override fun run(opList: List<String>, asmComputer: AsmComputer) {
-		if (opList.size != 2) {
-			asmComputer.currState = State.Errored
-			asmComputer.currStateReasoning = "Invalid move command: $opList"
-			return
-		}
-
-		//println("Trying move: ${opList}")
-
 		val outputClass = findRegisterType(opList[0], asmComputer)
 		val inputClass = findRegisterType(opList[1], asmComputer)
 
@@ -26,98 +18,106 @@ open class Move: Operator() {
 		}
 
 		if (inputClass == null) {
-			when(outputClass) {
-				IntRegister::class, ReadOnlyIntRegister::class -> {
-					asmComputer.intRegisters[opList[0]]?.contents = opList[1].toIntOrNull()?: 0
-					return
-				}
-				DoubleRegister::class, ReadOnlyDoubleRegister::class -> {
-					asmComputer.doubleRegisters[opList[0]]!!.contents = opList[1].toDoubleOrNull()?: 0.0
-					return
-				}
-				StringRegister::class, ReadOnlyStringRegister::class -> {
-					val spl = opList[1].split("\"")
-					if (spl.size != 3) return
-					// The big string replace allows \ to be used to escape a space. The string must be in double quotes.
-					asmComputer.stringRegisters[opList[0]]?.contents = spl[1].replace("\\"," ").replace("\\ \\", "\\")
-					return
-				}
-				else -> {
-					asmComputer.currState = State.Errored
-					asmComputer.currStateReasoning = "Not sure what type this register is: ${opList[0]}"
-					return
-				}
+			copyLiteralToRegister(opList[0], opList[1], asmComputer, outputClass)
+		}else{
+			copyRegisterToRegister(opList[0], outputClass, opList[1], inputClass, asmComputer)
+		}
+	}
+
+
+	private fun copyLiteralToRegister(register: String, literal: String, asmComputer: AsmComputer, type: Any?) {
+		when(type) {
+			IntRegister::class, ReadOnlyIntRegister::class -> {
+				asmComputer.intRegisters[register]?.contents = literal.toIntOrNull()?: 0
+				return
+			}
+			DoubleRegister::class, ReadOnlyDoubleRegister::class -> {
+				asmComputer.doubleRegisters[register]!!.contents = literal.toDoubleOrNull()?: 0.0
+				return
+			}
+			StringRegister::class, ReadOnlyStringRegister::class -> {
+				val spl = literal.split("\"")
+				if (spl.size != 3) return
+				// The big string replace allows \ to be used to escape a space. The string must be in double quotes.
+				asmComputer.stringRegisters[register]?.contents = spl[1].replace("\\"," ").replace("\\ \\", "\\")
+				return
+			}
+			else -> {
+				asmComputer.currState = State.Errored
+				asmComputer.currStateReasoning = "Not sure what type this register is: $register"
+				return
 			}
 		}
+	}
 
-
-		when (outputClass) {
+	private fun copyRegisterToRegister(registerOut: String, registerOutType: Any?, registerIn: String, registerInType: Any?, asmComputer: AsmComputer) {
+		when (registerOutType) {
 			IntRegister::class, ReadOnlyIntRegister::class -> {
-				when(inputClass) {
+				when(registerInType) {
 					IntRegister::class, ReadOnlyIntRegister::class -> {
-						asmComputer.intRegisters[opList[0]]?.contents = asmComputer.intRegisters[opList[1]]?.contents?: 0
+						asmComputer.intRegisters[registerOut]?.contents = asmComputer.intRegisters[registerIn]?.contents?: 0
 						return
 					}
 					DoubleRegister::class, ReadOnlyDoubleRegister::class -> {
-						asmComputer.intRegisters[opList[0]]?.contents = (asmComputer.doubleRegisters[opList[1]]?.contents?: 0.0).toInt()
+						asmComputer.intRegisters[registerOut]?.contents = (asmComputer.doubleRegisters[registerIn]?.contents?: 0.0).toInt()
 						return
 					}
 					StringRegister::class, ReadOnlyStringRegister::class -> {
-						asmComputer.intRegisters[opList[0]]?.contents = (asmComputer.stringRegisters[opList[1]]?.contents?: "").toIntOrNull()?: 0
+						asmComputer.intRegisters[registerOut]?.contents = (asmComputer.stringRegisters[registerIn]?.contents?: "").toIntOrNull()?: 0
 						return
 					}
 					else -> {
 						asmComputer.currState = State.Errored
-						asmComputer.currStateReasoning = "Not sure what type this register is: ${opList[0]}"
+						asmComputer.currStateReasoning = "Not sure what type this register is: $registerIn"
 						return
 					}
 				}
 			}
 			DoubleRegister::class, ReadOnlyDoubleRegister::class -> {
-				when(inputClass) {
+				when(registerInType) {
 					IntRegister::class, ReadOnlyIntRegister::class -> {
-						asmComputer.doubleRegisters[opList[0]]?.contents = (asmComputer.intRegisters[opList[1]]?.contents?: 0).toDouble()
+						asmComputer.doubleRegisters[registerOut]?.contents = (asmComputer.intRegisters[registerIn]?.contents?: 0).toDouble()
 						return
 					}
 					DoubleRegister::class, ReadOnlyDoubleRegister::class -> {
-						asmComputer.doubleRegisters[opList[0]]?.contents = (asmComputer.doubleRegisters[opList[1]]?.contents?: 0.0)
+						asmComputer.doubleRegisters[registerOut]?.contents = (asmComputer.doubleRegisters[registerIn]?.contents?: 0.0)
 						return
 					}
 					StringRegister::class, ReadOnlyStringRegister::class -> {
-						asmComputer.doubleRegisters[opList[0]]?.contents = (asmComputer.stringRegisters[opList[1]]?.contents?: "").toDoubleOrNull()?: 0.0
+						asmComputer.doubleRegisters[registerOut]?.contents = (asmComputer.stringRegisters[registerIn]?.contents?: "").toDoubleOrNull()?: 0.0
 						return
 					}
 					else -> {
 						asmComputer.currState = State.Errored
-						asmComputer.currStateReasoning = "Not sure what type this register is: ${opList[0]}"
+						asmComputer.currStateReasoning = "Not sure what type this register is: $registerIn"
 						return
 					}
 				}
 			}
 			StringRegister::class, ReadOnlyStringRegister::class -> {
-				when(inputClass) {
+				when(registerInType) {
 					IntRegister::class, ReadOnlyIntRegister::class -> {
-						asmComputer.stringRegisters[opList[0]]?.contents = (asmComputer.intRegisters[opList[1]]?.contents?: 0).toString()
+						asmComputer.stringRegisters[registerOut]?.contents = (asmComputer.intRegisters[registerIn]?.contents?: 0).toString()
 						return
 					}
 					DoubleRegister::class, ReadOnlyDoubleRegister::class -> {
-						asmComputer.stringRegisters[opList[0]]?.contents = (asmComputer.doubleRegisters[opList[1]]?.contents?: 0.0).toString()
+						asmComputer.stringRegisters[registerOut]?.contents = (asmComputer.doubleRegisters[registerIn]?.contents?: 0.0).toString()
 						return
 					}
 					StringRegister::class, ReadOnlyStringRegister::class -> {
-						asmComputer.stringRegisters[opList[0]]?.contents = (asmComputer.stringRegisters[opList[1]]?.contents?: "")
+						asmComputer.stringRegisters[registerOut]?.contents = (asmComputer.stringRegisters[registerIn]?.contents?: "")
 						return
 					}
 					else -> {
 						asmComputer.currState = State.Errored
-						asmComputer.currStateReasoning = "Not sure what type this register is: ${opList[0]}"
+						asmComputer.currStateReasoning = "Not sure what type this register is: $registerIn"
 						return
 					}
 				}
 			}
 			else -> {
 				asmComputer.currState = State.Errored
-				asmComputer.currStateReasoning = "Not sure what type this register is: ${opList[0]}"
+				asmComputer.currStateReasoning = "Not sure what type this register is: $registerOut"
 				return
 			}
 		}
