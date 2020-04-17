@@ -8,7 +8,7 @@
 	},
 	"sounds": {
 		"place": "game:block/plant",
-		"break": "game:block/plant",
+		"break": "game:block/plant"
 	}
 	
 }
