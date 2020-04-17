@@ -15,10 +15,10 @@ open class SubI: Operator() {
 			asmComputer.currStateReasoning = "Nonexistent Register {}".format(opList[0])
 			return
 		}
-		var result = asmComputer.intRegisters[opList[0]]?: 0
+		var result = asmComputer.intRegisters[opList[0]]?.contents?: 0
 		opList.drop(1).map{
 			if (it in asmComputer.intRegisters) {
-				asmComputer.intRegisters[it]?: 0
+				asmComputer.intRegisters[it]?.contents?: 0
 			} else {
 				val v = it.toIntOrNull()
 				if (v == null) {
@@ -29,7 +29,7 @@ open class SubI: Operator() {
 				v
 			}
 		}.forEach { result -= it }
-		asmComputer.intRegisters[opList[0]] = result
+		asmComputer.intRegisters[opList[0]]?.contents = result
 	}
 }
 
@@ -44,10 +44,10 @@ open class SubD: Operator() {
 			asmComputer.currStateReasoning = "Nonexistent Register {}".format(opList[0])
 			return
 		}
-		var result = asmComputer.doubleRegisters[opList[0]]?: 0.0
+		var result = asmComputer.doubleRegisters[opList[0]]?.contents?: 0.0
 		opList.drop(1).map{
 			if (it in asmComputer.doubleRegisters) {
-				asmComputer.doubleRegisters[it]?: 0.0
+				asmComputer.doubleRegisters[it]?.contents?: 0.0
 			} else {
 				val v = it.toDoubleOrNull()
 				if (v == null) {
@@ -58,6 +58,6 @@ open class SubD: Operator() {
 				v
 			}
 		}.forEach { result -= it }
-		asmComputer.doubleRegisters[opList[0]] = result
+		asmComputer.doubleRegisters[opList[0]]?.contents = result
 	}
 }
