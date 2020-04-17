@@ -62,11 +62,8 @@ class AsmComputerTest {
 		val computer = AsmComputer()
 		computer.stringRegisters["cra"]?.contents = "addd dx 5.0\nmove dx 1.0\nmove dy dx"
 		computer.step()
-		println(computer.doubleRegisters)
 		computer.step()
-		println(computer.doubleRegisters)
 		computer.step()
-		println(computer.doubleRegisters)
 		Assertions.assertEquals(true, computer.doubleRegisters["dy"]?.contents == 1.0)
 	}
 
@@ -84,6 +81,48 @@ class AsmComputerTest {
 		val computer = AsmComputer()
 		computer.stringRegisters["cra"]?.contents = "move crb sy\nswch 0"
 		computer.stringRegisters["sy"]?.contents = "move ia 1"
+		computer.step()
+		computer.step()
+		computer.step()
+		Assertions.assertEquals(true, computer.intRegisters["ia"]?.contents == 1)
+	}
+
+	@Test
+	fun copyStringPart() {
+		val computer = AsmComputer()
+		computer.stringRegisters["cra"]?.contents = "strp sy sx 6 11"
+		computer.stringRegisters["sx"]?.contents = "Hello World"
+		computer.step()
+		println(computer.stringRegisters)
+		println(computer.stringRegisters["sy"]?.contents)
+		Assertions.assertEquals(true, computer.stringRegisters["sy"]?.contents == "World")
+	}
+
+	@Test
+	fun stringLength() {
+		val computer = AsmComputer()
+		computer.stringRegisters["cra"]?.contents = "strl ia sx"
+		computer.stringRegisters["sx"]?.contents = "Hello!"
+		computer.step()
+		Assertions.assertEquals(true, computer.intRegisters["ia"]?.contents == 6)
+	}
+
+	@Test
+	fun labelJump() {
+		val computer = AsmComputer()
+		computer.stringRegisters["cra"]?.contents = "noop\nnoop\nlabl \"doot\"\naddi ia 1\nnoop\njump \"doot\"\nnoop"
+		computer.ptr = 5
+		computer.step()
+		computer.step()
+		computer.step()
+		Assertions.assertEquals(true, computer.intRegisters["ia"]?.contents == 1)
+	}
+
+	@Test
+	fun indexJump() {
+		val computer = AsmComputer()
+		computer.stringRegisters["cra"]?.contents = "noop\nnoop\nlabl \"doot\"\naddi ia 1\naddi ia 30\njump 3\nnoop"
+		computer.ptr = 5
 		computer.step()
 		computer.step()
 		computer.step()
