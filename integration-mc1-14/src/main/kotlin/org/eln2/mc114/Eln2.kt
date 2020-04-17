@@ -1,4 +1,4 @@
-package net.electricalage.eln2
+package org.eln2.mc114
 
 import net.minecraft.block.Block
 import net.minecraft.block.Blocks
@@ -30,6 +30,8 @@ object Eln2 {
 		LOGGER.info("HELLO FROM PREINIT")
 		LOGGER.info("HELLO from ${cam72cam.mod.ModCore.MODID}")
 		LOGGER.info("DIRT BLOCK >> {}", Blocks.DIRT.registryName)
+		Eln2Items.register()
+		Eln2Block.register()
 	}
 
 	private fun doClientStuff(event: FMLClientSetupEvent) {
