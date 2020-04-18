@@ -24,12 +24,15 @@ import org.apache.logging.log4j.LogManager
 object Eln2 {
 	private val LOGGER = LogManager.getLogger()!!
 
+	public val MODID = "eln2"
+
 	@SubscribeEvent
 	fun setup(event: FMLCommonSetupEvent) {
 		// some preinit code
 		LOGGER.info("HELLO FROM PREINIT")
 		LOGGER.info("HELLO from ${cam72cam.mod.ModCore.MODID}")
 		LOGGER.info("DIRT BLOCK >> {}", Blocks.DIRT.registryName)
+		Eln2CreativeTabs.register()
 		Eln2Items.register()
 		Eln2Block.register()
 	}

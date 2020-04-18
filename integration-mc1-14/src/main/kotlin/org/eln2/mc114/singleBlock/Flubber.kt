@@ -10,9 +10,10 @@ import cam72cam.mod.math.Vec3i
 import cam72cam.mod.util.Facing
 import cam72cam.mod.util.Hand
 import cam72cam.mod.world.World
+import org.eln2.mc114.Eln2CreativeTabs
 import org.eln2.mc114.Eln2Items
 
-class FlubberBlock: BlockType(BlockSettings("eln2", "Flubber")) {
+class FlubberBlock: BlockType(BlockSettings("eln2", "flubber")) {
 
 	override fun onPick(world: World?, pos: Vec3i?): ItemStack {
 		return ItemStack(Eln2Items.flubberItem, 1)
@@ -35,4 +36,4 @@ class FlubberBlock: BlockType(BlockSettings("eln2", "Flubber")) {
 	}
 }
 
-class FlubberItem(): ItemBase("eln2", "Flubber", 1, null)
+class FlubberItem : ItemBase("eln2", "flubber", 1, Eln2CreativeTabs.MAIN_TAB)
