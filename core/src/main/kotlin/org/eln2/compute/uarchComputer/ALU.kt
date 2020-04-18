@@ -69,6 +69,7 @@ class ALU(var inputA: UInt, var inputB: UInt) {
 				carry = inputA > inputB
 			}
 			ALUOps.Xor -> inputA = inputA xor inputB
+			ALUOps.Xnor -> inputA = (inputA xor inputB).inv()
 			ALUOps.Zero -> inputA = 0u
 		}
 
