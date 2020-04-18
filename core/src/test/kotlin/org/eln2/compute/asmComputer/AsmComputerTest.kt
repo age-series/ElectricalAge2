@@ -128,4 +128,17 @@ class AsmComputerTest {
 		computer.step()
 		Assertions.assertEquals(true, computer.intRegisters["ia"]?.contents == 1)
 	}
+
+	@Test
+	fun greaterThanJump() {
+		val computer = AsmComputer()
+		computer.stringRegisters["cra"]?.contents = "addi ic 1\naddi ic 2\naddi ic 3\njpgt ia ib 2"
+		computer.ptr = 4
+		computer.intRegisters["ia"]?.contents = 3
+		computer.intRegisters["ib"]?.contents = 1
+		computer.step()
+		computer.step()
+		println(computer.intRegisters)
+		Assertions.assertEquals(true, computer.intRegisters["ia"]?.contents == 1)
+	}
 }

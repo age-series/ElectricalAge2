@@ -34,7 +34,8 @@ class AsmComputer {
 		"ab".forEach{ stringRegisters["cr$it"] = StringRegister(4096) }
 
 		val operatorListing = listOf(NoOp(), AddI(), AddD(), SubI(), SubD(), Move(), CodeSwitch(),
-		CopyStringPart(), StringLength(), Label(), Jump())
+		CopyStringPart(), StringLength(), Label(), Jump(), JumpGreaterThan(), JumpLessThan(), JumpGreaterEquals(),
+		JumpLessEquals(), JumpEquals())
 		operators = mutableMapOf()
 
 		operatorListing.forEach {
