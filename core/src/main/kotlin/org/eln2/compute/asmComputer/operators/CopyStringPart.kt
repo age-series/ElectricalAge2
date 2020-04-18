@@ -14,7 +14,7 @@ class CopyStringPart: Operator() {
 		val endSlice = opList[3].toIntOrNull()
 
 		if (beginSlice == null || endSlice == null) {
-			asmComputer.currState = State.Errored
+			asmComputer.currState = CState.Errored
 			asmComputer.currStateReasoning = "String slices must be numbers, $beginSlice and/or $endSlice are not numbers"
 			return
 		}
@@ -22,7 +22,7 @@ class CopyStringPart: Operator() {
 			// determine that we have a writable destination and readable source
 			findRegisterType(toRegister, asmComputer) != StringRegister::class ||
 			findRegisterType(fromRegister, asmComputer) != StringRegister::class) {
-			asmComputer.currState = State.Errored
+			asmComputer.currState = CState.Errored
 			asmComputer.currStateReasoning = "$toRegister and/or $fromRegister are not string registers"
 			return
 		}
