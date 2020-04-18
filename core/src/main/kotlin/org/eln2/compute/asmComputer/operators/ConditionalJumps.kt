@@ -14,42 +14,58 @@ abstract class ComparisonJump: Operator() {
 			Int::class, IntRegister::class -> {
 				when (bType) {
 					Int::class, IntRegister::class -> {
-						result = compareInts(opList[0].toInt(), opList[1].toInt())
+						val intA = getIntFromRegisterOrLiteral(opList[0], asmComputer)
+						val intB = getIntFromRegisterOrLiteral(opList[1], asmComputer)
+						if (intA == null || intB == null) {
+							return invalidInstruction(opList, asmComputer)
+						}
+						result = compareInts(intA, intB)
 					}
 					else -> {
-						return
+						return invalidInstruction(opList, asmComputer)
 					}
 				}
 			}
 			Double::class, DoubleRegister::class -> {
 				when (bType) {
 					Double::class, DoubleRegister::class -> {
-						result = compareDoubles(opList[0].toDouble(), opList[1].toDouble())
+						val doubleA = getDoubleFromRegisterOrLiteral(opList[0], asmComputer)
+						val doubleB = getDoubleFromRegisterOrLiteral(opList[1], asmComputer)
+						if (doubleA == null || doubleB == null) {
+							return invalidInstruction(opList, asmComputer)
+						}
+						result = compareDoubles(doubleA, doubleB)
 					}
 					else -> {
-						return
+						return invalidInstruction(opList, asmComputer)
 					}
 				}
 			}
 			String::class, StringRegister::class -> {
 				when (bType) {
 					String::class, StringRegister::class -> {
-						result = compareStrings(opList[0], opList[1])
+						val strA = getStringFromRegisterOrLiteral(opList[0], asmComputer)
+						val strB = getStringFromRegisterOrLiteral(opList[1], asmComputer)
+						if (strA == null || strB == null) {
+							return invalidInstruction(opList, asmComputer)
+						}
+						result = compareStrings(strA, strB)
 					}
 					else -> {
-						return
+						return invalidInstruction(opList, asmComputer)
 					}
 				}
 			}
 			else -> {
-				return
+				return invalidInstruction(opList, asmComputer)
 			}
 		}
-		if (!result) return
+
+		if (!result) return // don't jump
 
 		if (opList[2].toIntOrNull() != null) {
 			// go to a particular code pointer location
-			asmComputer.ptr = (opList[0].toIntOrNull()?: 0) - 2
+			asmComputer.ptr = (opList[2].toIntOrNull()?: 0) - 1
 		}else{
 			// go to a label
 			val labelNameArray = opList[0].split("\"") // labels are quoted string literals.
@@ -79,6 +95,40 @@ abstract class ComparisonJump: Operator() {
 		return String
 	}
 
+	fun getIntFromRegisterOrLiteral(s: String, asmComputer: AsmComputer): Int? {
+		return if (s in asmComputer.intRegisters) {
+			asmComputer.intRegisters[s]?.contents
+		}else{
+			s.toIntOrNull()
+		}
+	}
+
+	fun getDoubleFromRegisterOrLiteral(s: String, asmComputer: AsmComputer): Double? {
+		return if (s in asmComputer.doubleRegisters) {
+			asmComputer.doubleRegisters[s]?.contents
+		}else{
+			s.toDoubleOrNull()
+		}
+	}
+
+	fun getStringFromRegisterOrLiteral(s: String, asmComputer: AsmComputer): String? {
+		return if (s in asmComputer.stringRegisters) {
+			asmComputer.stringRegisters[s]?.contents
+		}else{
+			val split = s.split("\"")
+			if (split.size >= 3) {
+				split.drop(0).drop(split.size )
+				return split.joinToString("\"")
+			}
+			return null
+		}
+	}
+
+	fun invalidInstruction(opList: List<String>, asmComputer: AsmComputer) {
+		asmComputer.currState = State.Errored
+		asmComputer.currStateReasoning = "Invalid arguments to comparison: ${opList[0]}, ${opList[1]}"
+	}
+
 	abstract fun compareInts(a: Int, b: Int): Boolean
 	abstract fun compareDoubles(a: Double, b: Double): Boolean
 	abstract fun compareStrings(a: String, b: String): Boolean
@@ -98,7 +148,7 @@ class JumpGreaterThan: ComparisonJump() {
 }
 
 class JumpLessThan: ComparisonJump() {
-	override val OPCODE = "jpgt"
+	override val OPCODE = "jplt"
 	override fun compareInts(a: Int, b: Int): Boolean {
 		return a < b
 	}
@@ -111,7 +161,7 @@ class JumpLessThan: ComparisonJump() {
 }
 
 class JumpGreaterEquals: ComparisonJump() {
-	override val OPCODE = "jpgt"
+	override val OPCODE = "jpge"
 	override fun compareInts(a: Int, b: Int): Boolean {
 		return a >= b
 	}
@@ -124,7 +174,7 @@ class JumpGreaterEquals: ComparisonJump() {
 }
 
 class JumpLessEquals: ComparisonJump() {
-	override val OPCODE = "jpgt"
+	override val OPCODE = "jple"
 	override fun compareInts(a: Int, b: Int): Boolean {
 		return a <= b
 	}
@@ -137,14 +187,17 @@ class JumpLessEquals: ComparisonJump() {
 }
 
 class JumpEquals: ComparisonJump() {
-	override val OPCODE = "jpgt"
+	override val OPCODE = "jpeq"
 	override fun compareInts(a: Int, b: Int): Boolean {
 		return a == b
 	}
 	override fun compareDoubles(a: Double, b: Double): Boolean {
 		// Well, not ever exactly, but how about within 0.0001?
 		val range = 0.0001
-		return (a < b - range) && (a > b + range)
+		val lowestAcceptable = b - range
+		val highestAcceptable = b + range
+		//println("$lowestAcceptable < $a? < $highestAcceptable")
+		return (a > lowestAcceptable) && (a < highestAcceptable)
 	}
 	override fun compareStrings(a: String, b: String): Boolean {
 		return a == b

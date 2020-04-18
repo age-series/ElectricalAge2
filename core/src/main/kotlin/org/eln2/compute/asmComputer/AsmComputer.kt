@@ -47,7 +47,10 @@ class AsmComputer {
 	 * step: Complete a step of the ASM Computer. This will execute the code at PTR.
 	 */
 	fun step() {
-		if (this.currState == State.Errored) return
+		if (this.currState == State.Errored) {
+			println("computer errored, not stepping: $currStateReasoning")
+			return
+		}
 		currState = State.Running
 		currStateReasoning = ""
 		if (codeRegister !in listOf("cra", "crb")) {
@@ -58,7 +61,7 @@ class AsmComputer {
 		val crb = stringRegisters["crb"]?.contents
 		val codeRegisters = mapOf(Pair("cra", cra), Pair("crb", crb))
 			codeLines = (codeRegisters[codeRegister] ?: "").split("\n")
-		if (codeLines.size < ptr) {
+		if (codeLines.size <= ptr || ptr < 0) {
 			println("end of code: ${codeLines.size} < $ptr")
 			currState = State.Stopped
 			currStateReasoning = "End of code"
@@ -66,7 +69,7 @@ class AsmComputer {
 			return
 		}
 		val currentOperation = codeLines[ptr]
-		val fullSplit = currentOperation.split(" ")
+		val fullSplit = currentOperation.trimStart().split(" ")
 		val opcode = fullSplit[0]
 		val argList = fullSplit.drop(1)
 		if (opcode in operators) {

@@ -93,8 +93,6 @@ class AsmComputerTest {
 		computer.stringRegisters["cra"]?.contents = "strp sy sx 6 11"
 		computer.stringRegisters["sx"]?.contents = "Hello World"
 		computer.step()
-		println(computer.stringRegisters)
-		println(computer.stringRegisters["sy"]?.contents)
 		Assertions.assertEquals(true, computer.stringRegisters["sy"]?.contents == "World")
 	}
 
@@ -130,15 +128,96 @@ class AsmComputerTest {
 	}
 
 	@Test
+	fun whitespaceOK() {
+		val computer = AsmComputer()
+		computer.stringRegisters["cra"]?.contents = "        addi ia 3"
+		computer.step()
+		Assertions.assertEquals(true, computer.intRegisters["ia"]?.contents == 3)
+	}
+
+	// TODO: Make better tests, these are trash
+	@Test
 	fun greaterThanJump() {
 		val computer = AsmComputer()
-		computer.stringRegisters["cra"]?.contents = "addi ic 1\naddi ic 2\naddi ic 3\njpgt ia ib 2"
-		computer.ptr = 4
+		computer.stringRegisters["cra"]?.contents = "addi ic 1\naddi ic 2\naddi ic 3\njpgt ia ib 1"
+		computer.ptr = 3
 		computer.intRegisters["ia"]?.contents = 3
 		computer.intRegisters["ib"]?.contents = 1
 		computer.step()
 		computer.step()
-		println(computer.intRegisters)
-		Assertions.assertEquals(true, computer.intRegisters["ia"]?.contents == 1)
+		Assertions.assertEquals(true, computer.intRegisters["ic"]?.contents == 2)
+	}
+
+	@Test
+	fun lessThanJump() {
+		val computer = AsmComputer()
+		computer.stringRegisters["cra"]?.contents = "addi ic 1\naddi ic 2\naddi ic 3\naddi ic 4\njplt ia ib 2"
+		computer.ptr = 4
+		computer.intRegisters["ia"]?.contents = 2
+		computer.intRegisters["ib"]?.contents = 4
+		computer.step()
+		computer.step()
+		Assertions.assertEquals(true, computer.intRegisters["ic"]?.contents == 3)
+	}
+
+	@Test
+	fun lessThanEqualJump() {
+		val computer = AsmComputer()
+		computer.stringRegisters["cra"]?.contents = "addi ic 1\n addi ic 2\naddi ic 3\njple ia ib 1"
+		computer.ptr = 3
+		computer.intRegisters["ia"]?.contents = 2
+		computer.intRegisters["ib"]?.contents = 2
+		computer.step()
+		computer.step()
+		Assertions.assertEquals(true, computer.intRegisters["ic"]?.contents == 2)
+	}
+
+	@Test
+	fun greaterThanEqualJump() {
+		val computer = AsmComputer()
+		computer.stringRegisters["cra"]?.contents = "addi ic 1\naddi ic 2\n addi ic 3\n jpge ia ib 1"
+		computer.ptr = 3
+		computer.intRegisters["ia"]?.contents = 3
+		computer.intRegisters["ib"]?.contents = 2
+		computer.step()
+		computer.step()
+		Assertions.assertEquals(true, computer.intRegisters["ic"]?.contents == 2)
+	}
+
+	@Test
+	fun equalToInt() {
+		val computer = AsmComputer()
+		computer.stringRegisters["cra"]?.contents = "addi ic 1\naddi ic 2\n addi ic 3\n jpeq ia ib 1"
+		computer.ptr = 3
+		computer.intRegisters["ia"]?.contents = 3
+		computer.intRegisters["ib"]?.contents = 3
+		computer.step()
+		computer.step()
+		Assertions.assertEquals(true, computer.intRegisters["ic"]?.contents == 2)
+	}
+
+	@Test
+	fun equalToDouble() {
+		//Heh. This is a terrible thing as it is. Good news though, we accept anything within 0.0001...
+		val computer = AsmComputer()
+		computer.stringRegisters["cra"]?.contents = "addi ic 1\naddi ic 2\naddi ic 3\njpeq dx dy 1"
+		computer.doubleRegisters["dx"]?.contents = Math.PI
+		computer.doubleRegisters["dy"]?.contents = 3.1415926
+		computer.ptr = 3
+		computer.step()
+		computer.step()
+		Assertions.assertEquals(true, computer.intRegisters["ic"]?.contents == 2)
+	}
+
+	@Test
+	fun equalToString() {
+		val computer = AsmComputer()
+		computer.stringRegisters["cra"]?.contents = "addi ic 1\naddi ic 2\n addi ic 3\njpeq sx sy 1"
+		computer.stringRegisters["sx"]?.contents = "Hello, world!"
+		computer.stringRegisters["sy"]?.contents = "Hello, world!"
+		computer.ptr = 3
+		computer.step()
+		computer.step()
+		Assertions.assertEquals(true, computer.intRegisters["ic"]?.contents == 2)
 	}
 }
