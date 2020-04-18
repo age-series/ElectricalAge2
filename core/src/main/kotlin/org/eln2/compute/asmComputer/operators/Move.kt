@@ -12,7 +12,7 @@ open class Move: Operator() {
 		val inputClass = findRegisterType(opList[1], asmComputer)
 
 		if (outputClass == null) {
-			asmComputer.currState = State.Errored
+			asmComputer.currState = CState.Errored
 			asmComputer.currStateReasoning = "First argument ${opList[0]} not a register"
 			return
 		}
@@ -43,7 +43,7 @@ open class Move: Operator() {
 				return
 			}
 			else -> {
-				asmComputer.currState = State.Errored
+				asmComputer.currState = CState.Errored
 				asmComputer.currStateReasoning = "Not sure what type this register is: $register"
 				return
 			}
@@ -67,7 +67,7 @@ open class Move: Operator() {
 						return
 					}
 					else -> {
-						asmComputer.currState = State.Errored
+						asmComputer.currState = CState.Errored
 						asmComputer.currStateReasoning = "Not sure what type this register is: $registerIn"
 						return
 					}
@@ -88,7 +88,7 @@ open class Move: Operator() {
 						return
 					}
 					else -> {
-						asmComputer.currState = State.Errored
+						asmComputer.currState = CState.Errored
 						asmComputer.currStateReasoning = "Not sure what type this register is: $registerIn"
 						return
 					}
@@ -109,14 +109,14 @@ open class Move: Operator() {
 						return
 					}
 					else -> {
-						asmComputer.currState = State.Errored
+						asmComputer.currState = CState.Errored
 						asmComputer.currStateReasoning = "Not sure what type this register is: $registerIn"
 						return
 					}
 				}
 			}
 			else -> {
-				asmComputer.currState = State.Errored
+				asmComputer.currState = CState.Errored
 				asmComputer.currStateReasoning = "Not sure what type this register is: $registerOut"
 				return
 			}
