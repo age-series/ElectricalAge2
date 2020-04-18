@@ -1,13 +1,17 @@
-package org.eln2.load
+package org.eln2.parsers.falstad
 
 import org.eln2.debug.DEBUG
 import org.eln2.debug.dprintln
+import org.eln2.parsers.falstad.components.sources.*
+import org.eln2.parsers.falstad.components.generic.*
+import org.eln2.parsers.falstad.components.passive.*
 import org.eln2.sim.electrical.mna.Circuit
-import org.eln2.sim.electrical.mna.component.*
+import org.eln2.sim.electrical.mna.component.Component
+import org.eln2.sim.electrical.mna.component.Resistor
+import org.eln2.sim.electrical.mna.component.VoltageSource
 import org.eln2.space.Set
 import org.eln2.space.Vec2i
 import java.io.FileOutputStream
-import kotlin.math.absoluteValue
 
 val SPACES = Regex(" +")
 
@@ -40,7 +44,7 @@ data class CCData(val falstad: Falstad, val line: FalstadLine) {
 	// Sets the conceptual number of nodes of the component--not the actual number of positions in the line!
 	var pins: Int = 2
 
-	val pinPositions get() = (0 until 2).map { PinPos(Vec2i(line.getInt(1 + 2*it), line.getInt(2 + 2*it))) }
+	val pinPositions get() = (0 until 2).map { PinPos(Vec2i(line.getInt(1 + 2 * it), line.getInt(2 + 2 * it))) }
 
 	// Only safe to use these if pins >= 2
 	val pos: PinPos get() = pinPositions[0]
@@ -54,9 +58,16 @@ data class CCData(val falstad: Falstad, val line: FalstadLine) {
 
 data class PosSet(val pos: PinPos): Set()
 
-interface ComponentConstructor {
+/**
+ * Component Constructor
+ *
+ * Interface that allows Falstad objects to be loaded from strings
+ */
+interface IComponentConstructor {
 	companion object {
-		val TYPE_CONSTRUCTORS: Map<String, ComponentConstructor> = mapOf(
+		// TODO: Custom Falstad components are a thing, so perhaps we should make this mutable?
+		//     Possibly, things could then register themselves into this? May make other things more complex
+		val TYPE_CONSTRUCTORS: Map<String, IComponentConstructor> = mapOf(
 			"$" to InterpretGlobals(),
 			"O" to OutputProbe(),
 			"w" to WireConstructor(),
@@ -74,51 +85,7 @@ interface ComponentConstructor {
 	fun construct(ccd: CCData)
 }
 
-class InterpretGlobals: ComponentConstructor {
-	override fun construct(ccd: CCData) {
-		ccd.falstad.nominalTimestep = ccd.line.getDouble(2)
-		ccd.pins = 0
-	}
-}
-
-class OutputProbe: ComponentConstructor {
-	companion object {
-		val HIGH_IMPEDANCE = Double.POSITIVE_INFINITY
-	}
-
-	override fun construct(ccd: CCData) {
-		val r = Resistor()
-		r.resistance = HIGH_IMPEDANCE
-		ccd.circuit.add(r)
-		r.connect(1, ccd.circuit.ground)
-
-		val pp = (ccd.falstad.getPin(ccd.pos).representative as PosSet)
-		val pr = PinRef(r, 0)
-		ccd.falstad.addPinRef(pp, pr)
-		ccd.falstad.addOutput(pr)
-
-		ccd.pins = 1
-	}
-}
-
-class WireConstructor: ComponentConstructor {
-	override fun construct(ccd: CCData) {
-		ccd.falstad.getPin(ccd.pos)
-			.unite(ccd.falstad.getPin(ccd.neg))
-	}
-}
-
-class GroundConstructor: ComponentConstructor {
-	override fun construct(ccd: CCData) {
-		ccd.pins = 1
-		ccd.falstad.addGround(
-			ccd.falstad.getPin(ccd.pinPositions[0])
-		)
-		ccd.falstad.floating = false
-	}
-}
-
-abstract class PoleConstructor: ComponentConstructor {
+abstract class PoleConstructor: IComponentConstructor {
 	abstract fun component(ccd: CCData): Component
 	abstract fun configure(ccd: CCData, cmp: Component)
 
@@ -130,56 +97,6 @@ abstract class PoleConstructor: ComponentConstructor {
 			val pp = (ccd.falstad.getPin(it.value).representative as PosSet)
 			ccd.falstad.addPinRef(pp, PinRef(c, it.index))
 		}
-	}
-}
-
-class ResistorConstructor: PoleConstructor() {
-	override fun component(ccd: CCData) = Resistor()
-	override fun configure(ccd: CCData, cmp: Component) {
-		(cmp as Resistor).resistance = ccd.data[0].toDouble()
-	}
-}
-
-class CapacitorConstructor: PoleConstructor() {
-	override fun component(ccd: CCData) = Capacitor()
-	override fun configure(ccd: CCData, cmp: Component) {
-		val c = (cmp as Capacitor)
-		c.c = ccd.data[0].toDouble()
-		c.lastI = ccd.data[1].toDouble()
-	}
-}
-
-class InductorConstructor: PoleConstructor() {
-	override fun component(ccd: CCData) = Inductor()
-	override fun configure(ccd: CCData, cmp: Component) {
-		val l = (cmp as Inductor)
-		l.h = ccd.data[0].toDouble()
-		l.lastI = ccd.data[1].toDouble()
-	}
-}
-
-class VoltageSourceConstructor: PoleConstructor() {
-	override fun component(ccd: CCData) = VoltageSource()
-	override fun configure(ccd: CCData, cmp: Component) {
-		(cmp as VoltageSource).potential = ccd.data[2].toDouble()
-	}
-}
-
-class VoltageRailConstructor: PoleConstructor() {
-	override fun component(ccd: CCData) = VoltageSource()
-	override fun configure(ccd: CCData, cmp: Component) {
-		val v = (cmp as VoltageSource)
-		v.potential = ccd.data[2].toDouble() + ccd.data[3].toDouble()
-		v.connect(1, ccd.circuit.ground)  // nidx 1 should be neg
-		ccd.pins = 1  // After the above--there are two pins, but the second is dropped
-		ccd.falstad.floating = false
-	}
-}
-
-class CurrentSourceConstructor: PoleConstructor() {
-	override fun component(ccd: CCData) = CurrentSource()
-	override fun configure(ccd: CCData, cmp: Component) {
-		(cmp as CurrentSource).current = ccd.data[0].toDouble()
 	}
 }
 
@@ -206,21 +123,22 @@ class Falstad(val source: String) {
 
 	init {
 		FalstadLine.intoLines(source).forEach {
-			ComponentConstructor.getForLine(it)
+			IComponentConstructor.getForLine(it)
 				.construct(CCData(this, it))
 		}
 
 		if(DEBUG) {
 			val repmap: MutableMap<PosSet, MutableSet<PosSet>> = mutableMapOf()
 			roots.values.forEach {
-				dprintln("F.<init>: r ${it} => ${it.representative}")
+				dprintln("F.<init>: r $it => ${it.representative}")
 				repmap.getOrPut(it.representative as PosSet, { mutableSetOf() }).add(it)
 			}
 
 			repmap.entries.forEach {
 				dprintln("F.<init>: R ${it.key}:")
 				it.value.forEach {
-					dprintln(" - $it")
+					it2 ->
+					dprintln(" - $it2")
 				}
 			}
 		}
@@ -240,10 +158,11 @@ class Falstad(val source: String) {
 		mergedRefs.values.forEach {
 			val ordered = it.toList()  // Just need some ordering, any will do
 			(0 until ordered.size - 1).forEach {
-				ordered[it].component.connect(
-					ordered[it].pinidx,
-					ordered[it+1].component,
-					ordered[it+1].pinidx
+					it2 ->
+					ordered[it2].component.connect(
+					ordered[it2].pinidx,
+					ordered[it2+1].component,
+					ordered[it2+1].pinidx
 				)
 			}
 		}
