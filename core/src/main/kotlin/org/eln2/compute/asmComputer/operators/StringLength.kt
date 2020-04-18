@@ -13,7 +13,7 @@ class StringLength: Operator() {
 		if (
 			findRegisterType(intLengthRegister, asmComputer) != IntRegister::class ||
 			findRegisterType(stringRegister, asmComputer) != StringRegister::class) {
-			asmComputer.currState = State.Errored
+			asmComputer.currState = CState.Errored
 			asmComputer.currStateReasoning = "$intLengthRegister is not a writable int register, and/or $stringRegister is not a readable string register"
 			return
 		}
