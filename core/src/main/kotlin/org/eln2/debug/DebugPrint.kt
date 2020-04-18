@@ -8,7 +8,18 @@ val DEBUG_FLAGS = listOf("mods.eln.debug", "eln2.core.debug", "eln2.all.debug")
 /**
  * Debug: If this is true, debug prints will print out
  */
-var DEBUG = System.getenv().filterKeys { key -> DEBUG_FLAGS.any { it.toLowerCase() == key.toLowerCase() } }.isNotEmpty()
+var DEBUG =
+	(
+		System.getenv().filterKeys {
+			key -> DEBUG_FLAGS.any {
+				it.toLowerCase().replace('.', '_') == key.toLowerCase()
+			}
+		}
+		+
+		System.getProperties().filterKeys {
+			key -> DEBUG_FLAGS.any { it == key }
+		}
+	).isNotEmpty()
 
 /**
  * dprintln: Print's empty newline if DEBUG = True
