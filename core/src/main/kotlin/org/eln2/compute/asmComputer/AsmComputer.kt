@@ -17,7 +17,7 @@ class AsmComputer {
 	val operators: MutableMap<String, Operator>
 
 	// Current processing state
-	var currState = State.Stopped
+	var currState = CState.Stopped
 	// Why we are in this state if it's errored.
 	var currStateReasoning = ""
 	// The code to run
@@ -47,14 +47,14 @@ class AsmComputer {
 	 * step: Complete a step of the ASM Computer. This will execute the code at PTR.
 	 */
 	fun step() {
-		if (this.currState == State.Errored) {
+		if (this.currState == CState.Errored) {
 			println("computer errored, not stepping: $currStateReasoning")
 			return
 		}
-		currState = State.Running
+		currState = CState.Running
 		currStateReasoning = ""
 		if (codeRegister !in listOf("cra", "crb")) {
-			currState = State.Errored
+			currState = CState.Errored
 			currStateReasoning = "Code Register must be cra or crb, found $codeRegister"
 		}
 		val cra = stringRegisters["cra"]?.contents
@@ -63,7 +63,7 @@ class AsmComputer {
 			codeLines = (codeRegisters[codeRegister] ?: "").split("\n")
 		if (codeLines.size <= ptr || ptr < 0) {
 			println("end of code: ${codeLines.size} < $ptr")
-			currState = State.Stopped
+			currState = CState.Stopped
 			currStateReasoning = "End of code"
 			ptr = 0
 			return
@@ -75,167 +75,15 @@ class AsmComputer {
 		if (opcode in operators) {
 			//println("Exec: $fullSplit")
 			operators[opcode]?.validateThenRun(argList.joinToString(" "), this)
-			if (currState == State.Errored) {
+			if (currState == CState.Errored) {
 				println("Computer entered errored State: $currStateReasoning")
 			}else{
 				ptr += 1
 			}
 		} else {
-			currState = State.Errored
+			currState = CState.Errored
 			currStateReasoning = "Opcode not found: $opcode"
 			print("Opcode not found: $opcode")
 		}
-	}
-}
-
-// States of our computer
-enum class State {
-	// The computer is running
-	Running,
-
-	// The computer is stopped on an instruction (paused?)
-	Stopped,
-
-	// An invalid instruction was passed.
-	Errored,
-
-	// The computer is waiting for data
-	Data,
-}
-
-open class IntRegister(v: Int = 0) {
-	var _contents: Int = v
-	open var contents: Int
-		get() {
-			return _contents
-		}
-		set(value) {
-			_contents = value
-		}
-
-	override fun toString(): String {
-		return contents.toString()
-	}
-}
-class ReadOnlyIntRegister(v: Int = 0): IntRegister(v) {
-	override var contents: Int
-		get() {
-			return _contents
-		}
-		set(value) {
-			// do nothing
-		}
-}
-open class DoubleRegister(v: Double = 0.0) {
-	var _contents: Double = v
-	open var contents: Double
-		get() {
-			return _contents
-		}
-		set(value) {
-			_contents = value
-		}
-	override fun toString(): String {
-		return contents.toString()
-	}
-}
-class ReadOnlyDoubleRegister(v: Double = 0.0): DoubleRegister(v) {
-	override var contents: Double
-	get() {
-		return _contents
-	}
-	set(value) {
-		// do nothing
-	}
-}
-open class StringRegister(var size: Int, v: String = "") {
-	var _contents: String = v
-	open var contents: String
-	get() {
-		return _contents
-	}
-	set(value) {
-		if (value.length <= size) _contents = value
-	}
-	override fun toString(): String {
-		return contents
-	}
-
-	fun toStringNumbers(): String {
-		val codeLines = contents.split("\n")
-		var lines = ""
-		for (x in codeLines.indices) {
-			lines += "$x ${codeLines[x]}\n"
-		}
-		return lines
-	}
-}
-class ReadOnlyStringRegister(v: String = ""): StringRegister(0, v) {
-	override var contents: String
-	get() {
-		return _contents
-	}
-	set(value) {
-		// do nothing
-	}
-}
-
-/**
- * Operator
- *
- * There's no great way to make inheritance work properly without declaring this as a class or interface, and using
- * static functions as I would like to do are not inheritable... so you have to instantiate it just to instantiate it.
- *
- * All operators are to be four letters long
- */
-abstract class Operator {
-	/**
-	 * The actual operation code for this operator
-	 */
-	abstract val OPCODE: String
-
-	/**
-	 * Minimum arguments for this operator
-	 */
-	abstract val MIN_ARGS: Int
-
-	/**
-	 * Maximum arguments for this operator
-	 */
-	abstract val MAX_ARGS: Int
-
-	/**
-	 * Cost: A theoretical cost of this operation, in joules.
-	 */
-	abstract val COST: Double
-
-	/**
-	 * The operation code parser should call into this for the actual stuff to do
-	 *
-	 * @param opString A list of operators, not including the actual operator opcode
-	 * @param asmComputer The computer instance we're running on
-	 */
-	fun validateThenRun(opString: String, asmComputer: AsmComputer) {
-		val argList = opString.split(" ").filter {it.isNotBlank()}
-		if (argList.size > MAX_ARGS || argList.size < MIN_ARGS) {
-			asmComputer.currState = State.Errored
-			asmComputer.currStateReasoning = "Invalid number of arguments: ${argList.size}"
-		}
-		this.run(opList = argList, asmComputer = asmComputer)
-	}
-
-	/**
-	 * run: Never call this directly (use validateThenRun), but this is where you implement your instruction
-	 *
-	 * @param opList A list of operators, not including the actual operator opcode.
-	 * @param asmComputer The computer instance we're running on.
-	 */
-	abstract fun run(opList: List<String>, asmComputer: AsmComputer)
-
-	fun findRegisterType(register: String, asmComputer: AsmComputer): Any? {
-		if (register in asmComputer.intRegisters) return IntRegister::class
-		if (register in asmComputer.doubleRegisters) return DoubleRegister::class
-		if (register in asmComputer.stringRegisters) return StringRegister::class
-		return null
 	}
 }

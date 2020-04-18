@@ -2,7 +2,7 @@ package org.eln2.compute.asmComputer.operators
 
 import org.eln2.compute.asmComputer.AsmComputer
 import org.eln2.compute.asmComputer.Operator
-import org.eln2.compute.asmComputer.State
+import org.eln2.compute.asmComputer.CState
 
 class Jump: Operator() {
 	override val OPCODE = "jump"
@@ -17,7 +17,7 @@ class Jump: Operator() {
 			// go to a label
 			val labelNameArray = opList[0].split("\"") // labels are quoted string literals.
 			if (labelNameArray.size != 3) {
-				asmComputer.currState = State.Errored
+				asmComputer.currState = CState.Errored
 				asmComputer.currStateReasoning = "Label ${opList[0]} is invalid"
 			}
 			val labelName = labelNameArray[1]

@@ -70,7 +70,7 @@ abstract class ComparisonJump: Operator() {
 			// go to a label
 			val labelNameArray = opList[0].split("\"") // labels are quoted string literals.
 			if (labelNameArray.size != 3) {
-				asmComputer.currState = State.Errored
+				asmComputer.currState = CState.Errored
 				asmComputer.currStateReasoning = "Label ${opList[0]} is invalid"
 			}
 			val labelName = labelNameArray[1]
@@ -81,56 +81,11 @@ abstract class ComparisonJump: Operator() {
 		}
 	}
 
-	fun detectType(s: String, asmComputer: AsmComputer): Any? {
-		val reg = findRegisterType(s, asmComputer)
-		if (reg != null) {
-			return reg
-		}
-		if (s.toIntOrNull() != null && !s.contains(".")) {
-			return Int
-		}
-		if (s.toDoubleOrNull() != null && s.contains(".")) {
-			return Double
-		}
-		return String
-	}
-
-	fun getIntFromRegisterOrLiteral(s: String, asmComputer: AsmComputer): Int? {
-		return if (s in asmComputer.intRegisters) {
-			asmComputer.intRegisters[s]?.contents
-		}else{
-			s.toIntOrNull()
-		}
-	}
-
-	fun getDoubleFromRegisterOrLiteral(s: String, asmComputer: AsmComputer): Double? {
-		return if (s in asmComputer.doubleRegisters) {
-			asmComputer.doubleRegisters[s]?.contents
-		}else{
-			s.toDoubleOrNull()
-		}
-	}
-
-	fun getStringFromRegisterOrLiteral(s: String, asmComputer: AsmComputer): String? {
-		return if (s in asmComputer.stringRegisters) {
-			asmComputer.stringRegisters[s]?.contents
-		}else{
-			val split = s.split("\"")
-			if (split.size >= 3) {
-				split.drop(0).drop(split.size )
-				return split.joinToString("\"")
-			}
-			return null
-		}
-	}
-
-	fun invalidInstruction(opList: List<String>, asmComputer: AsmComputer) {
-		asmComputer.currState = State.Errored
-		asmComputer.currStateReasoning = "Invalid arguments to comparison: ${opList[0]}, ${opList[1]}"
-	}
-
+	//Compare two integers. Override this in the comparison operator
 	abstract fun compareInts(a: Int, b: Int): Boolean
+	//Compare two doubles. Override this in the comparison operator
 	abstract fun compareDoubles(a: Double, b: Double): Boolean
+	//Compare two strings. Override this in the comparison operator
 	abstract fun compareStrings(a: String, b: String): Boolean
 }
 
