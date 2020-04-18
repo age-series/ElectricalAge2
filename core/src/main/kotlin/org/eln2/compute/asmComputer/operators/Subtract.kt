@@ -2,7 +2,7 @@ package org.eln2.compute.asmComputer.operators
 
 import org.eln2.compute.asmComputer.AsmComputer
 import org.eln2.compute.asmComputer.Operator
-import org.eln2.compute.asmComputer.State
+import org.eln2.compute.asmComputer.CState
 
 open class SubI: Operator() {
 	override val OPCODE = "subi"
@@ -11,7 +11,7 @@ open class SubI: Operator() {
 	override val COST = 0.0
 	override fun run(opList: List<String>, asmComputer: AsmComputer) {
 		if (opList[0] !in asmComputer.intRegisters) {
-			asmComputer.currState = State.Errored
+			asmComputer.currState = CState.Errored
 			asmComputer.currStateReasoning = "Nonexistent Register {}".format(opList[0])
 			return
 		}
@@ -22,7 +22,7 @@ open class SubI: Operator() {
 			} else {
 				val v = it.toIntOrNull()
 				if (v == null) {
-					asmComputer.currState = State.Errored
+					asmComputer.currState = CState.Errored
 					asmComputer.currStateReasoning = "{} is not a value or register"
 					return
 				}
@@ -40,7 +40,7 @@ open class SubD: Operator() {
 	override val COST = 0.0
 	override fun run(opList: List<String>, asmComputer: AsmComputer) {
 		if (opList[0] !in asmComputer.doubleRegisters) {
-			asmComputer.currState = State.Errored
+			asmComputer.currState = CState.Errored
 			asmComputer.currStateReasoning = "Nonexistent Register {}".format(opList[0])
 			return
 		}
@@ -51,7 +51,7 @@ open class SubD: Operator() {
 			} else {
 				val v = it.toDoubleOrNull()
 				if (v == null) {
-					asmComputer.currState = State.Errored
+					asmComputer.currState = CState.Errored
 					asmComputer.currStateReasoning = "{} is not a value or register"
 					return
 				}
