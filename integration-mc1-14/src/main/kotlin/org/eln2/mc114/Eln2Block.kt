@@ -4,8 +4,10 @@ import org.eln2.mc114.singleBlock.FlubberBlock
 
 class Eln2Block {
 	companion object {
-		val flubberBlock = FlubberBlock()
+		lateinit var flubberBlock: FlubberBlock
 
-		fun register() {}
+		fun register() {
+			flubberBlock = FlubberBlock()
+		}
 	}
 }

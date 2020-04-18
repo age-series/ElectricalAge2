@@ -1,5 +1,6 @@
 package org.eln2.mc114
 
+import cam72cam.mod.entity.EntityRegistry
 import net.minecraft.block.Block
 import net.minecraft.block.Blocks
 import net.minecraftforge.common.MinecraftForge

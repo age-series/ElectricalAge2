@@ -39,7 +39,7 @@ public class CustomTranslations {
         if (!translations.containsKey(lang)) {
             try {
                 String langStr = lang.split("_")[0] + "_" + lang.split("_")[1].toUpperCase();
-                InputStream input = CustomTranslations.class.getResourceAsStream("/assets/immersiverailroading/lang/" + langStr + ".lang");
+                InputStream input = CustomTranslations.class.getResourceAsStream("/assets/eln2/lang/" + langStr + ".lang");
                 BufferedReader reader = new BufferedReader(new InputStreamReader(input));
 
                 Map<String, String> lt = new HashMap<>();
@@ -55,7 +55,12 @@ public class CustomTranslations {
                 input.close();
             } catch (Exception ex) {
                 ex.printStackTrace();
-                translations.put(lang, getTranslations("en_us"));
+
+                // Temporary fix to allow the translations handler to not crash.
+				if (!translations.containsKey("en_us")) {
+					translations.put(lang, new HashMap<String, String>());
+				}
+				translations.put(lang, getTranslations("en_us"));
             }
         }
         return translations.get(lang);
