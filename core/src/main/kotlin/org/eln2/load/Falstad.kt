@@ -76,6 +76,7 @@ interface ComponentConstructor {
 
 class InterpretGlobals: ComponentConstructor {
 	override fun construct(ccd: CCData) {
+		ccd.falstad.nominalTimestep = ccd.line.getDouble(2)
 		ccd.pins = 0
 	}
 }
@@ -197,11 +198,12 @@ class Falstad(val source: String) {
 	fun addOutput(pr: PinRef) = outputs.add(pr)
 	val outputNodes get() = outputs.map { it.node }
 
+	var nominalTimestep = 0.05
 	// Set to false directly by various constructors that introduce explicit grounds
 	var floating = true
 
 	val circuit = Circuit()
-	
+
 	init {
 		FalstadLine.intoLines(source).forEach {
 			ComponentConstructor.getForLine(it)
@@ -305,8 +307,9 @@ w 256 176 304 176 0
 """
 
 			val f = Falstad(falstad)
-			f.circuit.step(0.05)
 			println("$f:\n${f.source}\n${f.roots}\n${f.refs}\n${f.grounds}\n\n${f.circuit}")
+
+			f.circuit.step(f.nominalTimestep)
 
 			f.circuit.components.forEach {
 				println("$it:")
