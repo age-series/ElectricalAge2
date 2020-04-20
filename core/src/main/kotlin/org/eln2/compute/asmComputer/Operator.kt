@@ -39,7 +39,7 @@ abstract class Operator {
 		val argList = opString.split(" ").filter {it.isNotBlank()}
 		if (argList.size > MAX_ARGS || argList.size < MIN_ARGS) {
 			asmComputer.currState = CState.Errored
-			asmComputer.currStateReasoning = "Invalid number of arguments: ${argList.size}"
+			asmComputer.currStateReasoning = "Invalid number of arguments: ${argList.size}, $argList"
 		}
 		this.run(opList = argList, asmComputer = asmComputer)
 	}
