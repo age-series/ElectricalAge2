@@ -10,7 +10,7 @@ plugins {
 
 allprojects {
 	version = "0.1.0"
-	group = "org.eln2"
+	group = "net.electricalage"
 
 	buildscript {
 		repositories {

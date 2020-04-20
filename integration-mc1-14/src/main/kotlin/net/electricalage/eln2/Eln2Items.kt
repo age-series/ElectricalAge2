@@ -1,6 +1,6 @@
-package org.eln2.mc114
+package net.electricalage.eln2
 
-import org.eln2.mc114.singleBlock.FlubberItem
+import net.electricalage.eln2.singleBlock.FlubberItem
 
 class Eln2Items {
 	companion object {

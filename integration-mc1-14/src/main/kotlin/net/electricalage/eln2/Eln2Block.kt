@@ -1,6 +1,6 @@
-package org.eln2.mc114
+package net.electricalage.eln2
 
-import org.eln2.mc114.singleBlock.FlubberBlock
+import net.electricalage.eln2.singleBlock.FlubberBlock
 
 class Eln2Block {
 	companion object {

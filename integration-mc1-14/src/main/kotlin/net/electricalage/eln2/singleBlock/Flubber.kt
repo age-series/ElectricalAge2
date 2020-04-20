@@ -1,4 +1,4 @@
-package org.eln2.mc114.singleBlock
+package net.electricalage.eln2.singleBlock
 
 import cam72cam.mod.block.BlockSettings
 import cam72cam.mod.block.BlockType
@@ -11,8 +11,8 @@ import cam72cam.mod.util.Facing
 import cam72cam.mod.util.Hand
 import cam72cam.mod.world.World
 import org.eln2.mc114.Eln2
-import org.eln2.mc114.Eln2CreativeTabs
-import org.eln2.mc114.Eln2Items
+import net.electricalage.eln2.Eln2CreativeTabs
+import net.electricalage.eln2.Eln2Items
 
 class FlubberBlock: BlockType(BlockSettings(Eln2.MODID, "flubber")) {
 	init {

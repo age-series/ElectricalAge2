@@ -1,4 +1,4 @@
-package org.eln2.mc114
+package net.electricalage.eln2
 
 import cam72cam.mod.item.CreativeTab
 import cam72cam.mod.item.ItemStack
