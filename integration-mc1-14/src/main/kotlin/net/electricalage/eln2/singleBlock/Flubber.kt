@@ -10,7 +10,7 @@ import cam72cam.mod.math.Vec3i
 import cam72cam.mod.util.Facing
 import cam72cam.mod.util.Hand
 import cam72cam.mod.world.World
-import org.eln2.mc114.Eln2
+import net.electricalage.eln2.Eln2
 import net.electricalage.eln2.Eln2CreativeTabs
 import net.electricalage.eln2.Eln2Items
 
