@@ -4,11 +4,18 @@ import org.eln2.compute.asmComputer.AsmComputer
 import org.eln2.compute.asmComputer.Operator
 import org.eln2.compute.asmComputer.CState
 
+/**
+ * Jump - just a basic jump from one place to another, using either a code index or a label.
+ */
 class Jump: Operator() {
 	override val OPCODE = "jump"
 	override val MIN_ARGS = 1
 	override val MAX_ARGS = 1
 	override val COST = 0.0
+
+	/**
+	 * run
+	 */
 	override fun run(opList: List<String>, asmComputer: AsmComputer) {
 		if (opList[0].toIntOrNull() != null) {
 			// go to a particular code pointer location

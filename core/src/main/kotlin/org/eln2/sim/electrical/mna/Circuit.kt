@@ -42,7 +42,7 @@ class Circuit {
 	internal var voltageSources: List<WeakReference<VSource>> = emptyList()
 
 	/* From Falstad: declare that a potential change dV in node b changes the current in node a by x*dV, complicated
-	   slightly by independent voltage sources. The unit of x is "Mhos", reciprocal Ohms, a unit of conductance.
+	   slightly by independent voltage sources. The unit of x is Siemens, reciprocal Ohms, a unit of conductance.
 	 */
 	fun stampMatrix(a: Int, b: Int, x: Double) {
 		dprintln("C.sM $a $b $x")
@@ -111,6 +111,15 @@ class Circuit {
 		return comp
 	}
 
+	val isFloating: Boolean get() {
+		if(componentsChanged || connectivityChanged) buildMatrix()
+		return !components.any {
+			it.nodes.any {
+				it.node == ground.node
+			}
+		}
+	}
+
 	// Step 1: Whenever the number of components, or their nodal connectivity (not resistances, e.g.) changes, allocate
 	// a matrix of appropriate size.
 	protected fun buildMatrix() {
@@ -131,12 +140,12 @@ class Circuit {
 
 		dprintln("C.bM: n $nodes vs $voltageSources")
 
-		// Null out the solver--it's definitely not valid anymore.
-		solver = null
-
 		// Acknowledge that changes have been dealt with
 		componentsChanged = false
 		connectivityChanged = false
+
+		// Null out the solver--it's definitely not valid anymore.
+		solver = null
 
 		// Set other cascading changes so the solver runs for at least one iteration.
 		matrixChanged = true
@@ -223,5 +232,44 @@ class Circuit {
 		ret += "\n"
 		ret += matrix.toString()
 		return ret
+	}
+	
+	fun toDot(): String {
+		val sb = StringBuilder()
+		sb.append("graph {\n")
+		// sb.append("\tgraph [imagepath=\"images\"];\n")
+		sb.append("\tgraph [splines=ortho];\n")
+		sb.append("\tnode [fontsize=8];\n")
+		sb.append("\t// Nodes\n")
+		sb.append("\t\"ground\" [shape=point label=\"ground\"];\n")
+		nodes.forEach {
+			sb.append("\t\"n${it.get()?.index}\" [shape=point label=\"n${it.get()?.index}\"];\n")
+		}
+		sb.append("\n\t// Components\n")
+		components.forEach {
+			sb.append("\t\"c${System.identityHashCode(it)}\" [label=\"${it.detail()}\"")
+			val img = it.imageName
+			if(img != null) sb.append(" image=\"images/$img.svg\" peripheries=0")
+			sb.append("];\n")
+		}
+		sb.append("\n\t// Connections\n")
+		components.forEach { cmp ->
+			cmp.nodes.withIndex().forEach {
+				val port = when(it.index) {
+					0 -> ":w"
+					1 -> ":e"
+					else -> ""
+				}
+				sb.append("\t\"c${System.identityHashCode(cmp)}\"$port -- \"${if(it.value.node.isGround) "ground" else "n${it.value.node.index}"}\" [shape=box ")
+				when(it.index) {
+					0 -> sb.append("color=red")
+					1 -> sb.append("color=blue")
+					else -> sb.append("color=gray")
+				}
+				sb.append("];\n")
+			}
+		}
+		sb.append("}\n")
+		return sb.toString()
 	}
 }

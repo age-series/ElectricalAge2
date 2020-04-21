@@ -3,11 +3,18 @@ package org.eln2.compute.asmComputer.operators
 import org.eln2.compute.asmComputer.AsmComputer
 import org.eln2.compute.asmComputer.Operator
 
+/**
+ * Code Switch - Switch from Code Register A to Code Register B, or the other way around.
+ */
 class CodeSwitch: Operator() {
 	override val OPCODE = "swch"
 	override val MIN_ARGS = 0
 	override val MAX_ARGS = 1
 	override val COST = 0.0
+
+	/**
+	 * run
+	 */
 	override fun run(opList: List<String>, asmComputer: AsmComputer) {
 		if (asmComputer.codeRegister == "cra") {
 			asmComputer.codeRegister = "crb"

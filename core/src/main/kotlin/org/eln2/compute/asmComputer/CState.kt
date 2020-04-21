@@ -1,6 +1,8 @@
 package org.eln2.compute.asmComputer
 
-// States of our computer
+/**
+ * States of our computer
+ */
 enum class CState {
 	// The computer is running
 	Running,
