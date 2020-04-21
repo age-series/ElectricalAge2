@@ -1,5 +1,8 @@
 package org.eln2.compute.uarchComputer
 
+/**
+ * uarchComputer - A basic computer with an ALU, FPU, and some load/store instructions.
+ */
 @ExperimentalStdlibApi
 @ExperimentalUnsignedTypes
 class uarchComputer(var ioPinsGroup1: IDataIO, var ioPinsGroup2: IDataIO, val uROM: IuOPROM) {
@@ -11,6 +14,9 @@ class uarchComputer(var ioPinsGroup1: IDataIO, var ioPinsGroup2: IDataIO, val uR
 	private var PMRegs = Array<UInt>(8) {0u}
 	private var GPRegs = Array<UInt>(8) {0u}
 
+	/**
+	 * u State - States of the uarchComputer
+	 */
 	enum class uState { Halted, Running0, Running1 }
 	var currState = uState.Halted
 	var flagCheck = false
@@ -22,6 +28,9 @@ class uarchComputer(var ioPinsGroup1: IDataIO, var ioPinsGroup2: IDataIO, val uR
 		currState = uState.Halted;
 	}
 
+	/**
+	 * step - a step of the uarchComputer. Does a single instruction.
+	 */
 	fun step() {
 		if (currState == uState.Halted) {
 			uOP_IP = 0u

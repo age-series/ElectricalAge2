@@ -1,11 +1,17 @@
 package org.eln2.compute.uarchComputer
 
+/**
+ * Arithmetic Logic Unit - Does basic integer math
+ */
 @ExperimentalStdlibApi
 @ExperimentalUnsignedTypes
 class ALU{
 	var inputA = 0u
 	var inputB = 0u
 
+	/**
+	 * ALU Operations List
+	 */
 	enum class ALUOps { Adc, Add, And, MinusOne, Nand, Nor, Not, One, Or, Sbb, Shl, Shr, Sub, Xnor, Xor, Zero }
 	var currOP = ALUOps.Zero
 	
@@ -28,6 +34,9 @@ class ALU{
 		return r.toUInt()
 	}
 
+	/**
+	 * step - takes the registers and computes operations on them. Put data in the registers, call this, then fetch results.
+	 */
 	fun step() {
 		when (currOP) {
 			ALUOps.Adc -> {
