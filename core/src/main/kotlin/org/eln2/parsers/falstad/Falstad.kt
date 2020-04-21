@@ -12,6 +12,7 @@ import org.eln2.sim.electrical.mna.component.VoltageSource
 import org.eln2.space.Set
 import org.eln2.space.Vec2i
 import java.io.FileOutputStream
+import kotlin.math.min
 
 val SPACES = Regex(" +")
 
@@ -44,7 +45,7 @@ data class CCData(val falstad: Falstad, val line: FalstadLine) {
 	// Sets the conceptual number of nodes of the component--not the actual number of positions in the line!
 	var pins: Int = 2
 
-	val pinPositions get() = (0 until 2).map { PinPos(Vec2i(line.getInt(1 + 2 * it), line.getInt(2 + 2 * it))) }
+	val pinPositions get() = (0 until min(pins, 2)).map { PinPos(Vec2i(line.getInt(1 + 2 * it), line.getInt(2 + 2 * it))) }
 
 	// Only safe to use these if pins >= 2
 	val pos: PinPos get() = pinPositions[0]
@@ -69,6 +70,8 @@ interface IComponentConstructor {
 		//     Possibly, things could then register themselves into this? May make other things more complex
 		val TYPE_CONSTRUCTORS: Map<String, IComponentConstructor> = mapOf(
 			"$" to InterpretGlobals(),
+			"o" to Ignore(),
+			"38" to Ignore(),
 			"O" to OutputProbe(),
 			"w" to WireConstructor(),
 			"g" to GroundConstructor(),
@@ -107,10 +110,10 @@ class Falstad(val source: String) {
 	val refs: MutableMap<PosSet, MutableSet<PinRef>> = mutableMapOf()
 	fun getPinRefs(p: PosSet) = refs.getOrPut(p, { mutableSetOf() })
 	fun addPinRef(p: PosSet, pr: PinRef) = getPinRefs(p).add(pr)
-	
+
 	val grounds: MutableSet<PosSet> = mutableSetOf()
 	fun addGround(p: PosSet) = grounds.add(p)
-	
+
 	val outputs: MutableSet<PinRef> = mutableSetOf()
 	fun addOutput(pr: PinRef) = outputs.add(pr)
 	val outputNodes get() = outputs.map { it.node }
@@ -130,15 +133,14 @@ class Falstad(val source: String) {
 		if(DEBUG) {
 			val repmap: MutableMap<PosSet, MutableSet<PosSet>> = mutableMapOf()
 			roots.values.forEach {
-				dprintln("F.<init>: r $it => ${it.representative}")
+				dprintln("F.<init>: r ${it} => ${it.representative}")
 				repmap.getOrPut(it.representative as PosSet, { mutableSetOf() }).add(it)
 			}
 
 			repmap.entries.forEach {
 				dprintln("F.<init>: R ${it.key}:")
 				it.value.forEach {
-					it2 ->
-					dprintln(" - $it2")
+					dprintln(" - $it")
 				}
 			}
 		}
@@ -158,11 +160,10 @@ class Falstad(val source: String) {
 		mergedRefs.values.forEach {
 			val ordered = it.toList()  // Just need some ordering, any will do
 			(0 until ordered.size - 1).forEach {
-					it2 ->
-					ordered[it2].component.connect(
-					ordered[it2].pinidx,
-					ordered[it2+1].component,
-					ordered[it2+1].pinidx
+				ordered[it].component.connect(
+					ordered[it].pinidx,
+					ordered[it+1].component,
+					ordered[it+1].pinidx
 				)
 			}
 		}
@@ -195,61 +196,45 @@ class Falstad(val source: String) {
 
 	companion object {
 		@JvmStatic
-		fun main(args: Array<String>) {
-			val falstad = """${'$'} 1 0.000005 10.20027730826997 63 10 62
-v 112 368 112 48 0 0 40 10 0 0 0.5
-w 112 48 240 48 0
-r 240 48 240 208 0 10000
-r 240 208 240 368 0 10000
-w 112 368 240 368 0
-O 240 208 304 208 1
-w 240 48 432 48 0
-w 240 368 432 368 0
-r 432 48 432 128 0 10000
-r 432 128 432 208 0 10000
-r 432 208 432 288 0 10000
-r 432 288 432 368 0 10000
-O 432 128 496 128 1
-O 432 208 496 208 1
-O 432 288 496 288 1
-"""
-			val falstad2 = """${'$'} 1 0.000005 10.20027730826997 50 5 50
-r 256 176 256 304 0 100
-172 304 176 304 128 0 7 5 5 0 0 0.5 Voltage
-g 256 336 256 352 0
-w 256 304 256 336 1
-r 352 176 352 304 0 1000
-w 352 304 352 336 1
-g 352 336 352 352 0
-w 304 176 352 176 0
-w 256 176 304 176 0
-"""
+		fun main(vararg args: String) {
+			if(args.size < 1) error("Expected number of steps")
+			val steps = args[0].toInt()
 
-			val f = Falstad(falstad)
-			println("$f:\n${f.source}\n${f.roots}\n${f.refs}\n${f.grounds}\n\n${f.circuit}")
+			val f = Falstad(System.`in`.bufferedReader().readText())
 
-			f.circuit.step(f.nominalTimestep)
+			if(DEBUG) {
+				dprintln("$f:\n${f.source}\n${f.roots}\n${f.refs}\n${f.grounds}\n\n${f.circuit}")
 
-			f.circuit.components.forEach {
-				println("$it:")
-				when(it) {
-					is Resistor -> println("r.i = ${it.current}")
+				dprintln("### STEP: ${f.circuit.step(f.nominalTimestep)}")
+
+				f.circuit.components.forEach {
+					dprintln("$it:")
+					when (it) {
+						is Resistor -> println("r.i = ${it.current}")
+					}
+				}
+
+				dprintln("nodes:")
+				f.circuit.nodes.forEach {
+					dprintln(" - ${it.get() ?: "[removed]"}: ${it.get()?.potential ?: 0.0}V")
+				}
+
+				dprintln("outputs:")
+				f.outputNodes.withIndex().forEach {
+					println("${it.index}: ${it.value.potential}V @${it.value.index}")
 				}
 			}
 
-			println("nodes:")
-			f.circuit.nodes.forEach {
-				println(" - ${it.get() ?: "[removed]"}: ${it.get()?.potential ?: 0.0}V")
+			val on = f.outputNodes
+			println("#T\t${on.indices.map { "O${it+1}" }.joinToString("\t")}")
+			(1..steps).forEach {
+				if(!f.circuit.step(f.nominalTimestep)) error("step error (singularity?)")
+				println("${it*f.nominalTimestep}\t${on.map { it.potential }.joinToString("\t")}")
 			}
 
-			println("outputs:")
-			f.outputNodes.withIndex().forEach {
-				println("${it.index}: ${it.value.potential}V @${it.value.index}")
-			}
-
-			FileOutputStream("falstad.dot").bufferedWriter().also {
-				it.write(f.circuit.toDot())
-			}.close()
+			// FileOutputStream("falstad.dot").bufferedWriter().also {
+			// 	it.write(f.circuit.toDot())
+			// }.close()
 		}
 	}
 }

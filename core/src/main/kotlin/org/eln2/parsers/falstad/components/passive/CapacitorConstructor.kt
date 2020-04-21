@@ -14,7 +14,8 @@ class CapacitorConstructor: PoleConstructor() {
 	override fun component(ccd: CCData) = Capacitor()
 	override fun configure(ccd: CCData, cmp: Component) {
 		val c = (cmp as Capacitor)
+		c.ts = ccd.falstad.nominalTimestep
 		c.c = ccd.data[0].toDouble()
-		c.lastI = ccd.data[1].toDouble()
+		c.idealU = ccd.data[1].toDouble()
 	}
 }

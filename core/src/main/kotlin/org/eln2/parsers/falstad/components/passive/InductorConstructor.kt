@@ -14,7 +14,8 @@ class InductorConstructor: PoleConstructor() {
 	override fun component(ccd: CCData) = Inductor()
 	override fun configure(ccd: CCData, cmp: Component) {
 		val l = (cmp as Inductor)
-		l.h = ccd.data[0].toDouble()
-		l.lastI = ccd.data[1].toDouble()
+		l.ts = ccd.falstad.nominalTimestep
+		l.l = ccd.data[0].toDouble()
+		l.i = ccd.data[1].toDouble()
 	}
 }
