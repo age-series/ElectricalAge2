@@ -69,6 +69,9 @@ class CraListener(val cra: JTextArea, val asmComputer: AsmComputer): KeyListener
 
 	private fun update() {
 		asmComputer.stringRegisters["cra"]?.contents = cra.text
+		if (asmComputer.codeRegister == "cra") {
+			asmComputer.ptr = 0
+		}
 	}
 }
 
@@ -87,6 +90,9 @@ class CrbListener(val crb: JTextArea, val asmComputer: AsmComputer): KeyListener
 
 	private fun update() {
 		asmComputer.stringRegisters["crb"]?.contents = crb.text
+		if (asmComputer.codeRegister == "crb") {
+			asmComputer.ptr = 0
+		}
 	}
 }
 
@@ -133,6 +139,11 @@ fun stepComputer(computer: AsmComputer, cra: JTextArea, crb: JTextArea, serialOu
 	var action = ""
 	if (computer.ptr < actionList.size && computer.ptr >= 0) {
 		action = actionList[computer.ptr]
+	} else if (computer.ptr == actionList.size) {
+		// computer.step() will move the pointer back to 0 and run that if the pointer is at the end of the list.
+		action = actionList[0]
+	} else {
+		println("Not sure what's up but ptr: ${computer.ptr}")
 	}
 	computer.step()
 	cra.text = computer.stringRegisters["cra"]?.contents
@@ -142,7 +153,8 @@ fun stepComputer(computer: AsmComputer, cra: JTextArea, crb: JTextArea, serialOu
 		serialOutput.text += output + "\n"
 		computer.stringRegisters["so0"]?.contents = ""
 	}
-	println("ran $action:")
-	println(computer.currState)
-	println(computer.currStateReasoning)
+	println("ran asm `$action`, current state: ${computer.currState}, reasoning: ${computer.currStateReasoning}")
+	println("Int Registers: ${computer.intRegisters}")
+	println("Double Registers: ${computer.doubleRegisters}")
+	println("String Registers: ${computer.stringRegisters}")
 }
