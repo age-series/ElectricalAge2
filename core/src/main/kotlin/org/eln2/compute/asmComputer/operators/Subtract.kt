@@ -4,11 +4,18 @@ import org.eln2.compute.asmComputer.AsmComputer
 import org.eln2.compute.asmComputer.Operator
 import org.eln2.compute.asmComputer.CState
 
+/**
+ * subi: subtracts integers
+ */
 open class SubI: Operator() {
 	override val OPCODE = "subi"
 	override val MIN_ARGS = 2
 	override val MAX_ARGS = 2
 	override val COST = 0.0
+
+	/**
+	 * run
+	 */
 	override fun run(opList: List<String>, asmComputer: AsmComputer) {
 		if (opList[0] !in asmComputer.intRegisters) {
 			asmComputer.currState = CState.Errored
@@ -33,11 +40,18 @@ open class SubI: Operator() {
 	}
 }
 
+/**
+ * subd: subtracts doubles
+ */
 open class SubD: Operator() {
 	override val OPCODE = "subd"
 	override val MIN_ARGS = 2
 	override val MAX_ARGS = 2
 	override val COST = 0.0
+
+	/**
+	 * run
+	 */
 	override fun run(opList: List<String>, asmComputer: AsmComputer) {
 		if (opList[0] !in asmComputer.doubleRegisters) {
 			asmComputer.currState = CState.Errored
