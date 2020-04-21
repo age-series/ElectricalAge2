@@ -6,16 +6,13 @@ class uarchComputer(var ioPinsGroup1: IDataIO, var ioPinsGroup2: IDataIO, val uR
 	private var uOP_IP: Short = 0
 	private var busValue = 0u
 	private var uOPDecoder = 0u
-	private var alu = ALU(0u,0u)
-	private var FPU = Array<UInt>(4) {0u}
+	private var alu = ALU()
+	private var FPU = FPU()
 	private var PMRegs = Array<UInt>(8) {0u}
 	private var GPRegs = Array<UInt>(8) {0u}
 
 	enum class uState { Halted, Running0, Running1 }
 	var currState = uState.Halted
-
-	enum class FPUState { Zero, Int, Neg, Inv, Sqrt, Sqre, Ln, Exp, Add, Mult, Sub, Div, Cos, ToDouble, One, MinusOne }
-	var currFPUState = FPUState.Zero
 
 	private fun getBit(byte: UByte, bit: Int) = byte.and(1.shl(bit).toUByte()) == 1.shl(bit).toUByte()
 
@@ -47,10 +44,10 @@ class uarchComputer(var ioPinsGroup1: IDataIO, var ioPinsGroup2: IDataIO, val uR
 					5 -> busValue = ioPinsGroup2.readData()
 					6 -> busValue = alu.inputA
 					7 -> busValue = alu.inputB
-					8 -> busValue = FPU[0]
-					9 -> busValue = FPU[1]
-					10 -> busValue = FPU[2]
-					11 -> busValue = FPU[3]
+					8 -> busValue = FPU.inputAL
+					9 -> busValue = FPU.inputAH
+					10 -> busValue = FPU.inputBL
+					11 -> busValue = FPU.inputBH
 					12,13,14,15,16,17,18,19 -> busValue = PMRegs[uOp4to0-12]
 					20,21,22,23,24,25,26,27 -> busValue = GPRegs[uOp4to0-20]
 					else -> die(uOP)
@@ -62,10 +59,10 @@ class uarchComputer(var ioPinsGroup1: IDataIO, var ioPinsGroup2: IDataIO, val uR
 					5 -> ioPinsGroup2.writeData(busValue)
 					6 -> alu.inputA = busValue
 					7 -> alu.inputB = busValue
-					8 -> FPU[0] = busValue
-					9 -> FPU[1] = busValue
-					10 -> FPU[2] = busValue
-					11 -> FPU[3] = busValue
+					8 -> FPU.inputAL = busValue
+					9 -> FPU.inputAH = busValue
+					10 -> FPU.inputBL = busValue
+					11 -> FPU.inputBH = busValue
 					12,13,14,15,16,17,18,19 -> PMRegs[uOp4to0-12] = busValue
 					20,21,22,23,24,25,26,27 -> GPRegs[uOp4to0-20] = busValue
 					else -> die(uOP)
