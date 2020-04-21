@@ -1,5 +1,8 @@
-package org.eln2.compute.asmComputer
+package org.eln2.apps.compute
 
+import org.eln2.compute.asmComputer.AsmComputer
+import org.eln2.compute.asmComputer.CState
+import org.eln2.compute.asmComputer.StringRegister
 import java.awt.BorderLayout
 import java.awt.event.ActionEvent
 import java.awt.event.ActionListener
@@ -110,7 +113,7 @@ class SerialInputListenr(val input: JTextField, val asmComputer: AsmComputer): K
 
 class StepComputer(val computer: AsmComputer, val cra: JTextArea, val crb: JTextArea, val serialOutput: JTextArea): ActionListener {
 	override fun actionPerformed(p0: ActionEvent?) {
-		stepComputer(computer, cra, crb, serialOutput)
+        stepComputer(computer, cra, crb, serialOutput)
 	}
 }
 
@@ -118,7 +121,7 @@ class RunComputer(val computer: AsmComputer, val cra: JTextArea, val crb: JTextA
 	override fun actionPerformed(p0: ActionEvent?) {
 		val t = Thread() {
 			while (computer.currState != CState.Errored) {
-				stepComputer(computer, cra, crb, serialOutput)
+                stepComputer(computer, cra, crb, serialOutput)
 			}
 		}
 		t.start()
