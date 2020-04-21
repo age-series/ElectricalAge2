@@ -2,9 +2,12 @@ package org.eln2.compute.uarchComputer
 
 @ExperimentalStdlibApi
 @ExperimentalUnsignedTypes
-class ALU(var inputA: UInt, var inputB: UInt) {
-	enum class ALUOps { Zero, And, Or, Xor, Not, Nand, Nor, Xnor, Add, Adc, Sub, Sbb, Shl, Shr, One, MinusOne }
-	var currState = ALUOps.Zero
+class ALU{
+	var inputA = 0u
+	var inputB = 0u
+
+	enum class ALUOps { Adc, Add, And, MinusOne, Nand, Nor, Not, One, Or, Sbb, Shl, Shr, Sub, Xnor, Xor, Zero }
+	var currOP = ALUOps.Zero
 	
 	var zero: Boolean = false
 	var carry: Boolean = false
@@ -26,7 +29,7 @@ class ALU(var inputA: UInt, var inputB: UInt) {
 	}
 
 	fun step() {
-		when (currState) {
+		when (currOP) {
 			ALUOps.Adc -> {
 				inputA += inputB + if (carry) { 1u } else { 0u }
 				carry = inputA < inputB
