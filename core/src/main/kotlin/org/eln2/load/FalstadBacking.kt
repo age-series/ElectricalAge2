@@ -101,7 +101,7 @@ w 256 176 304 176 0
 					}
 				}
 			}
-			/*for (node in componentMap) {
+			for (node in componentMap) {
 				val components = node.value
 				println(components)
 				for (comp in components) {
@@ -113,13 +113,14 @@ w 256 176 304 176 0
 						}
 					}
 				}
-			}*/
+			}
 			for (component in componentMap.map { it.value }.map { it.keys }) {
 				component.forEach { println(it) }
 			}
 			for (component in circuit.components) {
 				println(component)
 			}
+			circuit.step(0.05)
 			return circuit
 		}
 

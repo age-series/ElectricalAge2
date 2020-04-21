@@ -18,6 +18,9 @@ options.txt
 */classes
 */obj/
 
+# Graphviz Dot output files
+*.dot
+
 # IntelliJ
 .idea
 *.iml
