@@ -14,6 +14,10 @@ abstract class Component : IDetail {
 
 	/* A name for this kind of Component, used for debugging. */
 	abstract val name: String
+	
+	/* An image for this node in the images/ repository, without the .svg extension, used for debug drawing.
+	 */
+	open val imageName: String? = null
 
 	/* How many nodes this component should have. `nodes` will be of this size only AFTER this component is added to a
 	   Circuit.
@@ -84,7 +88,7 @@ abstract class Component : IDetail {
 	}
 
 	override fun toString(): String {
-		return "${this::class.java.simpleName} ${nodes.map { "${it.node.detail()}" }}"
+		return "${this::class.java.simpleName}@${System.identityHashCode(this).toString(16)} ${nodes.map { "${it.node.detail()}" }}"
 	}
 }
 
