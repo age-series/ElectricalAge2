@@ -1,5 +1,7 @@
 package org.eln2.sim.electrical.mna.component
 
+import org.eln2.debug.dprintln
+
 open class Capacitor : Port() {
 	override var name: String = "c"
 
@@ -13,7 +15,7 @@ open class Capacitor : Port() {
 				circuit!!.stampCurrentSource(pos.index, neg.index, value - field)
 			field = value
 		}
-	var lastI: Double = 0.0
+	var idealU: Double = 0.0
 
 	override fun detail(): String {
 		return "[capacitor c:$c]"
@@ -21,11 +23,13 @@ open class Capacitor : Port() {
 
 	override fun preStep(dt: Double) {
 		ts = dt
-		i = (-potential) / eqR
+		i = -idealU / eqR
+		dprintln("C.preS: i=$i eqR=$eqR idealU=$idealU")
 	}
 
 	override fun postStep(dt: Double) {
-		lastI = potential / eqR + i
+		idealU = potential
+		dprintln("C.postS: potential=$potential (-> idealU)")
 	}
 
 	override fun stamp() {

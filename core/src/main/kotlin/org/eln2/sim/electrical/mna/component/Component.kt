@@ -97,9 +97,9 @@ abstract class Port : Component() {
 
 	// The orientation here is arbitrary, but helps keep signs consistent.
 	open val pos: Node
-		get() = node(0)
-	open val neg: Node
 		get() = node(1)
+	open val neg: Node
+		get() = node(0)
 
 	open val potential: Double
 		get() = if (isInCircuit) pos.potential - neg.potential else 0.0
