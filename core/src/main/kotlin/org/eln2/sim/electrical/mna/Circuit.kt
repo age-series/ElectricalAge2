@@ -24,6 +24,7 @@ class Circuit {
 
 	var maxSubSteps = 100
 	var slack = 0.001
+	var success = true
 
 	val components = mutableListOf<Component>()
 	val compNodeMap = WeakHashMap<NodeRef, Component>()
@@ -152,7 +153,7 @@ class Circuit {
 		rightSideChanged = true
 
 		// Is there anything to do?
-		if (nodes.isEmpty() || voltageSources.isEmpty()) {
+		if (nodes.isEmpty()) {
 			matrix = null
 			return
 		}
@@ -178,6 +179,7 @@ class Circuit {
 	private fun computeResult() {
 		dprintln("C.cR")
 		rightSideChanged = false
+		success = false
 		if (solver == null) return
 		try {
 			val unknowns = solver!!.solve(knowns)
@@ -191,13 +193,15 @@ class Circuit {
 			for ((i, v) in voltageSources.withIndex()) {
 				v.get()!!.current = -unknowns.getEntry(i + sz)
 			}
+
+			success = true
 		} catch (e: SingularMatrixException) {
 			dprintln("Singular: ${matrix}")
 			if (matrix != null) dprint(MATRIX_FORMAT.format(matrix))
 		}
 	}
 
-	fun step(dt: Double) {
+	fun step(dt: Double): Boolean {
 		if (componentsChanged || connectivityChanged) {
 			buildMatrix()
 		}
@@ -220,6 +224,8 @@ class Circuit {
 
 		components.forEach { it.postStep(dt) }
 		postProcess.keys.forEach { it.process(dt) }
+
+		return success
 	}
 
 	override fun toString(): String {

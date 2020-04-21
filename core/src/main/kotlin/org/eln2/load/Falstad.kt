@@ -6,8 +6,7 @@ import org.eln2.sim.electrical.mna.Circuit
 import org.eln2.sim.electrical.mna.component.*
 import org.eln2.space.Set
 import org.eln2.space.Vec2i
-import java.io.FileOutputStream
-import kotlin.math.absoluteValue
+import kotlin.math.min
 
 val SPACES = Regex(" +")
 
@@ -40,7 +39,7 @@ data class CCData(val falstad: Falstad, val line: FalstadLine) {
 	// Sets the conceptual number of nodes of the component--not the actual number of positions in the line!
 	var pins: Int = 2
 
-	val pinPositions get() = (0 until 2).map { PinPos(Vec2i(line.getInt(1 + 2*it), line.getInt(2 + 2*it))) }
+	val pinPositions get() = (0 until min(pins, 2)).map { PinPos(Vec2i(line.getInt(1 + 2*it), line.getInt(2 + 2*it))) }
 
 	// Only safe to use these if pins >= 2
 	val pos: PinPos get() = pinPositions[0]
@@ -58,6 +57,8 @@ interface ComponentConstructor {
 	companion object {
 		val TYPE_CONSTRUCTORS: Map<String, ComponentConstructor> = mapOf(
 			"$" to InterpretGlobals(),
+			"o" to Ignore(),
+			"38" to Ignore(),
 			"O" to OutputProbe(),
 			"w" to WireConstructor(),
 			"g" to GroundConstructor(),
@@ -79,6 +80,10 @@ class InterpretGlobals: ComponentConstructor {
 		ccd.falstad.nominalTimestep = ccd.line.getDouble(2)
 		ccd.pins = 0
 	}
+}
+
+class Ignore: ComponentConstructor {
+	override fun construct(ccd: CCData) {}
 }
 
 class OutputProbe: ComponentConstructor {
@@ -144,8 +149,9 @@ class CapacitorConstructor: PoleConstructor() {
 	override fun component(ccd: CCData) = Capacitor()
 	override fun configure(ccd: CCData, cmp: Component) {
 		val c = (cmp as Capacitor)
+		c.ts = ccd.falstad.nominalTimestep
 		c.c = ccd.data[0].toDouble()
-		c.lastI = ccd.data[1].toDouble()
+		c.idealU = ccd.data[1].toDouble()
 	}
 }
 
@@ -153,8 +159,9 @@ class InductorConstructor: PoleConstructor() {
 	override fun component(ccd: CCData) = Inductor()
 	override fun configure(ccd: CCData, cmp: Component) {
 		val l = (cmp as Inductor)
-		l.h = ccd.data[0].toDouble()
-		l.lastI = ccd.data[1].toDouble()
+		l.ts = ccd.falstad.nominalTimestep
+		l.l = ccd.data[0].toDouble()
+		l.i = ccd.data[1].toDouble()
 	}
 }
 
@@ -276,61 +283,45 @@ class Falstad(val source: String) {
 
 	companion object {
 		@JvmStatic
-		fun main(args: Array<String>) {
-			val falstad = """${'$'} 1 0.000005 10.20027730826997 63 10 62
-v 112 368 112 48 0 0 40 10 0 0 0.5
-w 112 48 240 48 0
-r 240 48 240 208 0 10000
-r 240 208 240 368 0 10000
-w 112 368 240 368 0
-O 240 208 304 208 1
-w 240 48 432 48 0
-w 240 368 432 368 0
-r 432 48 432 128 0 10000
-r 432 128 432 208 0 10000
-r 432 208 432 288 0 10000
-r 432 288 432 368 0 10000
-O 432 128 496 128 1
-O 432 208 496 208 1
-O 432 288 496 288 1
-"""
-			val falstad2 = """${'$'} 1 0.000005 10.20027730826997 50 5 50
-r 256 176 256 304 0 100
-172 304 176 304 128 0 7 5 5 0 0 0.5 Voltage
-g 256 336 256 352 0
-w 256 304 256 336 1
-r 352 176 352 304 0 1000
-w 352 304 352 336 1
-g 352 336 352 352 0
-w 304 176 352 176 0
-w 256 176 304 176 0
-"""
+		fun main(vararg args: String) {
+			if(args.size < 1) error("Expected number of steps")
+			val steps = args[0].toInt()
 
-			val f = Falstad(falstad)
-			println("$f:\n${f.source}\n${f.roots}\n${f.refs}\n${f.grounds}\n\n${f.circuit}")
+			val f = Falstad(System.`in`.bufferedReader().readText())
 
-			f.circuit.step(f.nominalTimestep)
+			if(DEBUG) {
+				dprintln("$f:\n${f.source}\n${f.roots}\n${f.refs}\n${f.grounds}\n\n${f.circuit}")
 
-			f.circuit.components.forEach {
-				println("$it:")
-				when(it) {
-					is Resistor -> println("r.i = ${it.current}")
+				dprintln("### STEP: ${f.circuit.step(f.nominalTimestep)}")
+
+				f.circuit.components.forEach {
+					dprintln("$it:")
+					when (it) {
+						is Resistor -> println("r.i = ${it.current}")
+					}
+				}
+
+				dprintln("nodes:")
+				f.circuit.nodes.forEach {
+					dprintln(" - ${it.get() ?: "[removed]"}: ${it.get()?.potential ?: 0.0}V")
+				}
+
+				dprintln("outputs:")
+				f.outputNodes.withIndex().forEach {
+					println("${it.index}: ${it.value.potential}V @${it.value.index}")
 				}
 			}
 
-			println("nodes:")
-			f.circuit.nodes.forEach {
-				println(" - ${it.get() ?: "[removed]"}: ${it.get()?.potential ?: 0.0}V")
+			val on = f.outputNodes
+			println("#T\t${on.indices.map { "O${it+1}" }.joinToString("\t")}")
+			(1..steps).forEach {
+				if(!f.circuit.step(f.nominalTimestep)) error("step error (singularity?)")
+				println("${it*f.nominalTimestep}\t${on.map { it.potential }.joinToString("\t")}")
 			}
 
-			println("outputs:")
-			f.outputNodes.withIndex().forEach {
-				println("${it.index}: ${it.value.potential}V @${it.value.index}")
-			}
-
-			FileOutputStream("falstad.dot").bufferedWriter().also {
-				it.write(f.circuit.toDot())
-			}.close()
+			// FileOutputStream("falstad.dot").bufferedWriter().also {
+			// 	it.write(f.circuit.toDot())
+			// }.close()
 		}
 	}
 }
