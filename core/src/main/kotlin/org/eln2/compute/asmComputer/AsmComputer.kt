@@ -63,10 +63,8 @@ class AsmComputer {
 			codeLines = (codeRegisters[codeRegister] ?: "").split("\n")
 		if (codeLines.size <= ptr || ptr < 0) {
 			println("end of code: ${codeLines.size} < $ptr")
-			currState = CState.Stopped
-			currStateReasoning = "End of code"
+			println("going back to beginning...")
 			ptr = 0
-			return
 		}
 		val currentOperation = codeLines[ptr]
 		val fullSplit = currentOperation.trimStart().split(" ")
