@@ -2,6 +2,12 @@ package org.eln2.compute.asmComputer
 
 import org.eln2.compute.asmComputer.operators.*
 
+/**
+ * AsmComputer
+ *
+ * A really stupidly complex computer that has integers, doubles, and strings. It has a bunch of operators that are
+ * relatively flexible and can be added on the fly.
+ */
 class AsmComputer {
 
 	// used to store integers

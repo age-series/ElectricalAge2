@@ -2,10 +2,19 @@ package org.eln2.compute.asmComputer.operators
 
 import org.eln2.compute.asmComputer.*
 
+/**
+ * Comparison Jump
+ *
+ * Jumps while comparisons are true, otherwise just passing over them
+ */
 abstract class ComparisonJump: Operator() {
 	override val MIN_ARGS = 3
 	override val MAX_ARGS = 3
 	override val COST = 0.0
+
+	/**
+	 * run
+	 */
 	override fun run(opList: List<String>, asmComputer: AsmComputer) {
 		val aType = detectType(opList[0], asmComputer)
 		val bType = detectType(opList[1], asmComputer)
@@ -81,14 +90,36 @@ abstract class ComparisonJump: Operator() {
 		}
 	}
 
-	//Compare two integers. Override this in the comparison operator
+	/**
+	 * Compare two integers. Override this in the comparison operator
+	 * @param first int
+	 * @param second int
+	 * @return The comparison result
+	 */
 	abstract fun compareInts(a: Int, b: Int): Boolean
-	//Compare two doubles. Override this in the comparison operator
+
+	/**
+	 * Compare two doubles. Override this in the comparison operator
+	 * @param first double
+	 * @param second double
+	 * @return The comparison result
+	 */
 	abstract fun compareDoubles(a: Double, b: Double): Boolean
-	//Compare two strings. Override this in the comparison operator
+
+	/**
+	 * Compare two strings. Override this in the comparison operator
+	 * @param first string
+	 * @param second string
+	 * @return The comparison result
+	 */
 	abstract fun compareStrings(a: String, b: String): Boolean
 }
 
+/**
+ * Jump Greater Than
+ *
+ * Is the first greater than the second?
+ */
 class JumpGreaterThan: ComparisonJump() {
 	override val OPCODE = "jpgt"
 	override fun compareInts(a: Int, b: Int): Boolean {
@@ -102,6 +133,11 @@ class JumpGreaterThan: ComparisonJump() {
 	}
 }
 
+/**
+ * Jump Less Than
+ *
+ * Is the first less than the second?
+ */
 class JumpLessThan: ComparisonJump() {
 	override val OPCODE = "jplt"
 	override fun compareInts(a: Int, b: Int): Boolean {
@@ -115,6 +151,11 @@ class JumpLessThan: ComparisonJump() {
 	}
 }
 
+/**
+ * Jump Greater Equals
+ *
+ * Is the first greater than OR equal to the second?
+ */
 class JumpGreaterEquals: ComparisonJump() {
 	override val OPCODE = "jpge"
 	override fun compareInts(a: Int, b: Int): Boolean {
@@ -128,6 +169,11 @@ class JumpGreaterEquals: ComparisonJump() {
 	}
 }
 
+/**
+ * Jump Less Equals
+ *
+ * Is the first less than OR equal to the second?
+ */
 class JumpLessEquals: ComparisonJump() {
 	override val OPCODE = "jple"
 	override fun compareInts(a: Int, b: Int): Boolean {
@@ -141,6 +187,13 @@ class JumpLessEquals: ComparisonJump() {
 	}
 }
 
+/**
+ * Jump Equals
+ *
+ * Are the two the same exact thing?
+ * NOTE: Doubles are compared to within ~0.0001 of either side, so a dead zone of 0.0002
+ * This is because doubles are complex and annoying, and the people using doubles probably just want to see if it's close.
+ */
 class JumpEquals: ComparisonJump() {
 	override val OPCODE = "jpeq"
 	override fun compareInts(a: Int, b: Int): Boolean {

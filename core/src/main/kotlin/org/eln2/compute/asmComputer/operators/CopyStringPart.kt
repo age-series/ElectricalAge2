@@ -2,11 +2,20 @@ package org.eln2.compute.asmComputer.operators
 
 import org.eln2.compute.asmComputer.*
 
+/**
+ * Copy String Part
+ *
+ * Used to copy a substring of a string register into another buffer.
+ */
 class CopyStringPart: Operator() {
 	override val OPCODE = "strp"
 	override val MIN_ARGS = 4
 	override val MAX_ARGS = 4
 	override val COST = 0.0
+
+	/**
+	 * run
+	 */
 	override fun run(opList: List<String>, asmComputer: AsmComputer) {
 		val toRegister = opList[0]
 		val fromRegister = opList[1]

@@ -4,11 +4,18 @@ import org.eln2.compute.asmComputer.AsmComputer
 import org.eln2.compute.asmComputer.Operator
 import org.eln2.compute.asmComputer.CState
 
+/**
+ * addi: adds integers
+ */
 open class AddI: Operator() {
 	override val OPCODE = "addi"
 	override val MIN_ARGS = 2
 	override val MAX_ARGS = Int.MAX_VALUE
 	override val COST = 0.0
+
+	/**
+	 * run
+	 */
 	override fun run(opList: List<String>, asmComputer: AsmComputer) {
 		if (opList[0] !in asmComputer.intRegisters) {
 			asmComputer.currState = CState.Errored
@@ -33,11 +40,18 @@ open class AddI: Operator() {
 	}
 }
 
+/**
+ * addd: adds doubles
+ */
 open class AddD: Operator() {
 	override val OPCODE = "addd"
 	override val MIN_ARGS = 2
 	override val MAX_ARGS = Int.MAX_VALUE
 	override val COST = 0.0
+
+	/**
+	 * run
+	 */
 	override fun run(opList: List<String>, asmComputer: AsmComputer) {
 		if (opList[0] !in asmComputer.doubleRegisters) {
 			asmComputer.currState = CState.Errored
