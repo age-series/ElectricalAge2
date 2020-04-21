@@ -4,5 +4,7 @@ include("core")
 include("apps")
 include("shared")
 include("integration-vs")
-include("integration-mc1-14")
-includeBuild("umc1-14")
+
+// This was the UMC version.
+// Unlinked for now.
+//include("integration-mc1-14")
