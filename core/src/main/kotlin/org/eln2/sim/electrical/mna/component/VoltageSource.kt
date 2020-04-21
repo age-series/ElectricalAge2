@@ -2,6 +2,7 @@ package org.eln2.sim.electrical.mna.component
 
 class VoltageSource : Port() {
 	override var name: String = "vs"
+	override val imageName = "vsource"
 	override val vsCount = 1
 
 	override var potential: Double = 0.0

@@ -2,6 +2,7 @@ package org.eln2.sim.electrical.mna.component
 
 open class Resistor : Port() {
 	override var name: String = "r"
+	override val imageName = "resistor"
 
 	open var resistance: Double = 1.0
 	open val current: Double

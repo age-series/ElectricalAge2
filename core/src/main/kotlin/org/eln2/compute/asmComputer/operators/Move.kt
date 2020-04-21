@@ -2,11 +2,19 @@ package org.eln2.compute.asmComputer.operators
 
 import org.eln2.compute.asmComputer.*
 
+/**
+ * Move - this will not only move data from registers that are similar, but it will also convert data from one
+ * register type to another. It's pretty powerful.
+ */
 open class Move: Operator() {
 	override val OPCODE = "move"
 	override val MIN_ARGS = 2
 	override val MAX_ARGS = 2
 	override val COST = 0.0
+
+	/**
+	 * run
+	 */
 	override fun run(opList: List<String>, asmComputer: AsmComputer) {
 		val outputClass = findRegisterType(opList[0], asmComputer)
 		val inputClass = findRegisterType(opList[1], asmComputer)
@@ -24,7 +32,13 @@ open class Move: Operator() {
 		}
 	}
 
-
+	/**
+	 * This copies a literal into a register
+	 * @param register the register to copy into
+	 * @param literal the literal to read from
+	 * @param computer our computer instance
+	 * @param type the type of register
+	 */
 	private fun copyLiteralToRegister(register: String, literal: String, asmComputer: AsmComputer, type: Any?) {
 		when(type) {
 			IntRegister::class, ReadOnlyIntRegister::class -> {
@@ -50,6 +64,14 @@ open class Move: Operator() {
 		}
 	}
 
+	/**
+	 * This copies one register into another
+	 * @param registerOut The register to copy to
+	 * @param registerOutType The type of the register to copy to
+	 * @param registerIn The register to copy from
+	 * @param registerInType The type of register to copy from
+	 * @param asmComputer Our computer instance
+	 */
 	private fun copyRegisterToRegister(registerOut: String, registerOutType: Any?, registerIn: String, registerInType: Any?, asmComputer: AsmComputer) {
 		when (registerOutType) {
 			IntRegister::class, ReadOnlyIntRegister::class -> {

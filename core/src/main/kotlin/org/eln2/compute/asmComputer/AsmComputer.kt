@@ -2,6 +2,12 @@ package org.eln2.compute.asmComputer
 
 import org.eln2.compute.asmComputer.operators.*
 
+/**
+ * AsmComputer
+ *
+ * A really stupidly complex computer that has integers, doubles, and strings. It has a bunch of operators that are
+ * relatively flexible and can be added on the fly.
+ */
 class AsmComputer {
 
 	// used to store integers
@@ -63,10 +69,8 @@ class AsmComputer {
 			codeLines = (codeRegisters[codeRegister] ?: "").split("\n")
 		if (codeLines.size <= ptr || ptr < 0) {
 			println("end of code: ${codeLines.size} < $ptr")
-			currState = CState.Stopped
-			currStateReasoning = "End of code"
+			println("going back to beginning...")
 			ptr = 0
-			return
 		}
 		val currentOperation = codeLines[ptr]
 		val fullSplit = currentOperation.trimStart().split(" ")
