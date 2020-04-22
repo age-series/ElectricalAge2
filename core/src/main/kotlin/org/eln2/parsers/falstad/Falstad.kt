@@ -28,7 +28,7 @@ class FalstadLine(val params: Array<String>) {
 			return if(trimmed.isEmpty())
 				null
 			else
-				FalstadLine(trimmed.split(SPACES).map { it.trim() }.toTypedArray())
+				FalstadLine(trimmed.split(SPACES).map { word -> word.trim() }.toTypedArray())
 		}
 		fun intoLines(src: String) = src.lines().mapNotNull { fromLine(it) }
 	}
@@ -45,7 +45,7 @@ data class CCData(val falstad: Falstad, val line: FalstadLine) {
 	// Sets the conceptual number of nodes of the component--not the actual number of positions in the line!
 	var pins: Int = 2
 
-	val pinPositions get() = (0 until min(pins, 2)).map { PinPos(Vec2i(line.getInt(1 + 2 * it), line.getInt(2 + 2 * it))) }
+	val pinPositions get() = (0 until min(pins, 2)).map { i -> PinPos(Vec2i(line.getInt(1 + 2 * i), line.getInt(2 + 2 * i))) }
 
 	// Only safe to use these if pins >= 2
 	val pos: PinPos get() = pinPositions[0]
@@ -96,9 +96,9 @@ abstract class PoleConstructor: IComponentConstructor {
 		val c = component(ccd)
 		ccd.circuit.add(c)
 		configure(ccd, c)
-		ccd.pinPositions.withIndex().forEach {
-			val pp = (ccd.falstad.getPin(it.value).representative as PosSet)
-			ccd.falstad.addPinRef(pp, PinRef(c, it.index))
+		ccd.pinPositions.withIndex().forEach {posidx ->
+			val pp = (ccd.falstad.getPin(posidx.value).representative as PosSet)
+			ccd.falstad.addPinRef(pp, PinRef(c, posidx.index))
 		}
 	}
 }
@@ -125,54 +125,54 @@ class Falstad(val source: String) {
 	val circuit = Circuit()
 
 	init {
-		FalstadLine.intoLines(source).forEach {
-			IComponentConstructor.getForLine(it)
-				.construct(CCData(this, it))
+		FalstadLine.intoLines(source).forEach { line ->
+			IComponentConstructor.getForLine(line)
+				.construct(CCData(this, line))
 		}
 
 		if(DEBUG) {
 			val repmap: MutableMap<PosSet, MutableSet<PosSet>> = mutableMapOf()
-			roots.values.forEach {
-				dprintln("F.<init>: r ${it} => ${it.representative}")
-				repmap.getOrPut(it.representative as PosSet, { mutableSetOf() }).add(it)
+			roots.values.forEach {set ->
+				dprintln("F.<init>: r $set => ${set.representative}")
+				repmap.getOrPut(set.representative as PosSet, { mutableSetOf() }).add(set)
 			}
 
-			repmap.entries.forEach {
-				dprintln("F.<init>: R ${it.key}:")
-				it.value.forEach {
-					dprintln(" - $it")
+			repmap.entries.forEach { rep ->
+				dprintln("F.<init>: R ${rep.key}:")
+				rep.value.forEach {set ->
+					dprintln(" - $set")
 				}
 			}
 		}
 
 		val mergedRefs: MutableMap<PosSet, MutableSet<PinRef>> = mutableMapOf()
-		roots.values.forEach {
-			val set = refs[it]
-			if(set != null) {
-				mergedRefs.getOrPut(it.representative as PosSet, { mutableSetOf() }).addAll(set)
+		roots.values.forEach {posset ->
+			val pinset = refs[posset]
+			if(pinset != null) {
+				mergedRefs.getOrPut(posset.representative as PosSet, { mutableSetOf() }).addAll(pinset)
 			}
 		}
 
-		if(DEBUG) mergedRefs.entries.forEach {
-			dprintln("F.<init>: mR ${it.key} => ${it.value}")
+		if(DEBUG) mergedRefs.entries.forEach {pair ->
+			dprintln("F.<init>: mR ${pair.key} => ${pair.value}")
 		}
 
-		mergedRefs.values.forEach {
-			val ordered = it.toList()  // Just need some ordering, any will do
-			(0 until ordered.size - 1).forEach {
-				ordered[it].component.connect(
-					ordered[it].pinidx,
-					ordered[it+1].component,
-					ordered[it+1].pinidx
+		mergedRefs.values.forEach {pinset ->
+			val ordered = pinset.toList()  // Just need some ordering, any will do
+			(0 until ordered.size - 1).forEach {i ->
+				ordered[i].component.connect(
+					ordered[i].pinidx,
+					ordered[i+1].component,
+					ordered[i+1].pinidx
 				)
 			}
 		}
 
-		grounds.forEach {
-			val set = refs[it.representative]
-			if(set != null && set.size > 0) {
+		grounds.forEach {posset ->
+			val pinset = refs[posset.representative]
+			if(pinset != null && pinset.size > 0) {
 				// Only need to connect 1; the disjoint PosSets are merged right now
-				val pr = set.iterator().next()
+				val pr = pinset.iterator().next()
 				pr.component.connect(pr.pinidx, circuit.ground)
 			}
 		}
@@ -207,29 +207,29 @@ class Falstad(val source: String) {
 
 				dprintln("### STEP: ${f.circuit.step(f.nominalTimestep)}")
 
-				f.circuit.components.forEach {
-					dprintln("$it:")
-					when (it) {
-						is Resistor -> println("r.i = ${it.current}")
+				f.circuit.components.forEach {comp ->
+					dprintln("$comp:")
+					when (comp) {
+						is Resistor -> println("r.i = ${comp.current}")
 					}
 				}
 
 				dprintln("nodes:")
-				f.circuit.nodes.forEach {
-					dprintln(" - ${it.get() ?: "[removed]"}: ${it.get()?.potential ?: 0.0}V")
+				f.circuit.nodes.forEach {noderef ->
+					dprintln(" - ${noderef.get() ?: "[removed]"}: ${noderef.get()?.potential ?: 0.0}V")
 				}
 
 				dprintln("outputs:")
-				f.outputNodes.withIndex().forEach {
-					println("${it.index}: ${it.value.potential}V @${it.value.index}")
+				f.outputNodes.withIndex().forEach {nodeidx ->
+					println("${nodeidx.index}: ${nodeidx.value.potential}V @${nodeidx.value.index}")
 				}
 			}
 
 			val on = f.outputNodes
-			println("#T\t${on.indices.map { "O${it+1}" }.joinToString("\t")}")
-			(1..steps).forEach {
+			println("#T\t${on.indices.map { i -> "O${i+1}" }.joinToString("\t")}")
+			(1..steps).forEach {step ->
 				if(!f.circuit.step(f.nominalTimestep)) error("step error (singularity?)")
-				println("${it*f.nominalTimestep}\t${on.map { it.potential }.joinToString("\t")}")
+				println("${step*f.nominalTimestep}\t${on.map { node -> node.potential }.joinToString("\t")}")
 			}
 
 			// FileOutputStream("falstad.dot").bufferedWriter().also {
