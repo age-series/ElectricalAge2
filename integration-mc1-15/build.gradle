@@ -20,6 +20,10 @@ archivesBaseName = "eln2-mc1.15"
 
 repositories {
 	maven { url 'https://maven.mcmoddev.com' }
+	maven {
+		name = 'kotlinforforge'
+		url = 'https://thedarkcolour.github.io/KotlinForForge/'
+	}
 }
 
 minecraft {
@@ -93,6 +97,7 @@ dependencies {
     // that the dep is a ForgeGradle 'patcher' dependency. And it's patches will be applied.
     // The userdev artifact is a special name and will get all sorts of transformations applied to it.
     minecraft 'net.minecraftforge:forge:1.15.2-31.1.63'
+	implementation 'thedarkcolour:kotlinforforge:1.2.1'
 
 	compile "net.darkhax.bookshelf:Bookshelf-1.15.2:5.5.33:deobf"
 
