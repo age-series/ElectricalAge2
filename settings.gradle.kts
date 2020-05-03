@@ -1,10 +1,15 @@
 rootProject.name = "eln2"
 
+pluginManagement {
+	repositories {
+		mavenCentral()
+		gradlePluginPortal()
+		maven(url="https://dl.bintray.com/kotlin/kotlin-eap")
+	}
+}
+
 include("core")
 include("apps")
 include("shared")
 include("integration-vs")
-
-// This was the UMC version.
-// Unlinked for now.
-//include("integration-mc1-14")
+include("integration-mc1-15")
