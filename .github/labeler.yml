@@ -22,3 +22,6 @@ type:build:
     - '*.kts'
     - '*gradle*'
     - .github/**/*
+
+type:protocol:
+    - '*.proto'
