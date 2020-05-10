@@ -113,4 +113,6 @@ message TimestepResponse {
 	// If a watchdog fires, we transmit the complete state of the component that triggered it.
 	// No further action is taken server-side.
 	repeated Component watchdog_firings = 2;
+	// While these contain exactly the same info, they're filled in response to Get requests.
+	repeated Component get_response = 3;
 }
