@@ -11,6 +11,7 @@ service Simulator {
 	// Lifecycle requests, called on startup / shutdown in the same order they're listed here.
 	rpc GetConfig(GetConfigRequest) returns (GetConfigResponse);
 	rpc Initialize(InitializeRequest) returns (InitializeResponse);
+	rpc UpdateConfig(UpdateConfigRequest) returns (UpdateConfigResponse);
 	rpc Timestep(TimestepRequest) returns (TimestepResponse);
 }
 
@@ -99,9 +100,21 @@ message InitializeResponse {
 	int64 unused_component_id = 3;
 }
 
+// This message is meant to update server configuration.
+// It may require a server restart, which should be performed transparently.
+message UpdateConfigRequest {
+	repeated Flag flag = 1;
+}
+
+message UpdateConfigResponse {
+	// Any contents triggers a crash.
+	repeated string error = 1;
+	bool restarted = 2;
+}
+
 message TimestepRequest {
 	// Deliberately does not pass the timestep length.
-	// That's defined in a flag, and never changes afterwards.
+	// That's defined in a flag.
 	//
 	// In practice this is a list of commands to be executed by the server.
 	repeated Command command = 2;
