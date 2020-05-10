@@ -10,7 +10,7 @@ plugins {
 
 allprojects {
 	version = "0.1.0"
-	group = "net.electricalage"
+	group = "org.eln2"
 
 	buildscript {
 		repositories {
@@ -29,6 +29,7 @@ allprojects {
 
 subprojects {
 	// We assume all subprojects use Java/Kotlin.
+	// This isn't true for the logcollector, but Rust code won't use Gradle.
 	apply {
 		plugin("java")
 		plugin("kotlin")
@@ -48,6 +49,7 @@ subprojects {
 		// and lacks an 'implementation' configuration.
 		"implementation"(kotlin("stdlib-jdk8"))
 		compile("org.apache.commons", "commons-math3", "3.6.1")
+		compile("com.google.protobuf", "protobuf-java", "3.11.4")
 		// Configure testing.
 		testImplementation("org.assertj", "assertj-core", "3.12.2")
 		testImplementation("org.junit.jupiter", "junit-jupiter-api", "5.4.2")
