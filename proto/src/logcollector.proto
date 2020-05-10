@@ -11,15 +11,16 @@ service LogService {
 
 message LogEntry {
 	// Fields that identify the client:
-	Version minecraft = 1;
-	Version forge = 2;
-	Version eln = 3;
-	OS os = 4;
-	string uuid = 5;  // May be empty.
+	string game = 1;
+	Version game_version = 2;
+	Version forge = 3;
+	Version eln = 4;
+	OS os = 5;
+	string uuid = 6;  // May be empty.
 	// The message(s) that we're trying to log.
 	// Any of these fields may be empty.
-	CrashReport crash_report = 6;
-	Analytics analytics = 7;
+	CrashReport crash_report = 7;
+	Analytics analytics = 8;
 }
 
 // This is a straight textual copy of Forge's crash report, for later perusal.
@@ -38,8 +39,15 @@ message Analytics {
 	// Included for performance analysis.
 	message Circuit {
 		int32 matrix_size = 1;
-		int32 avg_time_usec = 2;
-		repeated Component component = 3;
+		message Timing {
+			int32 matrix_usec = 1;
+			int32 thevenin_usec = 2;
+			int32 norton_usec = 3;
+			int32 other_usec = 4;
+		}
+		Timing avg = 2;
+		Timing max = 3;
+		repeated Component component = 4;
 	}
 	message Component {
 		string type = 1;

@@ -35,11 +35,9 @@ message Component {
 		Resistor resistor = 12;
 		Inductor inductor = 13;
 		Capacitor capacitor = 14;
-		// Cables:
-		Resistor simple_cable = 20;
 		// Lights:
-		IncandescentLight incandescent_light = 21;
-		FluorescentLight fluorescent_light = 22;
+		IncandescentLight incandescent_light = 20;
+		FluorescentLight fluorescent_light = 21;
 	}
 }
 
@@ -110,6 +108,8 @@ message Resistor {
 // Pins: 2, one for each side.
 message Inductor {
 	float inductance = 1;
+	// Energy stored, in joules; sent to the client.
+	float energy = 2;
 }
 
 // Pins: 2, one for each side.
@@ -117,6 +117,8 @@ message Capacitor {
 	float capacitance = 1;
 	// If set, fire a watchdog if U(P0) > U(P1).
 	bool polar = 2;
+	// Energy stored, in joules; sent to the client.
+	float energy = 3;
 }
 
 // Pins: 1. This is effectively a resistor to ground.
