@@ -1,8 +1,9 @@
 // This file describes the interface between a client (such as Minecraft) and the simulation core.
 // All RPCs are client-server, though in practice they may not be RPCs.
 syntax = "proto3";
-
 package org.eln2.proto.simulator;
+option optimize_for = LITE_RUNTIME;
+
 import "simulator/component.proto";
 import "simulator/command.proto";
 

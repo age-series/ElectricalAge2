@@ -7,6 +7,7 @@
 // variants exist only inside the core module.
 syntax = "proto3";
 package org.eln2.proto.simulator;
+option optimize_for = LITE_RUNTIME;
 
 // Each field is only filled in when it makes sense, i.e. a crash report will include everything,
 // as might a watchdog firing or WAILA-induced state request, but an AddComponent request won't
