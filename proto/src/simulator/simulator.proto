@@ -1,0 +1,116 @@
+// This file describes the interface between a client (such as Minecraft) and the simulation core.
+// All RPCs are client-server, though in practice they may not be RPCs.
+syntax = "proto3";
+
+package org.eln2.proto.simulator;
+import "simulator/component.proto";
+import "simulator/command.proto";
+
+service Simulator {
+	// Lifecycle requests, called on startup / shutdown in the same order they're listed here.
+	rpc GetConfig(GetConfigRequest) returns (GetConfigResponse);
+	rpc Initialize(InitializeRequest) returns (InitializeResponse);
+	rpc Timestep(TimestepRequest) returns (TimestepResponse);
+}
+
+// Request configuration parameters from the server.
+// This returns a list of flags which can be configured by the user, plus their defaults.
+message GetConfigRequest {
+}
+
+message GetConfigResponse {
+	repeated FlagConfig flags = 1;
+}
+
+message FlagConfig {
+	string category = 1;
+	string name = 2;
+	oneof flag {
+		ConfigString string = 3;
+		ConfigInt int = 4;
+		ConfigFloat float = 5;
+		ConfigIntRange int_range = 6;
+		ConfigFloatRange float_range = 7;
+	}
+	message ConfigString {
+		string default = 1;
+		string regex_validator = 2;
+	}
+	// All minimum/maximum values are inclusive.
+	message ConfigInt {
+		int64 default = 1;
+		int64 min_valid = 2;
+		int64 max_valid = 3;
+	}
+	message ConfigFloat {
+		double default = 1;
+		double min_valid = 2;
+		double max_valid = 3;
+	}
+	message ConfigIntRange {
+		int64 default_min = 1;
+		int64 default_max = 2;
+		int64 min_valid = 3;
+		int64 max_valid = 4;
+	}
+	message ConfigFloatRange {
+		double default_min = 1;
+		double default_max = 2;
+		double min_valid = 3;
+		double max_valid = 4;
+	}
+}
+
+// Request server initialization.
+message InitializeRequest {
+	// User-configured values for each of the previously defined flags.
+	repeated Flag flag = 1;
+}
+
+message Flag {
+	string category = 1;
+	string name = 2;
+	oneof flag {
+		string string = 3;
+		int64 int = 4;
+		float float = 5;
+		IntRange int_range = 6;
+		FloatRange float_range = 7;
+	}
+	message IntRange {
+		int64 min = 1;
+		int64 max = 2;
+	}
+	message FloatRange {
+		float min = 1;
+		float max = 2;
+	}
+}
+
+message InitializeResponse {
+	// Any contents triggers a crash.
+	repeated string error = 1;
+	// This should contain everything needed for the client (e.g. a minecraft server) to sync with the server's view
+	// of existence after a save-load cycle.
+	repeated Component components = 2;
+	// This is the minimum unused component ID.
+	// It must be tracked client-side, and must be incremented for each new component creation.
+	int64 unused_component_id = 3;
+}
+
+message TimestepRequest {
+	// Deliberately does not pass the timestep length.
+	// That's defined in a flag, and never changes afterwards.
+	//
+	// In practice this is a list of commands to be executed by the server.
+	repeated Command command = 2;
+}
+
+message TimestepResponse {
+	// Amount of time (us) that has passed server-side, nominally.
+	// If this doesn't match real time then the client should time-dilate animations.
+	int32 timestep_length_micros = 1;
+	// If a watchdog fires, we transmit the complete state of the component that triggered it.
+	// No further action is taken server-side.
+	repeated Component watchdog_firings = 2;
+}
