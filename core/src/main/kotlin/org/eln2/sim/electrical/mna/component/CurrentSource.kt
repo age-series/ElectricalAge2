@@ -1,8 +1,16 @@
 package org.eln2.sim.electrical.mna.component
 
+/**
+ * A current source.
+ *
+ * This simply modifies the [Circuit.knowns] vector of two nodes to represent two independent currents--one in, and one out, thus satisfying the [Port] condition. Its current is controlled via [current].
+ */
 class CurrentSource : Port() {
 	override var name: String = "is"
 
+	/**
+	 * The current presently produced by this source, in Amperes.
+	 */
 	var current: Double = 0.0
 		set(value) {
 			if (isInCircuit)
