@@ -1,5 +1,7 @@
 package org.eln2.space
 
+import org.eln2.data.MutableMultiMap
+import org.eln2.data.mutableMultiMapOf
 import org.eln2.debug.dprintln
 import java.util.*
 
@@ -45,12 +47,12 @@ class ConnectedComponent(val space: Space) {
 open class Space {
 	val components: WeakHashMap<ConnectedComponent, Unit> = WeakHashMap()
 	val objectLocators: MutableMap<Locator, Object> = mutableMapOf()
-	val locatorVectors: MutableMap<Vec3i, MutableSet<Locator>> = mutableMapOf()  // XXX A Multimap would be better
+	val locatorVectors: MutableMultiMap<Vec3i, Locator> = mutableMultiMapOf()
 
 	fun add(obj: Object) {
 		dprintln("add: $obj at ${obj.locator}")
 		objectLocators[obj.locator] = obj
-		locatorVectors.getOrPut(obj.locator.vec3i, { mutableSetOf() }).add(obj.locator)
+		locatorVectors[obj.locator.vec3i] = obj.locator
 		val concom = ConnectedComponent(this)
 		concom.add(obj)
 		components[concom] = Unit
@@ -71,7 +73,7 @@ open class Space {
 			it.concom = null
 			// Also remove from the locators so merge() doesn't observe a null concom
 			objectLocators.remove(it.locator)
-			locatorVectors[it.locator.vec3i]!!.remove(it.locator)  // XXX leaks the possibly-empty set
+			locatorVectors.remove(it.locator.vec3i, it.locator)
 		}
 
 		// Rescan and merge new components
@@ -85,7 +87,7 @@ open class Space {
 
 	protected fun merge(obj: Object) {
 		obj.locator.neighbors().forEach {
-			locatorVectors[it.vec3i]?.forEach { loc ->
+			locatorVectors[it.vec3i].forEach { loc ->
 				val objb = objectLocators[loc]
 				dprintln("merge: consider loc $loc obj $objb")
 				if (objb != null && canConnect(obj, objb, loc)) {
