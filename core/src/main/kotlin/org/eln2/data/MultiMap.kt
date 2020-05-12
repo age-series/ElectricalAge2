@@ -60,6 +60,11 @@ interface MultiMap<K, V> {
 	val entriesSize: Int get() = entries.map { 1 }.sum()
 }
 
+/**
+ * An implementor of [MultiMap] using the Kotlin stdlib.
+ *
+ * This class is defined here using a Map<K, Set<V>> idiom which is compatible with the Kotlin stdlib. Other, more performant implementations exist, and can be swapped in here if needed.
+ */
 class SetMapMultiMap<K, V>(iter: Iterator<Pair<K, V>>): MultiMap<K, V> {
 	/**
 	 * Internally implements the MultiMap interface as a Map<K, Set<V>>.
