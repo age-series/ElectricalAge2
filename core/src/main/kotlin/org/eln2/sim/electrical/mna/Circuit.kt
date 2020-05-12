@@ -4,9 +4,11 @@ import org.apache.commons.math3.linear.*
 import org.eln2.debug.dprint
 import org.eln2.debug.dprintln
 import org.eln2.sim.IProcess
-import org.eln2.sim.electrical.mna.component.Component
+import org.eln2.sim.electrical.mna.component.*
 import java.lang.ref.WeakReference
 import java.util.*
+import org.eln2.parsers.falstad.*
+import org.eln2.space.*
 
 /**
  * The default format for debug matrix printouts from Circuits.
@@ -48,7 +50,7 @@ val MATRIX_FORMAT = RealMatrixFormat("", "", "\t", "\n", "", "\t")
  * - Changing any independent voltage or current source is cheap; this adjusts only the input vector to the solved connectivity matrix.
  * - Changing connectivity, including resistance between nodes, is expensive, and requires the solver to be recomputed.
  *
- * In the current implementation, reactive components ([Capacitor], [Inductor]) change only current sources, and are thus fairly cheap. Nonlinear components (like [Diode]), however, may change resistances, and thus require multiple substeps to settle on a solution. The implementations of these Components have been chosen carefully to converge (often exponentially) to the correct value, but the [Circuit.maxSubSteps] tuning parameter can be adjusted to place a hard upper bound on the amount of time spent in substeps for nonlinear components.
+ * In the current implementation, reactive components ([Capacitor], [Inductor]) change only current sources, and are thus fairly cheap. Nonlinear components (like [RealisticDiode]), however, may change resistances, and thus require multiple substeps to settle on a solution. The implementations of these Components have been chosen carefully to converge (often exponentially) to the correct value, but the [Circuit.maxSubSteps] tuning parameter can be adjusted to place a hard upper bound on the amount of time spent in substeps for nonlinear components.
  *
  * # Stability
  *
@@ -167,6 +169,8 @@ class Circuit {
 	 * This matrix is square of size (nodes + vsources), with the upper-left square nodes-size matrix representing the conductances, and the two (nodes x vsources) rectangular matrices representing the connectivity of the voltage sources.
 	 * 
 	 * It is the "A Matrix" in the [MNA Algorithm][MNA].
+	 *
+	 * [MNA]: https://lpsa.swarthmore.edu/Systems/Electrical/mna/MNA3.html
 	 */
 	internal var matrix: RealMatrix? = null
 	/**
@@ -175,6 +179,8 @@ class Circuit {
 	 * This is a column vector of size (nodes + vsources); the first (nodes) elements are independent currents into the node (the sums of signed contributions of current sources), and the last (vsources) elements are the voltage source values.
 	 *
 	 * This is the "z matrix" in the [MNA Algorithm][MNA].
+	 *
+	 * [MNA]: https://lpsa.swarthmore.edu/Systems/Electrical/mna/MNA3.html
 	 */
 	internal var knowns: RealVector? = null
 	/**
@@ -208,6 +214,8 @@ class Circuit {
 	 * The interpretation, according to Falstad, is as follows: if the potential of [b] changes by `dV`, then the current into node [a] should change by [x] * `dV`. The unit of [x] is Siemens (reciprocal Ohms).
 	 *
 	 * This is the lowest level function that manipulates [matrix]; it is usually called via [stampResistor] and [stampVoltageSource]. These should only be called from [Component.stamp].
+	 *
+	 * [MNA]: https://lpsa.swarthmore.edu/Systems/Electrical/mna/MNA3.html
 	 */
 	/* From Falstad: declare that a potential change dV in node b changes the current in node a by x*dV, complicated
 	   slightly by independent voltage sources. The unit of x is Siemens, reciprocal Ohms, a unit of conductance.

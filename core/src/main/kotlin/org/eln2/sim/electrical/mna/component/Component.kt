@@ -1,6 +1,7 @@
 package org.eln2.sim.electrical.mna.component
 
 import org.eln2.sim.electrical.mna.*
+import org.eln2.parsers.falstad.*
 
 /**
  * The Component is an entity which can be simulated in a [Circuit]; generally speaking, these are little more than object-oriented interfaces to the state of the Circuit as expressed through its [Circuit.matrix], [Circuit.knowns], [Circuit.solver], and so forth. Much of the actual math implemented for a component depends on the "stamp" family of methods--see those for details.
@@ -129,7 +130,7 @@ abstract class Component : IDetail {
 }
 
 /**
- * A "Port" is a pair of [Node]s ("pins") satisfing the Port Condition: the current into one is equal to the current out of the other, and vice versa; equivalently, the sum of the currents is zero.
+ * A "Port" is a pair of [Node]s ("pins") satisfying the Port Condition: the current into one is equal to the current out of the other, and vice versa; equivalently, the sum of the currents is zero.
  *
  * Most "simple", ideal components satisfy this condition, and thus it is included here for utility. Components which do not satisfy this include some multi-Node Components (like transistors) where the relationship is more complicated, or Components which intentionally leak (or source) current somewhere; for those, subclass [Component] instead.
  *

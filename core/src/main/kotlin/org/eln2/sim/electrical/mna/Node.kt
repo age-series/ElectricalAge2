@@ -1,6 +1,8 @@
 package org.eln2.sim.electrical.mna
 
 import org.eln2.debug.dprintln
+import org.eln2.sim.electrical.mna.component.*
+import org.eln2.space.Set
 
 /**
  * A "node", in MNA; the non-resistive connections between [Component]s.
@@ -62,6 +64,6 @@ class GroundNode(circuit: Circuit) : Node(circuit) {
 /**
  * A "NodeRef", which simply refers to an underlying [Node].
  *
- * This additional level of indirection allows nodes between [Components] to be united normally, _and_ for a single connection to [Circuit.ground] to connect _all_ connected Components to ground, even if the connections between Components were established earlier. In this way, it resembles a simpler version of [space.Set].
+ * This additional level of indirection allows nodes between [Component]s to be united normally, _and_ for a single connection to [Circuit.ground] to connect _all_ connected Components to ground, even if the connections between Components were established earlier. In this way, it resembles a simpler version of [Set].
  */
 data class NodeRef(var node: Node)

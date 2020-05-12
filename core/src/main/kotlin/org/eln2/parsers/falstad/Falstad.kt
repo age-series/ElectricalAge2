@@ -5,7 +5,7 @@ import org.eln2.debug.dprintln
 import org.eln2.parsers.falstad.components.sources.*
 import org.eln2.parsers.falstad.components.generic.*
 import org.eln2.parsers.falstad.components.passive.*
-import org.eln2.sim.electrical.mna.Circuit
+import org.eln2.sim.electrical.mna.*
 import org.eln2.sim.electrical.mna.component.Component
 import org.eln2.sim.electrical.mna.component.Resistor
 import org.eln2.sim.electrical.mna.component.VoltageSource
