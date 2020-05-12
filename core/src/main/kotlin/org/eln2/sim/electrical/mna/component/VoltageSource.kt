@@ -1,5 +1,7 @@
 package org.eln2.sim.electrical.mna.component
 
+import org.eln2.sim.electrical.mna.*
+
 /**
  * A voltage source.
  *
