@@ -16,7 +16,7 @@ class VoltageSource : Port() {
 	override var potential: Double = 0.0
 		set(value) {
 			if (isInCircuit)
-				circuit!!.stampVoltageChange(vsources[0].index, value - field)
+				vsources[0].change(value - field)
 			field = value
 		}
 	/**
