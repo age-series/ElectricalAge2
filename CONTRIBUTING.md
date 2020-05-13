@@ -6,27 +6,26 @@ Feel free to make pull requests or issues, but please note that we are currently
 
 ## PR Guidelines
 
-* Keep PR's to one topic, if possible. This permits us to use version control to find software regressions more easily.
+* Keep commits in a PR to one topic, if possible. This permits us to use version control to find software regressions more easily.
 * Avoid mass operations such as folder moves and restructures next to logical changes in the code.
 * Use the PR message to describe changes; use markdown check marks to show intended progress towards a goal.
 * Keep PR up to date with the `master` branch to ease merges. In the future, once we have one, keep up to date with `develop` instead.
-* PR's should come with their code documented and unit tested (if possible).
+* PR's should come with their code documented and unit tested (as much as possible, as decided by the head developers).
 * If you make a PR, you agree to the licenses of the project, and that the code and content you are contributing complies with the applicable license.
 
 ## Branch Naming
 
-Please use concise names that accurately describe what you are doing. For example, `feature/add-variable-resistor` may describe some new Variable Resistor you are adding.
+Please use concise names that accurately describe what you are doing.
+For example, `feature/add-variable-resistor` may describe some new Variable Resistor you are adding.
 
-The following naming convention is to be used, with the exception that currently `master` is being used as `develop` (see below comment).
+The following naming convention is to be used.
 
-* `master` – Stable release branch that is known for production level stability and has hotfixes applied if that is not the case.
-* `develop` – Development branch, with feature branches being created from this branch and merged back into it. Code here should pass standardized testing at least.
-* `feature/(branch name)` – Branches created by developers that add new features to the development branch.
-* `hotfix/(branch name)` – Branches for urgent fixes against `master` (and are also pushed to `develop` at the same time).
+* `master` – Branch that all of the developers work out of.
+* `feature/(branch name)` – Branches created by developers that add new features
 
-Currently, we use `master` as `develop`, but this will change relatively soon, once we have a working product that can be loaded in a game and connects the games to the engine.
-
-Click [here](https://nvie.com/posts/a-successful-git-branching-model/) for more details on this software development strategy.
+We're using a rolling release strategy, so having multiple branches doesn't really help.
+Unit testing should be sufficient for watching for errors in the code. If a buf is found, push a fix and push a release.
+Releases will just be simple release tags/labels on the `master` branch.
 
 ## Licensing breakdown
 
@@ -41,6 +40,7 @@ All of the content (images, models, etc) in this repository is currently [CC0](h
 * The [Pro Git Book](https://git-scm.com/book/en/v2) - anything you could want to know about Git itself, and how to use the CLI.
 * [How to create unit tests](https://www.jetbrains.com/help/idea/create-tests.html)
 * [Google Protocol Buffers](https://developers.google.com/protocol-buffers) (Used in network communications, data serialization)
+
 ## Code Layout
 
 * apps: Standalone Applications
