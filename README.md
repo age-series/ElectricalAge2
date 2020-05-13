@@ -1,13 +1,22 @@
 # eln2
 ![CI](https://github.com/eln2/eln2/workflows/CI/badge.svg)
 
-This is the home of the Eln2 minecraft mod for 1.12.
+This is the home of Eln2, a Minecraft and Vintage Story mod.
+
+## Game Support
+
+Planned support for:
+
+* [Minecraft](https://minecraft.net) 1.15.2 (Forge only)
+* [Vintage Story](https://www.vintagestory.at/)
 
 ## Licensing
 
-This repository's code is licensed under the MIT license, except for UMC which has it's own license.
+Code is licensed under the [MIT license](LICENSE.md), unless otherwise licensed.
 
-The content (images/models) if there are any added must be under [CC0](https://creativecommons.org/share-your-work/public-domain/cc0/) for the time being. A less permissive license may be allowed in the future.
+Content is currently licensed under [CC0](https://creativecommons.org/share-your-work/public-domain/cc0/).
+
+See the [Contributing Document](CONTRIBUTING.md) for more details on development and licensing details.
 
 ## Codacy Dashboard
 
