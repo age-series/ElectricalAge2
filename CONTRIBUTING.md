@@ -34,6 +34,13 @@ All of the code (Kotlin, Java, Rust, etc) in this repository is [MIT Licensed](L
 
 All of the content (images, models, etc) in this repository is currently [CC0](https://creativecommons.org/share-your-work/public-domain/cc0/), but [CC BY-SA](https://creativecommons.org/licenses/by-sa/4.0/) has been proposed.
 
+## Useful Resources
+
+* [How to write good Git Commits (and more)](https://chris.beams.io/posts/git-commit/)
+* [How to compose good Pull Requests that are likely to be accepted.](https://www.atlassian.com/blog/git/written-unwritten-guide-pull-requests)
+* The [Pro Git Book](https://git-scm.com/book/en/v2) - anything you could want to know about Git itself, and how to use the CLI.
+* [How to create unit tests](https://www.jetbrains.com/help/idea/create-tests.html)
+* [Google Protocol Buffers](https://developers.google.com/protocol-buffers) (Used in network communications, data serialization)
 ## Code Layout
 
 * apps: Standalone Applications
