@@ -25,13 +25,25 @@ interface MultiMap<K, V> {
 	operator fun get(k: K): Set<V>
 
 	/**
+	 * Get a single, arbitrary value associated with key [k].
+	 *
+	 * If that association is empty, returns null.
+	 */
+	fun one(k: K): V? {
+		val iter = get(k).iterator()
+		return if(iter.hasNext()) iter.next() else null
+	}
+
+	/**
 	 * An iterator over every Entry<K, Set<V>>, of size keySize.
 	 */
 	val keyMapping: Iterable<Map.Entry<K, Set<V>>>
 	/**
 	 * The number of keys, value sets, and keyMapping entries in this MultiMap.
+	 *
+	 * The naive implementation is O(n), but implementations are encouraged to implement this more efficiently where possible.
 	 */
-	val keyMappingSize: Int get() = keyMapping.map { 1 }.sum()
+	val keyMappingSize: Int get() = keyMapping.count()
 	/**
 	 * The set of all keys.
 	 */
@@ -44,6 +56,8 @@ interface MultiMap<K, V> {
 	val valueSets: Collection<Set<V>> get() = keyMapping.map {(_, vs) -> vs}
 	/**
 	 * The unique values in this MultiMap.
+	 *
+	 * This is often at least O(n * UNION), where UNION is the cost of set union.
 	 */
 	val uniqueValues: Set<V>
 	/**
@@ -56,8 +70,10 @@ interface MultiMap<K, V> {
 	val entries: Iterable<Map.Entry<K, V>>
 	/**
 	 * The number of pairings in this MultiMap.
+	 *
+	 * The naive implementation is O(n), but implementations are encouraged to implement this more efficiently where possible.
 	 */
-	val entriesSize: Int get() = entries.map { 1 }.sum()
+	val entriesSize: Int get() = entries.count()
 }
 
 /**
@@ -70,7 +86,8 @@ class SetMapMultiMap<K, V>(iter: Iterator<Pair<K, V>>): MultiMap<K, V> {
 	 * Internally implements the MultiMap interface as a Map<K, Set<V>>.
 	 */
 	val map: Map<K, Set<V>> = with(mutableMapOf<K, MutableSet<V>>()) {
-		iter.forEach { (k, v) -> getOrElse(k, { mutableSetOf() }).add(v) }
+		iter.forEach { (k, v) -> getOrPut(k, { mutableSetOf() }).add(v) }
+		println("SMMM.map: $this")
 		entries.associate { (k, v) -> Pair(k, v.toSet()) }
 	}.toMap()
 
@@ -131,14 +148,14 @@ class MutableSetMapMultiMap<K, V>: MutableMultiMap<K, V> {
 		iter.forEach { (k, v) -> set(k, v) }
 	}
 
-	override operator fun get(k: K): MutableSet<V> = map.getOrElse(k, { mutableSetOf() })
+	override operator fun get(k: K): MutableSet<V> = map.getOrPut(k, { mutableSetOf() })
 
 	override fun clear(k: K) {
 		map.remove(k)
 	}
 
 	override val keyMapping: Iterable<Map.Entry<K, Set<V>>> = map.entries
-	override val keyMappingSize: Int = map.size
+	override val keyMappingSize: Int get() = map.size
 	override val keys get() = map.keys
 	override val valueSets: Collection<Set<V>> = map.values
 	override val uniqueValues: Set<V> get() = map.values.fold(emptySet()) { next, acc -> acc.union(next.toSet()) }
