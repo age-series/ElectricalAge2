@@ -10,6 +10,5 @@ pluginManagement {
 
 include("core")
 include("apps")
-include("shared")
 include("proto")
 include("integration-mc1-15")
