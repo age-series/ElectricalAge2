@@ -6,10 +6,11 @@ Feel free to make pull requests or issues, but please note that we are currently
 
 ## PR Guidelines
 
+* Please use concise subject messages on commits, and a commit message body explaining the changes is highly encouraged.
 * Keep commits in a PR to one topic, if possible. This permits us to use version control to find software regressions more easily.
-* Avoid mass operations such as folder moves and restructures next to logical changes in the code.
-* Use the PR message to describe changes; use markdown check marks to show intended progress towards a goal.
-* Keep PR up to date with the `master` branch to ease merges. In the future, once we have one, keep up to date with `develop` instead.
+* Avoid mass operations such as folder moves and restructures next to logical changes in the code in the same commit. It makes the commit diffs messy and difficult to follow.
+* Use the PR message on GitHub to describe changes; use markdown check marks to show intended progress towards a goal.
+* Keep your PR up to date with the `master` branch to ease merges. It is preferred that you rebase rather than merge where possible.
 * PR's should come with their code documented and unit tested (as much as possible, as decided by the head developers).
 * If you make a PR, you agree to the licenses of the project, and that the code and content you are contributing complies with the applicable license.
 
@@ -57,4 +58,3 @@ All of the content (images, models, etc) in this repository is currently [CC0](h
 * integration-vs: Vintage Story Integration Code
 * logcollector: A rust statistics and (crash) logging server
 * proto: A set of [Google Protocol Buffers](https://developers.google.com/protocol-buffers) for communication with all of our applications (proto3)
-* shared: For code that may be shared amongst platforms (maybe)
