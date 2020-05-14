@@ -34,46 +34,55 @@ interface MultiMap<K, V> {
 		return if(iter.hasNext()) iter.next() else null
 	}
 
+
+
 	/**
 	 * An iterator over every Entry<K, Set<V>>, of size keySize.
 	 */
 	val keyMapping: Iterable<Map.Entry<K, Set<V>>>
+
 	/**
 	 * The number of keys, value sets, and keyMapping entries in this MultiMap.
 	 *
-	 * The naive implementation is O(n), but implementations are encouraged to implement this more efficiently where possible.
+	 * A naive, O(n) implementation might be keyMapping.count(), but you are encouraged to implement a faster one if at all possible. Implementors should document their complexity.
 	 */
-	val keyMappingSize: Int get() = keyMapping.count()
+	val keyMappingSize: Int
+
 	/**
 	 * The set of all keys.
 	 */
 	val keys: Set<K> get() = keyMapping.map {(k, _) -> k }.toSet()
+
 	/**
 	 * The set of all sets of values.
 	 * 
 	 * This will have the same size as keySize.
 	 */
 	val valueSets: Collection<Set<V>> get() = keyMapping.map {(_, vs) -> vs}
+
 	/**
 	 * The unique values in this MultiMap.
 	 *
 	 * This is often at least O(n * UNION), where UNION is the cost of set union.
 	 */
 	val uniqueValues: Set<V>
+
 	/**
 	 * The number of unique values in this MultiMap.
 	 */
 	val uniqueValuesSize: Int get() = uniqueValues.size
+
 	/**
 	 * An iterator over every Entry<K, V>, where K may be repeated for each value.
 	 */
 	val entries: Iterable<Map.Entry<K, V>>
+
 	/**
 	 * The number of pairings in this MultiMap.
 	 *
-	 * The naive implementation is O(n), but implementations are encouraged to implement this more efficiently where possible.
+	 * A naive, O(n) implementation might be entries.count(), but you are encouraged to implement a faster one if at all possible. Implementors should document their complexity.
 	 */
-	val entriesSize: Int get() = entries.count()
+	val entriesSize: Int
 }
 
 /**
@@ -96,11 +105,15 @@ class SetMapMultiMap<K, V>(iter: Iterator<Pair<K, V>>): MultiMap<K, V> {
 	override fun get(k: K): Set<V> = map.get(k) ?: emptySet()
 
 	override val keyMapping: Iterable<Map.Entry<K, Set<V>>> = map.entries
-	override val keyMappingSize: Int = map.size
+	/** This is an O(1) implementation of this property. */
+	override val keyMappingSize: Int get() = map.size
 	override val keys: Set<K> get() = map.keys
 	override val valueSets: Collection<Set<V>> get() = map.values
 	override val uniqueValues: Set<V> get() = map.values.fold(emptySet()) { next, acc -> acc.union(next) }
 	override val entries: Iterable<Map.Entry<K, V>> get() = map.entries.flatMap { (k, vs) -> vs.map { MultiMapEntry(k, it) }}
+	/** This implementation is O(keyMappingSize)--linear in the number of keys. */
+	override val entriesSize: Int
+		get() = map.entries.map { (_, vs) -> vs.size }.sum()
 }
 
 /**
@@ -155,11 +168,15 @@ class MutableSetMapMultiMap<K, V>: MutableMultiMap<K, V> {
 	}
 
 	override val keyMapping: Iterable<Map.Entry<K, Set<V>>> = map.entries
+	/** This implementation is O(1). */
 	override val keyMappingSize: Int get() = map.size
 	override val keys get() = map.keys
 	override val valueSets: Collection<Set<V>> = map.values
 	override val uniqueValues: Set<V> get() = map.values.fold(emptySet()) { next, acc -> acc.union(next.toSet()) }
 	override val entries: Iterable<Map.Entry<K, V>> get() = map.entries.flatMap { (k, vs) -> vs.map { MultiMapEntry(k, it) }}
+	/** This implementation is O(keyMappingSize). */
+	override val entriesSize: Int
+		get() = map.entries.map { (_, vs) -> vs.size }.sum()
 }
 
 /**
