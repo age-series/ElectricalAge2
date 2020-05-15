@@ -41,6 +41,7 @@ All of the content (images, models, etc) in this repository is currently [CC0](h
 * The [Pro Git Book](https://git-scm.com/book/en/v2) - anything you could want to know about Git itself, and how to use the CLI.
 * [How to create unit tests](https://www.jetbrains.com/help/idea/create-tests.html)
 * [Google Protocol Buffers](https://developers.google.com/protocol-buffers) (Used in network communications, data serialization)
+* [Kotlin Style Guide](https://developer.android.com/kotlin/style-guide)
 
 ## Code Layout
 
