@@ -86,37 +86,6 @@ interface MultiMap<K, V> {
 }
 
 /**
- * An implementor of [MultiMap] using the Kotlin stdlib.
- *
- * This class is defined here using a Map<K, Set<V>> idiom which is compatible with the Kotlin stdlib. Other, more performant implementations exist, and can be swapped in here if needed.
- */
-class SetMapMultiMap<K, V>(iter: Iterator<Pair<K, V>>): MultiMap<K, V> {
-	/**
-	 * Internally implements the MultiMap interface as a Map<K, Set<V>>.
-	 */
-	val map: Map<K, Set<V>> = with(mutableMapOf<K, MutableSet<V>>()) {
-		iter.forEach { (k, v) -> getOrPut(k, { mutableSetOf() }).add(v) }
-		println("SMMM.map: $this")
-		entries.associate { (k, v) -> Pair(k, v.toSet()) }
-	}.toMap()
-
-	constructor(): this(emptyList<Pair<K, V>>().iterator())
-
-	override fun get(k: K): Set<V> = map.get(k) ?: emptySet()
-
-	override val keyMapping: Iterable<Map.Entry<K, Set<V>>> = map.entries
-	/** This is an O(1) implementation of this property. */
-	override val keyMappingSize: Int get() = map.size
-	override val keys: Set<K> get() = map.keys
-	override val valueSets: Collection<Set<V>> get() = map.values
-	override val uniqueValues: Set<V> get() = map.values.fold(emptySet()) { next, acc -> acc.union(next) }
-	override val entries: Iterable<Map.Entry<K, V>> get() = map.entries.flatMap { (k, vs) -> vs.map { MultiMapEntry(k, it) }}
-	/** This implementation is O(keyMappingSize)--linear in the number of keys. */
-	override val entriesSize: Int
-		get() = map.entries.map { (_, vs) -> vs.size }.sum()
-}
-
-/**
  * A Mutable version of the [MultiMap] interface.
  */
 interface MutableMultiMap<K, V>: MultiMap<K, V> {
@@ -154,10 +123,12 @@ interface MutableMultiMap<K, V>: MultiMap<K, V> {
  *
  * This class is defined here using a MutableMap<K, MutableSet<V>> idiom which is compatible with the Kotlin stdlib. Other, more performant implementations exist, and can be swapped in here if needed.
  */
-class MutableSetMapMultiMap<K, V>: MutableMultiMap<K, V> {
+class MutableSetMapMultiMap<K, V>(iter: Iterator<Pair<K, V>>) : MutableMultiMap<K, V> {
 	val map: MutableMap<K, MutableSet<V>> = mutableMapOf()
 
-	constructor(iter: Iterator<Pair<K, V>>) {
+	constructor(): this(emptyList<Pair<K, V>>().iterator())
+
+	init {
 		iter.forEach { (k, v) -> set(k, v) }
 	}
 
@@ -178,6 +149,26 @@ class MutableSetMapMultiMap<K, V>: MutableMultiMap<K, V> {
 	override val entriesSize: Int
 		get() = map.entries.map { (_, vs) -> vs.size }.sum()
 }
+
+/**
+ * View a MutableMultiMap as a MultiMap, essentially removing mutability from the interface.
+ */
+class ImmutableMultiMapView<K, V>(val inner: MutableMultiMap<K, V>): MultiMap<K, V> {
+	override inline fun contains(k: K): Boolean = k in inner
+	override inline fun get(k: K): Set<V> = inner[k]
+	override inline fun one(k: K): V? = inner.one(k)
+	override val keyMapping: Iterable<Map.Entry<K, Set<V>>> inline get() = inner.keyMapping
+	override val keyMappingSize: Int inline get() = inner.keyMappingSize
+	override val keys: Set<K> inline get() = inner.keys
+	override val valueSets: Collection<Set<V>> inline get() = inner.valueSets
+	override val uniqueValues: Set<V> inline get() = inner.uniqueValues
+	override val uniqueValuesSize: Int inline get() = inner.uniqueValuesSize
+	override val entries: Iterable<Map.Entry<K, V>> inline get() = inner.entries
+	override val entriesSize: Int inline get() = inner.entriesSize
+}
+
+fun<K, V> SetMapMultiMap(iter: Iterator<Pair<K, V>>) = ImmutableMultiMapView(MutableSetMapMultiMap(iter))
+fun<K, V> SetMapMultiMap() = ImmutableMultiMapView(MutableSetMapMultiMap<K, V>())
 
 /**
  * Create an empty MultiMap.
