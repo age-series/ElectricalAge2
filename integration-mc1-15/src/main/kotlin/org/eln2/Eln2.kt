@@ -27,6 +27,9 @@ object Eln2 {
 		for (block in ModBlocks.values()) {
 			registry.registerBlock(block.block, block.name.toLowerCase())
 		}
+		for (item in ModItems.values()) {
+			registry.registerItem(item.items, item.name.toLowerCase())
+		}
 
 		registry.initialize(FMLJavaModLoadingContext.get().modEventBus)
 	}

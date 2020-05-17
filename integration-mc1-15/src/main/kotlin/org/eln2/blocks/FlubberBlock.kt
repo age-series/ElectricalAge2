@@ -2,9 +2,14 @@ package org.eln2.blocks;
 
 import net.minecraft.block.Blocks
 import net.minecraft.block.SlimeBlock
+import net.minecraft.client.util.ITooltipFlag
 import net.minecraft.entity.Entity
+import net.minecraft.item.ItemStack
 import net.minecraft.util.math.Vec3d
+import net.minecraft.util.text.ITextComponent
+import net.minecraft.util.text.TranslationTextComponent
 import net.minecraft.world.IBlockReader
+import net.minecraft.world.World
 
 /**
  * Flubber.
@@ -23,5 +28,10 @@ class FlubberBlock : SlimeBlock(Properties.from(Blocks.SLIME_BLOCK)) {
 			val motion: Vec3d = entity.motion
 			entity.setMotion(motion.x, -motion.y * 1.6, motion.z)
 		}
+	}
+
+	override fun addInformation(stack: ItemStack, worldIn: IBlockReader?, tooltip: MutableList<ITextComponent>, flagIn: ITooltipFlag) {
+		super.addInformation(stack, worldIn, tooltip, flagIn)
+		tooltip.add(TranslationTextComponent("tooltip.eln2.block.flubber"))
 	}
 }
