@@ -36,6 +36,7 @@ All of the content (images, models, etc) in this repository is currently [CC0](h
 
 ## Useful Resources
 
+* [Intellij IDEA Java/Kotlin IDE](https://www.jetbrains.com/idea/) (we use this for all development on the project)
 * [How to write good Git Commits (and more)](https://chris.beams.io/posts/git-commit/)
 * [How to compose good Pull Requests that are likely to be accepted.](https://www.atlassian.com/blog/git/written-unwritten-guide-pull-requests)
 * The [Pro Git Book](https://git-scm.com/book/en/v2) - anything you could want to know about Git itself, and how to use the CLI.
