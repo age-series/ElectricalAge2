@@ -8,14 +8,12 @@ import net.minecraft.util.text.TranslationTextComponent
 import net.minecraft.world.World
 
 /**
- * Multimeter
- *
- * This is used to measure the voltage of a circuit between the circuit and ground.
- * It also displays other useful information for some components.
+ * It's a chunk of ore! This is what you get when you break the ore block.
+ * Minecraft handing you a block that you can place makes ~0 sense.
  */
-class MultimeterItem: Item(Properties().defaultMaxDamage(255)) {
+class OreChunks: Item(Properties().maxStackSize(64)) {
 	override fun addInformation(stack: ItemStack, worldIn: World?, tooltip: MutableList<ITextComponent>, flagIn: ITooltipFlag) {
 		super.addInformation(stack, worldIn, tooltip, flagIn)
-		tooltip.add(TranslationTextComponent("tooltip.eln2.item.multimeter"))
+		tooltip.add(TranslationTextComponent("tooltip.eln2.item.ore"))
 	}
 }

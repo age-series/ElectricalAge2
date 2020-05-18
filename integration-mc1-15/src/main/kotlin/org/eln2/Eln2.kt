@@ -1,10 +1,17 @@
 package org.eln2;
 
 import net.darkhax.bookshelf.registry.RegistryHelper
+import net.minecraft.item.ItemGroup
+import net.minecraft.item.ItemStack
+import net.minecraft.util.NonNullList
+import net.minecraftforge.fml.common.registry.GameRegistry
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext
+import net.minecraftforge.registries.ForgeRegistries
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
+import org.eln2.blocks.OreBlock
+import org.eln2.utils.OreGen
 
 const val MODID = "eln2"
 
@@ -24,12 +31,9 @@ object Eln2 {
 	 * This is run at class construction time, and should do as little as possible.
 	 */
 	fun initialize() {
-		for (block in ModBlocks.values()) {
-			registry.registerBlock(block.block, block.name.toLowerCase())
-		}
-		for (item in ModItems.values()) {
-			registry.registerItem(item.items, item.name.toLowerCase())
-		}
+		// Register blocks and items
+		ModItems.values().forEach {registry.registerItem(it.items, it.name.toLowerCase())}
+		ModBlocks.values().forEach {registry.registerBlock(it.block, it.name.toLowerCase())}
 
 		registry.initialize(FMLJavaModLoadingContext.get().modEventBus)
 	}
@@ -40,5 +44,6 @@ object Eln2 {
 	 * This is run in a threaded context, so we cannot communicate with other mods without using IMC.
 	 */
 	fun setup(event: FMLCommonSetupEvent) {
+		OreGen.setupOreGeneration()
 	}
 }
