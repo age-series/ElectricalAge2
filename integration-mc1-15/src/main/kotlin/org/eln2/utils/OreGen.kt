@@ -19,6 +19,7 @@ class OreGen {
 		/**
 		 * Configures ore generation in the world. Registers against Forge.
 		 */
+		// TODO: Allow user to configure each ore (rate/on/off) in the Eln2 configuration file under the `ores` section
 		fun setupOreGeneration() {
 			ForgeRegistries.BIOMES.filter {
 				it.category != Biome.Category.NETHER && it.category != Biome.Category.THEEND
