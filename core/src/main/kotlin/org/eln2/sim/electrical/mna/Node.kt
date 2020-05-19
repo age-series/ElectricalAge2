@@ -14,14 +14,12 @@ open class Node(var circuit: Circuit) : IDetail {
 	 * The potential of this node, in Volts, relative to ground (as defined by the [Circuit]); an output of the simulation.
 	 */
 	open var potential: Double = 0.0
+		internal set
 	/**
 	 * The index of this node into the [Circuit]'s matrices and vectors.
 	 */
 	open var index: Int = -1  // Assigned by Circuit
-	/**
-	 * True if this node is ground (defined to have zero potential).
-	 */
-	open val isGround = false
+		internal set
 	var name = "node"
 
 	override fun detail(): String {
@@ -44,8 +42,8 @@ open class Node(var circuit: Circuit) : IDetail {
 
 /**
  * A Node subclass for representing [Circuit.ground], with a higher [mergePrecedence], always [potential] 0V and [index] -1 (not assigned).
- * 
- * You can detect this via [isGround], which is true for these instances.
+ *
+ * The current recommended test for this special case is `node is GroundNode`.
  */
 class GroundNode(circuit: Circuit) : Node(circuit) {
 	override var potential: Double
@@ -55,8 +53,6 @@ class GroundNode(circuit: Circuit) : Node(circuit) {
 	override var index: Int
 		get() = -1
 		set(value) {}
-
-	override val isGround = true
 
 	override fun mergePrecedence(other: Node): Int = 100
 }
