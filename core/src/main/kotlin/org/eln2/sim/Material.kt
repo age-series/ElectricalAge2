@@ -13,7 +13,7 @@ enum class Material {
 		override val thermalConductivity: Double = 385.0
 	},
 	RUBBER {
-		override val resistivity: Double = 1 * 10.0.pow(-13.0)
+		override val resistivity: Double = 1 * 10.0.pow(13.0)
 		override val thermalConductivity: Double = 0.15
 	},
 	IRON {
@@ -34,8 +34,8 @@ Iron:       9.71    x10^-8
 Platinum    10.6    x10^-8
 Lead:       22      x10^-8
 Mercury     98      x10^-8
-Glass       1-10000 x10^-9
-Rubber      1-100   x10^-13
+Glass       1-10000 x10^9
+Rubber      1-100   x10^13
 Source: http://hyperphysics.phy-astr.gsu.edu/hbase/Tables/rstiv.html
 */
 
