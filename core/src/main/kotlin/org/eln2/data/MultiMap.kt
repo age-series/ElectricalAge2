@@ -167,7 +167,15 @@ class ImmutableMultiMapView<K, V>(val inner: MutableMultiMap<K, V>): MultiMap<K,
 	override val entriesSize: Int inline get() = inner.entriesSize
 }
 
+/** An [ImmutableMultiMapView] implemented using a [MutableSetMapMultiMap], constructed with an initial mapping.
+ *
+ * Note that this does not name a type.
+ */
 fun<K, V> SetMapMultiMap(iter: Iterator<Pair<K, V>>) = ImmutableMultiMapView(MutableSetMapMultiMap(iter))
+
+/**
+ * An [ImmutableMultiMapView] implemented using a [MutableSetMapMultiMap], constructed empty.
+ */
 fun<K, V> SetMapMultiMap() = ImmutableMultiMapView(MutableSetMapMultiMap<K, V>())
 
 /**
