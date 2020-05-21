@@ -1,4 +1,5 @@
 import org.gradle.api.tasks.testing.logging.TestLogEvent
+import org.jetbrains.dokka.gradle.DokkaTask
 
 plugins {
 	java
@@ -6,6 +7,7 @@ plugins {
 	jacoco
 	id("com.github.johnrengelman.shadow") version "5.2.0"
 	idea
+	id("org.jetbrains.dokka") version "0.10.1"
 }
 
 allprojects {
@@ -36,6 +38,7 @@ subprojects {
 		plugin("jacoco")
 		plugin("com.github.johnrengelman.shadow")
 		plugin("idea")
+		plugin("org.jetbrains.dokka")
 	}
 
 	java {
@@ -97,6 +100,12 @@ subprojects {
 			reports {
 				xml.isEnabled = true
 				csv.isEnabled = false
+			}
+		}
+
+		val dokka by getting(DokkaTask::class) {
+			configuration {
+				includeNonPublic = true
 			}
 		}
 	}
