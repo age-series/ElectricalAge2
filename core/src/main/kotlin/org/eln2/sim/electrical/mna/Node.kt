@@ -15,12 +15,40 @@ open class Node(var circuit: Circuit) : IDetail {
 	 */
 	open var potential: Double = 0.0
 		internal set
+
 	/**
 	 * The index of this node into the [Circuit]'s matrices and vectors.
 	 */
 	open var index: Int = -1  // Assigned by Circuit
 		internal set
+
+	/**
+	 * True if this node is ground (defined to be 0V).
+	 */
+	open val isGround = false
+
+	/**
+	 * A name for this node, set by [named] (with a default usually assigned by the class).
+	 * 
+	 * This can be used for assigning a semantic meaning to a node, useful for debugging output. Programs should not rely on this value having any particular meaning other than its debug presentation.
+	 */
 	var name = "node"
+		protected set
+	
+	private var nameSet = false
+
+	/**
+	 * Set the name of this Node, returning this.
+	 * 
+	 * This is intended to be used at construction time, e.g. `Node(circuit).named("something")`. Usage afterward will provoke a warning when debugging is enabled.
+	 */
+	fun named(nm: String) = with(this) {
+		if(nameSet) {
+			dprintln("N.n: WARN: node already named $name being renamed to $nm")
+		}
+		name = nm
+		nameSet = true
+	}
 
 	override fun detail(): String {
 		return "[node val: $potential]"
@@ -54,6 +82,8 @@ class GroundNode(circuit: Circuit) : Node(circuit) {
 		get() = -1
 		set(value) {}
 
+	override val isGround = true
+
 	override fun mergePrecedence(other: Node): Int = 100
 }
 
@@ -63,3 +93,4 @@ class GroundNode(circuit: Circuit) : Node(circuit) {
  * This additional level of indirection allows nodes between [Component]s to be united normally, _and_ for a single connection to [Circuit.ground] to connect _all_ connected Components to ground, even if the connections between Components were established earlier. In this way, it resembles a simpler version of [Set].
  */
 data class NodeRef(var node: Node)
+
