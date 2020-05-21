@@ -520,7 +520,7 @@ class Circuit {
 					1 -> ":e"
 					else -> ""
 				}
-				sb.append("\t\"c${System.identityHashCode(cmp)}\"$port -- \"${if(it.value.node is GroundNode) "ground" else "n${it.value.node.index}"}\" [shape=box ")
+				sb.append("\t\"c${System.identityHashCode(cmp)}\"$port -- \"${if(it.value.node.isGround) "ground" else "n${it.value.node.index}"}\" [shape=box ")
 				when(it.index) {
 					0 -> sb.append("color=red")
 					1 -> sb.append("color=blue")
