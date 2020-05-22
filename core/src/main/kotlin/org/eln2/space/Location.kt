@@ -164,19 +164,19 @@ enum class Axis(val int: Int) {
  * The six orthogonal vectors corresponding to the faces of a cube as seen from the center.
  */
 enum class PlanarFace(val int: Int) {
-	XP(0), YP(1), ZP(2), XN(3), YN(4), ZN(5);
+	PosX(0), PosY(1), PosZ(2), NegX(3), NegY(4), NegZ(5);
 
 	companion object {
 		/**
 		 * Gets the face corresponding to a number.
 		 */
 		fun fromInt(i: Int) = when (i) {
-			0 -> XP
-			1 -> YP
-			2 -> ZP
-			3 -> XN
-			4 -> YN
-			5 -> ZN
+			0 -> PosX
+			1 -> PosY
+			2 -> PosZ
+			3 -> NegX
+			4 -> NegY
+			5 -> NegZ
 			else -> error("Invalid PlanarFace: $i")
 		}
 
@@ -203,35 +203,35 @@ enum class PlanarFace(val int: Int) {
 		fun fromNormal(v: Vec3i): PlanarFace = fromVec(v).inverse
 
 		/* See the microopt in Axis above */
-		val XP_VEC = Axis.X_VEC
-		val YP_VEC = Axis.Y_VEC
-		val ZP_VEC = Axis.Z_VEC
-		val XN_VEC = -XP_VEC
-		val YN_VEC = -YP_VEC
-		val ZN_VEC = -ZP_VEC
+		val PosX_VEC = Axis.X_VEC
+		val PosY_VEC = Axis.Y_VEC
+		val PosZ_VEC = Axis.Z_VEC
+		val NegX_VEC = -PosX_VEC
+		val NegY_VEC = -PosY_VEC
+		val NegZ_VEC = -PosZ_VEC
 
 		val ADJACENCIES = arrayOf(
-			arrayOf(YP, ZP, YN, ZN),
-			arrayOf(XP, ZP, XN, ZN),
-			arrayOf(XP, YP, XN, YN)
+			arrayOf(PosY, PosZ, NegY, NegZ),
+			arrayOf(PosX, PosZ, NegX, NegZ),
+			arrayOf(PosX, PosY, NegX, NegY)
 		)
 	}
 
 	val neg: Boolean get() = int > 2
 	val axis: Axis
 		get() = when (this) {
-			XP, XN -> Axis.X
-			YP, YN -> Axis.Y
-			ZP, ZN -> Axis.Z
+			PosX, NegX -> Axis.X
+			PosY, NegY -> Axis.Y
+			PosZ, NegZ -> Axis.Z
 		}
 	val inverse: PlanarFace
 		get() = when (this) {
-			XP -> XN
-			XN -> XP
-			YP -> YN
-			YN -> YP
-			ZP -> ZN
-			ZN -> ZP
+			PosX -> NegX
+			NegX -> PosX
+			PosY -> NegY
+			NegY -> PosY
+			PosZ -> NegZ
+			NegZ -> PosZ
 		}
 
 	/**
@@ -239,9 +239,9 @@ enum class PlanarFace(val int: Int) {
 	 */
 	val vec3i: Vec3i
 		get() = if (neg) when (axis) {
-			Axis.X -> XN_VEC
-			Axis.Y -> YN_VEC
-			Axis.Z -> ZN_VEC
+			Axis.X -> NegX_VEC
+			Axis.Y -> NegY_VEC
+			Axis.Z -> NegZ_VEC
 		} else axis.vec3i
 
 	/**
@@ -249,9 +249,9 @@ enum class PlanarFace(val int: Int) {
 	 */
 	val normal: Vec3i
 		get() = if (neg) axis.vec3i else when (axis) {
-			Axis.X -> XN_VEC
-			Axis.Y -> YN_VEC
-			Axis.Z -> ZN_VEC
+			Axis.X -> NegX_VEC
+			Axis.Y -> NegY_VEC
+			Axis.Z -> NegZ_VEC
 		}
 
 	val adjacencies: Array<PlanarFace> get() = ADJACENCIES[int % 3]
@@ -323,12 +323,12 @@ data class SurfacePos(override val vec3i: Vec3i, val face: PlanarFace) : Locator
 	 * Orients a vector based on which plane of a cube this node is on.
 	 */
 	fun toReference(v: Vec3i): Vec3i = when (face) {
-		PlanarFace.XN -> Vec3i(v.y, v.x, v.z)
-		PlanarFace.XP -> Vec3i(-v.y, -v.x, v.z)
-		PlanarFace.YP -> Vec3i(-v.x, -v.y, v.z)
-		PlanarFace.YN -> v
-		PlanarFace.ZN -> Vec3i(v.x, v.z, v.y)
-		PlanarFace.ZP -> Vec3i(-v.x, v.z, -v.y)
+		PlanarFace.NegX -> Vec3i(v.y, v.x, v.z)
+		PlanarFace.PosX -> Vec3i(-v.y, -v.x, v.z)
+		PlanarFace.PosY -> Vec3i(-v.x, -v.y, v.z)
+		PlanarFace.NegY -> v
+		PlanarFace.NegZ -> Vec3i(v.x, v.z, v.y)
+		PlanarFace.PosZ -> Vec3i(-v.x, v.z, -v.y)
 	}
 
 	/**
