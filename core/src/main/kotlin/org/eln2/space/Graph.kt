@@ -181,7 +181,7 @@ open class Space {
 			val line = ArrayList<Object>()
 
 			for (i in 0 until 5) {
-				val o = Object(SurfacePos(Vec3i(i, 0, 0), PlanarFace.YN))
+				val o = Object(SurfacePos(Vec3i(i, 0, 0), PlanarFace.NegY))
 				line.add(o)
 				space.add(o)
 			}
@@ -191,7 +191,7 @@ open class Space {
 			println()
 			println("--- adding a side ---")
 
-			val side = Object(SurfacePos(Vec3i(4, 0, 0), PlanarFace.XP))
+			val side = Object(SurfacePos(Vec3i(4, 0, 0), PlanarFace.PosX))
 			space.add(side)
 
 			describe(space)
@@ -199,8 +199,8 @@ open class Space {
 			println()
 			println("--- adding wrapping sides ---")
 
-			val wrsidep = Object(SurfacePos(Vec3i(1, -1, 0), PlanarFace.XP))
-			val wrsiden = Object(SurfacePos(Vec3i(-1, -1, 0), PlanarFace.XN))
+			val wrsidep = Object(SurfacePos(Vec3i(1, -1, 0), PlanarFace.PosX))
+			val wrsiden = Object(SurfacePos(Vec3i(-1, -1, 0), PlanarFace.NegX))
 			space.add(wrsidep, wrsidep)
 
 			describe(space)
@@ -208,7 +208,7 @@ open class Space {
 			println()
 			println("--- adding inverse face ---")
 
-			val inv = Object(SurfacePos(Vec3i(3, 0, 0), PlanarFace.YP))
+			val inv = Object(SurfacePos(Vec3i(3, 0, 0), PlanarFace.PosY))
 			space.add(inv)
 
 			describe(space)
@@ -218,7 +218,7 @@ open class Space {
 			println("main_3: Interoperability tests")
 
 			val space = Space()
-			val so = Object(SurfacePos(Vec3i(5, 0, 0), PlanarFace.YN))
+			val so = Object(SurfacePos(Vec3i(5, 0, 0), PlanarFace.NegY))
 			space.add(so)
 
 			println("--- adding a blockpos on the adjacent plane ---")
