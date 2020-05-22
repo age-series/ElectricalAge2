@@ -17,7 +17,8 @@ open class FunctionTable(var point: DoubleArray, var xMax: Double) : IFunction {
 	 * @param x: Given value
 	 * @return y: Value for that x, linearly fit between the two closest points on either side if valid; otherwise null.
 	 */
-	override fun getValue(x: Double): Double {
+	override fun getValue(x: Double): Double? {
+		if (x > xMax) { return null }
 		var lx = x
 		lx *= xMaxInv
 		if (lx < 0f) return point[0] + (point[1] - point[0]) * (point.size - 1) * lx
