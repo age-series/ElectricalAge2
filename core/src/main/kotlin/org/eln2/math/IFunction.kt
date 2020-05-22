@@ -11,5 +11,5 @@ interface IFunction {
 	 * @param x The input variable
 	 * @return The output variable
 	 */
-	fun getValue(x: Double): Double?
+	fun getValue(x: Double): Double
 }
