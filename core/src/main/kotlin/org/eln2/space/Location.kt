@@ -271,7 +271,9 @@ interface Locator {
 
 	/**
 	 * Returns true if it is possible for this node and another node to connect.
-	 * When overriding this, make sure a specific test in the locators that extend this interface.
+	 * When overriding this, make sure a specific test is implemented for the specific
+	 * locator that extended this interface. Ensure that the coverage of the test is
+	 * proportional to the size of the implementation.
 	 */
 	fun canConnect(other: Locator): Boolean = true
 }
