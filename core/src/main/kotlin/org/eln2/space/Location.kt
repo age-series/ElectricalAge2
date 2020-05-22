@@ -77,7 +77,7 @@ data class Vec3i(val x: Int, val y: Int, val z: Int) {
 }
 
 /**
- * A direction in space.
+ * A direction oriented in two-dimensional space.
  */
 enum class PlanarDir(val int: Int) {
 	Up(0), Right(1), Down(2), Left(3);
@@ -111,9 +111,8 @@ enum class Axis(val int: Int) {
 			else -> null
 		}
 
-		// This is allowed to return nonsensical results along perfect diagonals.
 		/**
-		 * Returns the axis in which a given vector is closest to.
+		 * Returns the axis in which a given vector is closest to. Perfect diagonals may return an axis that is nonsense.
 		 */
 		fun fromVecMajor(v: Vec3i): Axis {
 			var (x, y, z) = v
@@ -162,7 +161,7 @@ enum class Axis(val int: Int) {
 }
 
 /**
- * The six orthogonal vectors corresponding to the faces of a cube.
+ * The six orthogonal vectors corresponding to the faces of a cube as seen from the center.
  */
 enum class PlanarFace(val int: Int) {
 	XP(0), YP(1), ZP(2), XN(3), YN(4), ZN(5);
@@ -182,7 +181,7 @@ enum class PlanarFace(val int: Int) {
 		}
 
 		/**
-		 * Gets the plane that the axis is pointing to.
+		 * Gets the plane that the axis is pointing to from the center.
 		 */
 		fun fromAxis(a: Axis, n: Boolean): PlanarFace = fromInt(a.int + if (n) 3 else 0)
 
