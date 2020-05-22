@@ -34,13 +34,21 @@ class FunctionTest {
 		(0 until 8).map { it.toDouble().plus(0.5) }.forEach {
 			val expected = cos(it.times(PI).div(4.0))
 			val actual = eigthTurn.getValue(it)
-			Assertions.assertTrue(actual.minus(expected).div(expected).absoluteValue < errorTolerance)
+			if (actual != null) {
+				Assertions.assertTrue(actual.minus(expected).div(expected).absoluteValue < errorTolerance)
+			} else {
+				throw AssertionError("An extrapolation has occurred!")
+			}
 		}
 		val eigthTurnScaled = eigthTurn.duplicate(2.0, 2.0)
 		(0 until 16).map { it.toDouble().plus(0.5) }.forEach {
 			val expected = cos(it.times(PI).div(2.0))
 			val actual = eigthTurnScaled.getValue(it)
-			Assertions.assertTrue(actual.minus(expected).div(expected).absoluteValue < errorToleranceAferScale)
+			if (actual != null) {
+				Assertions.assertTrue(actual.minus(expected).div(expected).absoluteValue < errorToleranceAferScale)
+			} else {
+				throw AssertionError("An extrapolation has occurred!")
+			}
 		}
 	}
 }
