@@ -1,6 +1,5 @@
 package org.eln2.math
 
-
 /**
  * Function Table
  *
@@ -9,9 +8,6 @@ package org.eln2.math
  * @param xMax The x value that corresponds to the last y value in the point array.
  */
 open class FunctionTable(var point: DoubleArray, var xMax: Double, private val mode : ExtrapolationMode) : IFunction {
-	var xMaxInv: Double
-	var xDelta: Double
-
 	enum class ExtrapolationMode {
 		ClosestValue, Linear
 	}
@@ -46,14 +42,6 @@ open class FunctionTable(var point: DoubleArray, var xMax: Double, private val m
 		}
 	}
 
-	/*public double getValue(double x) {
-		double a = getValueLin(-xDelta);
-		double b = getValueLin(xDelta);
-		double firFactorA = 0.5, firFactorB = (1 - firFactorA) / 2;
-		return getValueLin(x) * firFactorA + getValueLin(x - xDelta) * firFactorB + getValueLin(x + xDelta) * firFactorB;
-	}
-	*/
-
 	/**
 	 * duplicate: Create a copy of this function table with the same mode
 	 * @param xFactor Scale x by scalar factor (make wider/thinner)
@@ -66,10 +54,5 @@ open class FunctionTable(var point: DoubleArray, var xMax: Double, private val m
 			pointCpy[idx] = point[idx] * yFactor
 		}
 		return FunctionTable(pointCpy, xMax * xFactor, mode)
-	}
-
-	init {
-		xMaxInv = 1.0 / xMax
-		xDelta = 1.0 / (point.size - 1) * xMax
 	}
 }
