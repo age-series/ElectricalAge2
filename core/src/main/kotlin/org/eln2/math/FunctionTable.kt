@@ -3,7 +3,9 @@ package org.eln2.math
 /**
  * Function Table
  *
- * Defines a function based on the values in a table.
+ * Defines a function based on the values in a table. The domain of the input array starts from 0 and goes to "xMax"
+ * @param point Array of double representing the reference or "y" values.
+ * @param xMax The x value that corresponds to the last y value in the point array.
  */
 open class FunctionTable(var point: DoubleArray, var xMax: Double) : IFunction {
 	var xMaxInv: Double
@@ -11,8 +13,9 @@ open class FunctionTable(var point: DoubleArray, var xMax: Double) : IFunction {
 
 	/**
 	 * getValue: Given a value, get the corresponding value, linearly fit between two closest points on either side.
+	 * Note that this is an interpolation. Extrapolation will return null.
 	 * @param x: Given value
-	 * @return y: Value for that x, linearly fit between the two closest points on either side
+	 * @return y: Value for that x, linearly fit between the two closest points on either side if valid; otherwise null.
 	 */
 	override fun getValue(x: Double): Double {
 		var lx = x
