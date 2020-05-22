@@ -24,31 +24,23 @@ internal class FunctionTest {
 
 	@Test
 	fun testFunctionTable() {
-		// A sinusoid can be approximated within 200%
-		val errorTolerance = 2.0
-		// A sinusoid scaled up by two in both directions can be appoximatd within 400dd%
-		val errorToleranceAferScale = 4.0
+		// A sinusoid can be approximated within 300%
+		val errorTolerance = 3.0
+		// A sinusoid scaled up by two in both directions can be approximated within 600%
+		val errorToleranceAferScale = 6.0
 
 		val doublesRange = (0 until 8).map { cos(it.toDouble().times(PI).div(4.0)) }
-		val eigthTurn = FunctionTable(doublesRange.toDoubleArray(), 8.0)
-		(0 until 8).map { it.toDouble().plus(0.5) }.forEach {
+		val eigthTurn = FunctionTable(doublesRange.toDoubleArray(), 8.0, FunctionTable.ExtrapolationMode.Linear)
+		(-2 until 10).map { it.toDouble().plus(0.5) }.forEach {
 			val expected = cos(it.times(PI).div(4.0))
 			val actual = eigthTurn.getValue(it)
-			if (actual != null) {
-				Assertions.assertTrue(actual.minus(expected).div(expected).absoluteValue < errorTolerance)
-			} else {
-				throw AssertionError("An extrapolation has occurred!")
-			}
+			Assertions.assertTrue(actual.minus(expected).div(expected).absoluteValue < errorTolerance)
 		}
 		val eigthTurnScaled = eigthTurn.duplicate(2.0, 2.0)
-		(0 until 16).map { it.toDouble().plus(0.5) }.forEach {
+		(-4 until 20).map { it.toDouble().plus(0.5) }.forEach {
 			val expected = cos(it.times(PI).div(2.0))
 			val actual = eigthTurnScaled.getValue(it)
-			if (actual != null) {
-				Assertions.assertTrue(actual.minus(expected).div(expected).absoluteValue < errorToleranceAferScale)
-			} else {
-				throw AssertionError("An extrapolation has occurred!")
-			}
+			Assertions.assertTrue(actual.minus(expected).div(expected).absoluteValue < errorToleranceAferScale)
 		}
 	}
 }
