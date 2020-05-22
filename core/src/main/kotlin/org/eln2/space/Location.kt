@@ -2,10 +2,28 @@ package org.eln2.space
 
 import kotlin.math.abs
 
+/**
+ * A vector in two-dimensional space.
+ */
 data class Vec2i(val x: Int, val y: Int) {
+	/**
+	 * Gets the opposite vector.
+	 */
 	operator fun unaryMinus() = Vec2i(-x, -y)
+
+	/**
+	 * Gets the sum of this vector and another vector.
+	 */
 	operator fun plus(other: Vec2i) = Vec2i(x + other.x, y + other.y)
+
+	/**
+	 * Gets the sum of this vector and the opposite of another vector.
+	 */
 	operator fun minus(other: Vec2i) = this + (-other)
+
+	/**
+	 * Gets the scalar multiple of this vector.
+	 */
 	operator fun times(scalar: Int) = Vec2i(x * scalar, y * scalar)
 
 	val isZero: Boolean get() = this == ZERO
@@ -18,14 +36,36 @@ data class Vec2i(val x: Int, val y: Int) {
 
 }
 
+/**
+ * A vector in three-dimensional space.
+ */
 data class Vec3i(val x: Int, val y: Int, val z: Int) {
+	/**
+	 * Gets the opposite vector.
+	 */
 	operator fun unaryMinus() = Vec3i(-x, -y, -z)
+
+	/**
+	 * Gets the sum of this vector and another vector.
+	 */
 	operator fun plus(other: Vec3i) = Vec3i(x + other.x, y + other.y, z + other.z)
+
+	/**
+	 * Gets the sum of this vector and the opposite of another vector.
+	 */
 	operator fun minus(other: Vec3i) = this + (-other)
+
+	/**
+	 * Gets the scalar multiple of this vector.
+	 */
 	operator fun times(other: Int) = Vec3i(x * other, y * other, z * other)
 
 	val isZero: Boolean get() = (x == 0) && (y == 0) && (z == 0)
 
+	/**
+	 * Calculates the L1 distance between two vectors.
+	 * See https://en.wikipedia.org/wiki/Taxicab_geometry
+	 */
 	fun l1norm(v: Vec3i): Int = abs(v.x - x) + abs(v.y - y) + abs(v.z - z)
 
 	companion object {
@@ -36,6 +76,9 @@ data class Vec3i(val x: Int, val y: Int, val z: Int) {
 	}
 }
 
+/**
+ * A direction in space.
+ */
 enum class PlanarDir(val int: Int) {
 	Up(0), Right(1), Down(2), Left(3);
 
@@ -54,6 +97,9 @@ enum class PlanarDir(val int: Int) {
 	val rotated_left: PlanarDir get() = fromInt((int + 3) % 4)
 }
 
+/**
+ * A set of unit vectors that represents each direction in three-dimensional space.
+ */
 enum class Axis(val int: Int) {
 	X(0), Y(1), Z(2);
 
@@ -66,6 +112,9 @@ enum class Axis(val int: Int) {
 		}
 
 		// This is allowed to return nonsensical results along perfect diagonals.
+		/**
+		 * Returns the axis in which a given vector is closest to.
+		 */
 		fun fromVecMajor(v: Vec3i): Axis {
 			var (x, y, z) = v
 			x = abs(x); y = abs(y); z = abs(z)
@@ -90,6 +139,9 @@ enum class Axis(val int: Int) {
 			Z -> Z_VEC
 		}
 
+	/**
+	 * Returns the cross product of this axis and another.
+	 */
 	fun cross(other: Axis): Axis? = when (this) {
 		X -> when (other) {
 			X -> null
@@ -109,10 +161,16 @@ enum class Axis(val int: Int) {
 	}
 }
 
+/**
+ * The six orthogonal vectors corresponding to the faces of a cube.
+ */
 enum class PlanarFace(val int: Int) {
 	XP(0), YP(1), ZP(2), XN(3), YN(4), ZN(5);
 
 	companion object {
+		/**
+		 * Gets the face corresponding to a number.
+		 */
 		fun fromInt(i: Int) = when (i) {
 			0 -> XP
 			1 -> YP
@@ -123,8 +181,14 @@ enum class PlanarFace(val int: Int) {
 			else -> error("Invalid PlanarFace: $i")
 		}
 
+		/**
+		 * Gets the plane that the axis is pointing to.
+		 */
 		fun fromAxis(a: Axis, n: Boolean): PlanarFace = fromInt(a.int + if (n) 3 else 0)
 
+		/**
+		 * Gets the plane that the vector is pointing to.
+		 */
 		fun fromVec(v: Vec3i): PlanarFace {
 			val axis = Axis.fromVecMajor(v)
 			return fromAxis(axis, when (axis) {
@@ -134,6 +198,9 @@ enum class PlanarFace(val int: Int) {
 			})
 		}
 
+		/**
+		 * Gets the plane that the normal of the vector is pointing to.
+		 */
 		fun fromNormal(v: Vec3i): PlanarFace = fromVec(v).inverse
 
 		/* See the microopt in Axis above */
@@ -168,7 +235,9 @@ enum class PlanarFace(val int: Int) {
 			ZN -> ZP
 		}
 
-	// "Vector": the vec that points out of the block center toward this face.
+	/**
+	 "Vector": the vec that points out of the block center toward this face.
+	 */
 	val vec3i: Vec3i
 		get() = if (neg) when (axis) {
 			Axis.X -> PlanarFace.XN_VEC
@@ -176,7 +245,9 @@ enum class PlanarFace(val int: Int) {
 			Axis.Z -> PlanarFace.ZN_VEC
 		} else axis.vec3i
 
-	// "Normal": the vec that points, normal to this face, toward the block center.
+	/**
+	 * "Normal": the vec that points, normal to this face, toward the block center.
+	 */
 	val normal: Vec3i
 		get() = if (neg) axis.vec3i else when (axis) {
 			Axis.X -> PlanarFace.XN_VEC
@@ -187,15 +258,27 @@ enum class PlanarFace(val int: Int) {
 	val adjacencies: Array<PlanarFace> get() = PlanarFace.ADJACENCIES[int % 3]
 }
 
+/**
+ * A generic that represents the location of something and its neighbors.
+ */
 interface Locator {
 	val vec3i: Vec3i
+
+	/**
+	 * A list of neighbors in which connections are possible with.
+	 */
 	fun neighbors(): List<Locator>
 
 	/* When overriding this, put more specific tests in more specific locators, as a rule */
+	/**
+	 * Returns true if it is possible for this node and another node to connect.
+	 */
 	fun canConnect(other: Locator): Boolean = true
 }
 
-/* Support for "simple nodes" that take an entire block. */
+/**
+ *  Positionally support for "simple nodes" that take an entire block.
+ */
 data class BlockPos(override val vec3i: Vec3i) : Locator {
 	companion object {
 		val CONNECTIVITY_DELTAS = arrayListOf(
@@ -210,10 +293,15 @@ data class BlockPos(override val vec3i: Vec3i) : Locator {
 
 	override fun neighbors(): List<Locator> = CONNECTIVITY_DELTAS.map { translate(it) }
 
+	/**
+	 * Offsets a vector based on the position of this node.
+	 */
 	fun translate(v: Vec3i) = BlockPos(vec3i + v)
 }
 
-/* Support for surface-mounted nodes, up to six per block. */
+/**
+ *  Positionally support for surface-mounted nodes, up to six per block.
+ */
 data class SurfacePos(override val vec3i: Vec3i, val face: PlanarFace) : Locator {
 	companion object {
 		// On the same plane:
@@ -232,6 +320,9 @@ data class SurfacePos(override val vec3i: Vec3i, val face: PlanarFace) : Locator
 
 	// Preserve chirality: invert _two_ components, or none.
 	// There's very little thought in the permutation otherwise, however; if those need to be changed, they can be.
+	/**
+	 * Orients a vector based on which plane of a cube this node is on.
+	 */
 	fun toReference(v: Vec3i): Vec3i = when (face) {
 		PlanarFace.XN -> Vec3i(v.y, v.x, v.z)
 		PlanarFace.XP -> Vec3i(-v.y, -v.x, v.z)
@@ -241,6 +332,9 @@ data class SurfacePos(override val vec3i: Vec3i, val face: PlanarFace) : Locator
 		PlanarFace.ZP -> Vec3i(-v.x, v.z, -v.y)
 	}
 
+	/**
+	 * Offsets a vector based on the position of this node.
+	 */
 	fun translate(v: Vec3i) = SurfacePos(vec3i + toReference(v), face)
 
 	override fun neighbors(): List<Locator> = (PLANAR_DELTAS
