@@ -186,7 +186,7 @@ enum class PlanarFace(val int: Int) {
 		fun fromAxis(a: Axis, n: Boolean): PlanarFace = fromInt(a.int + if (n) 3 else 0)
 
 		/**
-		 * Gets the plane that the vector is pointing to.
+		 * Gets the plane that the vector is pointing to in respect to the center of the cube.
 		 */
 		fun fromVec(v: Vec3i): PlanarFace {
 			val axis = Axis.fromVecMajor(v)
@@ -198,7 +198,7 @@ enum class PlanarFace(val int: Int) {
 		}
 
 		/**
-		 * Gets the plane that the normal of the vector is pointing to.
+		 * Gets the plane that has the closest normal vector to the given vector.
 		 */
 		fun fromNormal(v: Vec3i): PlanarFace = fromVec(v).inverse
 
@@ -258,7 +258,8 @@ enum class PlanarFace(val int: Int) {
 }
 
 /**
- * A generic that represents the location of something and its neighbors.
+ * A generic location in a generic space. Also contains a method to check if something can connect with this and list
+ * of locatable objects that can connect with this.
  */
 interface Locator {
 	val vec3i: Vec3i
@@ -268,15 +269,15 @@ interface Locator {
 	 */
 	fun neighbors(): List<Locator>
 
-	/* When overriding this, put more specific tests in more specific locators, as a rule */
 	/**
 	 * Returns true if it is possible for this node and another node to connect.
+	 * When overriding this, make sure a specific test in the locators that extend this interface.
 	 */
 	fun canConnect(other: Locator): Boolean = true
 }
 
 /**
- *  Positionally support for "simple nodes" that take an entire block.
+ *  Locator support for "simple nodes" that take up an entire block in three-dimensional space.
  */
 data class BlockPos(override val vec3i: Vec3i) : Locator {
 	companion object {
@@ -299,7 +300,8 @@ data class BlockPos(override val vec3i: Vec3i) : Locator {
 }
 
 /**
- *  Positionally support for surface-mounted nodes, up to six per block.
+ *  Locator support for surface-mounted nodes the exist on a three-dimensional block. Up to six can exist per block,
+ *  corresponding to each face.
  */
 data class SurfacePos(override val vec3i: Vec3i, val face: PlanarFace) : Locator {
 	companion object {
@@ -320,7 +322,7 @@ data class SurfacePos(override val vec3i: Vec3i, val face: PlanarFace) : Locator
 	// Preserve chirality: invert _two_ components, or none.
 	// There's very little thought in the permutation otherwise, however; if those need to be changed, they can be.
 	/**
-	 * Orients a vector based on which plane of a cube this node is on.
+	 * Orients a vector based on which plane of a cube this node is on. This preserves chirality.
 	 */
 	fun toReference(v: Vec3i): Vec3i = when (face) {
 		PlanarFace.NegX -> Vec3i(v.y, v.x, v.z)
@@ -332,7 +334,7 @@ data class SurfacePos(override val vec3i: Vec3i, val face: PlanarFace) : Locator
 	}
 
 	/**
-	 * Offsets a vector based on the position of this node.
+	 * Offsets a vector based on the position and orientation of this node.
 	 */
 	fun translate(v: Vec3i) = SurfacePos(vec3i + toReference(v), face)
 
