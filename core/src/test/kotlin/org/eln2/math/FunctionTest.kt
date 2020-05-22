@@ -10,11 +10,11 @@ internal class Cycle(private val rate: Double) : IFunction {
 	}
 }
 
-class FunctionTest {
+internal class FunctionTest {
 	@Test
 	fun testInterface() {
 		val quarterTurn = Cycle(PI / 2.0)
-		(0 until 20).forEach { when(it % 4) {
+		for (it in 0 until 20) { when(it % 4) {
 			0 -> Assertions.assertEquals(quarterTurn.getValue(it.toDouble()), 0.0, 0.000001)
 			1 -> Assertions.assertEquals(quarterTurn.getValue(it.toDouble()), 1.0, 0.000001)
 			2 -> Assertions.assertEquals(quarterTurn.getValue(it.toDouble()),0.0, 0.000001)
