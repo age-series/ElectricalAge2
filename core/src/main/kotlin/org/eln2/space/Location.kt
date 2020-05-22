@@ -3,7 +3,7 @@ package org.eln2.space
 import kotlin.math.abs
 
 /**
- * A vector in two-dimensional space.
+ * A vector in a two-dimensional space of integers.
  */
 data class Vec2i(val x: Int, val y: Int) {
 	/**
@@ -37,7 +37,7 @@ data class Vec2i(val x: Int, val y: Int) {
 }
 
 /**
- * A vector in three-dimensional space.
+ * A vector in a three-dimensional space of integers.
  */
 data class Vec3i(val x: Int, val y: Int, val z: Int) {
 	/**
