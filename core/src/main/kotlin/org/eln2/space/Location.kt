@@ -240,9 +240,9 @@ enum class PlanarFace(val int: Int) {
 	 */
 	val vec3i: Vec3i
 		get() = if (neg) when (axis) {
-			Axis.X -> PlanarFace.XN_VEC
-			Axis.Y -> PlanarFace.YN_VEC
-			Axis.Z -> PlanarFace.ZN_VEC
+			Axis.X -> XN_VEC
+			Axis.Y -> YN_VEC
+			Axis.Z -> ZN_VEC
 		} else axis.vec3i
 
 	/**
@@ -250,12 +250,12 @@ enum class PlanarFace(val int: Int) {
 	 */
 	val normal: Vec3i
 		get() = if (neg) axis.vec3i else when (axis) {
-			Axis.X -> PlanarFace.XN_VEC
-			Axis.Y -> PlanarFace.YN_VEC
-			Axis.Z -> PlanarFace.ZN_VEC
+			Axis.X -> XN_VEC
+			Axis.Y -> YN_VEC
+			Axis.Z -> ZN_VEC
 		}
 
-	val adjacencies: Array<PlanarFace> get() = PlanarFace.ADJACENCIES[int % 3]
+	val adjacencies: Array<PlanarFace> get() = ADJACENCIES[int % 3]
 }
 
 /**
