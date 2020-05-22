@@ -8,6 +8,10 @@ package org.eln2.math
  * @param xMax The x value that corresponds to the last y value in the point array.
  */
 open class FunctionTable(var point: DoubleArray, var xMax: Double, private val mode : ExtrapolationMode) : IFunction {
+
+	/**
+	 * Selects which method of extrapolation to use when trying to get a value outside of the given range.
+	 */
 	enum class ExtrapolationMode {
 		ClosestValue, Linear
 	}
