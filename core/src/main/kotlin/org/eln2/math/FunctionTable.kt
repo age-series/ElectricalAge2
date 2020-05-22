@@ -39,9 +39,9 @@ open class FunctionTable(var point: DoubleArray, var xMax: Double, private val m
 				}
 			}
 			else -> { // Interpolation
-				val sx = lx.times(point.size - 1)
+				val sx = lx * (point.size - 1)
 				val idx = sx.toInt()
-				point[idx + 1] * sx.rem(1.0) + point[idx] * (1.0f - sx.rem(1.0))
+				point[idx + 1] * (sx % 1.0) + point[idx] * (1.0f - (sx % 1.0))
 			}
 		}
 	}
