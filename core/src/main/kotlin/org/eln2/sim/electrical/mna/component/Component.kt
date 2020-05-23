@@ -60,8 +60,21 @@ abstract class Component : IDetail {
 	internal val isInCircuit: Boolean
 		get() = circuit != null
 
-	/** Called when the Component has finished being added to a circuit--a good time for any extra registration steps. */
+	/**
+	 * Called when the Component has finished being added to a circuit--a good time for any extra registration steps.
+	 * 
+	 * This is called after all the internal state--[nodes], [circuit], etc. have been initialized, and this is in [Circuit.components].
+	 */
 	open fun added() {}
+
+	/**
+	 * Called when the Component has been removed--a good time for releasing resources.
+	 * 
+	 * Note that the Component should *not* change state as a result of removal in order to guarantee that removal/addition/reconnection is idempotent.
+	 *
+	 * This is called before internal state is torn down (see [added]), but, as a caveat, this is no longer in [Circuit.components].
+	 */
+	open fun removed() {}
 
 	/**
 	 * Called before substep iterations start in [Circuit.step].
@@ -98,11 +111,16 @@ abstract class Component : IDetail {
 		if (circuit == null) return
 		val n = nodes[nidx]
 		val tn = to.nodes[tidx]
+		val (nnamed, tnnamed) = Pair(n.node.nameSet, tn.node.nameSet)
+		if(nnamed && !tnnamed) tn.node.named(n.node.name)
+		if(tnnamed && !nnamed) n.node.named(tn.node.name)
 		if (n.node == tn.node) return  // Already connected
 		if (tn.node.mergePrecedence(n.node) > n.node.mergePrecedence(tn.node)) {
 			nodes[nidx] = tn
+			if(nnamed || tnnamed) nodes[nidx].node.named(tn.node.name)
 		} else {
 			to.nodes[tidx] = n
+			if(nnamed || tnnamed) to.nodes[tidx].node.named(n.node.name)
 		}
 		// Assertion intended--fail loudly if circuit mutated here.
 		circuit!!.connectivityChanged = true
@@ -116,16 +134,21 @@ abstract class Component : IDetail {
 		if (circuit == null) return
 		val n = nodes[nidx].node
 		val tn = nr.node
+		val (nnamed, tnnamed) = Pair(n.nameSet, tn.nameSet)
+		if(nnamed && !tnnamed) tn.named(n.name)
+		if(tnnamed && !nnamed) n.named(tn.name)
 		if (tn.mergePrecedence(n) > n.mergePrecedence(tn)) {
 			nodes[nidx].node = nr.node
+			if(nnamed || tnnamed) nodes[nidx].node.named(nr.node.name)
 		} else {
 			nr.node = nodes[nidx].node
+			if(nnamed || tnnamed) nr.node.named(nodes[nidx].node.name)
 		}
 		circuit!!.connectivityChanged = true
 	}
 
 	override fun toString(): String {
-		return "${this::class.java.simpleName}@${System.identityHashCode(this).toString(16)} ${nodes.map { it.node.detail() }}"
+		return "${this::class.simpleName}@${System.identityHashCode(this).toString(16)} ${nodes.map { it.node.detail() }}"
 	}
 }
 

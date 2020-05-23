@@ -35,7 +35,8 @@ open class Node(var circuit: Circuit) : IDetail {
 	var name = "node"
 		protected set
 	
-	private var nameSet = false
+	var nameSet = false
+		protected set
 
 	/**
 	 * Set the name of this Node, returning this.
@@ -43,16 +44,17 @@ open class Node(var circuit: Circuit) : IDetail {
 	 * This is intended to be used at construction time, e.g. `Node(circuit).named("something")`. Usage afterward will provoke a warning when debugging is enabled.
 	 */
 	fun named(nm: String) = with(this) {
-		if(nameSet) {
+		if(nameSet && name != nm) {
 			dprintln("N.n: WARN: node already named $name being renamed to $nm")
 		}
 		name = nm
 		nameSet = true
 	}
-
+	
 	override fun detail(): String {
-		return "[node val: $potential]"
+		return "[$name ${this::class.simpleName}@${System.identityHashCode(this).toString(16)} ${potential}V]"
 	}
+	override fun toString() = detail()
 
 	/** Determine which node should prevail when two are merged in a Circuit.
 
@@ -63,7 +65,7 @@ open class Node(var circuit: Circuit) : IDetail {
 	open fun mergePrecedence(other: Node): Int = 0
 
 	fun stampResistor(to: Node, r: Double) {
-		dprintln("N.sR $to $r")
+		dprintln("N.sR $this $to $r")
 		circuit.stampResistor(index, to.index, r)
 	}
 }

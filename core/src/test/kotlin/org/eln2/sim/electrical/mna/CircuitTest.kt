@@ -18,6 +18,8 @@ internal class CircuitTest {
 
 		init {
 			c.add(vs, r1)
+			vs.neg.named("vneg")
+			vs.pos.named("vpos")
 			vs.connect(1, r1, 1)
 			vs.connect(0, r1, 0)
 			vs.connect(1, c.ground)
@@ -69,6 +71,29 @@ internal class CircuitTest {
 			ts.c.step(0.5)
 			assertEquals(ts.vs.potential, ts.r1.potential, EPSILON)
 		}
+	}
+	
+	@Test
+	fun componentChangeConsistency() {
+		val ts = TrivialResistiveCircuit()
+		ts.c.step(0.5)
+		val current = ts.r1.current
+
+		val r2 = Resistor()
+		ts.c.add(r2)
+		r2.resistance = ts.r1.resistance
+		r2.connect(0, ts.r1, 0)
+		r2.connect(1, ts.r1, 1)
+
+		ts.c.step(0.5)
+		assertEquals(r2.current, ts.r1.current, EPSILON)
+		assertEquals(ts.r1.current, current / 2, EPSILON) {"i1_1=${ts.r1.current} i1_0=$current i2=${r2.current}"}
+
+		ts.c.remove(r2)
+
+		ts.c.step(0.5)
+		assertEquals(ts.r1.current, current, EPSILON)
+		assertEquals(r2.circuit, null)
 	}
 
 	/*
