@@ -473,7 +473,7 @@ class Circuit {
 			// Microoptimization: pull this member access into a local variable for this tight loop
 			val sz = nodes.size
 			for ((i, v) in voltageSources.withIndex()) {
-				v.get()!!.current = -unknowns.getEntry(i + sz)
+				v.get()!!.current = unknowns.getEntry(i + sz)
 			}
 
 			success = true
