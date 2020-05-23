@@ -17,7 +17,7 @@ open class Capacitor : Port() {
 	/**
 	 * Capacitance, in Farads (Coulombs / Volt)
 	 */
-	var c: Double = 1e-5
+	var capacitance: Double = 1e-5
 	/**
 	 * The simulation timestep in seconds.
 	 *
@@ -28,11 +28,11 @@ open class Capacitor : Port() {
 	 * The "equivalent resistance" of the Norton system, in Ohms.
 	 */
 	val eqR: Double
-		get() = ts / c
+		get() = ts / capacitance
 	/**
 	 * The current, in Amperes, presently sourced by this Norton system.
 	 */
-	internal var i: Double = 0.0
+	internal var current: Double = 0.0
 		set(value) {
 			if (isInCircuit)
 				circuit!!.stampCurrentSource(pos.index, neg.index, value - field)
@@ -44,13 +44,13 @@ open class Capacitor : Port() {
 	var idealU: Double = 0.0
 
 	override fun detail(): String {
-		return "[capacitor c:$c]"
+		return "[capacitor c:$capacitance]"
 	}
 
 	override fun preStep(dt: Double) {
 		ts = dt
-		i = -idealU / eqR
-		dprintln("C.preS: i=$i eqR=$eqR idealU=$idealU")
+		current = -idealU / eqR
+		dprintln("C.preS: i=$current eqR=$eqR idealU=$idealU")
 	}
 
 	override fun postStep(dt: Double) {

@@ -1,5 +1,6 @@
 package org.eln2.sim.electrical.mna
 
+import org.eln2.sim.electrical.mna.component.Capacitor
 import org.eln2.sim.electrical.mna.component.Resistor
 import org.eln2.sim.electrical.mna.component.VoltageSource
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -25,6 +26,26 @@ internal class CircuitTest {
 			vs.connect(1, c.ground)
 			vs.potential = 10.0
 			r1.resistance = 5.0
+		}
+	}
+
+	class TrivialRCCircuit {
+		val c = Circuit()
+		val vs = VoltageSource()
+		val r1 = Resistor()
+		val c1 = Capacitor()
+
+		init {
+		    c.add(vs, r1, c1)
+			vs.neg.named("vneg")
+			vs.pos.named("vpos")
+			vs.potential = 10.0
+			r1.resistance = 5.0
+			c1.capacitance = 0.01
+			vs.connect(0, r1, 0)
+			c1.connect(0, r1, 0)
+			vs.connect(1, c1, 1)
+			vs.connect(1, c.ground)
 		}
 	}
 
@@ -95,6 +116,20 @@ internal class CircuitTest {
 		ts.c.step(0.5)
 		assertEquals(ts.r1.current, current, EPSILON)
 		assertEquals(r2.circuit, null)
+	}
+
+	@Test
+	fun basicRCCircuit() {
+		val ts = TrivialRCCircuit()
+		ts.c.step(0.05)
+		assertEquals(ts.c1.current, 0.217, 0.001)
+		assertEquals(ts.c1.potential, 8.915, 0.001)
+		ts.c.step(0.05)
+		assertEquals(ts.c1.current, 0.217, 0.001)
+		assertEquals(ts.c1.potential, 8.915, 0.001)
+		ts.c.step(0.05)
+		assertEquals(ts.c1.current, 0.039, 0.001)
+		assertEquals(ts.c1.potential, 9.804, 0.001)
 	}
 
 	/*
