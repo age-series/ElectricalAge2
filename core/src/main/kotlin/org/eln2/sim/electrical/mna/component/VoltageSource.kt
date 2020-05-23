@@ -24,7 +24,7 @@ class VoltageSource : Port() {
 	/**
 	 * The current through this source, as a result of the simulation step.
 	 */
-	val i: Double
+	val current: Double
 		get() = if (isInCircuit) vsources[0].current else 0.0
 
 	override fun detail(): String {

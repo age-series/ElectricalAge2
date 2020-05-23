@@ -9,7 +9,7 @@ import org.eln2.space.Set
  *
  * Aside from identifying [Component]s' connections, the Nodes' potentials (relative to [Circuit.ground]) are computed as a result of the MNA algorithm.
  */
-open class Node(var circuit: Circuit) : IDetail {
+open class Node(var circuit: Circuit) : IDetail, Set() {
 	/**
 	 * The potential of this node, in Volts, relative to ground (as defined by the [Circuit]); an output of the simulation.
 	 */
@@ -34,7 +34,10 @@ open class Node(var circuit: Circuit) : IDetail {
 	 */
 	var name = "node"
 		protected set
-	
+
+	/**
+	 * A boolean that determines if this node has been named yet.
+	 */
 	var nameSet = false
 		protected set
 
@@ -55,14 +58,6 @@ open class Node(var circuit: Circuit) : IDetail {
 		return "[$name ${this::class.simpleName}@${System.identityHashCode(this).toString(16)} ${potential}V]"
 	}
 	override fun toString() = detail()
-
-	/** Determine which node should prevail when two are merged in a Circuit.
-
-	   This is mostly so subclasses of Node (if any) can maintain their existence when merged. The Node returning the
-	   higher value is chosen; if both are equal (commonly the case), one is chosen arbitrarily.
-	 */
-
-	open fun mergePrecedence(other: Node): Int = 0
 
 	fun stampResistor(to: Node, r: Double) {
 		dprintln("N.sR $this $to $r")
@@ -85,8 +80,6 @@ class GroundNode(circuit: Circuit) : Node(circuit) {
 		set(value) {}
 
 	override val isGround = true
-
-	override fun mergePrecedence(other: Node): Int = 100
 }
 
 /**

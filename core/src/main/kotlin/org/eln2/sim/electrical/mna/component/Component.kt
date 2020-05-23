@@ -115,13 +115,9 @@ abstract class Component : IDetail {
 		if(nnamed && !tnnamed) tn.node.named(n.node.name)
 		if(tnnamed && !nnamed) n.node.named(tn.node.name)
 		if (n.node == tn.node) return  // Already connected
-		if (tn.node.mergePrecedence(n.node) > n.node.mergePrecedence(tn.node)) {
-			nodes[nidx] = tn
-			if(nnamed || tnnamed) nodes[nidx].node.named(tn.node.name)
-		} else {
-			to.nodes[tidx] = n
-			if(nnamed || tnnamed) to.nodes[tidx].node.named(n.node.name)
-		}
+		tn.node.unite(n.node)
+		nodes[nidx] = tn
+
 		// Assertion intended--fail loudly if circuit mutated here.
 		circuit!!.connectivityChanged = true
 	}
@@ -137,13 +133,10 @@ abstract class Component : IDetail {
 		val (nnamed, tnnamed) = Pair(n.nameSet, tn.nameSet)
 		if(nnamed && !tnnamed) tn.named(n.name)
 		if(tnnamed && !nnamed) n.named(tn.name)
-		if (tn.mergePrecedence(n) > n.mergePrecedence(tn)) {
-			nodes[nidx].node = nr.node
-			if(nnamed || tnnamed) nodes[nidx].node.named(nr.node.name)
-		} else {
-			nr.node = nodes[nidx].node
-			if(nnamed || tnnamed) nr.node.named(nodes[nidx].node.name)
-		}
+		tn.unite(n)
+		nodes[nidx].node = tn
+
+		// Assertion intended--fail loudly if circuit mutated here.
 		circuit!!.connectivityChanged = true
 	}
 

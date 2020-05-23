@@ -56,7 +56,7 @@ internal class CircuitTest {
 			ts.r1.resistance = r.toDouble()
 			ts.c.step(0.5)
 			try {
-				assertEquals(-ts.vs.i, ts.r1.current, EPSILON) { "r:${ts.r1.resistance} u:${ts.vs.potential}" }
+				assertEquals(-ts.vs.current, ts.r1.current, EPSILON) { "r:${ts.r1.resistance} u:${ts.vs.potential}" }
 			} catch (e: AssertionFailedError) {
 				println("expected failure in kCL: $e")
 			}
@@ -87,7 +87,8 @@ internal class CircuitTest {
 
 		ts.c.step(0.5)
 		assertEquals(r2.current, ts.r1.current, EPSILON)
-		assertEquals(ts.r1.current, current / 2, EPSILON) {"i1_1=${ts.r1.current} i1_0=$current i2=${r2.current}"}
+		assertEquals(ts.r1.current, current, EPSILON) {"i1_1=${ts.r1.current} i1_0=$current i2=${r2.current}"}
+		assertEquals(ts.vs.current, current * 2.0, EPSILON)
 
 		ts.c.remove(r2)
 
