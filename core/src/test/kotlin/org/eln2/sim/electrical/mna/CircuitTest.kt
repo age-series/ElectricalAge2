@@ -122,14 +122,14 @@ internal class CircuitTest {
 	fun basicRCCircuit() {
 		val ts = TrivialRCCircuit()
 		ts.c.step(0.05)
-		assertEquals(ts.c1.current, 0.217, 0.001)
-		assertEquals(ts.c1.potential, 8.915, 0.001)
+		assertEquals(ts.c1.current, 0.000732, 0.000001)
+		assertEquals(ts.c1.potential, 6.315, 0.001)
 		ts.c.step(0.05)
-		assertEquals(ts.c1.current, 0.217, 0.001)
-		assertEquals(ts.c1.potential, 8.915, 0.001)
+		assertEquals(ts.c1.current, 0.000270, 0.000001)
+		assertEquals(ts.c1.potential, 8.660, 0.001)
 		ts.c.step(0.05)
-		assertEquals(ts.c1.current, 0.039, 0.001)
-		assertEquals(ts.c1.potential, 9.804, 0.001)
+		assertEquals(ts.c1.current, 0.000099, 0.000001)
+		assertEquals(ts.c1.potential, 9.506, 0.001)
 	}
 
 	/*
