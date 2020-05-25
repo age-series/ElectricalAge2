@@ -1,10 +1,12 @@
 package org.eln2.sim
 
-/*
-NOTE: DO NOT IMPORT MINECRAFT CODE IN THIS CLASS
-EXTEND IT INSTEAD IN THE org.eln.nbt DIRECTORY
+/**
+ * An interface that represents a process.
  */
-
 interface IProcess {
-	fun process(time: Double)
+	/**
+	 * Runs the simulation for a specified time delta.
+	 * @param dt The duration of time to simulate.
+	 */
+	fun process(dt: Double)
 }
