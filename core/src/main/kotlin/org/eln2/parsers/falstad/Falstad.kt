@@ -1,5 +1,7 @@
 package org.eln2.parsers.falstad
 
+import org.eln2.data.MutableMultiMap
+import org.eln2.data.mutableMultiMapOf
 import org.eln2.debug.DEBUG
 import org.eln2.debug.dprintln
 import org.eln2.parsers.falstad.components.sources.*
@@ -255,15 +257,13 @@ class Falstad(val source: String) {
 	fun getPin(p: PinPos) = roots.getOrPut(p, { PosSet(p) })
 
 	/**
-	 * "List of refs"; a multiset from [PosSet] to [PinRef].
-	 *
-	 * As an implementation detail, a multiset is implemented as a mutable map to a mutable set.
+	 * "List of refs"; a MultiMap from [PosSet] to [PinRef].
 	 */
-	val refs: MutableMap<PosSet, MutableSet<PinRef>> = mutableMapOf()
+	val refs: MutableMultiMap<PosSet, PinRef> = mutableMultiMapOf()
 	/**
 	 * Get the set of [PinRef]s corresponding to this [PosSet] (creating an empty set it if it doesn't exist).
 	 */
-	fun getPinRefs(p: PosSet) = refs.getOrPut(p, { mutableSetOf() })
+	fun getPinRefs(p: PosSet) = refs[p]
 	/**
 	 * Add a [PinRef] [pr] to the set of refs in [PosSet] [p]; in effect, declare that the PinRef ([Component] pin) [pr] is located at the position contained in the PosSet [p] (normally returned by [getPin]).
 	 */
@@ -325,13 +325,13 @@ class Falstad(val source: String) {
 		}
 
 		if(DEBUG) {
-			val repmap: MutableMap<PosSet, MutableSet<PosSet>> = mutableMapOf()
+			val repmap: MutableMultiMap<PosSet, PosSet> = mutableMultiMapOf()
 			roots.values.forEach {set ->
 				dprintln("F.<init>: r $set => ${set.representative}")
-				repmap.getOrPut(set.representative as PosSet, { mutableSetOf() }).add(set)
+				repmap[set.representative as PosSet] = set
 			}
 
-			repmap.entries.forEach { rep ->
+			repmap.keyMapping.forEach { rep ->
 				dprintln("F.<init>: R ${rep.key}:")
 				rep.value.forEach {set ->
 					dprintln(" - $set")
@@ -339,19 +339,16 @@ class Falstad(val source: String) {
 			}
 		}
 
-		val mergedRefs: MutableMap<PosSet, MutableSet<PinRef>> = mutableMapOf()
+		val mergedRefs: MutableMultiMap<PosSet, PinRef> = mutableMultiMapOf()
 		roots.values.forEach {posset ->
-			val pinset = refs[posset]
-			if(pinset != null) {
-				mergedRefs.getOrPut(posset.representative as PosSet, { mutableSetOf() }).addAll(pinset)
-			}
+			mergedRefs[posset.representative as PosSet].addAll(refs[posset])
 		}
 
 		if(DEBUG) mergedRefs.entries.forEach {pair ->
 			dprintln("F.<init>: mR ${pair.key} => ${pair.value}")
 		}
 
-		mergedRefs.values.forEach {pinset ->
+		mergedRefs.valueSets.forEach {pinset ->
 			val ordered = pinset.toList()  // Just need some ordering, any will do
 			(0 until ordered.size - 1).forEach {i ->
 				ordered[i].component.connect(
@@ -363,8 +360,8 @@ class Falstad(val source: String) {
 		}
 
 		grounds.forEach {posset ->
-			val pinset = refs[posset.representative]
-			if(pinset != null && pinset.size > 0) {
+			val pinset = refs[posset.representative as PosSet]
+			if(pinset.isNotEmpty()) {
 				// Only need to connect 1; the disjoint PosSets are merged right now
 				val pr = pinset.iterator().next()
 				pr.component.connect(pr.pinidx, circuit.ground)
