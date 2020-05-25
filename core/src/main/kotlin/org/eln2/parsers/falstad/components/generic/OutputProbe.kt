@@ -11,22 +11,22 @@ import org.eln2.sim.electrical.mna.component.Resistor
  *
  * Falstad's Output Probe - shows the voltage of a particular node in the circuit.
  */
-class OutputProbe: IComponentConstructor {
-	companion object {
-		val HIGH_IMPEDANCE = Double.POSITIVE_INFINITY
-	}
+class OutputProbe : IComponentConstructor {
+    companion object {
+        val HIGH_IMPEDANCE = Double.POSITIVE_INFINITY
+    }
 
-	override fun construct(ccd: CCData) {
-		val r = Resistor()
-		r.resistance = HIGH_IMPEDANCE
-		ccd.circuit.add(r)
-		r.connect(1, ccd.circuit.ground)
+    override fun construct(ccd: CCData) {
+        val r = Resistor()
+        r.resistance = HIGH_IMPEDANCE
+        ccd.circuit.add(r)
+        r.connect(1, ccd.circuit.ground)
 
-		val pp = (ccd.falstad.getPin(ccd.pos).representative as PosSet)
-		val pr = PinRef(r, 0)
-		ccd.falstad.addPinRef(pp, pr)
-		ccd.falstad.addOutput(pr)
+        val pp = (ccd.falstad.getPin(ccd.pos).representative as PosSet)
+        val pr = PinRef(r, 0)
+        ccd.falstad.addPinRef(pp, pr)
+        ccd.falstad.addOutput(pr)
 
-		ccd.pins = 1
-	}
+        ccd.pins = 1
+    }
 }

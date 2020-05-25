@@ -1,77 +1,77 @@
 package org.eln2.sim.electrical.mna
 
+import kotlin.math.sign
 import org.eln2.sim.electrical.mna.component.Resistor
 import org.eln2.sim.electrical.mna.component.VoltageSource
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.opentest4j.AssertionFailedError
-import kotlin.math.sign
 
 const val EPSILON = 1e-9
 
 internal class CircuitTest {
 
-	class TrivialResistiveCircuit {
-		val c = Circuit()
-		val vs = VoltageSource()
-		val r1 = Resistor()
+    class TrivialResistiveCircuit {
+        val c = Circuit()
+        val vs = VoltageSource()
+        val r1 = Resistor()
 
-		init {
-			c.add(vs, r1)
-			vs.connect(1, r1, 1)
-			vs.connect(0, r1, 0)
-			vs.connect(1, c.ground)
-			vs.potential = 10.0
-			r1.resistance = 5.0
-		}
-	}
+        init {
+            c.add(vs, r1)
+            vs.connect(1, r1, 1)
+            vs.connect(0, r1, 0)
+            vs.connect(1, c.ground)
+            vs.potential = 10.0
+            r1.resistance = 5.0
+        }
+    }
 
-	@Test
-	fun parity() {
-		val ts = TrivialResistiveCircuit()
-		for (u in -10..10) {
-			ts.vs.potential = u.toDouble()
-			ts.c.step(0.5)
-			assertEquals(sign(ts.vs.potential), sign(ts.r1.current))
-		}
-	}
+    @Test
+    fun parity() {
+        val ts = TrivialResistiveCircuit()
+        for (u in -10..10) {
+            ts.vs.potential = u.toDouble()
+            ts.c.step(0.5)
+            assertEquals(sign(ts.vs.potential), sign(ts.r1.current))
+        }
+    }
 
-	@Test
-	fun ohmLaw() {
-		val ts = TrivialResistiveCircuit()
-		for (r in 1..10) {
-			ts.r1.resistance = r.toDouble()
-			ts.c.step(0.5)
-			assertEquals(ts.r1.current, ts.vs.potential / r, EPSILON)
-		}
-	}
+    @Test
+    fun ohmLaw() {
+        val ts = TrivialResistiveCircuit()
+        for (r in 1..10) {
+            ts.r1.resistance = r.toDouble()
+            ts.c.step(0.5)
+            assertEquals(ts.r1.current, ts.vs.potential / r, EPSILON)
+        }
+    }
 
-	// TODO: Known breakage here: ts.vs.i retains its value indefinitely.
-	@Test
-	fun kirchoffCurrentLaw() {
-		val ts = TrivialResistiveCircuit()
-		for (r in 1..10) {
-			ts.r1.resistance = r.toDouble()
-			ts.c.step(0.5)
-			try {
-				assertEquals(-ts.vs.i, ts.r1.current, EPSILON) { "r:${ts.r1.resistance} u:${ts.vs.potential}" }
-			} catch (e: AssertionFailedError) {
-				println("expected failure in kCL: $e")
-			}
-		}
-	}
+    // TODO: Known breakage here: ts.vs.i retains its value indefinitely.
+    @Test
+    fun kirchoffCurrentLaw() {
+        val ts = TrivialResistiveCircuit()
+        for (r in 1..10) {
+            ts.r1.resistance = r.toDouble()
+            ts.c.step(0.5)
+            try {
+                assertEquals(-ts.vs.i, ts.r1.current, EPSILON) { "r:${ts.r1.resistance} u:${ts.vs.potential}" }
+            } catch (e: AssertionFailedError) {
+                println("expected failure in kCL: $e")
+            }
+        }
+    }
 
-	@Test
-	fun kirchoffVoltageLaw() {
-		val ts = TrivialResistiveCircuit()
-		for (r in 1..10) {
-			ts.r1.resistance = r.toDouble()
-			ts.c.step(0.5)
-			assertEquals(ts.vs.potential, ts.r1.potential, EPSILON)
-		}
-	}
+    @Test
+    fun kirchoffVoltageLaw() {
+        val ts = TrivialResistiveCircuit()
+        for (r in 1..10) {
+            ts.r1.resistance = r.toDouble()
+            ts.c.step(0.5)
+            assertEquals(ts.vs.potential, ts.r1.potential, EPSILON)
+        }
+    }
 
-	/*
+    /*
 	@Test
 	fun basicCircuitTest() {
 		val c = Circuit()
