@@ -1,7 +1,11 @@
 package org.eln2.sim.electrical.mna.component
 
-import org.eln2.parsers.falstad.*
-import org.eln2.sim.electrical.mna.*
+import org.eln2.parsers.falstad.Falstad
+import org.eln2.sim.electrical.mna.Circuit
+import org.eln2.sim.electrical.mna.IDetail
+import org.eln2.sim.electrical.mna.Node
+import org.eln2.sim.electrical.mna.NodeRef
+import org.eln2.sim.electrical.mna.VSource
 
 /**
  * The Component is an entity which can be simulated in a [Circuit]; generally speaking, these are little more than object-oriented interfaces to the state of the Circuit as expressed through its [Circuit.matrix], [Circuit.knowns], [Circuit.solver], and so forth. Much of the actual math implemented for a component depends on the "stamp" family of methods--see those for details.
@@ -18,44 +22,44 @@ import org.eln2.sim.electrical.mna.*
  */
 abstract class Component : IDetail {
     /**
-	 *  Ask this component to contribute (initial) values to the MNA matrices.
-	 *
-	 *  This is requested from [Circuit.buildMatrix]. It may not be called on every step (indeed, it shouldn't be), so this should only be relied upon to set the initial steady state. (Despite the name, the other Circuit "stamp" methods can be called at any time.)
-	 */
+     *  Ask this component to contribute (initial) values to the MNA matrices.
+     *
+     *  This is requested from [Circuit.buildMatrix]. It may not be called on every step (indeed, it shouldn't be), so this should only be relied upon to set the initial steady state. (Despite the name, the other Circuit "stamp" methods can be called at any time.)
+     */
     abstract fun stamp()
 
     /** Called by the simulator after each tentative solution substep. Components that are non-linear should override
-	this method to change necessary MNA values if their values have not converged (using the Circuit "stamp" methods, usually). The simulator will detect this and
-	simulate the next substep (up to a limit, [Circuit.maxSubSteps]).
-	 */
+    this method to change necessary MNA values if their values have not converged (using the Circuit "stamp" methods, usually). The simulator will detect this and
+    simulate the next substep (up to a limit, [Circuit.maxSubSteps]).
+     */
     open fun simStep() {}
 
     /** A name for this kind of Component, used for debugging. */
     abstract val name: String
 
     /** An image for this node in the images/ repository, without the .svg extension, used for debug drawing.
-	 */
+     */
     open val imageName: String? = null
 
     /**
-	 * How many nodes this component should have.
-	 *
-	 * `nodes` will be of this size only AFTER this component is added to a Circuit.
-	 */
+     * How many nodes this component should have.
+     *
+     * `nodes` will be of this size only AFTER this component is added to a Circuit.
+     */
     abstract val nodeCount: Int
 
     /** How many potential sources are inside this component. There should be at least two nodes per source (although
-	   they can overlap). This contributes to a different part of the MNA parameters.
+    they can overlap). This contributes to a different part of the MNA parameters.
 
-	   Many Components don't have sources, while most have nodes, so this simply defaults to 0.
-	 */
+    Many Components don't have sources, while most have nodes, so this simply defaults to 0.
+     */
     open val vsCount: Int = 0
 
     /**
-	 * Set when the component is added to the circuit.
-	 *
-	 * (Although the visibility doesn't do much in *this* project, this variable should be set from NOWHERE else.  - Grissess)
-	 */
+     * Set when the component is added to the circuit.
+     *
+     * (Although the visibility doesn't do much in *this* project, this variable should be set from NOWHERE else.  - Grissess)
+     */
     internal var circuit: Circuit? = null
     internal val isInCircuit: Boolean
         get() = circuit != null
@@ -64,36 +68,38 @@ abstract class Component : IDetail {
     open fun added() {}
 
     /**
-	 * Called before substep iterations start in [Circuit.step].
-	 */
+     * Called before substep iterations start in [Circuit.step].
+     */
     open fun preStep(dt: Double) {}
+
     /**
-	 * Called after substep iterations have finished in [Circuit.step].
-	 */
+     * Called after substep iterations have finished in [Circuit.step].
+     */
     open fun postStep(dt: Double) {}
 
     /** The list of [NodeRef]s held by this Component.
-	 *
-	 * Component implementations should index this list and avoid storing references anywhere else. The owning
-	   Circuit holds all Nodes it grants weakly, so taking other references will result in a memory leak.
-	 */
+     *
+     * Component implementations should index this list and avoid storing references anywhere else. The owning
+    Circuit holds all Nodes it grants weakly, so taking other references will result in a memory leak.
+     */
     var nodes: MutableList<NodeRef> = ArrayList(nodeCount)
+
     /**
-	 * The list of [VSource]s held by this Component.
-	 *
-	 * Like [nodes], these are only weakly held by the [Circuit].
-	 */
+     * The list of [VSource]s held by this Component.
+     *
+     * Like [nodes], these are only weakly held by the [Circuit].
+     */
     var vsources: MutableList<VSource> = ArrayList(vsCount)
 
     /**
-	 * Get a [Node] by index (the one underlying the [NodeRef]).
-	 */
+     * Get a [Node] by index (the one underlying the [NodeRef]).
+     */
     inline fun node(i: Int) = nodes[i].node
 
     /** Connects two Components--makes nodes[nidx] the SAME Node as to.nodes[tidx], respecting precedence.
 
-	   This is ONLY safe to call AFTER the Component has been added to a Circuit.
-	*/
+    This is ONLY safe to call AFTER the Component has been added to a Circuit.
+     */
     fun connect(nidx: Int, to: Component, tidx: Int) {
         if (circuit == null) return
         val n = nodes[nidx]
@@ -110,8 +116,8 @@ abstract class Component : IDetail {
 
     /** Sets a Node directly. This is generally only reasonable for circuit.ground.
 
-	   This is ONLY safe to call AFTER the Component has been added to a Circuit.
-	 */
+    This is ONLY safe to call AFTER the Component has been added to a Circuit.
+     */
     fun connect(nidx: Int, nr: NodeRef) {
         if (circuit == null) return
         val n = nodes[nidx].node
@@ -125,7 +131,8 @@ abstract class Component : IDetail {
     }
 
     override fun toString(): String {
-        return "${this::class.java.simpleName}@${System.identityHashCode(this).toString(16)} ${nodes.map { it.node.detail() }}"
+        return "${this::class.java.simpleName}@${System.identityHashCode(this)
+            .toString(16)} ${nodes.map { it.node.detail() }}"
     }
 }
 
@@ -140,29 +147,30 @@ abstract class Component : IDetail {
  */
 abstract class Port : Component() {
     /**
-	 * A Port is, by definition, two nodes; thus, this cannot be overridden.
-	 */
+     * A Port is, by definition, two nodes; thus, this cannot be overridden.
+     */
     final override val nodeCount = 2
 
     // The orientation here is arbitrary, but helps keep signs consistent.
     /**
-	 * Get the positive [Node].
-	 *
-	 * By arbitrary convention, for compatibility with the [Falstad] circuit format, this is the second node.
-	 */
+     * Get the positive [Node].
+     *
+     * By arbitrary convention, for compatibility with the [Falstad] circuit format, this is the second node.
+     */
     open val pos: Node
         get() = node(1)
+
     /**
-	 * Get the negative [Node].
-	 *
-	 * This is arbitrarily the first Node, for [Falstad] compatibility.
-	 */
+     * Get the negative [Node].
+     *
+     * This is arbitrarily the first Node, for [Falstad] compatibility.
+     */
     open val neg: Node
         get() = node(0)
 
     /**
-	 * Get the potential across [pos] and [neg], signed positive when [pos] has a greater potential than [neg].
-	 */
+     * Get the potential across [pos] and [neg], signed positive when [pos] has a greater potential than [neg].
+     */
     open val potential: Double
         get() = if (isInCircuit) pos.potential - neg.potential else 0.0
 }

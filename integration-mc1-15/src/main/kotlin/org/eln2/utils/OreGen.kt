@@ -17,8 +17,8 @@ import org.eln2.ModBlocks
 class OreGen {
     companion object {
         /**
-		 * Configures ore generation in the world. Registers against Forge.
-		 */
+         * Configures ore generation in the world. Registers against Forge.
+         */
         // TODO: Allow user to configure each ore (rate/on/off) in the Eln2 configuration file under the `ores` section
         fun setupOreGeneration() {
             ForgeRegistries.BIOMES.filter {
@@ -35,27 +35,31 @@ class OreGen {
 				 */
                 it.addFeature(
                     GenerationStage.Decoration.UNDERGROUND_ORES,
-                    getOreFeature(ModBlocks.ORE_NATIVE_COPPER.block,
+                    getOreFeature(
+                        ModBlocks.ORE_NATIVE_COPPER.block,
                         OreGenSpec(8, 128, 0, 128)
-                    ))
+                    )
+                )
             }
         }
 
         /**
-		 * getOreFeature
-		 *
-		 * Gets an configuration from an ore block and an ore gen spec.
-		 * @param block The block to generate in the world
-		 * @param ogs The ore generation specification which tells the world generator how to generate the ore.
-		 */
+         * getOreFeature
+         *
+         * Gets an configuration from an ore block and an ore gen spec.
+         * @param block The block to generate in the world
+         * @param ogs The ore generation specification which tells the world generator how to generate the ore.
+         */
         private fun getOreFeature(block: Block, ogs: OreGenSpec): ConfiguredFeature<*, *> {
             return Feature.ORE.withConfiguration(
                 OreFeatureConfig(
                     OreFeatureConfig.FillerBlockType.NATURAL_STONE,
                     block.defaultState,
-                    5)
+                    5
+                )
             ).withPlacement(
-                Placement.COUNT_RANGE.configure(CountRangeConfig(ogs.count, ogs.yMin, 0, ogs.yMax)))
+                Placement.COUNT_RANGE.configure(CountRangeConfig(ogs.count, ogs.yMin, 0, ogs.yMax))
+            )
         }
     }
 }

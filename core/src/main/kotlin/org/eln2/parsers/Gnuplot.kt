@@ -1,9 +1,9 @@
 package org.eln2.parsers
 
 /**
- Gnuplot Parser Class
+Gnuplot Parser Class
 
- Congratulations, this is either a TDV or a SDV (tab delimited vales or space delimited values) file :D
+Congratulations, this is either a TDV or a SDV (tab delimited vales or space delimited values) file :D
  */
 class Gnuplot {
     companion object {
@@ -50,7 +50,7 @@ class Gnuplot {
             var output = header
             output += data.map { row ->
                 "${
-                    row.map { field -> "$field$separator"}.fold("", {acc, it -> acc + it}).trim()
+                row.map { field -> "$field$separator" }.fold("", { acc, it -> acc + it }).trim()
                 }\n"
             }.fold("", { acc, it -> acc + it })
             return output

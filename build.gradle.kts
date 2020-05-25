@@ -69,7 +69,8 @@ subprojects {
 
             // Print pass/fail for all tests to console, and exceptions if there are any.
             testLogging {
-                events = setOf(TestLogEvent.FAILED, TestLogEvent.PASSED, TestLogEvent.SKIPPED, TestLogEvent.STANDARD_ERROR)
+                events =
+                    setOf(TestLogEvent.FAILED, TestLogEvent.PASSED, TestLogEvent.SKIPPED, TestLogEvent.STANDARD_ERROR)
                 exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
                 showExceptions = true
                 showCauses = true
@@ -87,11 +88,16 @@ subprojects {
             // Print a nice summary afterwards.
             afterSuite(KotlinClosure2<TestDescriptor, TestResult, Unit>({ desc, result ->
                 if (desc.parent == null) { // will match the outermost suite
-                    val output = "Results: ${result.resultType} (${result.testCount} tests, ${result.successfulTestCount} passed, ${result.failedTestCount} failed, ${result.skippedTestCount} skipped)"
+                    val output =
+                        "Results: ${result.resultType} (${result.testCount} tests, ${result.successfulTestCount} passed, ${result.failedTestCount} failed, ${result.skippedTestCount} skipped)"
                     val startItem = "|  "
                     val endItem = "  |"
                     val repeatLength = startItem.length + output.length + endItem.length
-                    println('\n' + "- ".repeat(repeatLength) + '\n' + startItem + output + endItem + '\n' + "-".repeat(repeatLength))
+                    println(
+                        '\n' + "- ".repeat(repeatLength) + '\n' + startItem + output + endItem + '\n' + "-".repeat(
+                            repeatLength
+                        )
+                    )
                 }
             }))
         }

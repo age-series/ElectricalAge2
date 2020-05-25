@@ -10,9 +10,22 @@ fun testALU() {
     val alu = ALU()
     alu.inputB = 0x42u
     val aluOpsToTest = arrayOf(
-        ALU.ALUOps.Add, ALU.ALUOps.Adc, ALU.ALUOps.And, ALU.ALUOps.MinusOne, ALU.ALUOps.Nand, ALU.ALUOps.Nor, ALU.ALUOps.Not,
-        ALU.ALUOps.One, ALU.ALUOps.Or, ALU.ALUOps.Shl, ALU.ALUOps.Shr, ALU.ALUOps.Sub, ALU.ALUOps.Sbb, ALU.ALUOps.Xnor,
-        ALU.ALUOps.Xor, ALU.ALUOps.Zero
+        ALU.ALUOps.Add,
+        ALU.ALUOps.Adc,
+        ALU.ALUOps.And,
+        ALU.ALUOps.MinusOne,
+        ALU.ALUOps.Nand,
+        ALU.ALUOps.Nor,
+        ALU.ALUOps.Not,
+        ALU.ALUOps.One,
+        ALU.ALUOps.Or,
+        ALU.ALUOps.Shl,
+        ALU.ALUOps.Shr,
+        ALU.ALUOps.Sub,
+        ALU.ALUOps.Sbb,
+        ALU.ALUOps.Xnor,
+        ALU.ALUOps.Xor,
+        ALU.ALUOps.Zero
     )
     val inputAArray = arrayOf(
         0xFFFFFFFFu, 0u, 0x41u, 0u, 0x41u, 0x41u, 0xFFFF0000u,

@@ -17,12 +17,13 @@ class IdealDiode : Resistor() {
     override var name = "d"
 
     /**
-	 * The resistance this diode should have when forward-biased; ideally zero, but this will cause the MNA matrix to be ill-formed.
-	 */
+     * The resistance this diode should have when forward-biased; ideally zero, but this will cause the MNA matrix to be ill-formed.
+     */
     var minimumResistance = 1e-3
+
     /**
-	 * The resistance this diode should have when reverse-biased; may be infinite, but this can cause component float, so it is just a large value by default.
-	 */
+     * The resistance this diode should have when reverse-biased; may be infinite, but this can cause component float, so it is just a large value by default.
+     */
     var maximumResistance = 1e10
 
     override fun simStep() {
@@ -45,30 +46,30 @@ class IdealDiode : Resistor() {
  */
 data class DiodeData(
     /**
-	 * The name of this model of diode.
-	 */
+     * The name of this model of diode.
+     */
     val name: String,
     /**
-	 * The saturation current, dividing the critical voltage.
-	 */
+     * The saturation current, dividing the critical voltage.
+     */
     val satCurrent: Double,
     /**
-	 * The serial resistance of the diode; can be 0, since it will always have a positive contribution.
-	 */
+     * The serial resistance of the diode; can be 0, since it will always have a positive contribution.
+     */
     val resistance: Double,
     /**
-	 * The emission coefficient of the diode, relating ideal performance with the thermal voltage of the electrons.
-	 */
+     * The emission coefficient of the diode, relating ideal performance with the thermal voltage of the electrons.
+     */
     val emissionCoef: Double,
     /**
-	 * For Zener diodes, the breakdown voltage for reverse-bias.
-	 */
+     * For Zener diodes, the breakdown voltage for reverse-bias.
+     */
     val breakdownVoltage: Double
 ) {
     companion object {
         /**
-		 * A map of [name] to [DiodeData], naming the diodes known to Falstad.
-		 */
+         * A map of [name] to [DiodeData], naming the diodes known to Falstad.
+         */
         val diodes = mapOf(
             "spice-default" to DiodeData("spice-default", 1e-14, 0.0, 1.0, 0.0),
             "falstad-default" to DiodeData("falstad-default", 1.7143528192808883e-7, 0.0, 2.0, 0.0),
@@ -84,69 +85,76 @@ data class DiodeData(
         )
 
         /**
-		 * An opinionated default diode model.
-		 */
+         * An opinionated default diode model.
+         */
         val default: DiodeData = diodes["falstad-default"] ?: error("no default diode!")
 
         /**
-		 * Boltzmann's constant, relating energy and temperature.
-		 */
+         * Boltzmann's constant, relating energy and temperature.
+         */
         const val boltzmann = 1.380649e-23 // J/K
+
         /**
-		 * The elementary charge of one electron in Coulombs.
-		 */
+         * The elementary charge of one electron in Coulombs.
+         */
         const val elemcharge = 1.602176634e-19 // Q
+
         /**
-		 * The square root of two.
-		 */
+         * The square root of two.
+         */
         val sqrt2 = sqrt(2.0)
 
         // temp is in K
         /**
-		 * Get the thermal voltage at the given [temp] in Kelvin.
-		 *
-		 * At STP (297.15K), this is about 25.6mV.
-		 *
-		 * This parameter generally scales all other diode parameters, including the Zener band gap (below).
-		 */
+         * Get the thermal voltage at the given [temp] in Kelvin.
+         *
+         * At STP (297.15K), this is about 25.6mV.
+         *
+         * This parameter generally scales all other diode parameters, including the Zener band gap (below).
+         */
         inline fun thermalVoltage(temp: Double) = temp * boltzmann / elemcharge
+
         /**
-		 * Get the Zener coefficient at the given [temp] in Kelvin.
-		 *
-		 * This is the reciprocal of the thermal voltage.
-		 */
+         * Get the Zener coefficient at the given [temp] in Kelvin.
+         *
+         * This is the reciprocal of the thermal voltage.
+         */
         inline fun zenerCoefficient(temp: Double) = 1.0 / thermalVoltage(temp)
     }
 
     /**
-	 * Determine if this is a Zener-model diode (having nonzero breakdown voltage).
-	 */
+     * Determine if this is a Zener-model diode (having nonzero breakdown voltage).
+     */
     val isZener: Boolean get() = breakdownVoltage != 0.0
+
     /**
-	 * Get the "voltage scale" (the emission coefficient times the thermal voltage) at the given [temp] in Kelvin.
-	 */
+     * Get the "voltage scale" (the emission coefficient times the thermal voltage) at the given [temp] in Kelvin.
+     */
     fun voltageScaleAt(temp: Double) = emissionCoef * thermalVoltage(temp)
+
     /**
-	 * Get the "diode coefficient" (reciprocal of the "voltage scale") at the given [temp] in Kelvin.
-	 */
+     * Get the "diode coefficient" (reciprocal of the "voltage scale") at the given [temp] in Kelvin.
+     */
     fun voltageDiodeCoefficientAt(temp: Double) = 1.0 / voltageScaleAt(temp)
+
     /**
-	 * Get the forward voltage drop at the given [temp] in Kelvin.
-	 */
+     * Get the forward voltage drop at the given [temp] in Kelvin.
+     */
     fun fwDropAt(temp: Double) = ln(1.0 / satCurrent + 1.0) * voltageScaleAt(temp)
+
     /**
-	 * Get the "critical voltage" for the [temp] in Kelvin.
-	 */
+     * Get the "critical voltage" for the [temp] in Kelvin.
+     */
     fun voltageCriticalAt(temp: Double): Double {
         val voltageThermalScaled = voltageScaleAt(temp)
         return voltageThermalScaled * ln(voltageThermalScaled / (sqrt2 * satCurrent))
     }
 
     /**
-	 * Get the Zener "critical voltage" for the [temp] in Kelvin.
-	 *
-	 * Despite being a reverse bias, this returns a positive value.
-	 */
+     * Get the Zener "critical voltage" for the [temp] in Kelvin.
+     *
+     * Despite being a reverse bias, this returns a positive value.
+     */
     fun voltageCriticalZenerAt(temp: Double): Double {
         val voltageThermal = thermalVoltage(temp)
         return voltageThermal * ln(voltageThermal / (sqrt2 * satCurrent))
@@ -154,15 +162,16 @@ data class DiodeData(
 
     // The current is expressed as a _negative_ current
     /**
-	 * Get the "Zener offset" (approximate knee point) of the Zener breakdown curve for the given [current] in Amperes and [temp] in Kelvin.
-	 *
-	 * [current] is expected to be negative due to the reverse bias, and is (negative) 5mA by default.
-	 */
-    fun zenerOffsetAt(temp: Double, current: Double = -5e-3) = if (!isZener) 0.0 else breakdownVoltage - ln(-(1.0 + current / satCurrent)) * thermalVoltage(temp)
+     * Get the "Zener offset" (approximate knee point) of the Zener breakdown curve for the given [current] in Amperes and [temp] in Kelvin.
+     *
+     * [current] is expected to be negative due to the reverse bias, and is (negative) 5mA by default.
+     */
+    fun zenerOffsetAt(temp: Double, current: Double = -5e-3) =
+        if (!isZener) 0.0 else breakdownVoltage - ln(-(1.0 + current / satCurrent)) * thermalVoltage(temp)
 
     /**
-	 * Do a "solve" iteration; given the previous potential [vold] and the current potential [vnew], compute a desired new potential (slipping down the V-I curve) at [temp] Kelvin. See [RealisticDiode.simStep] for use.
-	 */
+     * Do a "solve" iteration; given the previous potential [vold] and the current potential [vnew], compute a desired new potential (slipping down the V-I curve) at [temp] Kelvin. See [RealisticDiode.simStep] for use.
+     */
     fun solveIter(temp: Double, vnew: Double, vold: Double): Double {
         dprintln("DD.sI: temp=$temp voltageNew=$vnew voltageOld=$vold")
         var voltageNew = vnew

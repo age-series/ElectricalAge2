@@ -54,14 +54,15 @@ class FPU {
         }
 
     /**
-	 * FPU Operations List
-	 */
+     * FPU Operations List
+     */
     enum class FPUOps { Add, Cos, Div, Exp, Inv, Int, Ln, MinusOne, Mult, Neg, One, Sqre, Sqrt, Sub, ToDouble, Zero }
+
     var currOp = FPUOps.Zero
 
     /**
-	 * step - does computations on the registers. Load your data in before this, and grab your data after this.
-	 */
+     * step - does computations on the registers. Load your data in before this, and grab your data after this.
+     */
     fun step() {
         when (currOp) {
             FPUOps.Add -> inputA += inputB

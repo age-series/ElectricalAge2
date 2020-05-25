@@ -20,10 +20,10 @@ object Eln2 {
     private val registry: RegistryHelper = RegistryHelper.create(MODID, LOGGER, null)
 
     /**
-	 * Initialization.
-	 *
-	 * This is run at class construction time, and should do as little as possible.
-	 */
+     * Initialization.
+     *
+     * This is run at class construction time, and should do as little as possible.
+     */
     fun initialize() {
         // Register blocks and items
         ModItems.values().forEach { registry.registerItem(it.items, it.name.toLowerCase()) }
@@ -33,10 +33,10 @@ object Eln2 {
     }
 
     /**
-	 * Preinit handler.
-	 *
-	 * This is run in a threaded context, so we cannot communicate with other mods without using IMC.
-	 */
+     * Preinit handler.
+     *
+     * This is run in a threaded context, so we cannot communicate with other mods without using IMC.
+     */
     fun setup(event: FMLCommonSetupEvent) {
         OreGen.setupOreGeneration()
     }

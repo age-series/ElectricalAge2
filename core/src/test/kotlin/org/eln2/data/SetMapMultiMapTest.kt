@@ -1,7 +1,7 @@
 package org.eln2.data
 
 import org.eln2.debug.dprintln
-import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
 val TEST_MAP: Map<Int, Int> = mapOf(1 to 2, 2 to 4, 4 to 8, 8 to 16, 16 to 32)
@@ -92,7 +92,8 @@ internal class MutableSetMapMultiMapTest {
     // ------------- START PASTING THE BODY OF THE CLASS ABOVE HERE --------------
 
     // FIXME: Kotlin can't seem to understand Pair<K,V> in the parameter below, so concrete types only for now
-    protected fun makeImplementation(iter: List<Pair<Int, Int>>): MutableMultiMap<Int, Int> = MutableSetMapMultiMap(iter.iterator())
+    protected fun makeImplementation(iter: List<Pair<Int, Int>>): MutableMultiMap<Int, Int> =
+        MutableSetMapMultiMap(iter.iterator())
 
     @Test
     fun emptySizes() {

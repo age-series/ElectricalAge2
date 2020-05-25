@@ -400,7 +400,8 @@ def generate(template, inputs, conditionals):
     return template.strip()
 
 
-def add_templated_code(package, name, suffix, force, conditionals, template, filetype=None):
+def add_templated_code(package, name, suffix, force, conditionals, template,
+                       filetype=None):
     if filetype is None:
         raise ValueError('Filetype must be set')
 
@@ -435,11 +436,11 @@ def add_templated_code(package, name, suffix, force, conditionals, template, fil
 
 
 def add_templated_java(*args):
-	return add_templated_code(*args, filetype='java')
+    return add_templated_code(*args, filetype='java')
 
 
 def add_templated_kt(*args):
-	return add_templated_code(*args, filetype='kt')
+    return add_templated_code(*args, filetype='kt')
 
 
 def add_templated_json(path, package, name, force, conditionals, template):
@@ -473,28 +474,43 @@ def add_templated_json(path, package, name, force, conditionals, template):
 
 def add_block(name, force, gui, tile, no_json):
     conditionals = {'gui': gui, 'tile': gui or tile}
-    add_templated_kt(PACKAGE_BLOCKS, name, 'Block', force, conditionals, TEMPLATE_BLOCK)
+    add_templated_kt(PACKAGE_BLOCKS, name, 'Block', force, conditionals,
+                     TEMPLATE_BLOCK)
     if gui or tile:
-        add_templated_kt(PACKAGE_TILES, name, 'Tile', force, conditionals, TEMPLATE_TILE)
+        add_templated_kt(PACKAGE_TILES, name, 'Tile', force, conditionals,
+                         TEMPLATE_TILE)
     if gui:
-        add_templated_java(PACKAGE_CONTAINERS, name, 'Container', force, conditionals, TEMPLATE_CONTAINER)
-        add_templated_java(PACKAGE_SCREENS, name, 'Screen', force, conditionals, TEMPLATE_SCREEN)
+        add_templated_java(PACKAGE_CONTAINERS, name, 'Container', force,
+                           conditionals, TEMPLATE_CONTAINER)
+        add_templated_java(PACKAGE_SCREENS, name, 'Screen', force, conditionals,
+                           TEMPLATE_SCREEN)
     if not no_json:
-        add_templated_json(ASSET_RESOURCE_ROOT, 'blockstates', name, force, conditionals, TEMPLATE_BLOCKSTATE_JSON)
-        add_templated_json(ASSET_RESOURCE_ROOT, 'models.block', name, force, conditionals, TEMPLATE_BLOCKMODEL_JSON)
-        add_templated_json(ASSET_RESOURCE_ROOT, 'models.item', name, force, conditionals, TEMPLATE_ITEMMODEL_JSON)
-        add_templated_json(DATA_RESOURCE_ROOT, 'loot_tables.blocks', name, force, conditionals, TEMPLATE_LOOTTABLE_JSON)
-        add_templated_json(DATA_RESOURCE_ROOT, 'recipes', name, force, conditionals, TEMPLATE_RECIPE_JSON)
+        add_templated_json(ASSET_RESOURCE_ROOT, 'blockstates', name, force,
+                           conditionals, TEMPLATE_BLOCKSTATE_JSON)
+        add_templated_json(ASSET_RESOURCE_ROOT, 'models.block', name, force,
+                           conditionals, TEMPLATE_BLOCKMODEL_JSON)
+        add_templated_json(ASSET_RESOURCE_ROOT, 'models.item', name, force,
+                           conditionals, TEMPLATE_ITEMMODEL_JSON)
+        add_templated_json(DATA_RESOURCE_ROOT, 'loot_tables.blocks', name,
+                           force, conditionals, TEMPLATE_LOOTTABLE_JSON)
+        add_templated_json(DATA_RESOURCE_ROOT, 'recipes', name, force,
+                           conditionals, TEMPLATE_RECIPE_JSON)
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Make a block')
     parser.add_argument('name', help='CamelCase name of the block to add')
-    parser.add_argument('--force', help='Overwrite files even if they exist (be careful!)', action='store_true')
-    parser.add_argument('--tile', help='Generate additional code for a tileentity', action='store_true')
-    parser.add_argument('--gui', help='Generate additional code for container and gui (implies tile!)',
+    parser.add_argument('--force',
+                        help='Overwrite files even if they exist (be careful!)',
                         action='store_true')
-    parser.add_argument('--nojson', help='Prevent generating json', action='store_true')
+    parser.add_argument('--tile',
+                        help='Generate additional code for a tileentity',
+                        action='store_true')
+    parser.add_argument('--gui',
+                        help='Generate additional code for container and gui (implies tile!)',
+                        action='store_true')
+    parser.add_argument('--nojson', help='Prevent generating json',
+                        action='store_true')
     args = parser.parse_args()
 
     print(f'Adding block {args.name}')

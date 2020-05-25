@@ -14,8 +14,8 @@ open class AddI : Operator() {
     override val COST = 0.0
 
     /**
-	 * run
-	 */
+     * run
+     */
     override fun run(opList: List<String>, asmComputer: AsmComputer) {
         if (opList[0] !in asmComputer.intRegisters) {
             asmComputer.currState = CState.Errored
@@ -50,8 +50,8 @@ open class AddD : Operator() {
     override val COST = 0.0
 
     /**
-	 * run
-	 */
+     * run
+     */
     override fun run(opList: List<String>, asmComputer: AsmComputer) {
         if (opList[0] !in asmComputer.doubleRegisters) {
             asmComputer.currState = CState.Errored

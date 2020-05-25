@@ -15,32 +15,36 @@ open class Capacitor : Port() {
     override var name: String = "c"
 
     /**
-	 * Capacitance, in Farads (Coulombs / Volt)
-	 */
+     * Capacitance, in Farads (Coulombs / Volt)
+     */
     var c: Double = 1e-5
+
     /**
-	 * The simulation timestep in seconds.
-	 *
-	 * This is set in [preStep], but the value is unfortunately not available during [stamp]; thus, it may be slightly out of date when [step] is actually called.
-	 */
+     * The simulation timestep in seconds.
+     *
+     * This is set in [preStep], but the value is unfortunately not available during [stamp]; thus, it may be slightly out of date when [step] is actually called.
+     */
     var ts: Double = 0.05 // A safe default
+
     /**
-	 * The "equivalent resistance" of the Norton system, in Ohms.
-	 */
+     * The "equivalent resistance" of the Norton system, in Ohms.
+     */
     val eqR: Double
         get() = ts / c
+
     /**
-	 * The current, in Amperes, presently sourced by this Norton system.
-	 */
+     * The current, in Amperes, presently sourced by this Norton system.
+     */
     internal var i: Double = 0.0
         set(value) {
             if (isInCircuit)
                 circuit!!.stampCurrentSource(pos.index, neg.index, value - field)
             field = value
         }
+
     /**
-	 * The current ideal potential across nodes, signed [pos] - [neg] in Volts, a function of the capacitance and the charge (integration of previous currents).
-	 */
+     * The current ideal potential across nodes, signed [pos] - [neg] in Volts, a function of the capacitance and the charge (integration of previous currents).
+     */
     var idealU: Double = 0.0
 
     override fun detail(): String {

@@ -13,7 +13,7 @@ open class NoOp : Operator() {
     override val COST = 0.0
 
     /**
-	 * run - It literally does nothing.
-	 */
+     * run - It literally does nothing.
+     */
     override fun run(opList: List<String>, asmComputer: AsmComputer) {}
 }

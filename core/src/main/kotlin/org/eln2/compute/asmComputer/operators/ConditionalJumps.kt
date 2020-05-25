@@ -1,6 +1,11 @@
 package org.eln2.compute.asmComputer.operators
 
-import org.eln2.compute.asmComputer.*
+import org.eln2.compute.asmComputer.AsmComputer
+import org.eln2.compute.asmComputer.CState
+import org.eln2.compute.asmComputer.DoubleRegister
+import org.eln2.compute.asmComputer.IntRegister
+import org.eln2.compute.asmComputer.Operator
+import org.eln2.compute.asmComputer.StringRegister
 
 /**
  * Comparison Jump
@@ -13,8 +18,8 @@ abstract class ComparisonJump : Operator() {
     override val COST = 0.0
 
     /**
-	 * run
-	 */
+     * run
+     */
     override fun run(opList: List<String>, asmComputer: AsmComputer) {
         val aType = detectType(opList[0], asmComputer)
         val bType = detectType(opList[1], asmComputer)
@@ -91,27 +96,27 @@ abstract class ComparisonJump : Operator() {
     }
 
     /**
-	 * Compare two integers. Override this in the comparison operator
-	 * @param first int
-	 * @param second int
-	 * @return The comparison result
-	 */
+     * Compare two integers. Override this in the comparison operator
+     * @param first int
+     * @param second int
+     * @return The comparison result
+     */
     abstract fun compareInts(a: Int, b: Int): Boolean
 
     /**
-	 * Compare two doubles. Override this in the comparison operator
-	 * @param first double
-	 * @param second double
-	 * @return The comparison result
-	 */
+     * Compare two doubles. Override this in the comparison operator
+     * @param first double
+     * @param second double
+     * @return The comparison result
+     */
     abstract fun compareDoubles(a: Double, b: Double): Boolean
 
     /**
-	 * Compare two strings. Override this in the comparison operator
-	 * @param first string
-	 * @param second string
-	 * @return The comparison result
-	 */
+     * Compare two strings. Override this in the comparison operator
+     * @param first string
+     * @param second string
+     * @return The comparison result
+     */
     abstract fun compareStrings(a: String, b: String): Boolean
 }
 
@@ -125,9 +130,11 @@ class JumpGreaterThan : ComparisonJump() {
     override fun compareInts(a: Int, b: Int): Boolean {
         return a > b
     }
+
     override fun compareDoubles(a: Double, b: Double): Boolean {
         return a > b
     }
+
     override fun compareStrings(a: String, b: String): Boolean {
         return a > b
     }
@@ -143,9 +150,11 @@ class JumpLessThan : ComparisonJump() {
     override fun compareInts(a: Int, b: Int): Boolean {
         return a < b
     }
+
     override fun compareDoubles(a: Double, b: Double): Boolean {
         return a < b
     }
+
     override fun compareStrings(a: String, b: String): Boolean {
         return a < b
     }
@@ -161,9 +170,11 @@ class JumpGreaterEquals : ComparisonJump() {
     override fun compareInts(a: Int, b: Int): Boolean {
         return a >= b
     }
+
     override fun compareDoubles(a: Double, b: Double): Boolean {
         return a >= b
     }
+
     override fun compareStrings(a: String, b: String): Boolean {
         return a >= b
     }
@@ -179,9 +190,11 @@ class JumpLessEquals : ComparisonJump() {
     override fun compareInts(a: Int, b: Int): Boolean {
         return a <= b
     }
+
     override fun compareDoubles(a: Double, b: Double): Boolean {
         return a <= b
     }
+
     override fun compareStrings(a: String, b: String): Boolean {
         return a <= b
     }
@@ -199,6 +212,7 @@ class JumpEquals : ComparisonJump() {
     override fun compareInts(a: Int, b: Int): Boolean {
         return a == b
     }
+
     override fun compareDoubles(a: Double, b: Double): Boolean {
         // Well, not ever exactly, but how about within 0.0001?
         val range = 0.0001
@@ -207,6 +221,7 @@ class JumpEquals : ComparisonJump() {
         // println("$lowestAcceptable < $a? < $highestAcceptable")
         return (a > lowestAcceptable) && (a < highestAcceptable)
     }
+
     override fun compareStrings(a: String, b: String): Boolean {
         return a == b
     }

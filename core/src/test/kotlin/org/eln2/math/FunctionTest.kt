@@ -1,6 +1,9 @@
 package org.eln2.math
 
-import kotlin.math.*
+import kotlin.math.PI
+import kotlin.math.absoluteValue
+import kotlin.math.cos
+import kotlin.math.sin
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
 
@@ -14,12 +17,14 @@ internal class FunctionTest {
     @Test
     fun testInterface() {
         val quarterTurn = Cycle(PI / 2.0)
-        for (it in 0 until 20) { when (it % 4) {
-            0 -> Assertions.assertEquals(quarterTurn.getValue(it.toDouble()), 0.0, 0.000001)
-            1 -> Assertions.assertEquals(quarterTurn.getValue(it.toDouble()), 1.0, 0.000001)
-            2 -> Assertions.assertEquals(quarterTurn.getValue(it.toDouble()), 0.0, 0.000001)
-            3 -> Assertions.assertEquals(quarterTurn.getValue(it.toDouble()), -1.0, 0.000001)
-        } }
+        for (it in 0 until 20) {
+            when (it % 4) {
+                0 -> Assertions.assertEquals(quarterTurn.getValue(it.toDouble()), 0.0, 0.000001)
+                1 -> Assertions.assertEquals(quarterTurn.getValue(it.toDouble()), 1.0, 0.000001)
+                2 -> Assertions.assertEquals(quarterTurn.getValue(it.toDouble()), 0.0, 0.000001)
+                3 -> Assertions.assertEquals(quarterTurn.getValue(it.toDouble()), -1.0, 0.000001)
+            }
+        }
     }
 
     @Test
