@@ -95,7 +95,7 @@ internal class CircuitTest {
 	}
 	
 	@Test
-	fun componentChangeConsistency() {
+	fun componentChangeConsistency() { // Also tests resistors in parallel.
 		val ts = TrivialResistiveCircuit()
 		ts.c.step(0.5)
 		val current = ts.r1.current
@@ -116,6 +116,48 @@ internal class CircuitTest {
 		ts.c.step(0.5)
 		assertEquals(ts.r1.current, current, EPSILON)
 		assertEquals(r2.circuit, null)
+	}
+
+	@Test
+	fun resistorsInSeries() {
+		val circuit = Circuit()
+		val vs = VoltageSource()
+		val r1 = Resistor()
+		val r2 = Resistor()
+
+		vs.potential = 10.0
+		r1.resistance = 5.0
+		r2.resistance = 5.0
+
+		circuit.add(vs, r1, r2)
+		vs.connect(1, r1, 1)
+		r1.connect(0, r2, 1)
+		r2.connect(0, vs, 0)
+		vs.connect(1, circuit.ground)
+
+		circuit.step(0.5)
+		assertEquals(r1.current, r2.current, EPSILON)
+		assertEquals(r1.current, 1.0, EPSILON)
+	}
+
+	@Test
+	fun basicCapacitorCircuit() {
+		val circuit = Circuit()
+		val vs = VoltageSource()
+		val c1 = Capacitor()
+
+		vs.potential = 10.0
+		c1.capacitance = 0.01
+
+		circuit.add(vs, c1)
+		vs.connect(1, c1, 1)
+		vs.connect(0, c1, 0)
+		vs.connect(1, circuit.ground)
+
+		circuit.step(0.5)
+		circuit.step(0.5)
+		circuit.step(0.5)
+		circuit.step(0.5)
 	}
 
 	@Test
