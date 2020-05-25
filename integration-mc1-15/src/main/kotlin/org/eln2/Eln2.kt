@@ -1,16 +1,10 @@
-package org.eln2;
+package org.eln2
 
 import net.darkhax.bookshelf.registry.RegistryHelper
-import net.minecraft.item.ItemGroup
-import net.minecraft.item.ItemStack
-import net.minecraft.util.NonNullList
-import net.minecraftforge.fml.common.registry.GameRegistry
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext
-import net.minecraftforge.registries.ForgeRegistries
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
-import org.eln2.blocks.OreBlock
 import org.eln2.utils.OreGen
 
 const val MODID = "eln2"
@@ -19,31 +13,31 @@ const val MODID = "eln2"
  * The main entry point and registry holder for Electrical Age.
  */
 object Eln2 {
-	// Directly reference a log4j logger.
-	@JvmField
-	val LOGGER: Logger = LogManager.getLogger()
+    // Directly reference a log4j logger.
+    @JvmField
+    val LOGGER: Logger = LogManager.getLogger()
 
-	private val registry: RegistryHelper = RegistryHelper.create(MODID, LOGGER, null)
+    private val registry: RegistryHelper = RegistryHelper.create(MODID, LOGGER, null)
 
-	/**
+    /**
 	 * Initialization.
 	 *
 	 * This is run at class construction time, and should do as little as possible.
 	 */
-	fun initialize() {
-		// Register blocks and items
-		ModItems.values().forEach {registry.registerItem(it.items, it.name.toLowerCase())}
-		ModBlocks.values().forEach {registry.registerBlock(it.block, it.name.toLowerCase())}
+    fun initialize() {
+        // Register blocks and items
+        ModItems.values().forEach { registry.registerItem(it.items, it.name.toLowerCase()) }
+        ModBlocks.values().forEach { registry.registerBlock(it.block, it.name.toLowerCase()) }
 
-		registry.initialize(FMLJavaModLoadingContext.get().modEventBus)
-	}
+        registry.initialize(FMLJavaModLoadingContext.get().modEventBus)
+    }
 
-	/**
+    /**
 	 * Preinit handler.
 	 *
 	 * This is run in a threaded context, so we cannot communicate with other mods without using IMC.
 	 */
-	fun setup(event: FMLCommonSetupEvent) {
-		OreGen.setupOreGeneration()
-	}
+    fun setup(event: FMLCommonSetupEvent) {
+        OreGen.setupOreGeneration()
+    }
 }

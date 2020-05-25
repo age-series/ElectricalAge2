@@ -10,9 +10,9 @@ import org.eln2.sim.electrical.mna.component.CurrentSource
  *
  * Falstad basic Current Source
  */
-class CurrentSourceConstructor: PoleConstructor() {
-	override fun component(ccd: CCData) = CurrentSource()
-	override fun configure(ccd: CCData, cmp: Component) {
-		(cmp as CurrentSource).current = ccd.data[0].toDouble()
-	}
+class CurrentSourceConstructor : PoleConstructor() {
+    override fun component(ccd: CCData) = CurrentSource()
+    override fun configure(ccd: CCData, cmp: Component) {
+        (cmp as CurrentSource).current = ccd.data[0].toDouble()
+    }
 }

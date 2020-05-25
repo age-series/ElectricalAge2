@@ -8,9 +8,9 @@ import org.eln2.parsers.falstad.IComponentConstructor
  *
  * Takes the information from Falstad's circuit settings operator ($)
  */
-class InterpretGlobals: IComponentConstructor {
-	override fun construct(ccd: CCData) {
-		ccd.falstad.nominalTimestep = ccd.line.getDouble(2)
-		ccd.pins = 0
-	}
+class InterpretGlobals : IComponentConstructor {
+    override fun construct(ccd: CCData) {
+        ccd.falstad.nominalTimestep = ccd.line.getDouble(2)
+        ccd.pins = 0
+    }
 }
