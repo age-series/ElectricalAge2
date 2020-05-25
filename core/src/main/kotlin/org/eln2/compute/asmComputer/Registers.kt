@@ -46,6 +46,7 @@ open class DoubleRegister(v: Double = 0.0) {
         set(value) {
             _contents = value
         }
+
     override fun toString(): String {
         return contents.toString()
     }
@@ -79,14 +80,15 @@ open class StringRegister(var size: Int, v: String = "") {
         set(value) {
             if (value.length <= size) _contents = value
         }
+
     override fun toString(): String {
         return contents
     }
 
     /**
-	 * toString (with) Numbers
-	 * Prints out the line numbers of the string for each newline. Useful for code prints.
-	 */
+     * toString (with) Numbers
+     * Prints out the line numbers of the string for each newline. Useful for code prints.
+     */
     fun toStringNumbers(): String {
         val codeLines = contents.split("\n")
         var lines = ""

@@ -10,19 +10,19 @@ package org.eln2.math
 open class FunctionTable(var point: DoubleArray, var xMax: Double, private val mode: ExtrapolationMode) : IFunction {
 
     /**
-	 * Selects which method of extrapolation to use when trying to get a value outside of the given range.
-	 */
+     * Selects which method of extrapolation to use when trying to get a value outside of the given range.
+     */
     enum class ExtrapolationMode {
         ClosestValue, Linear
     }
 
     /**
-	 * getValue: Given a value, get the corresponding value, linearly fit between two closest points on either side.
-	 * Note that this is an interpolation. Extrapolation will return null.
-	 * @param x: Given value
-	 * @return y: Value for that x, linearly fit between the two closest points on either side if valid; otherwise
-	 * 	extrapolate using the method specified when creating this FunctionTable.
-	 */
+     * getValue: Given a value, get the corresponding value, linearly fit between two closest points on either side.
+     * Note that this is an interpolation. Extrapolation will return null.
+     * @param x: Given value
+     * @return y: Value for that x, linearly fit between the two closest points on either side if valid; otherwise
+     * 	extrapolate using the method specified when creating this FunctionTable.
+     */
     override fun getValue(x: Double): Double {
         val lx = x.div(xMax)
         return when {
@@ -47,11 +47,11 @@ open class FunctionTable(var point: DoubleArray, var xMax: Double, private val m
     }
 
     /**
-	 * duplicate: Create a copy of this function table with the same mode
-	 * @param xFactor Scale x by scalar factor (make wider/thinner)
-	 * @param yFactor Scale y by scalar factor (make taller/shorter)
-	 * @return New Function Table instance
-	 */
+     * duplicate: Create a copy of this function table with the same mode
+     * @param xFactor Scale x by scalar factor (make wider/thinner)
+     * @param yFactor Scale y by scalar factor (make taller/shorter)
+     * @return New Function Table instance
+     */
     fun duplicate(xFactor: Double, yFactor: Double): FunctionTable {
         val pointCpy = DoubleArray(point.size)
         for (idx in point.indices) {

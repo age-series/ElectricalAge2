@@ -11,8 +11,9 @@ class Label : Operator() {
     override val MIN_ARGS = 1
     override val MAX_ARGS = 1
     override val COST = 0.0
+
     /**
-	 * run - It literally does nothing.
- 	 */
+     * run - It literally does nothing.
+     */
     override fun run(opList: List<String>, asmComputer: AsmComputer) {}
 }

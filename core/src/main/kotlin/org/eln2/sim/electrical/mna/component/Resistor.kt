@@ -12,10 +12,10 @@ open class Resistor : Port() {
     override val imageName = "resistor"
 
     /**
-	 * The resistance of this resistor, in Ohms.
-	 *
-	 * Setting this will cause [Circuit.factorMatrix] to be called on the next step or substep.
-	 */
+     * The resistance of this resistor, in Ohms.
+     *
+     * Setting this will cause [Circuit.factorMatrix] to be called on the next step or substep.
+     */
     open var resistance: Double = 1.0
         set(value) {
             // Remove our contribution to the matrix (using a negative resistance... should work)
@@ -28,13 +28,14 @@ open class Resistor : Port() {
         }
 
     /**
-	 * Returns the current through this resistor as a function of its potential and resistance, in Amperes.
-	 */
+     * Returns the current through this resistor as a function of its potential and resistance, in Amperes.
+     */
     open val current: Double
         get() = potential / resistance
+
     /**
-	 * Returns the power dissipated by this resistor, as a function of its current and potential, in Watts.
-	 */
+     * Returns the power dissipated by this resistor, as a function of its current and potential, in Watts.
+     */
     open val p: Double
         get() = current * potential
 

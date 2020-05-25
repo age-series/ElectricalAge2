@@ -5,7 +5,13 @@ import java.awt.event.ActionEvent
 import java.awt.event.ActionListener
 import java.awt.event.KeyEvent
 import java.awt.event.KeyListener
-import javax.swing.*
+import javax.swing.JButton
+import javax.swing.JFrame
+import javax.swing.JLabel
+import javax.swing.JMenuBar
+import javax.swing.JPanel
+import javax.swing.JTextArea
+import javax.swing.JTextField
 import org.eln2.compute.asmComputer.AsmComputer
 import org.eln2.compute.asmComputer.CState
 import org.eln2.compute.asmComputer.StringRegister
@@ -116,6 +122,7 @@ class CrbListener(val crb: JTextArea, val asmComputer: AsmComputer) : KeyListene
         }
     }
 }
+
 /**
  * Serial Input Listener
  * Called when the serial input text area is touched
@@ -153,7 +160,8 @@ class SerialInputListenr(val input: JTextField, val asmComputer: AsmComputer) : 
  * @param crb The CRB text area
  * @param serialOutput The serial output panel
  */
-class StepComputer(val computer: AsmComputer, val cra: JTextArea, val crb: JTextArea, val serialOutput: JTextArea) : ActionListener {
+class StepComputer(val computer: AsmComputer, val cra: JTextArea, val crb: JTextArea, val serialOutput: JTextArea) :
+    ActionListener {
     override fun actionPerformed(p0: ActionEvent?) {
         stepComputer(computer, cra, crb, serialOutput)
     }
@@ -168,7 +176,8 @@ class StepComputer(val computer: AsmComputer, val cra: JTextArea, val crb: JText
  * @param crb The CRB text area
  * @param serialOutput The serial output panel
  */
-class RunComputer(val computer: AsmComputer, val cra: JTextArea, val crb: JTextArea, val serialOutput: JTextArea) : ActionListener {
+class RunComputer(val computer: AsmComputer, val cra: JTextArea, val crb: JTextArea, val serialOutput: JTextArea) :
+    ActionListener {
     override fun actionPerformed(p0: ActionEvent?) {
         val t = Thread() {
             while (computer.currState != CState.Errored) {

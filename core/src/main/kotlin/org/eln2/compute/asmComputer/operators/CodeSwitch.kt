@@ -13,8 +13,8 @@ class CodeSwitch : Operator() {
     override val COST = 0.0
 
     /**
-	 * run
-	 */
+     * run
+     */
     override fun run(opList: List<String>, asmComputer: AsmComputer) {
         if (asmComputer.codeRegister == "cra") {
             asmComputer.codeRegister = "crb"

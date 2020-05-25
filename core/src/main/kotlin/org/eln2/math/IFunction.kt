@@ -7,9 +7,9 @@ package org.eln2.math
  */
 interface IFunction {
     /**
-	 * getValue
-	 * @param x The input variable
-	 * @return The output variable
-	 */
+     * getValue
+     * @param x The input variable
+     * @return The output variable
+     */
     fun getValue(x: Double): Double
 }

@@ -14,8 +14,8 @@ class Jump : Operator() {
     override val COST = 0.0
 
     /**
-	 * run
-	 */
+     * run
+     */
     override fun run(opList: List<String>, asmComputer: AsmComputer) {
         if (opList[0].toIntOrNull() != null) {
             // go to a particular code pointer location

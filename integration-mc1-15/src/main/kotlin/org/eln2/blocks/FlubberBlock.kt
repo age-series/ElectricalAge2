@@ -18,9 +18,9 @@ import net.minecraft.world.IBlockReader
 class FlubberBlock : SlimeBlock(Properties.from(Blocks.SLIME_BLOCK)) {
 
     /**
-	 * Called when an Entity lands on this Block. This method *must* update motionY because the entity will not do that
-	 * on its own
-	 */
+     * Called when an Entity lands on this Block. This method *must* update motionY because the entity will not do that
+     * on its own
+     */
     override fun onLanded(world: IBlockReader, entity: Entity) {
         if (entity.isSuppressingBounce) {
             super.onLanded(world, entity)

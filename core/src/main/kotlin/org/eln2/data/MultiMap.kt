@@ -13,73 +13,73 @@ data class MultiMapEntry<K, V>(override val key: K, override val value: V) : Map
  */
 interface MultiMap<K, V> {
     /**
-	 * Tests whether a key [k] is in the MultiMap.
-	 *
-	 * This is true if k is associated with at least one value.
-	 */
+     * Tests whether a key [k] is in the MultiMap.
+     *
+     * This is true if k is associated with at least one value.
+     */
     operator fun contains(k: K): Boolean = get(k).isNotEmpty()
 
     /**
-	 * Get the set of all values associated with key [k].
-	 */
+     * Get the set of all values associated with key [k].
+     */
     operator fun get(k: K): Set<V>
 
     /**
-	 * Get a single, arbitrary value associated with key [k].
-	 *
-	 * If that association is empty, returns null.
-	 */
+     * Get a single, arbitrary value associated with key [k].
+     *
+     * If that association is empty, returns null.
+     */
     fun one(k: K): V? {
         val iter = get(k).iterator()
         return if (iter.hasNext()) iter.next() else null
     }
 
     /**
-	 * An iterator over every Entry<K, Set<V>>, of size keySize.
-	 */
+     * An iterator over every Entry<K, Set<V>>, of size keySize.
+     */
     val keyMapping: Iterable<Map.Entry<K, Set<V>>>
 
     /**
-	 * The number of keys, value sets, and keyMapping entries in this MultiMap.
-	 *
-	 * A naive, O(n) implementation might be keyMapping.count(), but you are encouraged to implement a faster one if at all possible. Implementors should document their complexity.
-	 */
+     * The number of keys, value sets, and keyMapping entries in this MultiMap.
+     *
+     * A naive, O(n) implementation might be keyMapping.count(), but you are encouraged to implement a faster one if at all possible. Implementors should document their complexity.
+     */
     val keyMappingSize: Int
 
     /**
-	 * The set of all keys.
-	 */
+     * The set of all keys.
+     */
     val keys: Set<K> get() = keyMapping.map { (k, _) -> k }.toSet()
 
     /**
-	 * The set of all sets of values.
-	 *
-	 * This will have the same size as keySize.
-	 */
+     * The set of all sets of values.
+     *
+     * This will have the same size as keySize.
+     */
     val valueSets: Collection<Set<V>> get() = keyMapping.map { (_, vs) -> vs }
 
     /**
-	 * The unique values in this MultiMap.
-	 *
-	 * This is often at least O(n * UNION), where UNION is the cost of set union.
-	 */
+     * The unique values in this MultiMap.
+     *
+     * This is often at least O(n * UNION), where UNION is the cost of set union.
+     */
     val uniqueValues: Set<V>
 
     /**
-	 * The number of unique values in this MultiMap.
-	 */
+     * The number of unique values in this MultiMap.
+     */
     val uniqueValuesSize: Int get() = uniqueValues.size
 
     /**
-	 * An iterator over every Entry<K, V>, where K may be repeated for each value.
-	 */
+     * An iterator over every Entry<K, V>, where K may be repeated for each value.
+     */
     val entries: Iterable<Map.Entry<K, V>>
 
     /**
-	 * The number of pairings in this MultiMap.
-	 *
-	 * A naive, O(n) implementation might be entries.count(), but you are encouraged to implement a faster one if at all possible. Implementors should document their complexity.
-	 */
+     * The number of pairings in this MultiMap.
+     *
+     * A naive, O(n) implementation might be entries.count(), but you are encouraged to implement a faster one if at all possible. Implementors should document their complexity.
+     */
     val entriesSize: Int
 }
 
@@ -88,27 +88,27 @@ interface MultiMap<K, V> {
  */
 interface MutableMultiMap<K, V> : MultiMap<K, V> {
     /**
-	 * Get the set of values for the key [k].
-	 *
-	 * Note that the return is mutable; one can add or remove entries from this map by mutating it.
-	 */
+     * Get the set of values for the key [k].
+     *
+     * Note that the return is mutable; one can add or remove entries from this map by mutating it.
+     */
     override operator fun get(k: K): MutableSet<V>
 
     /**
-	 * Add an association from [k] to [v] (in addition to any other associations involving [k] or [v]).
-	 */
+     * Add an association from [k] to [v] (in addition to any other associations involving [k] or [v]).
+     */
     operator fun set(k: K, v: V) = get(k).add(v)
 
     /**
-	 * Clear all values associated with the key [k].
-	 */
+     * Clear all values associated with the key [k].
+     */
     fun clear(k: K)
 
     /**
-	 * Remove an association between [k] and [v].
-	 *
-	 * If the map no longer contains [k], [clear] is invoked (as it usually performs some implementation-specific cleanup).
-	 */
+     * Remove an association between [k] and [v].
+     *
+     * If the map no longer contains [k], [clear] is invoked (as it usually performs some implementation-specific cleanup).
+     */
     fun remove(k: K, v: V) {
         val s = get(k)
         s.remove(v)
@@ -137,12 +137,22 @@ class MutableSetMapMultiMap<K, V>(iter: Iterator<Pair<K, V>>) : MutableMultiMap<
     }
 
     override val keyMapping: Iterable<Map.Entry<K, Set<V>>> = map.entries
+
     /** This implementation is O(1). */
     override val keyMappingSize: Int get() = map.size
     override val keys get() = map.keys
     override val valueSets: Collection<Set<V>> = map.values
     override val uniqueValues: Set<V> get() = map.values.fold(emptySet()) { next, acc -> acc.union(next.toSet()) }
-    override val entries: Iterable<Map.Entry<K, V>> get() = map.entries.flatMap { (k, vs) -> vs.map { MultiMapEntry(k, it) } }
+    override val entries: Iterable<Map.Entry<K, V>>
+        get() = map.entries.flatMap { (k, vs) ->
+            vs.map {
+                MultiMapEntry(
+                    k,
+                    it
+                )
+            }
+        }
+
     /** This implementation is O(keyMappingSize). */
     override val entriesSize: Int
         get() = map.entries.map { (_, vs) -> vs.size }.sum()

@@ -1,6 +1,7 @@
 package org.eln2.space
 
-import java.util.*
+import java.util.ArrayList
+import java.util.WeakHashMap
 import org.eln2.data.MutableMultiMap
 import org.eln2.data.mutableMultiMapOf
 import org.eln2.debug.dprintln
@@ -83,7 +84,10 @@ open class Space {
     }
 
     private fun canConnect(obj: Object, objb: Object, locator: Locator) =
-        obj.locator.canConnect(locator) && locator.canConnect(obj.locator) && obj.canConnectTo(objb, true) && objb.canConnectTo(obj, false)
+        obj.locator.canConnect(locator) && locator.canConnect(obj.locator) && obj.canConnectTo(
+            objb,
+            true
+        ) && objb.canConnectTo(obj, false)
 
     protected fun merge(obj: Object) {
         obj.locator.neighbors().forEach {
@@ -97,8 +101,16 @@ open class Space {
                 } else if (objb != null) {
                     if (!obj.locator.canConnect(loc)) dprintln("merge: failed: this locator (${obj.locator}) can't connect to other locator ($loc)")
                     if (!loc.canConnect(obj.locator)) dprintln("merge: failed: other locator ($loc) can't connect to this locator (${obj.locator})")
-                    if (!obj.canConnectTo(objb, true)) dprintln("merge: failed: this object ($obj @ ${obj.locator}) can't connect to other object ($objb @ $loc)")
-                    if (!objb.canConnectTo(obj, false)) dprintln("merge: failed: other object ($objb @ $loc) can't connect to this object ($obj @ ${obj.locator})")
+                    if (!obj.canConnectTo(
+                            objb,
+                            true
+                        )
+                    ) dprintln("merge: failed: this object ($obj @ ${obj.locator}) can't connect to other object ($objb @ $loc)")
+                    if (!objb.canConnectTo(
+                            obj,
+                            false
+                        )
+                    ) dprintln("merge: failed: other object ($objb @ $loc) can't connect to this object ($obj @ ${obj.locator})")
                 }
             }
         }

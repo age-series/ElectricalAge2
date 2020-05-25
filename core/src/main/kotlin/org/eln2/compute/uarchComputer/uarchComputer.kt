@@ -15,9 +15,10 @@ class uarchComputer(var ioPinsGroup1: IDataIO, var ioPinsGroup2: IDataIO, val uR
     private var GPRegs = Array<UInt>(8) { 0u }
 
     /**
-	 * u State - States of the uarchComputer
-	 */
+     * u State - States of the uarchComputer
+     */
     enum class uState { Halted, Running0, Running1 }
+
     var currState = uState.Halted
     var flagCheck = false
 
@@ -29,8 +30,8 @@ class uarchComputer(var ioPinsGroup1: IDataIO, var ioPinsGroup2: IDataIO, val uR
     }
 
     /**
-	 * step - a step of the uarchComputer. Does a single instruction.
-	 */
+     * step - a step of the uarchComputer. Does a single instruction.
+     */
     fun step() {
         if (currState == uState.Halted) {
             uOP_IP = 0u
@@ -70,22 +71,54 @@ class uarchComputer(var ioPinsGroup1: IDataIO, var ioPinsGroup2: IDataIO, val uR
                     else -> die(uOP)
                 }
                 4 -> when (uOP.and(15u).toInt()) {
-                    0 -> { alu.currOP = ALU.ALUOps.Zero ; fpu.currOp = FPU.FPUOps.Zero }
-                    1 -> { alu.currOP = ALU.ALUOps.And ; fpu.currOp = FPU.FPUOps.Int }
-                    2 -> { alu.currOP = ALU.ALUOps.Or ; fpu.currOp = FPU.FPUOps.Neg }
-                    3 -> { alu.currOP = ALU.ALUOps.Xor ; fpu.currOp = FPU.FPUOps.Inv }
-                    4 -> { alu.currOP = ALU.ALUOps.Not ; fpu.currOp = FPU.FPUOps.Sqrt }
-                    5 -> { alu.currOP = ALU.ALUOps.Nand ; fpu.currOp = FPU.FPUOps.Sqre }
-                    6 -> { alu.currOP = ALU.ALUOps.Nor ; fpu.currOp = FPU.FPUOps.Ln }
-                    7 -> { alu.currOP = ALU.ALUOps.Xnor ; fpu.currOp = FPU.FPUOps.Exp }
-                    8 -> { alu.currOP = ALU.ALUOps.Add ; fpu.currOp = FPU.FPUOps.Add }
-                    9 -> { alu.currOP = ALU.ALUOps.Adc ; fpu.currOp = FPU.FPUOps.Mult }
-                    10 -> { alu.currOP = ALU.ALUOps.Sub ; fpu.currOp = FPU.FPUOps.Sub }
-                    11 -> { alu.currOP = ALU.ALUOps.Sbb ; fpu.currOp = FPU.FPUOps.Div }
-                    12 -> { alu.currOP = ALU.ALUOps.Shl ; fpu.currOp = FPU.FPUOps.Cos }
-                    13 -> { alu.currOP = ALU.ALUOps.Shr ; fpu.currOp = FPU.FPUOps.ToDouble }
-                    14 -> { alu.currOP = ALU.ALUOps.One ; fpu.currOp = FPU.FPUOps.One }
-                    15 -> { alu.currOP = ALU.ALUOps.MinusOne ; fpu.currOp = FPU.FPUOps.MinusOne }
+                    0 -> {
+                        alu.currOP = ALU.ALUOps.Zero; fpu.currOp = FPU.FPUOps.Zero
+                    }
+                    1 -> {
+                        alu.currOP = ALU.ALUOps.And; fpu.currOp = FPU.FPUOps.Int
+                    }
+                    2 -> {
+                        alu.currOP = ALU.ALUOps.Or; fpu.currOp = FPU.FPUOps.Neg
+                    }
+                    3 -> {
+                        alu.currOP = ALU.ALUOps.Xor; fpu.currOp = FPU.FPUOps.Inv
+                    }
+                    4 -> {
+                        alu.currOP = ALU.ALUOps.Not; fpu.currOp = FPU.FPUOps.Sqrt
+                    }
+                    5 -> {
+                        alu.currOP = ALU.ALUOps.Nand; fpu.currOp = FPU.FPUOps.Sqre
+                    }
+                    6 -> {
+                        alu.currOP = ALU.ALUOps.Nor; fpu.currOp = FPU.FPUOps.Ln
+                    }
+                    7 -> {
+                        alu.currOP = ALU.ALUOps.Xnor; fpu.currOp = FPU.FPUOps.Exp
+                    }
+                    8 -> {
+                        alu.currOP = ALU.ALUOps.Add; fpu.currOp = FPU.FPUOps.Add
+                    }
+                    9 -> {
+                        alu.currOP = ALU.ALUOps.Adc; fpu.currOp = FPU.FPUOps.Mult
+                    }
+                    10 -> {
+                        alu.currOP = ALU.ALUOps.Sub; fpu.currOp = FPU.FPUOps.Sub
+                    }
+                    11 -> {
+                        alu.currOP = ALU.ALUOps.Sbb; fpu.currOp = FPU.FPUOps.Div
+                    }
+                    12 -> {
+                        alu.currOP = ALU.ALUOps.Shl; fpu.currOp = FPU.FPUOps.Cos
+                    }
+                    13 -> {
+                        alu.currOP = ALU.ALUOps.Shr; fpu.currOp = FPU.FPUOps.ToDouble
+                    }
+                    14 -> {
+                        alu.currOP = ALU.ALUOps.One; fpu.currOp = FPU.FPUOps.One
+                    }
+                    15 -> {
+                        alu.currOP = ALU.ALUOps.MinusOne; fpu.currOp = FPU.FPUOps.MinusOne
+                    }
                 }
                 5 -> when (uOP.and(15u).toInt()) {
                     0 -> alu.zero = !alu.zero
@@ -111,8 +144,12 @@ class uarchComputer(var ioPinsGroup1: IDataIO, var ioPinsGroup2: IDataIO, val uR
                     3 -> uOP_IP = uROM.readROMAt(0xFFFFu).toUInt().times(256u).plus(uROM.readROMAt(0xFFFEu)).toUShort()
                     4 -> currState = uState.Running0
                     5 -> currState = uState.Running1
-                    6 -> if (flagCheck) { currState = uState.Running0 }
-                    7 -> if (flagCheck) { currState = uState.Running1 }
+                    6 -> if (flagCheck) {
+                        currState = uState.Running0
+                    }
+                    7 -> if (flagCheck) {
+                        currState = uState.Running1
+                    }
                     8 -> alu.step()
                     9 -> fpu.step()
                     15 -> currState = uState.Halted

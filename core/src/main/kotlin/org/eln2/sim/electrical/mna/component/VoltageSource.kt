@@ -1,6 +1,7 @@
 package org.eln2.sim.electrical.mna.component
 
-import org.eln2.sim.electrical.mna.*
+import org.eln2.sim.electrical.mna.Circuit
+import org.eln2.sim.electrical.mna.VSource
 
 /**
  * A voltage source.
@@ -13,17 +14,18 @@ class VoltageSource : Port() {
     override val vsCount = 1
 
     /**
-	 * The current potential of this source, in Volts.
-	 */
+     * The current potential of this source, in Volts.
+     */
     override var potential: Double = 0.0
         set(value) {
             if (isInCircuit)
                 vsources[0].change(value - field)
             field = value
         }
+
     /**
-	 * The current through this source, as a result of the simulation step.
-	 */
+     * The current through this source, as a result of the simulation step.
+     */
     val i: Double
         get() = if (isInCircuit) vsources[0].current else 0.0
 

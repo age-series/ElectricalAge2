@@ -1,6 +1,21 @@
 package org.eln2.compute.asmComputer
 
-import org.eln2.compute.asmComputer.operators.*
+import org.eln2.compute.asmComputer.operators.AddD
+import org.eln2.compute.asmComputer.operators.AddI
+import org.eln2.compute.asmComputer.operators.CodeSwitch
+import org.eln2.compute.asmComputer.operators.CopyStringPart
+import org.eln2.compute.asmComputer.operators.Jump
+import org.eln2.compute.asmComputer.operators.JumpEquals
+import org.eln2.compute.asmComputer.operators.JumpGreaterEquals
+import org.eln2.compute.asmComputer.operators.JumpGreaterThan
+import org.eln2.compute.asmComputer.operators.JumpLessEquals
+import org.eln2.compute.asmComputer.operators.JumpLessThan
+import org.eln2.compute.asmComputer.operators.Label
+import org.eln2.compute.asmComputer.operators.Move
+import org.eln2.compute.asmComputer.operators.NoOp
+import org.eln2.compute.asmComputer.operators.StringLength
+import org.eln2.compute.asmComputer.operators.SubD
+import org.eln2.compute.asmComputer.operators.SubI
 
 /**
  * AsmComputer
@@ -24,12 +39,16 @@ class AsmComputer {
 
     // Current processing state
     var currState = CState.Stopped
+
     // Why we are in this state if it's errored.
     var currStateReasoning = ""
+
     // The code to run
     var codeRegister = "cra"
+
     // The code to run, split by newline
     private var codeLines: List<String> = listOf()
+
     // The pointer to the line of code to run from codeLines
     var ptr = 0
 
@@ -39,9 +58,11 @@ class AsmComputer {
         "xyz".forEach { stringRegisters["s$it"] = StringRegister(1024) }
         "ab".forEach { stringRegisters["cr$it"] = StringRegister(4096) }
 
-        val operatorListing = listOf(NoOp(), AddI(), AddD(), SubI(), SubD(), Move(), CodeSwitch(),
-        CopyStringPart(), StringLength(), Label(), Jump(), JumpGreaterThan(), JumpLessThan(), JumpGreaterEquals(),
-        JumpLessEquals(), JumpEquals())
+        val operatorListing = listOf(
+            NoOp(), AddI(), AddD(), SubI(), SubD(), Move(), CodeSwitch(),
+            CopyStringPart(), StringLength(), Label(), Jump(), JumpGreaterThan(), JumpLessThan(), JumpGreaterEquals(),
+            JumpLessEquals(), JumpEquals()
+        )
         operators = mutableMapOf()
 
         operatorListing.forEach {
@@ -50,8 +71,8 @@ class AsmComputer {
     }
 
     /**
-	 * step: Complete a step of the ASM Computer. This will execute the code at PTR.
-	 */
+     * step: Complete a step of the ASM Computer. This will execute the code at PTR.
+     */
     fun step() {
         if (this.currState == CState.Errored) {
             println("computer errored, not stepping: $currStateReasoning")
@@ -66,7 +87,7 @@ class AsmComputer {
         val cra = stringRegisters["cra"]?.contents
         val crb = stringRegisters["crb"]?.contents
         val codeRegisters = mapOf(Pair("cra", cra), Pair("crb", crb))
-            codeLines = (codeRegisters[codeRegister] ?: "").split("\n")
+        codeLines = (codeRegisters[codeRegister] ?: "").split("\n")
         if (codeLines.size <= ptr || ptr < 0) {
             println("end of code: ${codeLines.size} < $ptr")
             println("going back to beginning...")

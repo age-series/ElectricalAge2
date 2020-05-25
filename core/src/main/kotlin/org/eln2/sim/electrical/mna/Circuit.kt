@@ -1,14 +1,25 @@
 package org.eln2.sim.electrical.mna
 
 import java.lang.ref.WeakReference
-import java.util.*
-import org.apache.commons.math3.linear.*
+import java.util.WeakHashMap
+import org.apache.commons.math3.linear.ArrayRealVector
+import org.apache.commons.math3.linear.DecompositionSolver
+import org.apache.commons.math3.linear.LUDecomposition
+import org.apache.commons.math3.linear.MatrixUtils
+import org.apache.commons.math3.linear.RealMatrix
+import org.apache.commons.math3.linear.RealMatrixFormat
+import org.apache.commons.math3.linear.RealVector
+import org.apache.commons.math3.linear.SingularMatrixException
 import org.eln2.debug.dprint
 import org.eln2.debug.dprintln
-import org.eln2.parsers.falstad.*
+import org.eln2.parsers.falstad.Falstad
 import org.eln2.sim.IProcess
-import org.eln2.sim.electrical.mna.component.*
-import org.eln2.space.*
+import org.eln2.sim.electrical.mna.component.Capacitor
+import org.eln2.sim.electrical.mna.component.Component
+import org.eln2.sim.electrical.mna.component.Inductor
+import org.eln2.sim.electrical.mna.component.Port
+import org.eln2.sim.electrical.mna.component.RealisticDiode
+import org.eln2.space.Space
 
 /**
  * The default format for debug matrix printouts from Circuits.
@@ -76,147 +87,158 @@ val MATRIX_FORMAT = RealMatrixFormat("", "", "\t", "\n", "", "\t")
 class Circuit {
 
     /**
-	 * Set when the conductivity [matrix] has changed.
-	 *
-	 * The matrix expresses connectivity and conductance, so this usually occurs if components are added or resistances change.
-	 *
-	 * Indicates that a [factorMatrix] call must occur, but the [Node] numbering has not changed (via [buildMatrix]).
-	 */
+     * Set when the conductivity [matrix] has changed.
+     *
+     * The matrix expresses connectivity and conductance, so this usually occurs if components are added or resistances change.
+     *
+     * Indicates that a [factorMatrix] call must occur, but the [Node] numbering has not changed (via [buildMatrix]).
+     */
     private var matrixChanged = false
+
     /**
-	 * Set when the [knowns] vector has changed.
-	 *
-	 * This vector contains the known current and voltage source values.
-	 *
-	 * Indicates that [computeResult] must be called to retrieve up-to-date information.
-	 */
+     * Set when the [knowns] vector has changed.
+     *
+     * This vector contains the known current and voltage source values.
+     *
+     * Indicates that [computeResult] must be called to retrieve up-to-date information.
+     */
     private var rightSideChanged = false
+
     /**
-	 * Set when [Component]s have been added.
-	 *
-	 * This implies [buildMatrix] must be done, and that the [Node] numbering may have changed.
-	 */
+     * Set when [Component]s have been added.
+     *
+     * This implies [buildMatrix] must be done, and that the [Node] numbering may have changed.
+     */
     private var componentsChanged = false
+
     /**
-	 * Set when the connectivity of [Component]s changes.
-	 *
-	 * This includes calls to [Component.connect], and implies that [Node] renumbering may need to occur, as with [componentsChanged].
-	 */
+     * Set when the connectivity of [Component]s changes.
+     *
+     * This includes calls to [Component.connect], and implies that [Node] renumbering may need to occur, as with [componentsChanged].
+     */
     // These ones below are called from Component methods
     internal var connectivityChanged = false
 
     /**
-	 * The privileged ground node.
-	 *
-	 * This is defined to be zero potential with relation to every other node.
-	 */
+     * The privileged ground node.
+     *
+     * This is defined to be zero potential with relation to every other node.
+     */
     // Don't ever add this to any node lists; its index is always invalid.
     var ground = NodeRef(GroundNode(this))
 
     /**
-	 * The maximum number of substeps done to try to make non-linear [Component]s converge.
-	 *
-	 * Components _should_ be designed to converge exponentially anyway, but this covers pathological cases. The value can be considered an "acceptable slowdown factor" in the worst case.
-	 */
+     * The maximum number of substeps done to try to make non-linear [Component]s converge.
+     *
+     * Components _should_ be designed to converge exponentially anyway, but this covers pathological cases. The value can be considered an "acceptable slowdown factor" in the worst case.
+     */
     var maxSubSteps = 100
+
     /**
-	 * A "small" value (like epsilon), used to determine if two Doubles are "close enough".
-	 *
-	 * Circuit does not use this directly, but some [Component]s use it to determine if they should stop iterating.
-	 */
+     * A "small" value (like epsilon), used to determine if two Doubles are "close enough".
+     *
+     * Circuit does not use this directly, but some [Component]s use it to determine if they should stop iterating.
+     */
     var slack = 0.001
+
     /**
-	 * Set if the last step was successful.
-	 *
-	 * This is exactly the value returned from [step]; it is false when [computeResult] fails to solve or write out its results.
-	 */
+     * Set if the last step was successful.
+     *
+     * This is exactly the value returned from [step]; it is false when [computeResult] fails to solve or write out its results.
+     */
     var success = true
 
     /**
-	 * The [Component]s added to this Circuit.
-	 *
-	 * Order is preserved from addition, but otherwise insignificant.
-	 *
-	 * It should be an invariant that `this.components.all { it.circuit == this }`.
-	 */
+     * The [Component]s added to this Circuit.
+     *
+     * Order is preserved from addition, but otherwise insignificant.
+     *
+     * It should be an invariant that `this.components.all { it.circuit == this }`.
+     */
     val components = mutableListOf<Component>()
+
     /**
-	 * A map from [NodeRef] to the owning [Component].
-	 *
-	 * This does not include the [ground] NodeRef owned by the Circuit.
-	 */
+     * A map from [NodeRef] to the owning [Component].
+     *
+     * This does not include the [ground] NodeRef owned by the Circuit.
+     */
     val compNodeMap = WeakHashMap<NodeRef, Component>()
 
     /**
-	 * A map from [VSource] to the owning [Component].
-	 */
+     * A map from [VSource] to the owning [Component].
+     */
     // These don't merge, but keep this collection weak anyway so the size reflects component removal.
     val compVsMap = WeakHashMap<VSource, Component>()
 
     /**
-	 * A list of closures to call before the Circuit step runs.
-	 */
+     * A list of closures to call before the Circuit step runs.
+     */
     val preProcess = WeakHashMap<IProcess, Unit>()
+
     /**
-	 * A list of closures to call after the Circuit step finishes.
-	 */
+     * A list of closures to call after the Circuit step finishes.
+     */
     val postProcess = WeakHashMap<IProcess, Unit>()
 
     // These fields are only for the solver--don't use them casually elsewhere
     /**
-	 * The connectivity matrix.
-	 *
-	 * This matrix is square of size (nodes + vsources), with the upper-left square nodes-size matrix representing the conductances, and the two (nodes x vsources) rectangular matrices representing the connectivity of the voltage sources.
-	 *
-	 * It is the "A Matrix" in the [MNA Algorithm][MNA].
-	 *
-	 * [MNA]: https://lpsa.swarthmore.edu/Systems/Electrical/mna/MNA3.html
-	 */
+     * The connectivity matrix.
+     *
+     * This matrix is square of size (nodes + vsources), with the upper-left square nodes-size matrix representing the conductances, and the two (nodes x vsources) rectangular matrices representing the connectivity of the voltage sources.
+     *
+     * It is the "A Matrix" in the [MNA Algorithm][MNA].
+     *
+     * [MNA]: https://lpsa.swarthmore.edu/Systems/Electrical/mna/MNA3.html
+     */
     internal var matrix: RealMatrix? = null
+
     /**
-	 * The "knowns" vector.
-	 *
-	 * This is a column vector of size (nodes + vsources); the first (nodes) elements are independent currents into the node (the sums of signed contributions of current sources), and the last (vsources) elements are the voltage source values.
-	 *
-	 * This is the "z matrix" in the [MNA Algorithm][MNA].
-	 *
-	 * [MNA]: https://lpsa.swarthmore.edu/Systems/Electrical/mna/MNA3.html
-	 */
+     * The "knowns" vector.
+     *
+     * This is a column vector of size (nodes + vsources); the first (nodes) elements are independent currents into the node (the sums of signed contributions of current sources), and the last (vsources) elements are the voltage source values.
+     *
+     * This is the "z matrix" in the [MNA Algorithm][MNA].
+     *
+     * [MNA]: https://lpsa.swarthmore.edu/Systems/Electrical/mna/MNA3.html
+     */
     internal var knowns: RealVector? = null
+
     /**
-	 * A solver for [matrix], if it could be inverted.
-	 *
-	 * This is cached to quickly [computeResult] if there was no need to [buildMatrix] (and only [knowns] changed).
-	 */
+     * A solver for [matrix], if it could be inverted.
+     *
+     * This is cached to quickly [computeResult] if there was no need to [buildMatrix] (and only [knowns] changed).
+     */
     internal var solver: DecompositionSolver? = null
+
     /**
-	 * [Node]s owned by this Circuit.
-	 *
-	 * They may be shared by any number of [Component]s.
-	 *
-	 * The order is significant; their position is their index into the rows and columns of [matrix] and [knowns]. This is also available via [Node.index] after a [buildMatrix].
-	 */
+     * [Node]s owned by this Circuit.
+     *
+     * They may be shared by any number of [Component]s.
+     *
+     * The order is significant; their position is their index into the rows and columns of [matrix] and [knowns]. This is also available via [Node.index] after a [buildMatrix].
+     */
     internal var nodes: List<WeakReference<Node>> = emptyList()
+
     /**
-	 * [VSource]s owned by this Circuit.
-	 *
-	 * These are usually owned by some other [Component].
-	 *
-	 * The order is significant; their position is their index into the rows and columns of [matrix] and [knowns] (offset, as need be, by the size of [nodes]). This is available via [VSource.index] after a [buildMatrix].
-	 */
+     * [VSource]s owned by this Circuit.
+     *
+     * These are usually owned by some other [Component].
+     *
+     * The order is significant; their position is their index into the rows and columns of [matrix] and [knowns] (offset, as need be, by the size of [nodes]). This is available via [VSource.index] after a [buildMatrix].
+     */
     internal var voltageSources: List<WeakReference<VSource>> = emptyList()
 
     /**
-	 * Add a value to a given row and column of [matrix].
-	 *
-	 * [a] and [b] should be indices of [Node]s; that is, they should be nonnegative and less than the length of [nodes]. Thus, these index into the "G submatrix" as expressed in the [MNA Algorithm][MNA]. Since this matrix should be symmetric, this method is usually invoked twice, the latter with [b] and [a] swapped.
-	 *
-	 * The interpretation, according to Falstad, is as follows: if the potential of [b] changes by `dV`, then the current into node [a] should change by [x] * `dV`. The unit of [x] is Siemens (reciprocal Ohms).
-	 *
-	 * This is the lowest level function that manipulates [matrix]; it is usually called via [stampResistor] and [stampVoltageSource]. These should only be called from [Component.stamp].
-	 *
-	 * [MNA]: https://lpsa.swarthmore.edu/Systems/Electrical/mna/MNA3.html
-	 */
+     * Add a value to a given row and column of [matrix].
+     *
+     * [a] and [b] should be indices of [Node]s; that is, they should be nonnegative and less than the length of [nodes]. Thus, these index into the "G submatrix" as expressed in the [MNA Algorithm][MNA]. Since this matrix should be symmetric, this method is usually invoked twice, the latter with [b] and [a] swapped.
+     *
+     * The interpretation, according to Falstad, is as follows: if the potential of [b] changes by `dV`, then the current into node [a] should change by [x] * `dV`. The unit of [x] is Siemens (reciprocal Ohms).
+     *
+     * This is the lowest level function that manipulates [matrix]; it is usually called via [stampResistor] and [stampVoltageSource]. These should only be called from [Component.stamp].
+     *
+     * [MNA]: https://lpsa.swarthmore.edu/Systems/Electrical/mna/MNA3.html
+     */
     /* From Falstad: declare that a potential change dV in node b changes the current in node a by x*dV, complicated
 	   slightly by independent voltage sources. The unit of x is Siemens, reciprocal Ohms, a unit of conductance.
 	 */
@@ -228,12 +250,12 @@ class Circuit {
     }
 
     /**
-	 * Add a value to a given row of [knowns].
-	 *
-	 * If called with nonzero i less than the size of [nodes], change the independent current into node [i] by [x] Amperes. Otherwise, change the potential of [VSource] [i] - (size of [nodes]) by [x] Volts.
-	 *
-	 * This is the lowest level function that manipulates [knowns]; it is usually called via [stampVoltageChange] and [stampCurrentSource]. These should only be called from [Component.stamp].
-	 */
+     * Add a value to a given row of [knowns].
+     *
+     * If called with nonzero i less than the size of [nodes], change the independent current into node [i] by [x] Amperes. Otherwise, change the potential of [VSource] [i] - (size of [nodes]) by [x] Volts.
+     *
+     * This is the lowest level function that manipulates [knowns]; it is usually called via [stampVoltageChange] and [stampCurrentSource]. These should only be called from [Component.stamp].
+     */
     fun stampKnown(i: Int, x: Double) {
         dprintln("C.sK $i $x")
         if (i < 0) return
@@ -242,19 +264,19 @@ class Circuit {
     }
 
     /**
-	 * Change the potential of VSource [i] by [x] Volts.
-	 *
-	 * This calls [stampKnown] internally. It should usually be called from a method on a [Component] with a valid [VSource].
-	 */
+     * Change the potential of VSource [i] by [x] Volts.
+     *
+     * This calls [stampKnown] internally. It should usually be called from a method on a [Component] with a valid [VSource].
+     */
     fun stampVoltageChange(i: Int, x: Double) {
         stampKnown(i + nodes.size, x)
     }
 
     /**
-	 * Add a resistor of [r] Ohms between nodes [a] and [b].
-	 *
-	 * This calls [stampMatrix] internally. It should only ever be called from [Component.stamp].
-	 */
+     * Add a resistor of [r] Ohms between nodes [a] and [b].
+     *
+     * This calls [stampMatrix] internally. It should only ever be called from [Component.stamp].
+     */
     fun stampResistor(a: Int, b: Int, r: Double) {
         dprintln("C.sR $a $b $r")
         val c = 1 / r
@@ -268,10 +290,10 @@ class Circuit {
     }
 
     /**
-	 * Add the contribution of potential source [num] as [v] Volts with a positive terminal node [pos] and negative [neg].
-	 *
-	 * This calls [stampMatrix] and [stampKnown] internally. It should only ever be called from [Component.stamp].
-	 */
+     * Add the contribution of potential source [num] as [v] Volts with a positive terminal node [pos] and negative [neg].
+     *
+     * This calls [stampMatrix] and [stampKnown] internally. It should only ever be called from [Component.stamp].
+     */
     fun stampVoltageSource(pos: Int, neg: Int, num: Int, v: Double) {
         val vs = num + nodes.size
         stampMatrix(vs, neg, -1.0)
@@ -282,29 +304,29 @@ class Circuit {
     }
 
     /**
-	 * Adds the contribution of a current source from [neg] into [pos] with [i] Amperes. (Current sources aren't indexed; this can be done at any time.)
-	 *
-	 * This calls [stampKnown] internally.
-	 */
+     * Adds the contribution of a current source from [neg] into [pos] with [i] Amperes. (Current sources aren't indexed; this can be done at any time.)
+     *
+     * This calls [stampKnown] internally.
+     */
     fun stampCurrentSource(pos: Int, neg: Int, i: Double) {
         stampKnown(pos, -i)
         stampKnown(neg, i)
     }
 
     /**
-	 * Add all of the [Component]s in the vararg list.
-	 */
+     * Add all of the [Component]s in the vararg list.
+     */
     fun add(vararg comps: Component) {
         for (comp in comps) add(comp)
     }
 
     /**
-	 * Add a [Component] to the Circuit.
-	 *
-	 * This sets up the Component to be used (honoring [Component.nodeCount] and [Component.vsCount], setting [Component.circuit], etc.).
-	 *
-	 * Adding a component causes [componentsChanged] to become true; thus, [buildMatrix] is usually required before the next solve [step].
-	 */
+     * Add a [Component] to the Circuit.
+     *
+     * This sets up the Component to be used (honoring [Component.nodeCount] and [Component.vsCount], setting [Component.circuit], etc.).
+     *
+     * Adding a component causes [componentsChanged] to become true; thus, [buildMatrix] is usually required before the next solve [step].
+     */
     fun add(comp: Component): Component {
         components.add(comp)
         componentsChanged = true
@@ -325,28 +347,29 @@ class Circuit {
     }
 
     /**
-	 * Determine if the Circuit is floating--having no finite-resistance connection to [ground].
-	 *
-	 * A floating circuit is likely to fail to [step], as it is underconstrained. Fixing this requires unifying any node with [ground]--any one will do, though it is traditionally the lowest-potential node of the Circuit.
-	 */
-    val isFloating: Boolean get() {
-        if (componentsChanged || connectivityChanged) buildMatrix()
-        return !components.any {
-            it.nodes.any {
-                it.node == ground.node
+     * Determine if the Circuit is floating--having no finite-resistance connection to [ground].
+     *
+     * A floating circuit is likely to fail to [step], as it is underconstrained. Fixing this requires unifying any node with [ground]--any one will do, though it is traditionally the lowest-potential node of the Circuit.
+     */
+    val isFloating: Boolean
+        get() {
+            if (componentsChanged || connectivityChanged) buildMatrix()
+            return !components.any {
+                it.nodes.any {
+                    it.node == ground.node
+                }
             }
         }
-    }
 
     /**
-	 * Build the [matrix] and the [nodes] and [voltageSources], imparting each with indices.
-	 *
-	 * This is somewhat expensive, but needs to happen when [componentsChanged] or [connectivityChanged], at most once per [step].
-	 *
-	 * This does not need to happen when [matrixChanged], but [factorMatrix] does.
-	 *
-	 * These conditions are usually handled automatically for you, whenever [Component]s are [add]ed or [NodeRef]s are [Component.connect]ed.
-	 */
+     * Build the [matrix] and the [nodes] and [voltageSources], imparting each with indices.
+     *
+     * This is somewhat expensive, but needs to happen when [componentsChanged] or [connectivityChanged], at most once per [step].
+     *
+     * This does not need to happen when [matrixChanged], but [factorMatrix] does.
+     *
+     * These conditions are usually handled automatically for you, whenever [Component]s are [add]ed or [NodeRef]s are [Component.connect]ed.
+     */
     // Step 1: Whenever the number of components, or their nodal connectivity (not resistances, e.g.) changes, allocate
     // a matrix of appropriate size.
     protected fun buildMatrix() {
@@ -395,12 +418,12 @@ class Circuit {
     }
 
     /**
-	 * Factor the matrix, generating a [solver] for the [matrix].
-	 *
-	 * This has to happen whenever [matrixChanged]. This is definitely the case when the matrix was just built by [buildMatrix], but also can occur multiple times within a [step] if non-linear [Component]s are present (usually by adjusting resistances within their [Component.simStep]).
-	 *
-	 * This is somewhat expensive, but not as much as rebuilding the matrix.
-	 */
+     * Factor the matrix, generating a [solver] for the [matrix].
+     *
+     * This has to happen whenever [matrixChanged]. This is definitely the case when the matrix was just built by [buildMatrix], but also can occur multiple times within a [step] if non-linear [Component]s are present (usually by adjusting resistances within their [Component.simStep]).
+     *
+     * This is somewhat expensive, but not as much as rebuilding the matrix.
+     */
     // Step 2: With the conductance and connectivity matrix populated, solve.
     private fun factorMatrix() {
         dprintln("C.fM")
@@ -409,14 +432,14 @@ class Circuit {
     }
 
     /**
-	 * Compute the results of the MNA, solving for the unknowns (voltages of [Node]s and currents through [VSource]s).
-	 *
-	 * This has to happen whenever [rightSideChanged], which happens for non-linear and reactive components (or any variable current sources). As such, it can happen multiple times per [step].
-	 *
-	 * Assuming neither [factorMatrix] nor [buildMatrix] need to be called regularly, this is very cheap; for performance reasons, [Component]s should strive to only change [knowns] when possible.
-	 *
-	 * This routine can fail; [success] is set based on whether this method was successful.
-	 */
+     * Compute the results of the MNA, solving for the unknowns (voltages of [Node]s and currents through [VSource]s).
+     *
+     * This has to happen whenever [rightSideChanged], which happens for non-linear and reactive components (or any variable current sources). As such, it can happen multiple times per [step].
+     *
+     * Assuming neither [factorMatrix] nor [buildMatrix] need to be called regularly, this is very cheap; for performance reasons, [Component]s should strive to only change [knowns] when possible.
+     *
+     * This routine can fail; [success] is set based on whether this method was successful.
+     */
     // Step 3: With known current and voltage sources, solve for unknowns (node potentials and source currents).
     private fun computeResult() {
         dprintln("C.cR")
@@ -444,12 +467,12 @@ class Circuit {
     }
 
     /**
-	 * Perform a simulation step.
-	 *
-	 * This calls [buildMatrix], [factorMatrix], and [computeResult] as many times as needed to converge on a stable solution (with substeps up to [maxSubSteps], if not sooner). Each of these methods is called lazily; the call is avoided if nothing relevant to the method has changed.
-	 *
-	 * The return value is the [success] field--whether or not [computeResult] was able to compute a solution. If this failed, the output data is likely meaningless; otherwise, the output data is stored in the fields of [nodes] and [voltageSources] to be consumed.
-	 */
+     * Perform a simulation step.
+     *
+     * This calls [buildMatrix], [factorMatrix], and [computeResult] as many times as needed to converge on a stable solution (with substeps up to [maxSubSteps], if not sooner). Each of these methods is called lazily; the call is avoided if nothing relevant to the method has changed.
+     *
+     * The return value is the [success] field--whether or not [computeResult] was able to compute a solution. If this failed, the output data is likely meaningless; otherwise, the output data is stored in the fields of [nodes] and [voltageSources] to be consumed.
+     */
     fun step(dt: Double): Boolean {
         if (componentsChanged || connectivityChanged) {
             buildMatrix()
@@ -490,10 +513,10 @@ class Circuit {
     }
 
     /**
-	 * Utility method to return a GraphViz source for this Circuit.
-	 *
-	 * This is useful to visualize a circuit. (I recommend using `neato` or `fdp`; the visualization is not that good in `dot` alone, despite the name, because `dot` expects more hierarchical graphs.)
-	 */
+     * Utility method to return a GraphViz source for this Circuit.
+     *
+     * This is useful to visualize a circuit. (I recommend using `neato` or `fdp`; the visualization is not that good in `dot` alone, despite the name, because `dot` expects more hierarchical graphs.)
+     */
     fun toDot(): String {
         val sb = StringBuilder()
         sb.append("graph {\n")

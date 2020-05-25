@@ -1,7 +1,7 @@
 package org.eln2.sim.electrical.mna
 
 import org.eln2.debug.dprintln
-import org.eln2.sim.electrical.mna.component.*
+import org.eln2.sim.electrical.mna.component.Component
 import org.eln2.space.Set
 
 /**
@@ -11,37 +11,37 @@ import org.eln2.space.Set
  */
 open class Node(var circuit: Circuit) : IDetail {
     /**
-	 * The potential of this node, in Volts, relative to ground (as defined by the [Circuit]); an output of the simulation.
-	 */
+     * The potential of this node, in Volts, relative to ground (as defined by the [Circuit]); an output of the simulation.
+     */
     open var potential: Double = 0.0
         internal set
 
     /**
-	 * The index of this node into the [Circuit]'s matrices and vectors.
-	 */
+     * The index of this node into the [Circuit]'s matrices and vectors.
+     */
     open var index: Int = -1 // Assigned by Circuit
         internal set
 
     /**
-	 * True if this node is ground (defined to be 0V).
-	 */
+     * True if this node is ground (defined to be 0V).
+     */
     open val isGround = false
 
     /**
-	 * A name for this node, set by [named] (with a default usually assigned by the class).
-	 *
-	 * This can be used for assigning a semantic meaning to a node, useful for debugging output. Programs should not rely on this value having any particular meaning other than its debug presentation.
-	 */
+     * A name for this node, set by [named] (with a default usually assigned by the class).
+     *
+     * This can be used for assigning a semantic meaning to a node, useful for debugging output. Programs should not rely on this value having any particular meaning other than its debug presentation.
+     */
     var name = "node"
         protected set
 
     private var nameSet = false
 
     /**
-	 * Set the name of this Node, returning this.
-	 *
-	 * This is intended to be used at construction time, e.g. `Node(circuit).named("something")`. Usage afterward will provoke a warning when debugging is enabled.
-	 */
+     * Set the name of this Node, returning this.
+     *
+     * This is intended to be used at construction time, e.g. `Node(circuit).named("something")`. Usage afterward will provoke a warning when debugging is enabled.
+     */
     fun named(nm: String) = with(this) {
         if (nameSet) {
             dprintln("N.n: WARN: node already named $name being renamed to $nm")
@@ -56,9 +56,9 @@ open class Node(var circuit: Circuit) : IDetail {
 
     /** Determine which node should prevail when two are merged in a Circuit.
 
-	   This is mostly so subclasses of Node (if any) can maintain their existence when merged. The Node returning the
-	   higher value is chosen; if both are equal (commonly the case), one is chosen arbitrarily.
-	 */
+    This is mostly so subclasses of Node (if any) can maintain their existence when merged. The Node returning the
+    higher value is chosen; if both are equal (commonly the case), one is chosen arbitrarily.
+     */
 
     open fun mergePrecedence(other: Node): Int = 0
 

@@ -10,9 +10,10 @@ class ALU {
     var inputB = 0u
 
     /**
-	 * ALU Operations List
-	 */
+     * ALU Operations List
+     */
     enum class ALUOps { Adc, Add, And, MinusOne, Nand, Nor, Not, One, Or, Sbb, Shl, Shr, Sub, Xnor, Xor, Zero }
+
     var currOP = ALUOps.Zero
 
     var zero: Boolean = false
@@ -23,24 +24,48 @@ class ALU {
 
     fun flagsAsUInt(): UInt {
         var r = 0
-        if (zero) { r = 2 * r + 1 } else { r *= 2 }
-        if (carry) { r = 2 * r + 1 } else { r *= 2 }
-        if (parity) { r = 2 * r + 1 } else { r *= 2 }
-        if (interupt) { r = 2 * r + 1 } else { r *= 2 }
+        if (zero) {
+            r = 2 * r + 1
+        } else {
+            r *= 2
+        }
+        if (carry) {
+            r = 2 * r + 1
+        } else {
+            r *= 2
+        }
+        if (parity) {
+            r = 2 * r + 1
+        } else {
+            r *= 2
+        }
+        if (interupt) {
+            r = 2 * r + 1
+        } else {
+            r *= 2
+        }
         r *= 2
         r *= 2
         r *= 2
-        if (sign) { r = 2 * r + 1 } else { r *= 2 }
+        if (sign) {
+            r = 2 * r + 1
+        } else {
+            r *= 2
+        }
         return r.toUInt()
     }
 
     /**
-	 * step - takes the registers and computes operations on them. Put data in the registers, call this, then fetch results.
-	 */
+     * step - takes the registers and computes operations on them. Put data in the registers, call this, then fetch results.
+     */
     fun step() {
         when (currOP) {
             ALUOps.Adc -> {
-                inputA += inputB + if (carry) { 1u } else { 0u }
+                inputA += inputB + if (carry) {
+                    1u
+                } else {
+                    0u
+                }
                 carry = inputA < inputB
             }
             ALUOps.Add -> {
@@ -55,24 +80,44 @@ class ALU {
             ALUOps.Not -> inputA = inputA.inv()
             ALUOps.One -> inputA = 1u
             ALUOps.Sbb -> {
-                inputA = (inputA - inputB + if (carry) { 0x100000000u } else { 0u }).toUInt()
+                inputA = (inputA - inputB + if (carry) {
+                    0x100000000u
+                } else {
+                    0u
+                }).toUInt()
                 carry = carry.xor(inputA > inputB)
             }
             ALUOps.Shl -> {
                 if (inputA >= 0x80000000u) {
-                    inputA = inputA * 2u + if (carry) { 1u } else { 0u }
+                    inputA = inputA * 2u + if (carry) {
+                        1u
+                    } else {
+                        0u
+                    }
                     carry = true
                 } else {
-                    inputA = inputA * 2u + if (carry) { 1u } else { 0u }
+                    inputA = inputA * 2u + if (carry) {
+                        1u
+                    } else {
+                        0u
+                    }
                     carry = false
                 }
             }
             ALUOps.Shr -> {
                 if (inputA.and(1u) == 1u) {
-                    inputA = inputA / 2u + if (carry) { 0x80000000u } else { 0u }
+                    inputA = inputA / 2u + if (carry) {
+                        0x80000000u
+                    } else {
+                        0u
+                    }
                     carry = true
                 } else {
-                    inputA = inputA * 2u + if (carry) { 0x80000000u } else { 0u }
+                    inputA = inputA * 2u + if (carry) {
+                        0x80000000u
+                    } else {
+                        0u
+                    }
                     carry = false
                 }
             }

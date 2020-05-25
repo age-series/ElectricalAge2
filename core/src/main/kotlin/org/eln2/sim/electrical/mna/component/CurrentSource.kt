@@ -11,8 +11,8 @@ class CurrentSource : Port() {
     override var name: String = "is"
 
     /**
-	 * The current presently produced by this source, in Amperes.
-	 */
+     * The current presently produced by this source, in Amperes.
+     */
     var current: Double = 0.0
         set(value) {
             if (isInCircuit)
