@@ -59,7 +59,6 @@ for entry in fileList:
 
 def parseItemNugget(inputData):
     oreList = []
-    oreTempProperties = {}
     for entry in inputData["combustiblePropsByType"]:
         oreName = entry.split("*-",1)[1]
         oreList.append(oreName)
