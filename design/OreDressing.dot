@@ -3,7 +3,7 @@ digraph dressing {
 	// Machines and Methods
 	"Hammer Mill\n(Vanilla method in VS)1" [shape=diamond,label="Hammer Mill\n(Vanilla method in VS)"]
 	"Stamp Mill1" [shape=diamond,label="Stamp Mill"]
-	"Crusher1" [shape=diamond]
+	"Crusher1" [shape=diamond,label="Crusher"]
 	"Coarse Ball Mill1" [shape=diamond,label="Coarse Ball Mill"]
 	"Coarse Ball Mill2" [shape=diamond,label="Coarse Ball Mill"]
 	"Fine Ball Mill1" [shape=diamond,label="Fine Ball Mill"]
