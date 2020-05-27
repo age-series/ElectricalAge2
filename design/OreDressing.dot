@@ -1,0 +1,17 @@
+digraph dressing {
+	"Ore Chunk" -> "Hammer Mill\n(Vanilla method in VS)" -> "Ore Nuggets"
+	"Ore Chunk" -> "Stamp Mill" -> "Ore Nuggets"
+	"Stamp Mill" -> "Stamp Sand"
+	"Ore Chunk" -> "Crusher" -> "Dirty Ore Gravel"
+	"Ore Chunk" "Dirty Ore Gravel" -> "Coarse Ball Mill" -> "Dirty Ore Sand"
+	"Dirty Ore Gravel" "Dirty Ore Sand" -> "Fine Ball Mill" -> "Dirty Ore Powder"
+	"Dirty Ore Gravel" -> "Gravel Sluice" -> "Clean Ore Gravel"
+	"Rock Gravel" -> "Gravel Sluice" -> "Depleted Rock Gravel"
+	"Gravel Sluice" -> "Native Chunks"
+	"Gravel Sluice" -> "Gems"
+	"Dirty Ore Sand" -> "Sand Sluice" -> "Clean Ore Sand"
+	"Rock Sand" -> "Sand Sluice" -> "Depleted Rock Sand"
+	"Sand Sluice" -> "Native Flakes"
+	"Clean Ore Gravel" -> "Coarse Ball Mill" -> "Clean Ore Sand"
+	"Clean Ore Sand" -> "Fine Ball Mill" -> "Clean Ore Powder"
+}
