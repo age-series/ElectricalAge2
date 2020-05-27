@@ -12,6 +12,7 @@ digraph dressing {
 	"Gravel Sluice2" [shape=diamond,label="Gravel Sluice"]
 	"Sand Sluice1" [shape=diamond,label="Sand Sluice"]
 	"Sand Sluice2" [shape=diamond,label="Sand Sluice"]
+	"Froth Floation1" [shape=diamond,label="Froth Floatation"]
 
 	// Processes
 	"Ore Chunk" -> "Hammer Mill\n(Vanilla method in VS)1" -> "Ore Nuggets"
@@ -29,4 +30,6 @@ digraph dressing {
 	"Sand Sluice2" -> "Native Flakes"
 	"Clean Ore Gravel" -> "Coarse Ball Mill2" -> "Clean Ore Sand"
 	"Clean Ore Sand" -> "Fine Ball Mill2" -> "Clean Ore Powder"
+	"Dirty Ore Powder" -> "Froth Floatation1" -> "Clean Ore Slurry"
+	"Froth Floatation1" -> "Floatation Tails"
 }
