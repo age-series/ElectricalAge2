@@ -1,17 +1,32 @@
 digraph dressing {
-	"Ore Chunk" -> "Hammer Mill\n(Vanilla method in VS)" -> "Ore Nuggets"
-	"Ore Chunk" -> "Stamp Mill" -> "Ore Nuggets"
-	"Stamp Mill" -> "Stamp Sand"
-	"Ore Chunk" -> "Crusher" -> "Dirty Ore Gravel"
-	"Ore Chunk" "Dirty Ore Gravel" -> "Coarse Ball Mill" -> "Dirty Ore Sand"
-	"Dirty Ore Gravel" "Dirty Ore Sand" -> "Fine Ball Mill" -> "Dirty Ore Powder"
-	"Dirty Ore Gravel" -> "Gravel Sluice" -> "Clean Ore Gravel"
-	"Rock Gravel" -> "Gravel Sluice" -> "Depleted Rock Gravel"
-	"Gravel Sluice" -> "Native Chunks"
-	"Gravel Sluice" -> "Gems"
-	"Dirty Ore Sand" -> "Sand Sluice" -> "Clean Ore Sand"
-	"Rock Sand" -> "Sand Sluice" -> "Depleted Rock Sand"
-	"Sand Sluice" -> "Native Flakes"
-	"Clean Ore Gravel" -> "Coarse Ball Mill" -> "Clean Ore Sand"
-	"Clean Ore Sand" -> "Fine Ball Mill" -> "Clean Ore Powder"
+
+	// Machines and Methods
+	"Hammer Mill\n(Vanilla method in VS)1" [shape=diamond,label="Hammer Mill\n(Vanilla method in VS)"]
+	"Stamp Mill1" [shape=diamond,label="Stamp Mill"]
+	"Crusher1" [shape=diamond]
+	"Coarse Ball Mill1" [shape=diamond,label="Coarse Ball Mill"]
+	"Coarse Ball Mill2" [shape=diamond,label="Coarse Ball Mill"]
+	"Fine Ball Mill1" [shape=diamond,label="Fine Ball Mill"]
+	"Fine Ball Mill2" [shape=diamond,label="Fine Ball Mill"]
+	"Gravel Sluice1" [shape=diamond,label="Gravel Sluice"]
+	"Gravel Sluice2" [shape=diamond,label="Gravel Sluice"]
+	"Sand Sluice1" [shape=diamond,label="Sand Sluice"]
+	"Sand Sluice2" [shape=diamond,label="Sand Sluice"]
+
+	// Processes
+	"Ore Chunk" -> "Hammer Mill\n(Vanilla method in VS)1" -> "Ore Nuggets"
+	"Ore Chunk" -> "Stamp Mill1" -> "Ore Nuggets"
+	"Stamp Mill1" -> "Stamp Sand"
+	"Ore Chunk" -> "Crusher1" -> "Dirty Ore Gravel"
+	"Ore Chunk" "Dirty Ore Gravel" -> "Coarse Ball Mill1" -> "Dirty Ore Sand"
+	"Dirty Ore Gravel" "Dirty Ore Sand" -> "Fine Ball Mill1" -> "Dirty Ore Powder"
+	"Dirty Ore Gravel" -> "Gravel Sluice1" -> "Clean Ore Gravel"
+	"Rock Gravel" -> "Gravel Sluice2" -> "Depleted Rock Gravel"
+	"Gravel Sluice2" -> "Native Chunks"
+	"Gravel Sluice2" -> "Gems"
+	"Dirty Ore Sand" -> "Sand Sluice1" -> "Clean Ore Sand"
+	"Rock Sand" -> "Sand Sluice2" -> "Depleted Rock Sand"
+	"Sand Sluice2" -> "Native Flakes"
+	"Clean Ore Gravel" -> "Coarse Ball Mill2" -> "Clean Ore Sand"
+	"Clean Ore Sand" -> "Fine Ball Mill2" -> "Clean Ore Powder"
 }
