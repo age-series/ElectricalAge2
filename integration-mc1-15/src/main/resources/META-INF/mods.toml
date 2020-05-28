@@ -1,5 +1,5 @@
-modLoader="javafml"
-loaderVersion="[31,)"
+modLoader="kotlinforforge"
+loaderVersion="[1.2.1,)"
 issueTrackerURL="https://github.com/eln2/eln2/issues" #optional
 
 # A list of mods - how many allowed here is determined by the individual mod loader

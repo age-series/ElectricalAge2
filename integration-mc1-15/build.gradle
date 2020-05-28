@@ -12,14 +12,26 @@ buildscript {
     dependencies {
         classpath group: 'net.minecraftforge.gradle', name: 'ForgeGradle', version: '3.+', changing: true
     }
+    repositories{
+        maven { url = "https://dl.bintray.com/kotlin/kotlin-eap" }
+    }
+    dependencies {
+        // Make sure to use the correct version
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:1.4-M1"
+    }
 }
 apply plugin: 'net.minecraftforge.gradle'
 apply plugin: 'maven-publish'
+apply plugin: 'kotlin'
 
 archivesBaseName = "eln2-mc1.15"
 
 repositories {
 	maven { url 'https://maven.mcmoddev.com' }
+    maven {
+        name = "Kotlin Early Access"
+        url = "https://dl.bintray.com/kotlin/kotlin-eap"
+    }
 	maven {
 		name = 'kotlinforforge'
 		url = 'https://thedarkcolour.github.io/KotlinForForge/'
