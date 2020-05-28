@@ -9,7 +9,7 @@ import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.event.lifecycle.InterModEnqueueEvent;
 import net.minecraftforge.fml.event.lifecycle.InterModProcessEvent;
 import net.minecraftforge.fml.event.server.FMLServerStartingEvent;
-import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
+import thedarkcolour.kotlinforforge.eventbus.KotlinEventBus;
 
 import java.util.stream.Collectors;
 
@@ -22,14 +22,15 @@ import java.util.stream.Collectors;
 public class Eln2Wrapper
 {
 	public Eln2Wrapper() {
+		KotlinEventBus bus = thedarkcolour.kotlinforforge.forge.ForgeKt.getMOD_BUS();
 		// Register the setup method for modloading
-		FMLJavaModLoadingContext.get().getModEventBus().addListener(this::setup);
+		bus.addListener(this::setup);
 		// Register the enqueueIMC method for modloading
-		FMLJavaModLoadingContext.get().getModEventBus().addListener(this::enqueueIMC);
+		bus.addListener(this::enqueueIMC);
 		// Register the processIMC method for modloading
-		FMLJavaModLoadingContext.get().getModEventBus().addListener(this::processIMC);
+		bus.addListener(this::processIMC);
 		// Register the doClientStuff method for modloading
-		FMLJavaModLoadingContext.get().getModEventBus().addListener(this::doClientStuff);
+		bus.addListener(this::doClientStuff);
 
 		// Register ourselves for server and other game events we are interested in
 		MinecraftForge.EVENT_BUS.register(this);
