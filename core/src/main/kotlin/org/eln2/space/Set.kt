@@ -1,5 +1,4 @@
 package org.eln2.space
-
 // A class for using the Disjoint Sets "Union-Find" algorithm
 open class Set() {
     var size: Int = 1

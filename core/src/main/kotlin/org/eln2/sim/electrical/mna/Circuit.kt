@@ -1,25 +1,12 @@
 package org.eln2.sim.electrical.mna
 
-import java.lang.ref.WeakReference
-import java.util.WeakHashMap
-import org.apache.commons.math3.linear.ArrayRealVector
-import org.apache.commons.math3.linear.DecompositionSolver
-import org.apache.commons.math3.linear.LUDecomposition
-import org.apache.commons.math3.linear.MatrixUtils
-import org.apache.commons.math3.linear.RealMatrix
-import org.apache.commons.math3.linear.RealMatrixFormat
-import org.apache.commons.math3.linear.RealVector
-import org.apache.commons.math3.linear.SingularMatrixException
+import org.apache.commons.math3.linear.*
 import org.eln2.debug.dprint
 import org.eln2.debug.dprintln
-import org.eln2.parsers.falstad.Falstad
 import org.eln2.sim.IProcess
-import org.eln2.sim.electrical.mna.component.Capacitor
-import org.eln2.sim.electrical.mna.component.Component
-import org.eln2.sim.electrical.mna.component.Inductor
-import org.eln2.sim.electrical.mna.component.Port
-import org.eln2.sim.electrical.mna.component.RealisticDiode
-import org.eln2.space.Space
+import org.eln2.sim.electrical.mna.component.*
+import java.lang.ref.WeakReference
+import java.util.WeakHashMap
 
 /**
  * The default format for debug matrix printouts from Circuits.
@@ -328,6 +315,12 @@ class Circuit {
      * Adding a component causes [componentsChanged] to become true; thus, [buildMatrix] is usually required before the next solve [step].
      */
     fun add(comp: Component): Component {
+        dprintln("C.a: $comp")
+        if (comp.circuit != null) {  // Are we stealing this component?
+            if (comp.circuit == this) return comp  // No need to do anything, it's already ours
+            comp.circuit?.remove(comp)
+        }
+
         components.add(comp)
         componentsChanged = true
         // This is the ONLY place where this should be set.
@@ -343,7 +336,39 @@ class Circuit {
             comp.vsources.add(vs)
         }
         comp.added()
+
+        dprintln("C.a: $comp has nodes ${comp.nodes.map { it.node }} vs ${comp.vsources}")
         return comp
+    }
+
+    /**
+     * Rmove all of the [Component]s in the vararg list.
+     */
+
+    fun remove(vararg comps: Component) {
+        for (comp in comps) remove(comp)
+    }
+
+    /**
+     * Remove a [Component] from this Circuit.
+     *
+     * All connections to any [NodeRef] of this Component are lost. The [Component] itself is guaranteed to be in such a state that, if it were added again and reconnected, the simulation would continue as if the removal did not happen.
+     *
+     * If the removal succeeded, [componentsChanged] is set, and [buildMatrix] will run on the next [step].
+     */
+
+    fun remove(comp: Component): Boolean {
+        return if (components.remove(comp)) {
+            comp.removed()
+            comp.nodes.forEach { compNodeMap.remove(it) }
+            comp.nodes.clear()
+            comp.vsources.forEach { compVsMap.remove(it) }
+            comp.vsources.clear()
+            // This is the ONLY place where this should be cleared.
+            comp.circuit = null
+            componentsChanged = true
+            true
+        } else false
     }
 
     /**
@@ -378,6 +403,7 @@ class Circuit {
         val voltageSourceSet: MutableSet<VSource> = mutableSetOf()
 
         components.forEach {
+            dprintln("C.bM: component $it nodes ${it.nodes.map { it.node }}")
             nodeSet.addAll(it.nodes.map { it.node }.filter { it != ground.node })
             voltageSourceSet.addAll(it.vsources)
         }
@@ -388,7 +414,7 @@ class Circuit {
         for ((i, n) in nodes.withIndex()) n.get()!!.index = i
         for ((i, v) in voltageSources.withIndex()) v.get()!!.index = i
 
-        dprintln("C.bM: n $nodes vs $voltageSources")
+        dprintln("C.bM: n ${nodes.map { it.get()?.detail() }} vs ${voltageSources.map { it.get()?.detail() }}")
 
         // Acknowledge that changes have been dealt with
         componentsChanged = false
@@ -415,6 +441,7 @@ class Circuit {
         // Ask each component to contribute its steady state to the matrix
         dprintln("C.bM: stamp all $components")
         components.forEach { dprintln("C.bM: stamp $it"); it.stamp() }
+        dprintln("C.bM: final matrix:\n${MATRIX_FORMAT.format(matrix)}")
     }
 
     /**
@@ -456,12 +483,12 @@ class Circuit {
             // Microoptimization: pull this member access into a local variable for this tight loop
             val sz = nodes.size
             for ((i, v) in voltageSources.withIndex()) {
-                v.get()!!.current = -unknowns.getEntry(i + sz)
+                v.get()!!.current = unknowns.getEntry(i + sz)
             }
 
             success = true
         } catch (e: SingularMatrixException) {
-            dprintln("Singular: $matrix")
+            dprintln("Singular: ${matrix}")
             if (matrix != null) dprint(MATRIX_FORMAT.format(matrix))
         }
     }
@@ -474,6 +501,7 @@ class Circuit {
      * The return value is the [success] field--whether or not [computeResult] was able to compute a solution. If this failed, the output data is likely meaningless; otherwise, the output data is stored in the fields of [nodes] and [voltageSources] to be consumed.
      */
     fun step(dt: Double): Boolean {
+        dprintln("C.s: dt=$dt")
         if (componentsChanged || connectivityChanged) {
             buildMatrix()
         }
@@ -482,7 +510,7 @@ class Circuit {
         components.forEach { it.preStep(dt) }
 
         for (substep in 0 until maxSubSteps) {
-            if (!(matrixChanged || rightSideChanged)) break // Nothing to do
+            if (!(matrixChanged || rightSideChanged)) break  // Nothing to do
 
             if (matrixChanged) {
                 factorMatrix()
@@ -491,12 +519,13 @@ class Circuit {
                 computeResult()
             }
 
-            for (comp in components) comp.simStep() // Allow non-linear components to request another substep
+            for (comp in components) comp.simStep()  // Allow non-linear components to request another substep
         }
 
         components.forEach { it.postStep(dt) }
         postProcess.keys.forEach { it.process(dt) }
 
+        dprintln("C.s: success=$success")
         return success
     }
 

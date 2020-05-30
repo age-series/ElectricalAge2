@@ -9,7 +9,7 @@ import org.eln2.space.Set
  *
  * Aside from identifying [Component]s' connections, the Nodes' potentials (relative to [Circuit.ground]) are computed as a result of the MNA algorithm.
  */
-open class Node(var circuit: Circuit) : IDetail {
+open class Node(var circuit: Circuit) : IDetail, Set() {
     /**
      * The potential of this node, in Volts, relative to ground (as defined by the [Circuit]); an output of the simulation.
      */
@@ -19,7 +19,7 @@ open class Node(var circuit: Circuit) : IDetail {
     /**
      * The index of this node into the [Circuit]'s matrices and vectors.
      */
-    open var index: Int = -1 // Assigned by Circuit
+    open var index: Int = -1  // Assigned by Circuit
         internal set
 
     /**
@@ -35,7 +35,11 @@ open class Node(var circuit: Circuit) : IDetail {
     var name = "node"
         protected set
 
-    private var nameSet = false
+    /**
+     * A boolean that determines if this node has been named yet.
+     */
+    var nameSet = false
+        protected set
 
     /**
      * Set the name of this Node, returning this.
@@ -43,7 +47,7 @@ open class Node(var circuit: Circuit) : IDetail {
      * This is intended to be used at construction time, e.g. `Node(circuit).named("something")`. Usage afterward will provoke a warning when debugging is enabled.
      */
     fun named(nm: String) = with(this) {
-        if (nameSet) {
+        if (nameSet && name != nm) {
             dprintln("N.n: WARN: node already named $name being renamed to $nm")
         }
         name = nm
@@ -51,21 +55,16 @@ open class Node(var circuit: Circuit) : IDetail {
     }
 
     override fun detail(): String {
-        return "[node val: $potential]"
+        return "[$name ${this::class.simpleName}@${System.identityHashCode(this).toString(16)} ${potential}V]"
     }
 
-    /** Determine which node should prevail when two are merged in a Circuit.
-
-    This is mostly so subclasses of Node (if any) can maintain their existence when merged. The Node returning the
-    higher value is chosen; if both are equal (commonly the case), one is chosen arbitrarily.
-     */
-
-    open fun mergePrecedence(other: Node): Int = 0
+    override fun toString() = detail()
 
     fun stampResistor(to: Node, r: Double) {
-        dprintln("N.sR $to $r")
+        dprintln("N.sR $this $to $r")
         circuit.stampResistor(index, to.index, r)
     }
+
 }
 
 /**
@@ -83,8 +82,6 @@ class GroundNode(circuit: Circuit) : Node(circuit) {
         set(value) {}
 
     override val isGround = true
-
-    override fun mergePrecedence(other: Node): Int = 100
 }
 
 /**
