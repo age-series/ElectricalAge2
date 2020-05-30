@@ -1,25 +1,12 @@
 package org.eln2.sim.electrical.mna
 
-import java.lang.ref.WeakReference
-import java.util.WeakHashMap
-import org.apache.commons.math3.linear.ArrayRealVector
-import org.apache.commons.math3.linear.DecompositionSolver
-import org.apache.commons.math3.linear.LUDecomposition
-import org.apache.commons.math3.linear.MatrixUtils
-import org.apache.commons.math3.linear.RealMatrix
-import org.apache.commons.math3.linear.RealMatrixFormat
-import org.apache.commons.math3.linear.RealVector
-import org.apache.commons.math3.linear.SingularMatrixException
+import org.apache.commons.math3.linear.*
 import org.eln2.debug.dprint
 import org.eln2.debug.dprintln
-import org.eln2.parsers.falstad.Falstad
 import org.eln2.sim.IProcess
-import org.eln2.sim.electrical.mna.component.Capacitor
-import org.eln2.sim.electrical.mna.component.Component
-import org.eln2.sim.electrical.mna.component.Inductor
-import org.eln2.sim.electrical.mna.component.Port
-import org.eln2.sim.electrical.mna.component.RealisticDiode
-import org.eln2.space.Space
+import org.eln2.sim.electrical.mna.component.*
+import java.lang.ref.WeakReference
+import java.util.WeakHashMap
 
 /**
  * The default format for debug matrix printouts from Circuits.
@@ -242,358 +229,359 @@ class Circuit {
     /* From Falstad: declare that a potential change dV in node b changes the current in node a by x*dV, complicated
 	   slightly by independent voltage sources. The unit of x is Siemens, reciprocal Ohms, a unit of conductance.
 	 */
-	fun stampMatrix(a: Int, b: Int, x: Double) {
-		dprintln("C.sM $a $b $x")
-		if (a < 0 || b < 0) return
-		matrix!!.addToEntry(a, b, x)
-		matrixChanged = true
-	}
+    fun stampMatrix(a: Int, b: Int, x: Double) {
+        dprintln("C.sM $a $b $x")
+        if (a < 0 || b < 0) return
+        matrix!!.addToEntry(a, b, x)
+        matrixChanged = true
+    }
 
-	/**
-	 * Add a value to a given row of [knowns].
-	 *
-	 * If called with nonzero i less than the size of [nodes], change the independent current into node [i] by [x] Amperes. Otherwise, change the potential of [VSource] [i] - (size of [nodes]) by [x] Volts.
-	 * 
-	 * This is the lowest level function that manipulates [knowns]; it is usually called via [stampVoltageChange] and [stampCurrentSource]. These should only be called from [Component.stamp].
-	 */
-	fun stampKnown(i: Int, x: Double) {
-		dprintln("C.sK $i $x")
-		if (i < 0) return
-		knowns!!.addToEntry(i, x)
-		rightSideChanged = true
-	}
+    /**
+     * Add a value to a given row of [knowns].
+     *
+     * If called with nonzero i less than the size of [nodes], change the independent current into node [i] by [x] Amperes. Otherwise, change the potential of [VSource] [i] - (size of [nodes]) by [x] Volts.
+     *
+     * This is the lowest level function that manipulates [knowns]; it is usually called via [stampVoltageChange] and [stampCurrentSource]. These should only be called from [Component.stamp].
+     */
+    fun stampKnown(i: Int, x: Double) {
+        dprintln("C.sK $i $x")
+        if (i < 0) return
+        knowns!!.addToEntry(i, x)
+        rightSideChanged = true
+    }
 
-	/**
-	 * Change the potential of VSource [i] by [x] Volts.
-	 *
-	 * This calls [stampKnown] internally. It should usually be called from a method on a [Component] with a valid [VSource].
-	 */
-	fun stampVoltageChange(i: Int, x: Double) {
-		stampKnown(i + nodes.size, x)
-	}
+    /**
+     * Change the potential of VSource [i] by [x] Volts.
+     *
+     * This calls [stampKnown] internally. It should usually be called from a method on a [Component] with a valid [VSource].
+     */
+    fun stampVoltageChange(i: Int, x: Double) {
+        stampKnown(i + nodes.size, x)
+    }
 
-	/**
-	 * Add a resistor of [r] Ohms between nodes [a] and [b].
-	 *
-	 * This calls [stampMatrix] internally. It should only ever be called from [Component.stamp].
-	 */
-	fun stampResistor(a: Int, b: Int, r: Double) {
-		dprintln("C.sR $a $b $r")
-		val c = 1 / r
-		if (!c.isFinite()) throw IllegalArgumentException("resistance $r is invalid")
-		// Contribute positively to the on-diagonal elements
-		stampMatrix(a, a, c)
-		stampMatrix(b, b, c)
-		// If both are non-ground, contribute negatively to the off-diagonal elements
-		stampMatrix(a, b, -c)
-		stampMatrix(b, a, -c)
-	}
+    /**
+     * Add a resistor of [r] Ohms between nodes [a] and [b].
+     *
+     * This calls [stampMatrix] internally. It should only ever be called from [Component.stamp].
+     */
+    fun stampResistor(a: Int, b: Int, r: Double) {
+        dprintln("C.sR $a $b $r")
+        val c = 1 / r
+        if (!c.isFinite()) throw IllegalArgumentException("resistance $r is invalid")
+        // Contribute positively to the on-diagonal elements
+        stampMatrix(a, a, c)
+        stampMatrix(b, b, c)
+        // If both are non-ground, contribute negatively to the off-diagonal elements
+        stampMatrix(a, b, -c)
+        stampMatrix(b, a, -c)
+    }
 
-	/**
-	 * Add the contribution of potential source [num] as [v] Volts with a positive terminal node [pos] and negative [neg].
-	 *
-	 * This calls [stampMatrix] and [stampKnown] internally. It should only ever be called from [Component.stamp].
-	 */
-	fun stampVoltageSource(pos: Int, neg: Int, num: Int, v: Double) {
-		val vs = num + nodes.size
-		stampMatrix(vs, neg, -1.0)
-		stampMatrix(vs, pos, 1.0)
-		stampMatrix(neg, vs, 1.0)
-		stampMatrix(pos, vs, -1.0)
-		stampKnown(vs, v)
-	}
+    /**
+     * Add the contribution of potential source [num] as [v] Volts with a positive terminal node [pos] and negative [neg].
+     *
+     * This calls [stampMatrix] and [stampKnown] internally. It should only ever be called from [Component.stamp].
+     */
+    fun stampVoltageSource(pos: Int, neg: Int, num: Int, v: Double) {
+        val vs = num + nodes.size
+        stampMatrix(vs, neg, -1.0)
+        stampMatrix(vs, pos, 1.0)
+        stampMatrix(neg, vs, 1.0)
+        stampMatrix(pos, vs, -1.0)
+        stampKnown(vs, v)
+    }
 
-	/**
-	 * Adds the contribution of a current source from [neg] into [pos] with [i] Amperes. (Current sources aren't indexed; this can be done at any time.)
-	 *
-	 * This calls [stampKnown] internally.
-	 */
-	fun stampCurrentSource(pos: Int, neg: Int, i: Double) {
-		stampKnown(pos, -i)
-		stampKnown(neg, i)
-	}
+    /**
+     * Adds the contribution of a current source from [neg] into [pos] with [i] Amperes. (Current sources aren't indexed; this can be done at any time.)
+     *
+     * This calls [stampKnown] internally.
+     */
+    fun stampCurrentSource(pos: Int, neg: Int, i: Double) {
+        stampKnown(pos, -i)
+        stampKnown(neg, i)
+    }
 
-	/**
-	 * Add all of the [Component]s in the vararg list.
-	 */
-	fun add(vararg comps: Component) {
-		for (comp in comps) add(comp)
-	}
+    /**
+     * Add all of the [Component]s in the vararg list.
+     */
+    fun add(vararg comps: Component) {
+        for (comp in comps) add(comp)
+    }
 
-	/**
-	 * Add a [Component] to the Circuit.
-	 *
-	 * This sets up the Component to be used (honoring [Component.nodeCount] and [Component.vsCount], setting [Component.circuit], etc.).
-	 *
-	 * Adding a component causes [componentsChanged] to become true; thus, [buildMatrix] is usually required before the next solve [step].
-	 */
-	fun add(comp: Component): Component {
-		dprintln("C.a: $comp")
-		if(comp.circuit != null) {  // Are we stealing this component?
-			if(comp.circuit == this) return comp  // No need to do anything, it's already ours
-			comp.circuit?.remove(comp)
-		}
+    /**
+     * Add a [Component] to the Circuit.
+     *
+     * This sets up the Component to be used (honoring [Component.nodeCount] and [Component.vsCount], setting [Component.circuit], etc.).
+     *
+     * Adding a component causes [componentsChanged] to become true; thus, [buildMatrix] is usually required before the next solve [step].
+     */
+    fun add(comp: Component): Component {
+        dprintln("C.a: $comp")
+        if (comp.circuit != null) {  // Are we stealing this component?
+            if (comp.circuit == this) return comp  // No need to do anything, it's already ours
+            comp.circuit?.remove(comp)
+        }
 
-		components.add(comp)
-		componentsChanged = true
-		// This is the ONLY place where this should be set.
-		comp.circuit = this
-		for (i in 0 until comp.nodeCount) {
-			val n = NodeRef(Node(this))
-			compNodeMap.put(n, comp)
-			comp.nodes.add(n)
-		}
-		for (i in 0 until comp.vsCount) {
-			val vs = VSource(this)
-			compVsMap.put(vs, comp)
-			comp.vsources.add(vs)
-		}
-		comp.added()
+        components.add(comp)
+        componentsChanged = true
+        // This is the ONLY place where this should be set.
+        comp.circuit = this
+        for (i in 0 until comp.nodeCount) {
+            val n = NodeRef(Node(this))
+            compNodeMap.put(n, comp)
+            comp.nodes.add(n)
+        }
+        for (i in 0 until comp.vsCount) {
+            val vs = VSource(this)
+            compVsMap.put(vs, comp)
+            comp.vsources.add(vs)
+        }
+        comp.added()
 
-		dprintln("C.a: $comp has nodes ${comp.nodes.map { it.node }} vs ${comp.vsources}")
-		return comp
-	}
+        dprintln("C.a: $comp has nodes ${comp.nodes.map { it.node }} vs ${comp.vsources}")
+        return comp
+    }
 
-	/**
-	 * Rmove all of the [Component]s in the vararg list.
-	 */
-	
-	fun remove(vararg comps: Component) {
-		for(comp in comps) remove(comp)
-	}
+    /**
+     * Rmove all of the [Component]s in the vararg list.
+     */
 
-	/**
-	 * Remove a [Component] from this Circuit.
-	 *
-	 * All connections to any [NodeRef] of this Component are lost. The [Component] itself is guaranteed to be in such a state that, if it were added again and reconnected, the simulation would continue as if the removal did not happen.
-	 *
-	 * If the removal succeeded, [componentsChanged] is set, and [buildMatrix] will run on the next [step].
-	 */
+    fun remove(vararg comps: Component) {
+        for (comp in comps) remove(comp)
+    }
 
-	fun remove(comp: Component): Boolean {
-		return if(components.remove(comp)) {
-			comp.removed()
-			comp.nodes.forEach { compNodeMap.remove(it) }
-			comp.nodes.clear()
-			comp.vsources.forEach { compVsMap.remove(it) }
-			comp.vsources.clear()
-			// This is the ONLY place where this should be cleared.
-			comp.circuit = null
-			componentsChanged = true
-			true
-		} else false
-	}
+    /**
+     * Remove a [Component] from this Circuit.
+     *
+     * All connections to any [NodeRef] of this Component are lost. The [Component] itself is guaranteed to be in such a state that, if it were added again and reconnected, the simulation would continue as if the removal did not happen.
+     *
+     * If the removal succeeded, [componentsChanged] is set, and [buildMatrix] will run on the next [step].
+     */
 
-	/**
-	 * Determine if the Circuit is floating--having no finite-resistance connection to [ground].
-	 *
-	 * A floating circuit is likely to fail to [step], as it is underconstrained. Fixing this requires unifying any node with [ground]--any one will do, though it is traditionally the lowest-potential node of the Circuit.
-	 */
-	val isFloating: Boolean get() {
-		if(componentsChanged || connectivityChanged) buildMatrix()
-		return !components.any {
-			it.nodes.any {
-				it.node == ground.node
-			}
-		}
-	}
+    fun remove(comp: Component): Boolean {
+        return if (components.remove(comp)) {
+            comp.removed()
+            comp.nodes.forEach { compNodeMap.remove(it) }
+            comp.nodes.clear()
+            comp.vsources.forEach { compVsMap.remove(it) }
+            comp.vsources.clear()
+            // This is the ONLY place where this should be cleared.
+            comp.circuit = null
+            componentsChanged = true
+            true
+        } else false
+    }
 
-	/**
-	 * Build the [matrix] and the [nodes] and [voltageSources], imparting each with indices.
-	 *
-	 * This is somewhat expensive, but needs to happen when [componentsChanged] or [connectivityChanged], at most once per [step].
-	 * 
-	 * This does not need to happen when [matrixChanged], but [factorMatrix] does.
-	 *
-	 * These conditions are usually handled automatically for you, whenever [Component]s are [add]ed or [NodeRef]s are [Component.connect]ed.
-	 */
-	// Step 1: Whenever the number of components, or their nodal connectivity (not resistances, e.g.) changes, allocate
-	// a matrix of appropriate size.
-	protected fun buildMatrix() {
-		dprintln("C.bM")
-		val nodeSet: MutableSet<Node> = mutableSetOf()
-		val voltageSourceSet: MutableSet<VSource> = mutableSetOf()
+    /**
+     * Determine if the Circuit is floating--having no finite-resistance connection to [ground].
+     *
+     * A floating circuit is likely to fail to [step], as it is underconstrained. Fixing this requires unifying any node with [ground]--any one will do, though it is traditionally the lowest-potential node of the Circuit.
+     */
+    val isFloating: Boolean
+        get() {
+            if (componentsChanged || connectivityChanged) buildMatrix()
+            return !components.any {
+                it.nodes.any {
+                    it.node == ground.node
+                }
+            }
+        }
 
-		components.forEach {
-			dprintln("C.bM: component $it nodes ${it.nodes.map { it.node }}")
-			nodeSet.addAll(it.nodes.map { it.node }.filter { it != ground.node })
-			voltageSourceSet.addAll(it.vsources)
-		}
+    /**
+     * Build the [matrix] and the [nodes] and [voltageSources], imparting each with indices.
+     *
+     * This is somewhat expensive, but needs to happen when [componentsChanged] or [connectivityChanged], at most once per [step].
+     *
+     * This does not need to happen when [matrixChanged], but [factorMatrix] does.
+     *
+     * These conditions are usually handled automatically for you, whenever [Component]s are [add]ed or [NodeRef]s are [Component.connect]ed.
+     */
+    // Step 1: Whenever the number of components, or their nodal connectivity (not resistances, e.g.) changes, allocate
+    // a matrix of appropriate size.
+    protected fun buildMatrix() {
+        dprintln("C.bM")
+        val nodeSet: MutableSet<Node> = mutableSetOf()
+        val voltageSourceSet: MutableSet<VSource> = mutableSetOf()
 
-		nodes = nodeSet.map { WeakReference(it) }.toList()
-		voltageSources = voltageSourceSet.map { WeakReference(it) }.toList()
+        components.forEach {
+            dprintln("C.bM: component $it nodes ${it.nodes.map { it.node }}")
+            nodeSet.addAll(it.nodes.map { it.node }.filter { it != ground.node })
+            voltageSourceSet.addAll(it.vsources)
+        }
 
-		for ((i, n) in nodes.withIndex()) n.get()!!.index = i
-		for ((i, v) in voltageSources.withIndex()) v.get()!!.index = i
+        nodes = nodeSet.map { WeakReference(it) }.toList()
+        voltageSources = voltageSourceSet.map { WeakReference(it) }.toList()
 
-		dprintln("C.bM: n ${nodes.map { it.get()?.detail() }} vs ${voltageSources.map { it.get()?.detail() }}")
+        for ((i, n) in nodes.withIndex()) n.get()!!.index = i
+        for ((i, v) in voltageSources.withIndex()) v.get()!!.index = i
 
-		// Acknowledge that changes have been dealt with
-		componentsChanged = false
-		connectivityChanged = false
+        dprintln("C.bM: n ${nodes.map { it.get()?.detail() }} vs ${voltageSources.map { it.get()?.detail() }}")
 
-		// Null out the solver--it's definitely not valid anymore.
-		solver = null
+        // Acknowledge that changes have been dealt with
+        componentsChanged = false
+        connectivityChanged = false
 
-		// Set other cascading changes so the solver runs for at least one iteration.
-		matrixChanged = true
-		rightSideChanged = true
+        // Null out the solver--it's definitely not valid anymore.
+        solver = null
 
-		// Is there anything to do?
-		if (nodes.isEmpty()) {
-			matrix = null
-			return
-		}
+        // Set other cascading changes so the solver runs for at least one iteration.
+        matrixChanged = true
+        rightSideChanged = true
 
-		val size = nodes.size + voltageSources.size
-		dprintln("C.bM: size $size")
-		matrix = MatrixUtils.createRealMatrix(size, size)
-		knowns = ArrayRealVector(size)
+        // Is there anything to do?
+        if (nodes.isEmpty()) {
+            matrix = null
+            return
+        }
 
-		// Ask each component to contribute its steady state to the matrix
-		dprintln("C.bM: stamp all $components")
-		components.forEach { dprintln("C.bM: stamp $it"); it.stamp() }
-		dprintln("C.bM: final matrix:\n${MATRIX_FORMAT.format(matrix)}")
-	}
+        val size = nodes.size + voltageSources.size
+        dprintln("C.bM: size $size")
+        matrix = MatrixUtils.createRealMatrix(size, size)
+        knowns = ArrayRealVector(size)
 
-	/**
-	 * Factor the matrix, generating a [solver] for the [matrix].
-	 *
-	 * This has to happen whenever [matrixChanged]. This is definitely the case when the matrix was just built by [buildMatrix], but also can occur multiple times within a [step] if non-linear [Component]s are present (usually by adjusting resistances within their [Component.simStep]).
-	 *
-	 * This is somewhat expensive, but not as much as rebuilding the matrix.
-	 */
-	// Step 2: With the conductance and connectivity matrix populated, solve.
-	private fun factorMatrix() {
-		dprintln("C.fM")
-		solver = if (matrix != null) LUDecomposition(matrix).solver else null
-		matrixChanged = false
-	}
+        // Ask each component to contribute its steady state to the matrix
+        dprintln("C.bM: stamp all $components")
+        components.forEach { dprintln("C.bM: stamp $it"); it.stamp() }
+        dprintln("C.bM: final matrix:\n${MATRIX_FORMAT.format(matrix)}")
+    }
 
-	/**
-	 * Compute the results of the MNA, solving for the unknowns (voltages of [Node]s and currents through [VSource]s).
-	 *
-	 * This has to happen whenever [rightSideChanged], which happens for non-linear and reactive components (or any variable current sources). As such, it can happen multiple times per [step].
-	 *
-	 * Assuming neither [factorMatrix] nor [buildMatrix] need to be called regularly, this is very cheap; for performance reasons, [Component]s should strive to only change [knowns] when possible.
-	 *
-	 * This routine can fail; [success] is set based on whether this method was successful.
-	 */
-	// Step 3: With known current and voltage sources, solve for unknowns (node potentials and source currents).
-	private fun computeResult() {
-		dprintln("C.cR")
-		rightSideChanged = false
-		success = false
-		if (solver == null) return
-		try {
-			val unknowns = solver!!.solve(knowns)
+    /**
+     * Factor the matrix, generating a [solver] for the [matrix].
+     *
+     * This has to happen whenever [matrixChanged]. This is definitely the case when the matrix was just built by [buildMatrix], but also can occur multiple times within a [step] if non-linear [Component]s are present (usually by adjusting resistances within their [Component.simStep]).
+     *
+     * This is somewhat expensive, but not as much as rebuilding the matrix.
+     */
+    // Step 2: With the conductance and connectivity matrix populated, solve.
+    private fun factorMatrix() {
+        dprintln("C.fM")
+        solver = if (matrix != null) LUDecomposition(matrix).solver else null
+        matrixChanged = false
+    }
 
-			// Copy data back out to the references for Component use
-			for ((i, n) in nodes.withIndex()) {
-				n.get()!!.potential = unknowns.getEntry(i)
-			}
-			// Microoptimization: pull this member access into a local variable for this tight loop
-			val sz = nodes.size
-			for ((i, v) in voltageSources.withIndex()) {
-				v.get()!!.current = unknowns.getEntry(i + sz)
-			}
+    /**
+     * Compute the results of the MNA, solving for the unknowns (voltages of [Node]s and currents through [VSource]s).
+     *
+     * This has to happen whenever [rightSideChanged], which happens for non-linear and reactive components (or any variable current sources). As such, it can happen multiple times per [step].
+     *
+     * Assuming neither [factorMatrix] nor [buildMatrix] need to be called regularly, this is very cheap; for performance reasons, [Component]s should strive to only change [knowns] when possible.
+     *
+     * This routine can fail; [success] is set based on whether this method was successful.
+     */
+    // Step 3: With known current and voltage sources, solve for unknowns (node potentials and source currents).
+    private fun computeResult() {
+        dprintln("C.cR")
+        rightSideChanged = false
+        success = false
+        if (solver == null) return
+        try {
+            val unknowns = solver!!.solve(knowns)
 
-			success = true
-		} catch (e: SingularMatrixException) {
-			dprintln("Singular: ${matrix}")
-			if (matrix != null) dprint(MATRIX_FORMAT.format(matrix))
-		}
-	}
+            // Copy data back out to the references for Component use
+            for ((i, n) in nodes.withIndex()) {
+                n.get()!!.potential = unknowns.getEntry(i)
+            }
+            // Microoptimization: pull this member access into a local variable for this tight loop
+            val sz = nodes.size
+            for ((i, v) in voltageSources.withIndex()) {
+                v.get()!!.current = unknowns.getEntry(i + sz)
+            }
 
-	/**
-	 * Perform a simulation step.
-	 *
-	 * This calls [buildMatrix], [factorMatrix], and [computeResult] as many times as needed to converge on a stable solution (with substeps up to [maxSubSteps], if not sooner). Each of these methods is called lazily; the call is avoided if nothing relevant to the method has changed.
-	 *
-	 * The return value is the [success] field--whether or not [computeResult] was able to compute a solution. If this failed, the output data is likely meaningless; otherwise, the output data is stored in the fields of [nodes] and [voltageSources] to be consumed.
-	 */
-	fun step(dt: Double): Boolean {
-		dprintln("C.s: dt=$dt")
-		if (componentsChanged || connectivityChanged) {
-			buildMatrix()
-		}
+            success = true
+        } catch (e: SingularMatrixException) {
+            dprintln("Singular: ${matrix}")
+            if (matrix != null) dprint(MATRIX_FORMAT.format(matrix))
+        }
+    }
 
-		preProcess.keys.forEach { it.process(dt) }
-		components.forEach { it.preStep(dt) }
+    /**
+     * Perform a simulation step.
+     *
+     * This calls [buildMatrix], [factorMatrix], and [computeResult] as many times as needed to converge on a stable solution (with substeps up to [maxSubSteps], if not sooner). Each of these methods is called lazily; the call is avoided if nothing relevant to the method has changed.
+     *
+     * The return value is the [success] field--whether or not [computeResult] was able to compute a solution. If this failed, the output data is likely meaningless; otherwise, the output data is stored in the fields of [nodes] and [voltageSources] to be consumed.
+     */
+    fun step(dt: Double): Boolean {
+        dprintln("C.s: dt=$dt")
+        if (componentsChanged || connectivityChanged) {
+            buildMatrix()
+        }
 
-		for (substep in 0 until maxSubSteps) {
-			if (!(matrixChanged || rightSideChanged)) break  // Nothing to do
+        preProcess.keys.forEach { it.process(dt) }
+        components.forEach { it.preStep(dt) }
 
-			if (matrixChanged) {
-				factorMatrix()
-				computeResult()
-			} else if (rightSideChanged) {
-				computeResult()
-			}
+        for (substep in 0 until maxSubSteps) {
+            if (!(matrixChanged || rightSideChanged)) break  // Nothing to do
 
-			for (comp in components) comp.simStep()  // Allow non-linear components to request another substep
-		}
+            if (matrixChanged) {
+                factorMatrix()
+                computeResult()
+            } else if (rightSideChanged) {
+                computeResult()
+            }
 
-		components.forEach { it.postStep(dt) }
-		postProcess.keys.forEach { it.process(dt) }
+            for (comp in components) comp.simStep()  // Allow non-linear components to request another substep
+        }
 
-		dprintln("C.s: success=$success")
-		return success
-	}
+        components.forEach { it.postStep(dt) }
+        postProcess.keys.forEach { it.process(dt) }
 
-	override fun toString(): String {
-		var ret = ""
-		ret += components.map { "$it" }
-		ret += "\n"
-		ret += nodes.map { "$it" }
-		ret += "\n"
-		ret += voltageSources.map { "$it" }
-		ret += "\n"
-		ret += matrix.toString()
-		return ret
-	}
+        dprintln("C.s: success=$success")
+        return success
+    }
 
-	/**
-	 * Utility method to return a GraphViz source for this Circuit.
-	 *
-	 * This is useful to visualize a circuit. (I recommend using `neato` or `fdp`; the visualization is not that good in `dot` alone, despite the name, because `dot` expects more hierarchical graphs.)
-	 */
-	fun toDot(): String {
-		val sb = StringBuilder()
-		sb.append("graph {\n")
-		// sb.append("\tgraph [imagepath=\"images\"];\n")
-		sb.append("\tgraph [splines=ortho];\n")
-		sb.append("\tnode [fontsize=8];\n")
-		sb.append("\t// Nodes\n")
-		sb.append("\t\"ground\" [shape=point label=\"ground\"];\n")
-		nodes.forEach {
-			sb.append("\t\"n${it.get()?.index}\" [shape=point label=\"n${it.get()?.index}\"];\n")
-		}
-		sb.append("\n\t// Components\n")
-		components.forEach {
-			sb.append("\t\"c${System.identityHashCode(it)}\" [label=\"${it.detail()}\"")
-			val img = it.imageName
-			if(img != null) sb.append(" image=\"images/$img.svg\" peripheries=0")
-			sb.append("];\n")
-		}
-		sb.append("\n\t// Connections\n")
-		components.forEach { cmp ->
-			cmp.nodes.withIndex().forEach {
-				val port = when(it.index) {
-					0 -> ":w"
-					1 -> ":e"
-					else -> ""
-				}
-				sb.append("\t\"c${System.identityHashCode(cmp)}\"$port -- \"${if(it.value.node.isGround) "ground" else "n${it.value.node.index}"}\" [shape=box ")
-				when(it.index) {
-					0 -> sb.append("color=red")
-					1 -> sb.append("color=blue")
-					else -> sb.append("color=gray")
-				}
-				sb.append("];\n")
-			}
-		}
-		sb.append("}\n")
-		return sb.toString()
-	}
+    override fun toString(): String {
+        var ret = ""
+        ret += components.map { "$it" }
+        ret += "\n"
+        ret += nodes.map { "$it" }
+        ret += "\n"
+        ret += voltageSources.map { "$it" }
+        ret += "\n"
+        ret += matrix.toString()
+        return ret
+    }
+
+    /**
+     * Utility method to return a GraphViz source for this Circuit.
+     *
+     * This is useful to visualize a circuit. (I recommend using `neato` or `fdp`; the visualization is not that good in `dot` alone, despite the name, because `dot` expects more hierarchical graphs.)
+     */
+    fun toDot(): String {
+        val sb = StringBuilder()
+        sb.append("graph {\n")
+        // sb.append("\tgraph [imagepath=\"images\"];\n")
+        sb.append("\tgraph [splines=ortho];\n")
+        sb.append("\tnode [fontsize=8];\n")
+        sb.append("\t// Nodes\n")
+        sb.append("\t\"ground\" [shape=point label=\"ground\"];\n")
+        nodes.forEach {
+            sb.append("\t\"n${it.get()?.index}\" [shape=point label=\"n${it.get()?.index}\"];\n")
+        }
+        sb.append("\n\t// Components\n")
+        components.forEach {
+            sb.append("\t\"c${System.identityHashCode(it)}\" [label=\"${it.detail()}\"")
+            val img = it.imageName
+            if (img != null) sb.append(" image=\"images/$img.svg\" peripheries=0")
+            sb.append("];\n")
+        }
+        sb.append("\n\t// Connections\n")
+        components.forEach { cmp ->
+            cmp.nodes.withIndex().forEach {
+                val port = when (it.index) {
+                    0 -> ":w"
+                    1 -> ":e"
+                    else -> ""
+                }
+                sb.append("\t\"c${System.identityHashCode(cmp)}\"$port -- \"${if (it.value.node.isGround) "ground" else "n${it.value.node.index}"}\" [shape=box ")
+                when (it.index) {
+                    0 -> sb.append("color=red")
+                    1 -> sb.append("color=blue")
+                    else -> sb.append("color=gray")
+                }
+                sb.append("];\n")
+            }
+        }
+        sb.append("}\n")
+        return sb.toString()
+    }
 }

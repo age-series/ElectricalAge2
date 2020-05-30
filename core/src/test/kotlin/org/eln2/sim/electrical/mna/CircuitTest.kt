@@ -1,11 +1,14 @@
 package org.eln2.sim.electrical.mna
 
-import org.eln2.sim.electrical.mna.component.Capacitor
-import org.eln2.sim.electrical.mna.component.Resistor
-import org.eln2.sim.electrical.mna.component.VoltageSource
+import org.eln2.sim.electrical.mna.component.*
+import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.opentest4j.AssertionFailedError
+import java.io.ByteArrayOutputStream
+import java.io.FileInputStream
+import java.io.PrintStream
+import kotlin.math.sign
 
 const val EPSILON = 1e-9
 
@@ -188,8 +191,8 @@ internal class CircuitTest {
 		vs.connect(0, r1, 1)
 		vs.connect(1, c.ground)
 
-		vs.u = 10.0
-		r1.r = 100.0
+		vs.potential = 10.0
+		r1.resistance = 100.0
 
 		c.step(0.5)
 
@@ -206,7 +209,7 @@ internal class CircuitTest {
 			println("main_1: node ${node.get()} index ${node.get()?.index} potential ${node.get()?.potential}")
 		}
 
-		println("main_1: vs current: ${vs.i}\nmain_1: r1 current: ${r1.i}")
+		println("main_1: vs current: ${vs.i}\nmain_1: r1 current: ${r1.current}")
 	}
 
 	@Test
@@ -229,11 +232,11 @@ internal class CircuitTest {
 		c1.connect(1, c.ground)
 		l1.connect(1, c.ground)
 
-		vs.u = 10.0
-		r1.r = 10.0
-		r2.r = 10.0
-		c1.c = 0.01
-		l1.h = 1.0
+		vs.potential = 10.0
+		r1.resistance = 10.0
+		r2.resistance = 10.0
+		c1.capacitance = 0.01
+		l1.i = 1.0
 
 		val actual = ByteArrayOutputStream()
 		val fp = PrintStream(actual)
@@ -244,8 +247,8 @@ internal class CircuitTest {
 		for(i in 0 until 25) {
 			c.step(st)
 			t += st
-			println("main_2: t=$t c1.i=${c1.i} l1.i=${l1.i} r1(c1).u=${r1.u} r2(l1).u=${r2.u} vs.i=${vs.i}")
-			fp.println("$t\t${c1.i}\t${l1.i}\t${r1.u}\t${r2.u}\t${vs.i}")
+			println("main_2: t=$t c1.i=${c1.i} l1.i=${l1.i} r1(c1).u=${r1.potential} r2(l1).u=${r2.potential} vs.i=${vs.i}")
+			fp.println("$t\t${c1.i}\t${l1.i}\t${r1.potential}\t${r2.potential}\t${vs.i}")
 		}
 		fp.close()
 
@@ -274,7 +277,7 @@ internal class CircuitTest {
 		for((r, d) in arrayOf(Pair(r1, d1), Pair(r2, d2), Pair(r3, d3))) {
 			d.connect(1, r, 0)
 			r.connect(1, c.ground)
-			r.r = 10.0
+			r.resistance = 10.0
 		}
 
 		val actual = ByteArrayOutputStream()
@@ -283,13 +286,13 @@ internal class CircuitTest {
 		var t = 0.0
 		val st = 0.05
 		for(i in -10 .. 10) {
-			vs.u = i.toDouble()
+			vs.potential = i.toDouble()
 			c.step(st)
 			if(i == -10) println("main_3: matrix: ${MATRIX_FORMAT.format(c.matrix)}")
 			t += st
-			println("main_3: t=$t vs.u=${vs.u} r1.i=${r1.i} r1.p=${r1.p} r2.i=${r2.i} r2.p=${r2.p} r3.i=${r3.i} r3.p=${r3.p}")
+			println("main_3: t=$t vs.u=${vs.potential} r1.i=${r1.current} r1.p=${r1.p} r2.i=${r2.current} r2.p=${r2.p} r3.i=${r3.current} r3.p=${r3.p}")
 			println("... knowns=${c.knowns}")
-			fp.println("$t\t${vs.u}\t${r1.i}\t${r1.p}\t${r2.i}\t${r2.p}\t${r3.i}\t${r3.p}")
+			fp.println("$t\t${vs.potential}\t${r1.current}\t${r1.p}\t${r2.current}\t${r2.p}\t${r3.current}\t${r3.p}")
 		}
 
 		val expected = FileInputStream("testdata/main_2.dat").readBytes()

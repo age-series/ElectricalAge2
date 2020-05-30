@@ -10,59 +10,60 @@ import org.eln2.space.Set
  * Aside from identifying [Component]s' connections, the Nodes' potentials (relative to [Circuit.ground]) are computed as a result of the MNA algorithm.
  */
 open class Node(var circuit: Circuit) : IDetail, Set() {
-	/**
-	 * The potential of this node, in Volts, relative to ground (as defined by the [Circuit]); an output of the simulation.
-	 */
-	open var potential: Double = 0.0
-		internal set
+    /**
+     * The potential of this node, in Volts, relative to ground (as defined by the [Circuit]); an output of the simulation.
+     */
+    open var potential: Double = 0.0
+        internal set
 
-	/**
-	 * The index of this node into the [Circuit]'s matrices and vectors.
-	 */
-	open var index: Int = -1  // Assigned by Circuit
-		internal set
+    /**
+     * The index of this node into the [Circuit]'s matrices and vectors.
+     */
+    open var index: Int = -1  // Assigned by Circuit
+        internal set
 
-	/**
-	 * True if this node is ground (defined to be 0V).
-	 */
-	open val isGround = false
+    /**
+     * True if this node is ground (defined to be 0V).
+     */
+    open val isGround = false
 
-	/**
-	 * A name for this node, set by [named] (with a default usually assigned by the class).
-	 * 
-	 * This can be used for assigning a semantic meaning to a node, useful for debugging output. Programs should not rely on this value having any particular meaning other than its debug presentation.
-	 */
-	var name = "node"
-		protected set
+    /**
+     * A name for this node, set by [named] (with a default usually assigned by the class).
+     *
+     * This can be used for assigning a semantic meaning to a node, useful for debugging output. Programs should not rely on this value having any particular meaning other than its debug presentation.
+     */
+    var name = "node"
+        protected set
 
-	/**
-	 * A boolean that determines if this node has been named yet.
-	 */
-	var nameSet = false
-		protected set
+    /**
+     * A boolean that determines if this node has been named yet.
+     */
+    var nameSet = false
+        protected set
 
-	/**
-	 * Set the name of this Node, returning this.
-	 * 
-	 * This is intended to be used at construction time, e.g. `Node(circuit).named("something")`. Usage afterward will provoke a warning when debugging is enabled.
-	 */
-	fun named(nm: String) = with(this) {
-		if(nameSet && name != nm) {
-			dprintln("N.n: WARN: node already named $name being renamed to $nm")
-		}
-		name = nm
-		nameSet = true
-	}
-	
-	override fun detail(): String {
-		return "[$name ${this::class.simpleName}@${System.identityHashCode(this).toString(16)} ${potential}V]"
-	}
-	override fun toString() = detail()
+    /**
+     * Set the name of this Node, returning this.
+     *
+     * This is intended to be used at construction time, e.g. `Node(circuit).named("something")`. Usage afterward will provoke a warning when debugging is enabled.
+     */
+    fun named(nm: String) = with(this) {
+        if (nameSet && name != nm) {
+            dprintln("N.n: WARN: node already named $name being renamed to $nm")
+        }
+        name = nm
+        nameSet = true
+    }
 
-	fun stampResistor(to: Node, r: Double) {
-		dprintln("N.sR $this $to $r")
-		circuit.stampResistor(index, to.index, r)
-	}
+    override fun detail(): String {
+        return "[$name ${this::class.simpleName}@${System.identityHashCode(this).toString(16)} ${potential}V]"
+    }
+
+    override fun toString() = detail()
+
+    fun stampResistor(to: Node, r: Double) {
+        dprintln("N.sR $this $to $r")
+        circuit.stampResistor(index, to.index, r)
+    }
 
 }
 
@@ -80,7 +81,7 @@ class GroundNode(circuit: Circuit) : Node(circuit) {
         get() = -1
         set(value) {}
 
-	override val isGround = true
+    override val isGround = true
 }
 
 /**

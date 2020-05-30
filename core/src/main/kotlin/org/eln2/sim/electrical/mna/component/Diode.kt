@@ -1,10 +1,10 @@
 package org.eln2.sim.electrical.mna.component
 
+import org.eln2.debug.dprintln
 import kotlin.math.abs
 import kotlin.math.exp
 import kotlin.math.ln
 import kotlin.math.sqrt
-import org.eln2.debug.dprintln
 
 /**
  * An Ideal Diode.

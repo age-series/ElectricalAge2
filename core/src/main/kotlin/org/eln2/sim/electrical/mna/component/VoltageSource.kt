@@ -13,20 +13,21 @@ class VoltageSource : Port() {
     override val imageName = "vsource"
     override val vsCount = 1
 
-	/**
-	 * The current potential of this source, in Volts.
-	 */
-	override var potential: Double = 0.0
-		set(value) {
-			if (isInCircuit)
-				vsources[0].change(value - field)
-			field = value
-		}
-	/**
-	 * The current through this source, as a result of the simulation step.
-	 */
-	val current: Double
-		get() = if (isInCircuit) vsources[0].current else 0.0
+    /**
+     * The current potential of this source, in Volts.
+     */
+    override var potential: Double = 0.0
+        set(value) {
+            if (isInCircuit)
+                vsources[0].change(value - field)
+            field = value
+        }
+
+    /**
+     * The current through this source, as a result of the simulation step.
+     */
+    val current: Double
+        get() = if (isInCircuit) vsources[0].current else 0.0
 
     /**
      * The current through this source, as a result of the simulation step.

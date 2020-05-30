@@ -36,10 +36,11 @@ class VSource(var circuit: Circuit) : IDetail {
     var potential: Double = 0.0
         protected set
 
-	override fun detail(): String {
-		return "[$name ${this::class.simpleName}@${System.identityHashCode(this).toString(16)} ${current}A]"
-	}
-	override fun toString() = detail()
+    override fun detail(): String {
+        return "[$name ${this::class.simpleName}@${System.identityHashCode(this).toString(16)} ${current}A]"
+    }
+
+    override fun toString() = detail()
 
     /**
      * Stamp the voltage source into its owning circuit with absolute potential [v] (Volts) with a positive terminal [pos] and negative [neg] (both [Node]s in the same Circuit).

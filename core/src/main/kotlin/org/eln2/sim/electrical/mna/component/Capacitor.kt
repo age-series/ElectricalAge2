@@ -15,24 +15,6 @@ open class Capacitor : Port() {
     override var name: String = "c"
 
     /**
-     * Capacitance, in Farads (Coulombs / Volt)
-     */
-    var c: Double = 1e-5
-
-    /**
-     * The simulation timestep in seconds.
-     *
-     * This is set in [preStep], but the value is unfortunately not available during [stamp]; thus, it may be slightly out of date when [step] is actually called.
-     */
-    var ts: Double = 0.05 // A safe default
-
-    /**
-     * The "equivalent resistance" of the Norton system, in Ohms.
-     */
-    val eqR: Double
-        get() = ts / c
-
-    /**
      * The current, in Amperes, presently sourced by this Norton system.
      */
     internal var i: Double = 0.0
@@ -42,44 +24,48 @@ open class Capacitor : Port() {
             field = value
         }
 
-	/**
-	 * Capacitance, in Farads (Coulombs / Volt)
-	 */
-	var capacitance: Double = 1e-5
-	/**
-	 * The simulation timestep in seconds.
-	 *
-	 * This is set in [preStep], but the value is unfortunately not available during [stamp]; thus, it may be slightly out of date when [step] is actually called.
-	 */
-	var ts: Double = 0.05  // A safe default
-	/**
-	 * The "equivalent resistance" of the Norton system, in Ohms.
-	 */
-	val eqR: Double
-		get() = ts / capacitance
-	/**
-	 * The current, in Amperes, presently sourced by this Norton system.
-	 */
-	internal var current: Double = 0.0
-		set(value) {
-			if (isInCircuit)
-				circuit!!.stampCurrentSource(pos.index, neg.index, value - field)
-			field = value
-		}
-	/**
-	 * The current ideal potential across nodes, signed [pos] - [neg] in Volts, a function of the capacitance and the charge (integration of previous currents).
-	 */
-	var idealU: Double = 0.0
+    /**
+     * Capacitance, in Farads (Coulombs / Volt)
+     */
+    var capacitance: Double = 1e-5
 
-	override fun detail(): String {
-		return "[capacitor c:$capacitance]"
-	}
+    /**
+     * The simulation timestep in seconds.
+     *
+     * This is set in [preStep], but the value is unfortunately not available during [stamp]; thus, it may be slightly out of date when [step] is actually called.
+     */
+    var ts: Double = 0.05  // A safe default
 
-	override fun preStep(dt: Double) {
-		ts = dt
-		current = -idealU / eqR
-		dprintln("C.preS: i=$current eqR=$eqR idealU=$idealU")
-	}
+    /**
+     * The "equivalent resistance" of the Norton system, in Ohms.
+     */
+    val eqR: Double
+        get() = ts / capacitance
+
+    /**
+     * The current, in Amperes, presently sourced by this Norton system.
+     */
+    internal var current: Double = 0.0
+        set(value) {
+            if (isInCircuit)
+                circuit!!.stampCurrentSource(pos.index, neg.index, value - field)
+            field = value
+        }
+
+    /**
+     * The current ideal potential across nodes, signed [pos] - [neg] in Volts, a function of the capacitance and the charge (integration of previous currents).
+     */
+    var idealU: Double = 0.0
+
+    override fun detail(): String {
+        return "[capacitor c:$capacitance]"
+    }
+
+    override fun preStep(dt: Double) {
+        ts = dt
+        current = -idealU / eqR
+        dprintln("C.preS: i=$current eqR=$eqR idealU=$idealU")
+    }
 
 
     override fun postStep(dt: Double) {
