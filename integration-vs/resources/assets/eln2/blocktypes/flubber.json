@@ -1,14 +1,19 @@
 {
-	"code": "flubber",
-	"class": "flubber",
-	"blockmaterial": "wood",
-	"creativeinventory": { "general": ["*"] },
-	"textures": {
-		"all": { "base": "block/flubber" }
-	},
-	"sounds": {
-		"place": "game:block/plant",
-		"break": "game:block/plant"
-	}
-	
+    "code": "flubber",
+    "class": "flubber",
+    "blockmaterial": "wood",
+    "creativeinventory": {
+        "general": [
+            "*"
+        ]
+    },
+    "textures": {
+        "all": {
+            "base": "block/flubber"
+        }
+    },
+    "sounds": {
+        "place": "game:block/plant",
+        "break": "game:block/plant"
+    }
 }

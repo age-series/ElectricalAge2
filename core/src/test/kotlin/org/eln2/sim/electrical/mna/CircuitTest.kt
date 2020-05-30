@@ -6,7 +6,6 @@ import org.eln2.sim.electrical.mna.component.VoltageSource
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.opentest4j.AssertionFailedError
-import kotlin.math.sign
 
 const val EPSILON = 1e-9
 
@@ -174,7 +173,7 @@ internal class CircuitTest {
 		assertEquals(ts.c1.potential, 9.506, 0.001)
 	}
 
-	/*
+	
 	@Test
 	fun basicCircuitTest() {
 		val c = Circuit()
@@ -296,5 +295,4 @@ internal class CircuitTest {
 		val expected = FileInputStream("testdata/main_2.dat").readBytes()
 		Assertions.assertArrayEquals(expected, actual.toByteArray())
 	}
-	 */
 }

@@ -1,11 +1,15 @@
 package org.eln2.sim.electrical.mna.component
 
-import org.eln2.sim.electrical.mna.*
-import org.eln2.parsers.falstad.*
+import org.eln2.parsers.falstad.Falstad
+import org.eln2.sim.electrical.mna.Circuit
+import org.eln2.sim.electrical.mna.IDetail
+import org.eln2.sim.electrical.mna.Node
+import org.eln2.sim.electrical.mna.NodeRef
+import org.eln2.sim.electrical.mna.VSource
 
 /**
  * The Component is an entity which can be simulated in a [Circuit]; generally speaking, these are little more than object-oriented interfaces to the state of the Circuit as expressed through its [Circuit.matrix], [Circuit.knowns], [Circuit.solver], and so forth. Much of the actual math implemented for a component depends on the "stamp" family of methods--see those for details.
- * 
+ *
  * Components are implemented quite generally, borrowing from the flexibility of [Falstad's circuit simulator](https://www.falstad.com/circuit-java/); in theory, this implementation should be capable of everything that implementation is, including arbitrary nonlinear components (diodes, transistors, etc.), components with multiple nodes (two-port networks, e.g.), and more. The names and contexts are slightly changed, however (and this version has much less graphical cross-cutting code).
  *
  * The bare minimum required to implement a Component, as of this writing (but check for which fields and methods are abstract in your version):
@@ -155,30 +159,31 @@ abstract class Component : IDetail {
  * By virtue of upholding the Port Condition, the two involved Nodes are often given special names, a "positive" and "negative" terminal ([pos] and [neg]), across which the potential can be sensibly measured. By convention, the potential is positive when [pos]' potential is greater than [neg]. (If you know the resistance, like [Resistor]s do, the power dissipated can then be summarily computed.)
  */
 abstract class Port : Component() {
-	/**
-	 * A Port is, by definition, two nodes; thus, this cannot be overridden.
-	 */
-	final override val nodeCount = 2
+    /**
+     * A Port is, by definition, two nodes; thus, this cannot be overridden.
+     */
+    final override val nodeCount = 2
 
-	// The orientation here is arbitrary, but helps keep signs consistent.
-	/**
-	 * Get the positive [Node].
-	 * 
-	 * By arbitrary convention, for compatibility with the [Falstad] circuit format, this is the second node.
-	 */
-	open val pos: Node
-		get() = node(1)
-	/**
-	 * Get the negative [Node].
-	 * 
-	 * This is arbitrarily the first Node, for [Falstad] compatibility.
-	 */
-	open val neg: Node
-		get() = node(0)
+    // The orientation here is arbitrary, but helps keep signs consistent.
+    /**
+     * Get the positive [Node].
+     *
+     * By arbitrary convention, for compatibility with the [Falstad] circuit format, this is the second node.
+     */
+    open val pos: Node
+        get() = node(1)
 
-	/**
-	 * Get the potential across [pos] and [neg], signed positive when [pos] has a greater potential than [neg].
-	 */
-	open val potential: Double
-		get() = if (isInCircuit) pos.potential - neg.potential else 0.0
+    /**
+     * Get the negative [Node].
+     *
+     * This is arbitrarily the first Node, for [Falstad] compatibility.
+     */
+    open val neg: Node
+        get() = node(0)
+
+    /**
+     * Get the potential across [pos] and [neg], signed positive when [pos] has a greater potential than [neg].
+     */
+    open val potential: Double
+        get() = if (isInCircuit) pos.potential - neg.potential else 0.0
 }
