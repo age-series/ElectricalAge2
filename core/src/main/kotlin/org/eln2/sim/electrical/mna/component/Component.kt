@@ -119,6 +119,7 @@ abstract class Component : IDetail {
         tn.node.unite(n.node)
         nodes[nidx] = tn
 
+        // TODO: Handle this assertion properly and don't fail here. Implement a new error type is probably best here.
         // Assertion intended--fail loudly if circuit mutated here.
         circuit!!.connectivityChanged = true
     }
