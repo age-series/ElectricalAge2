@@ -1,4 +1,5 @@
-package org.eln2.space
+package org.eln2.data
+
 /**
  * A class for using the Disjoint Sets "Union-Find" algorithm.
  *
