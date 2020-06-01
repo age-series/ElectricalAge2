@@ -70,7 +70,7 @@ open class Node(var circuit: Circuit) : IDetail, Set() {
 /**
  * A Node subclass for representing [Circuit.ground], with a higher mergePrecedence, always [potential] 0V and [index] -1 (not assigned).
  *
- * The current recommended test for this special case is `node is GroundNode`.
+ * The current recommended test for this special case is `node.isGround`.
  */
 class GroundNode(circuit: Circuit) : Node(circuit) {
     override var potential: Double
@@ -82,11 +82,6 @@ class GroundNode(circuit: Circuit) : Node(circuit) {
         set(_) {}
 
     override val isGround = true
-}
 
-/**
- * A "NodeRef", which simply refers to an underlying [Node].
- *
- * This additional level of indirection allows nodes between [Component]s to be united normally, _and_ for a single connection to [Circuit.ground] to connect _all_ connected Components to ground, even if the connections between Components were established earlier. In this way, it resembles a simpler version of [Set].
- */
-data class NodeRef(var node: Node)
+    override val priority: Int = 100
+}

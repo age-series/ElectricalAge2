@@ -3,6 +3,14 @@ package org.eln2.sim.electrical.mna.component
 import org.eln2.sim.electrical.mna.*
 
 /**
+* The Exception thrown when a [Component]'s [Circuit] is mutated during [Component.connect].
+*
+* This is generally not recoverable for this Component or Circuit, but it can be handled to isolate other Circuits.
+*/
+class ConnectionMutationException: Exception()
+
+
+/**
  * The Component is an entity which can be simulated in a [Circuit]; generally speaking, these are little more than object-oriented interfaces to the state of the Circuit as expressed through its [Circuit.matrix], [Circuit.knowns], [Circuit.solver], and so forth. Much of the actual math implemented for a component depends on the "stamp" family of methods--see those for details.
  *
  * Components are implemented quite generally, borrowing from the flexibility of [Falstad's circuit simulator](https://www.falstad.com/circuit-java/); in theory, this implementation should be capable of everything that implementation is, including arbitrary nonlinear components (diodes, transistors, etc.), components with multiple nodes (two-port networks, e.g.), and more. The names and contexts are slightly changed, however (and this version has much less graphical cross-cutting code).
@@ -85,13 +93,13 @@ abstract class Component : IDetail {
      */
     open fun postStep(dt: Double) {}
 
-    /** The list of [NodeRef]s held by this Component.
+    /** The list of [Node]s held by this Component.
      *
      * Component implementations should index this list and avoid storing references anywhere else. The owning
     Circuit holds all Nodes it grants weakly, so taking other references will result in a memory leak.
      */
     @Suppress("LeakingThis") // Safe in a single threaded setting, apparently.
-    var nodes: MutableList<NodeRef> = ArrayList(nodeCount)
+    var nodes: MutableList<Node> = ArrayList(nodeCount)
 
     /**
      * The list of [VSource]s held by this Component.
@@ -102,11 +110,11 @@ abstract class Component : IDetail {
     var vsources: MutableList<VSource> = ArrayList(vsCount)
 
     /**
-     * Get a [Node] by index (the one underlying the [NodeRef]).
+     * Get a [Node] by index
      */
-    fun node(i: Int) = nodes[i].node
+    fun node(i: Int) = nodes[i].representative as Node
 
-    /** Connects two Components--makes nodes[nidx] the SAME Node as to.nodes[tidx], respecting precedence.
+    /** Connects two Components--makes nodes[nidx].representative the SAME Node as to.nodes[tidx].representative, respecting precedence.
 
     This is ONLY safe to call AFTER the Component has been added to a Circuit.
      */
@@ -114,15 +122,16 @@ abstract class Component : IDetail {
         if (circuit == null) return
         val n = nodes[nidx]
         val tn = to.nodes[tidx]
-        val (nnamed, tnnamed) = Pair(n.node.nameSet, tn.node.nameSet)
-        if (nnamed && !tnnamed) tn.node.named(n.node.name)
-        if (tnnamed && !nnamed) n.node.named(tn.node.name)
-        if (n.node == tn.node) return  // Already connected
-        tn.node.unite(n.node)
-        nodes[nidx] = tn
+        val (nnamed, tnnamed) = Pair(n.nameSet, tn.nameSet)
+            if(nnamed && !tnnamed) tn.named(n.name)
+            if(tnnamed && !nnamed) n.named(tn.name)
+            if (n.representative == tn.representative) return  // Already connected
+            tn.unite(n)
+            markConnectivityChanged()
+        }
 
-        // TODO: Handle this assertion properly and don't fail here. Implement a new error type is probably best here.
-        // Assertion intended--fail loudly if circuit mutated here.
+    private fun markConnectivityChanged() {
+        if(circuit == null) throw ConnectionMutationException()
         circuit!!.connectivityChanged = true
     }
 
@@ -130,22 +139,18 @@ abstract class Component : IDetail {
 
     This is ONLY safe to call AFTER the Component has been added to a Circuit.
      */
-    fun connect(nidx: Int, nr: NodeRef) {
+    fun connect(nidx: Int, tn: Node) {
         if (circuit == null) return
-        val n = nodes[nidx].node
-        val tn = nr.node
+        val n = nodes[nidx]
         val (nnamed, tnnamed) = Pair(n.nameSet, tn.nameSet)
         if (nnamed && !tnnamed) tn.named(n.name)
         if (tnnamed && !nnamed) n.named(tn.name)
         tn.unite(n)
-        nodes[nidx].node = tn
-
-        // Assertion intended--fail loudly if circuit mutated here.
-        circuit!!.connectivityChanged = true
+        markConnectivityChanged()
     }
 
     override fun toString(): String {
-        return "${this::class.simpleName}@${System.identityHashCode(this).toString(16)} ${nodes.map { it.node.detail() }}"
+        return "${this::class.simpleName}@${System.identityHashCode(this).toString(16)} ${nodes.map { it.detail() }}"
     }
 }
 
