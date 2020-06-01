@@ -27,7 +27,7 @@ object Eln2 {
         // Register blocks and items
         ModItems.values().forEach { registry.registerItem(it.items, it.name.toLowerCase()) }
         ModBlocks.values().forEach { registry.registerBlock(it.block, it.name.toLowerCase()) }
-		registry.initialize(thedarkcolour.kotlinforforge.forge.MOD_BUS);
+		registry.initialize(thedarkcolour.kotlinforforge.forge.MOD_BUS)
 	}
 
     /**
