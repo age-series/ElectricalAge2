@@ -207,6 +207,6 @@ internal class CircuitTest {
             println("main_1: node ${node.get()} index ${node.get()?.index} potential ${node.get()?.potential}")
         }
 
-        println("main_1: vs current: ${vs.i}\nmain_1: r1 current: ${r1.current}")
+        println("main_1: vs current: ${vs.current}\nmain_1: r1 current: ${r1.current}")
     }
 }

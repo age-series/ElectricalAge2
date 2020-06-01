@@ -90,6 +90,7 @@ abstract class Component : IDetail {
      * Component implementations should index this list and avoid storing references anywhere else. The owning
     Circuit holds all Nodes it grants weakly, so taking other references will result in a memory leak.
      */
+    @Suppress("LeakingThis") // Safe in a single threaded setting, apparently.
     var nodes: MutableList<NodeRef> = ArrayList(nodeCount)
 
     /**
@@ -97,12 +98,13 @@ abstract class Component : IDetail {
      *
      * Like [nodes], these are only weakly held by the [Circuit].
      */
+    @Suppress("LeakingThis") // Safe in a single threaded setting, apparently.
     var vsources: MutableList<VSource> = ArrayList(vsCount)
 
     /**
      * Get a [Node] by index (the one underlying the [NodeRef]).
      */
-    inline fun node(i: Int) = nodes[i].node
+    fun node(i: Int) = nodes[i].node
 
     /** Connects two Components--makes nodes[nidx] the SAME Node as to.nodes[tidx], respecting precedence.
 
@@ -166,7 +168,7 @@ abstract class Port : Component() {
     /**
      * Get the positive [Node].
      *
-     * By arbitrary convention, for compatibility with the [Falstad] circuit format, this is the second node.
+     * By arbitrary convention, for compatibility with the Falstad circuit format, this is the second node.
      */
     open val pos: Node
         get() = node(1)
@@ -174,7 +176,7 @@ abstract class Port : Component() {
     /**
      * Get the negative [Node].
      *
-     * This is arbitrarily the first Node, for [Falstad] compatibility.
+     * This is arbitrarily the first Node, for Falstad compatibility.
      */
     open val neg: Node
         get() = node(0)

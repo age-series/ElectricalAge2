@@ -29,12 +29,6 @@ class VoltageSource : Port() {
     val current: Double
         get() = if (isInCircuit) vsources[0].current else 0.0
 
-    /**
-     * The current through this source, as a result of the simulation step.
-     */
-    val i: Double
-        get() = if (isInCircuit) vsources[0].current else 0.0
-
     override fun detail(): String {
         return "[voltage source u:$potential]"
     }

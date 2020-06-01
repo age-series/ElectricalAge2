@@ -27,7 +27,7 @@ open class Inductor : Port() {
     /**
      * The "equivalent resistance" of the Norton system, in Ohms.
      */
-    val eqR: Double
+    private val eqR: Double
         get() = l / ts
 
     /**
@@ -43,6 +43,7 @@ open class Inductor : Port() {
     /**
      * The current amount of magnetic flux, in Webers (Volt * second), based on the instantaneous derivative of the current in Amperes.
      */
+    @Suppress("MemberVisibilityCanBePrivate")
     var phi: Double = 0.0
 
     override fun detail(): String {
