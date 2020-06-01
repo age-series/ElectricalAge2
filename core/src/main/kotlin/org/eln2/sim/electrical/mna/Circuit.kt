@@ -110,7 +110,7 @@ class Circuit {
      * This is defined to be zero potential with relation to every other node.
      */
     // Don't ever add this to any node lists; its index is always invalid.
-    var ground = NodeRef(GroundNode(this))
+    var ground = GroundNode(this)
 
     /**
      * The maximum number of substeps done to try to make non-linear [Component]s converge.
@@ -122,7 +122,7 @@ class Circuit {
     /**
      * A "small" value (like epsilon), used to determine if two Doubles are "close enough".
      *
-     * Circuit does not use this directly, but some [Component]s use it to determine if they should stop iterating.
+     * Circuit does not use this directly, but some [Component]s use it to determine if they should stop iterating. Some tests also use this to determine if the value under test is "close enough".
      */
     var slack = 0.001
 
@@ -145,11 +145,11 @@ class Circuit {
     val components = mutableListOf<Component>()
 
     /**
-     * A map from [NodeRef] to the owning [Component].
+     * A map from [Node] to the owning [Component].
      *
      * This does not include the [ground] NodeRef owned by the Circuit.
      */
-    private val compNodeMap = WeakHashMap<NodeRef, Component>()
+    private val compNodeMap = WeakHashMap<Node, Component>()
 
     /**
      * A map from [VSource] to the owning [Component].
@@ -325,7 +325,7 @@ class Circuit {
         // This is the ONLY place where this should be set.
         comp.circuit = this
         for (i in 0 until comp.nodeCount) {
-            val n = NodeRef(Node(this))
+            val n = Node(this)
             compNodeMap[n] = comp
             comp.nodes.add(n)
         }
@@ -336,7 +336,7 @@ class Circuit {
         }
         comp.added()
 
-        dprintln("C.a: $comp has nodes ${comp.nodes.map { it.node }} vs ${comp.vsources}")
+        dprintln("C.a: $comp has nodes ${comp.nodes} vs ${comp.vsources}")
         return comp
     }
 
@@ -381,7 +381,7 @@ class Circuit {
             if (componentsChanged || connectivityChanged) buildMatrix()
             return !components.any {component ->
                 component.nodes.any {
-                    it.node == ground.node
+                    it.representative == ground
                 }
             }
         }
@@ -403,8 +403,8 @@ class Circuit {
         val voltageSourceSet: MutableSet<VSource> = mutableSetOf()
 
         components.forEach {component ->
-            dprintln("C.bM: component $component nodes ${component.nodes.map { it.node }}")
-            nodeSet.addAll(component.nodes.map { it.node }.filter { it != ground.node })
+            dprintln("C.bM: component $component nodes ${component.nodes}")
+            nodeSet.addAll(component.nodes.map { it.representative as Node }.filter { it != ground })
             voltageSourceSet.addAll(component.vsources)
         }
 
@@ -567,13 +567,15 @@ class Circuit {
         }
         sb.append("\n\t// Connections\n")
         components.forEach { cmp ->
-            cmp.nodes.withIndex().forEach {
+            // This may be broken. It used to use .withIndex() but that resulted in too many possible results. We don't have tests for this, so wheee!
+            cmp.nodes.forEach {
                 val port = when (it.index) {
                     0 -> ":w"
                     1 -> ":e"
                     else -> ""
                 }
-                sb.append("\t\"c${System.identityHashCode(cmp)}\"$port -- \"${if (it.value.node.isGround) "ground" else "n${it.value.node.index}"}\" [shape=box ")
+                val node = it.representative as Node
+                sb.append("\t\"c${System.identityHashCode(cmp)}\"$port -- \"${if(node.isGround) "ground" else "n${node.index}"}\" [shape=box ")
                 when (it.index) {
                     0 -> sb.append("color=red")
                     1 -> sb.append("color=blue")

@@ -1,10 +1,51 @@
 package org.eln2.space
-// A class for using the Disjoint Sets "Union-Find" algorithm
-open class Set() {
+/**
+ * A class for using the Disjoint Sets "Union-Find" algorithm.
+ *
+ * There are two ways to use this:
+ *
+ * - Inherit from it, using the methods on the object itself;
+ * - compose it into your class; or
+ * - do both.
+ *
+ * Typical use case is as follows:
+ *
+ * 1. Choose your method above; for the former, the Set object is `this`; for the latter, substitute your field.
+ * 2. Unify Sets by calling [unite].
+ * 3. Determine if two Sets are in the same component by testing their [representative] for equality.
+ *
+ * In the case of inheriting Set, you can also store data on the representative. Note that it is difficult to control which instance will ultimately *be* the representative; in the cases where it can't be avoided, [priority] can be used, but this is advisable only as a last resort (since it reduces the optimality of this algorithm).
+*/
+open class Set {
+
+    /**
+     * The size of this tree; loosely, how many Sets have been merged, including transitively, with this one.
+     *
+     * This value is normally only accurate for the [representative].
+     */
     var size: Int = 1
+
+    /**
+     * The parent of this Set.
+     *
+     * Following this recursively will lead to the [representative]. All representatives refer to themselves as their parent.
+     */
     var parent: Set = this
 
-    // The "Find" algorithm with path splitting
+    /**
+     * The priority of the merge. If set, this overrides the "merge by size" algorithm in [unite].
+     *
+     * It is recommended you don't do this unless you have a specific need to ensure that a certain Set always ends up being the [representative].
+     */
+    open val priority: Int = 0
+
+    /**
+     * Find the representative of this set.
+     *
+     * This instance is the same as all other instances that have been [unite]d, transitively, with this one.
+     *
+     * This is implemented using the "Path splitting" algorithm.
+     */
     val representative: Set
         get() {
             var cur = this
@@ -16,13 +57,22 @@ open class Set() {
             return cur
         }
 
-    // The "Union" algorithm by size
+    /**
+     * Unite this instance with another instance of Set.
+     *
+     * After this is done, both this and [other] will have the same [representative] as each other (and as all other Sets with which they were previously united).
+     *
+     * This is implemented using the "by size" merge algorithm, adjusted for [priority].
+     */
     fun unite(other: Set) {
         val trep = representative
         val orep = other.representative
         if (trep == orep) return
-
-        val (bigger, smaller) = if (trep.size < orep.size) Pair(orep, trep) else Pair(trep, orep)
+        val (bigger, smaller) = when {
+            trep.priority > orep.priority -> Pair(trep, orep)
+            orep.priority > trep.priority -> Pair(orep, trep)
+            else -> if (trep.size < orep.size) Pair(orep, trep) else Pair(trep, orep)
+        }
         smaller.parent = bigger.parent
         bigger.size += smaller.size
     }

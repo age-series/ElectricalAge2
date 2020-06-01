@@ -17,7 +17,6 @@ import org.eln2.parsers.falstad.components.sources.VoltageRailConstructor
 import org.eln2.parsers.falstad.components.sources.VoltageSourceConstructor
 import org.eln2.sim.electrical.mna.Circuit
 import org.eln2.sim.electrical.mna.Node
-import org.eln2.sim.electrical.mna.NodeRef
 import org.eln2.sim.electrical.mna.component.Component
 import org.eln2.sim.electrical.mna.component.Resistor
 import org.eln2.sim.electrical.mna.component.VoltageSource
