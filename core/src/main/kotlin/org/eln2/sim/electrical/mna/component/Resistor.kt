@@ -36,7 +36,8 @@ open class Resistor : Port() {
     /**
      * Returns the power dissipated by this resistor, as a function of its current and potential, in Watts.
      */
-    open val p: Double
+    @Suppress("unused")
+    open val power: Double
         get() = current * potential
 
     override fun detail(): String {

@@ -26,7 +26,7 @@ val MATRIX_FORMAT = RealMatrixFormat("", "", "\t", "\n", "", "\t")
  *
  * ## Disconnections and Removal
  *
- * The current algorithm supports _only_ incremental addition and connection; removal is _not_ directly supported, as it has the potential to sever the connected component of the circuit. For this reason, online removal is delegated to a higher layer which can track the connected components (such as [Space]).
+ * The current algorithm supports _only_ incremental addition and connection; removal is _not_ directly supported, as it has the potential to sever the connected component of the circuit. For this reason, online removal is delegated to a higher layer which can track the connected components (such as Space).
  *
  * The best way to simulate removal or disconnection is to rebuild the Circuit (or possibly Circuits, if disconnection occurred) without the components and connections to remove. It is safe to transfer ownership of a Component to a new Circuit, such that it retains its state, but note that it will be entirely disconnected.
  *
@@ -56,7 +56,7 @@ val MATRIX_FORMAT = RealMatrixFormat("", "", "\t", "\n", "", "\t")
  *
  * - The connectivity matrix has entries in terms of _conductance_ (reciprocal resistance), summed over all components. Infinite resistance is zero conductance, but 0 resistance is infinite conductance, and this _will_ cause the solver to fail. Perfect, non-resistive connections are best represented by connecting the underlying nodes directly--but see the note on disconnection above that this process is hard to undo.
  * - Along similar terms, numerical stability is best when resistances are within a few orders of magnitude of each other. This library is reliant upon Java's double (likely IEEE754 binary64) and all the burdens that come with it; very high resistances will result in very small conductances, and one should expect precision loss to occur if very large and small resistances are simultaneously connected to the same Node.
- * - The ground node is privileged as being _defined_ to zero potential. The exact choice of where to put this in the circuit doesn't matter, but it is traditionally placed on the node considered to have the lowest potential, often on the negative side of a DC "main" power supply. Failing to connect this node will result in a ["floating" Circuit][Circuit.isFloating] (see, e.g., [Falstad.floating]) which is likely underconstrained, causing the solver to fail.
+ * - The ground node is privileged as being _defined_ to zero potential. The exact choice of where to put this in the circuit doesn't matter, but it is traditionally placed on the node considered to have the lowest potential, often on the negative side of a DC "main" power supply. Failing to connect this node will result in a ["floating" Circuit][Circuit.isFloating] (see, e.g., Falstad.floating) which is likely underconstrained, causing the solver to fail.
  * - This point bears reiteration: the node voltages for a "connected circuit graph component" without any conductance to ground (or infinite resistance) is underconstrained, and will cause the solver to fail. This is mainly the reason you should rebuild a Circuit after disconnecting or removing Components.
  *
  * A successful [Circuit.step] does not guarantee that the values are valid; it is possible for the solver to return, e.g., NaN values. Any logic interfacing the Circuit should be prepared to receive invalid values gracefully.
@@ -67,9 +67,7 @@ val MATRIX_FORMAT = RealMatrixFormat("", "", "\t", "\n", "", "\t")
  *
  * The linear algebra library is presently [Apache Commons Math](http://commons.apache.org/proper/commons-math/), but this is subject to change--and distinct Circuits need not use the same underlying implementation.
  *
- * The MNA algorithm itself is heavily borrowed from [Erik Cheever's Algorithmic MNA resource][MNA].
- *
- * [MNA]: https://lpsa.swarthmore.edu/Systems/Electrical/mna/MNA3.html
+ * The MNA algorithm itself is heavily borrowed from [Erik Cheever's Algorithmic MNA resource][https://lpsa.swarthmore.edu/Systems/Electrical/mna/MNA3.html].
  */
 class Circuit {
 
@@ -133,7 +131,9 @@ class Circuit {
      *
      * This is exactly the value returned from [step]; it is false when [computeResult] fails to solve or write out its results.
      */
+    @Suppress("MemberVisibilityCanBePrivate")
     var success = true
+        private set
 
     /**
      * The [Component]s added to this Circuit.
@@ -149,22 +149,24 @@ class Circuit {
      *
      * This does not include the [ground] NodeRef owned by the Circuit.
      */
-    val compNodeMap = WeakHashMap<NodeRef, Component>()
+    private val compNodeMap = WeakHashMap<NodeRef, Component>()
 
     /**
      * A map from [VSource] to the owning [Component].
      */
     // These don't merge, but keep this collection weak anyway so the size reflects component removal.
-    val compVsMap = WeakHashMap<VSource, Component>()
+    private val compVsMap = WeakHashMap<VSource, Component>()
 
     /**
      * A list of closures to call before the Circuit step runs.
      */
+    @Suppress("MemberVisibilityCanBePrivate")
     val preProcess = WeakHashMap<IProcess, Unit>()
 
     /**
      * A list of closures to call after the Circuit step finishes.
      */
+    @Suppress("MemberVisibilityCanBePrivate")
     val postProcess = WeakHashMap<IProcess, Unit>()
 
     // These fields are only for the solver--don't use them casually elsewhere
@@ -173,9 +175,7 @@ class Circuit {
      *
      * This matrix is square of size (nodes + vsources), with the upper-left square nodes-size matrix representing the conductances, and the two (nodes x vsources) rectangular matrices representing the connectivity of the voltage sources.
      *
-     * It is the "A Matrix" in the [MNA Algorithm][MNA].
-     *
-     * [MNA]: https://lpsa.swarthmore.edu/Systems/Electrical/mna/MNA3.html
+     * It is the "A Matrix" in the [MNA Algorithm][https://lpsa.swarthmore.edu/Systems/Electrical/mna/MNA3.html].
      */
     internal var matrix: RealMatrix? = null
 
@@ -184,9 +184,7 @@ class Circuit {
      *
      * This is a column vector of size (nodes + vsources); the first (nodes) elements are independent currents into the node (the sums of signed contributions of current sources), and the last (vsources) elements are the voltage source values.
      *
-     * This is the "z matrix" in the [MNA Algorithm][MNA].
-     *
-     * [MNA]: https://lpsa.swarthmore.edu/Systems/Electrical/mna/MNA3.html
+     * This is the "z matrix" in the [MNA Algorithm][https://lpsa.swarthmore.edu/Systems/Electrical/mna/MNA3.html].
      */
     internal var knowns: RealVector? = null
 
@@ -213,23 +211,23 @@ class Circuit {
      *
      * The order is significant; their position is their index into the rows and columns of [matrix] and [knowns] (offset, as need be, by the size of [nodes]). This is available via [VSource.index] after a [buildMatrix].
      */
-    internal var voltageSources: List<WeakReference<VSource>> = emptyList()
+    private var voltageSources: List<WeakReference<VSource>> = emptyList()
 
     /**
      * Add a value to a given row and column of [matrix].
      *
-     * [a] and [b] should be indices of [Node]s; that is, they should be nonnegative and less than the length of [nodes]. Thus, these index into the "G submatrix" as expressed in the [MNA Algorithm][MNA]. Since this matrix should be symmetric, this method is usually invoked twice, the latter with [b] and [a] swapped.
+     * [a] and [b] should be indices of [Node]s; that is, they should be nonnegative and less than the length of [nodes]. Thus, these index into the "G submatrix" as expressed in the [MNA Algorithm][https://lpsa.swarthmore.edu/Systems/Electrical/mna/MNA3.html]. Since this matrix should be symmetric, this method is usually invoked twice, the latter with [b] and [a] swapped.
      *
      * The interpretation, according to Falstad, is as follows: if the potential of [b] changes by `dV`, then the current into node [a] should change by [x] * `dV`. The unit of [x] is Siemens (reciprocal Ohms).
      *
      * This is the lowest level function that manipulates [matrix]; it is usually called via [stampResistor] and [stampVoltageSource]. These should only be called from [Component.stamp].
      *
-     * [MNA]: https://lpsa.swarthmore.edu/Systems/Electrical/mna/MNA3.html
      */
     /* From Falstad: declare that a potential change dV in node b changes the current in node a by x*dV, complicated
 	   slightly by independent voltage sources. The unit of x is Siemens, reciprocal Ohms, a unit of conductance.
 	 */
-    fun stampMatrix(a: Int, b: Int, x: Double) {
+    @Suppress("MemberVisibilityCanBePrivate")
+    internal fun stampMatrix(a: Int, b: Int, x: Double) {
         dprintln("C.sM $a $b $x")
         if (a < 0 || b < 0) return
         matrix!!.addToEntry(a, b, x)
@@ -243,7 +241,8 @@ class Circuit {
      *
      * This is the lowest level function that manipulates [knowns]; it is usually called via [stampVoltageChange] and [stampCurrentSource]. These should only be called from [Component.stamp].
      */
-    fun stampKnown(i: Int, x: Double) {
+    @Suppress("MemberVisibilityCanBePrivate")
+    internal fun stampKnown(i: Int, x: Double) {
         dprintln("C.sK $i $x")
         if (i < 0) return
         knowns!!.addToEntry(i, x)
@@ -255,7 +254,7 @@ class Circuit {
      *
      * This calls [stampKnown] internally. It should usually be called from a method on a [Component] with a valid [VSource].
      */
-    fun stampVoltageChange(i: Int, x: Double) {
+    internal fun stampVoltageChange(i: Int, x: Double) {
         stampKnown(i + nodes.size, x)
     }
 
@@ -264,7 +263,7 @@ class Circuit {
      *
      * This calls [stampMatrix] internally. It should only ever be called from [Component.stamp].
      */
-    fun stampResistor(a: Int, b: Int, r: Double) {
+    internal fun stampResistor(a: Int, b: Int, r: Double) {
         dprintln("C.sR $a $b $r")
         val c = 1 / r
         if (!c.isFinite()) throw IllegalArgumentException("resistance $r is invalid")
@@ -281,7 +280,7 @@ class Circuit {
      *
      * This calls [stampMatrix] and [stampKnown] internally. It should only ever be called from [Component.stamp].
      */
-    fun stampVoltageSource(pos: Int, neg: Int, num: Int, v: Double) {
+    internal fun stampVoltageSource(pos: Int, neg: Int, num: Int, v: Double) {
         val vs = num + nodes.size
         stampMatrix(vs, neg, -1.0)
         stampMatrix(vs, pos, 1.0)
@@ -295,7 +294,7 @@ class Circuit {
      *
      * This calls [stampKnown] internally.
      */
-    fun stampCurrentSource(pos: Int, neg: Int, i: Double) {
+    internal fun stampCurrentSource(pos: Int, neg: Int, i: Double) {
         stampKnown(pos, -i)
         stampKnown(neg, i)
     }
@@ -327,12 +326,12 @@ class Circuit {
         comp.circuit = this
         for (i in 0 until comp.nodeCount) {
             val n = NodeRef(Node(this))
-            compNodeMap.put(n, comp)
+            compNodeMap[n] = comp
             comp.nodes.add(n)
         }
         for (i in 0 until comp.vsCount) {
             val vs = VSource(this)
-            compVsMap.put(vs, comp)
+            compVsMap[vs] = comp
             comp.vsources.add(vs)
         }
         comp.added()
@@ -344,7 +343,7 @@ class Circuit {
     /**
      * Rmove all of the [Component]s in the vararg list.
      */
-
+    @Suppress("unused")
     fun remove(vararg comps: Component) {
         for (comp in comps) remove(comp)
     }
@@ -376,11 +375,12 @@ class Circuit {
      *
      * A floating circuit is likely to fail to [step], as it is underconstrained. Fixing this requires unifying any node with [ground]--any one will do, though it is traditionally the lowest-potential node of the Circuit.
      */
+    @Suppress("MemberVisibilityCanBePrivate")
     val isFloating: Boolean
         get() {
             if (componentsChanged || connectivityChanged) buildMatrix()
-            return !components.any {
-                it.nodes.any {
+            return !components.any {component ->
+                component.nodes.any {
                     it.node == ground.node
                 }
             }
@@ -397,15 +397,15 @@ class Circuit {
      */
     // Step 1: Whenever the number of components, or their nodal connectivity (not resistances, e.g.) changes, allocate
     // a matrix of appropriate size.
-    protected fun buildMatrix() {
+    internal fun buildMatrix() {
         dprintln("C.bM")
         val nodeSet: MutableSet<Node> = mutableSetOf()
         val voltageSourceSet: MutableSet<VSource> = mutableSetOf()
 
-        components.forEach {
-            dprintln("C.bM: component $it nodes ${it.nodes.map { it.node }}")
-            nodeSet.addAll(it.nodes.map { it.node }.filter { it != ground.node })
-            voltageSourceSet.addAll(it.vsources)
+        components.forEach {component ->
+            dprintln("C.bM: component $component nodes ${component.nodes.map { it.node }}")
+            nodeSet.addAll(component.nodes.map { it.node }.filter { it != ground.node })
+            voltageSourceSet.addAll(component.vsources)
         }
 
         nodes = nodeSet.map { WeakReference(it) }.toList()
@@ -488,7 +488,7 @@ class Circuit {
 
             success = true
         } catch (e: SingularMatrixException) {
-            dprintln("Singular: ${matrix}")
+            dprintln("Singular: $matrix")
             if (matrix != null) dprint(MATRIX_FORMAT.format(matrix))
         }
     }
@@ -546,6 +546,7 @@ class Circuit {
      *
      * This is useful to visualize a circuit. (I recommend using `neato` or `fdp`; the visualization is not that good in `dot` alone, despite the name, because `dot` expects more hierarchical graphs.)
      */
+    @Suppress("unused")
     fun toDot(): String {
         val sb = StringBuilder()
         sb.append("graph {\n")

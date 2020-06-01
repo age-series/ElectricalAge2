@@ -68,18 +68,18 @@ open class Node(var circuit: Circuit) : IDetail, Set() {
 }
 
 /**
- * A Node subclass for representing [Circuit.ground], with a higher [mergePrecedence], always [potential] 0V and [index] -1 (not assigned).
+ * A Node subclass for representing [Circuit.ground], with a higher mergePrecedence, always [potential] 0V and [index] -1 (not assigned).
  *
  * The current recommended test for this special case is `node is GroundNode`.
  */
 class GroundNode(circuit: Circuit) : Node(circuit) {
     override var potential: Double
         get() = 0.0
-        set(value) {}
+        set(_) {}
 
     override var index: Int
         get() = -1
-        set(value) {}
+        set(_) {}
 
     override val isGround = true
 }

@@ -34,7 +34,7 @@ class VSource(var circuit: Circuit) : IDetail {
      * This property is only a guess, updated by [stamp] and [change], assuming those are used correctly. It cannot be publicly assigned; use [stamp] and [change] instead. A typical intra-step invocation might be `vs.change(newPotential - vs.potential)`, but this is only safe to do within certain contexts and thus not implemented here by default.
      */
     var potential: Double = 0.0
-        protected set
+        internal set
 
     override fun detail(): String {
         return "[$name ${this::class.simpleName}@${System.identityHashCode(this).toString(16)} ${current}A]"

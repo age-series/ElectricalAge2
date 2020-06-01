@@ -4,10 +4,16 @@ package org.eln2.math
  * Function Table
  *
  * Defines a function based on the values in a table. The domain of the input array starts from 0 and goes to "xMax"
- * @param point Array of double representing the reference or "y" values.
- * @param xMax The x value that corresponds to the last y value in the point array.
+ * @param _point Array of double representing the reference or "y" values.
+ * @param _xMax The x value that corresponds to the last y value in the point array.
  */
-open class FunctionTable(var point: DoubleArray, var xMax: Double, private val mode: ExtrapolationMode) : IFunction {
+open class FunctionTable(_point: DoubleArray, _xMax: Double, private val mode: ExtrapolationMode) : IFunction {
+
+    @Suppress("MemberVisibilityCanBePrivate")
+    var point: DoubleArray = _point
+
+    @Suppress("MemberVisibilityCanBePrivate")
+    var xMax: Double = _xMax
 
     /**
      * Selects which method of extrapolation to use when trying to get a value outside of the given range.

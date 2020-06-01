@@ -39,7 +39,7 @@ open class Capacitor : Port() {
     /**
      * The "equivalent resistance" of the Norton system, in Ohms.
      */
-    val eqR: Double
+    private val eqR: Double
         get() = ts / capacitance
 
     /**
