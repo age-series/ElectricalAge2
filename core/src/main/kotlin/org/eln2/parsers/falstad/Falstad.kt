@@ -20,7 +20,7 @@ import org.eln2.sim.electrical.mna.Node
 import org.eln2.sim.electrical.mna.component.Component
 import org.eln2.sim.electrical.mna.component.Resistor
 import org.eln2.sim.electrical.mna.component.VoltageSource
-import org.eln2.space.Set
+import org.eln2.data.Set
 import org.eln2.space.Vec2i
 
 /**

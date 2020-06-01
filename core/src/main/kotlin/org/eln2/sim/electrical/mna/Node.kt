@@ -2,7 +2,7 @@ package org.eln2.sim.electrical.mna
 
 import org.eln2.debug.dprintln
 import org.eln2.sim.electrical.mna.component.Component
-import org.eln2.space.Set
+import org.eln2.data.Set
 
 /**
  * A "node", in MNA; the non-resistive connections between [Component]s.
