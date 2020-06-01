@@ -10,13 +10,13 @@ import org.eln2.sim.electrical.mna.component.VoltageSource
  *
  * Basic Falstad Voltage Rail. I think this is a one pin with shared grounds?
  */
-class VoltageRailConstructor: PoleConstructor() {
-	override fun component(ccd: CCData) = VoltageSource()
-	override fun configure(ccd: CCData, cmp: Component) {
-		val v = (cmp as VoltageSource)
-		v.potential = ccd.data[2].toDouble() + ccd.data[3].toDouble()
-		v.connect(1, ccd.circuit.ground)  // nidx 1 should be neg
-		ccd.pins = 1  // After the above--there are two pins, but the second is dropped
-		ccd.falstad.floating = false
-	}
+class VoltageRailConstructor : PoleConstructor() {
+    override fun component(ccd: CCData) = VoltageSource()
+    override fun configure(ccd: CCData, cmp: Component) {
+        val v = (cmp as VoltageSource)
+        v.potential = ccd.data[2].toDouble() + ccd.data[3].toDouble()
+        v.connect(1, ccd.circuit.ground) // nidx 1 should be neg
+        ccd.pins = 1 // After the above--there are two pins, but the second is dropped
+        ccd.falstad.floating = false
+    }
 }
