@@ -53,10 +53,6 @@ class Scam(val source: String) {
 
     val circuit = Circuit()
 
-    init {
-
-    }
-
     companion object {
         @JvmStatic
         fun main(vararg args: String) {
