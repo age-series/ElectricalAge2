@@ -24,9 +24,11 @@ class Capacitor(var capacitance: Double) : Port() {
     }
 
     override fun stamp() {
-        internalCurrentSource.current = -potential / resistance
-        internalCurrentSource.stamp()
-        if (resistance > 0.0) circuit!!.stampResistor(pos.index, neg.index, resistance)
+        if (resistance > 0.0) {
+            internalCurrentSource.current = -potential / resistance
+            internalCurrentSource.stamp()
+            circuit!!.stampResistor(pos.index, neg.index, resistance)
+        }
     }
 
     override fun detail(): String {

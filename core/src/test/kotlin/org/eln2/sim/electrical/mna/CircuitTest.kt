@@ -135,25 +135,6 @@ internal class CircuitTest {
     }
 
     @Test
-    fun basicCapacitorCircuit() {
-        val circuit = Circuit()
-        val vs = VoltageSource()
-        val c1 = Capacitor(0.01)
-
-        circuit.add(vs, c1)
-        vs.potential = 10.0
-
-        vs.connect(1, c1, 1)
-        vs.connect(0, c1, 0)
-        vs.connect(1, circuit.ground)
-
-        circuit.step(0.5)
-        circuit.step(0.5)
-        circuit.step(0.5)
-        circuit.step(0.5)
-    }
-
-    @Test
     fun basicRCCircuit() {
         val ts = TrivialRCCircuit()
         ts.c.step(0.05)
