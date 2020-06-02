@@ -22,7 +22,7 @@ interface MultiMap<K, V> {
     /**
      * Get the set of all values associated with key [k].
      */
-    operator fun get(k: K): Set<V>
+    operator fun get(k: K): DisjointSet<V>
 
     /**
      * Get a single, arbitrary value associated with key [k].
@@ -37,7 +37,7 @@ interface MultiMap<K, V> {
     /**
      * An iterator over every Entry<K, Set<V>>, of size keySize.
      */
-    val keyMapping: Iterable<Map.Entry<K, Set<V>>>
+    val keyMapping: Iterable<Map.Entry<K, DisjointSet<V>>>
 
     /**
      * The number of keys, value sets, and keyMapping entries in this MultiMap.
@@ -49,21 +49,21 @@ interface MultiMap<K, V> {
     /**
      * The set of all keys.
      */
-    val keys: Set<K> get() = keyMapping.map { (k, _) -> k }.toSet()
+    val keys: DisjointSet<K> get() = keyMapping.map { (k, _) -> k }.toSet()
 
     /**
      * The set of all sets of values.
      *
      * This will have the same size as keySize.
      */
-    val valueSets: Collection<Set<V>> get() = keyMapping.map { (_, vs) -> vs }
+    val valueSets: Collection<DisjointSet<V>> get() = keyMapping.map { (_, vs) -> vs }
 
     /**
      * The unique values in this MultiMap.
      *
      * This is often at least O(n * UNION), where UNION is the cost of set union.
      */
-    val uniqueValues: Set<V>
+    val uniqueValues: DisjointSet<V>
 
     /**
      * The number of unique values in this MultiMap.
@@ -136,13 +136,13 @@ class MutableSetMapMultiMap<K, V>(iter: Iterator<Pair<K, V>>) : MutableMultiMap<
         map.remove(k)
     }
 
-    override val keyMapping: Iterable<Map.Entry<K, Set<V>>> = map.entries
+    override val keyMapping: Iterable<Map.Entry<K, DisjointSet<V>>> = map.entries
 
     /** This implementation is O(1). */
     override val keyMappingSize: Int get() = map.size
     override val keys get() = map.keys
-    override val valueSets: Collection<Set<V>> = map.values
-    override val uniqueValues: Set<V> get() = map.values.fold(emptySet()) { next, acc -> acc.union(next.toSet()) }
+    override val valueSets: Collection<DisjointSet<V>> = map.values
+    override val uniqueValues: DisjointSet<V> get() = map.values.fold(emptySet()) { next, acc -> acc.union(next.toSet()) }
     override val entries: Iterable<Map.Entry<K, V>>
         get() = map.entries.flatMap { (k, vs) ->
             vs.map {
@@ -163,13 +163,13 @@ class MutableSetMapMultiMap<K, V>(iter: Iterator<Pair<K, V>>) : MutableMultiMap<
  */
 class ImmutableMultiMapView<K, V>(val inner: MutableMultiMap<K, V>) : MultiMap<K, V> {
     override inline fun contains(k: K): Boolean = k in inner
-    override inline fun get(k: K): Set<V> = inner[k]
+    override inline fun get(k: K): DisjointSet<V> = inner[k]
     override inline fun one(k: K): V? = inner.one(k)
-    override val keyMapping: Iterable<Map.Entry<K, Set<V>>> inline get() = inner.keyMapping
+    override val keyMapping: Iterable<Map.Entry<K, DisjointSet<V>>> inline get() = inner.keyMapping
     override val keyMappingSize: Int inline get() = inner.keyMappingSize
-    override val keys: Set<K> inline get() = inner.keys
-    override val valueSets: Collection<Set<V>> inline get() = inner.valueSets
-    override val uniqueValues: Set<V> inline get() = inner.uniqueValues
+    override val keys: DisjointSet<K> inline get() = inner.keys
+    override val valueSets: Collection<DisjointSet<V>> inline get() = inner.valueSets
+    override val uniqueValues: DisjointSet<V> inline get() = inner.uniqueValues
     override val uniqueValuesSize: Int inline get() = inner.uniqueValuesSize
     override val entries: Iterable<Map.Entry<K, V>> inline get() = inner.entries
     override val entriesSize: Int inline get() = inner.entriesSize

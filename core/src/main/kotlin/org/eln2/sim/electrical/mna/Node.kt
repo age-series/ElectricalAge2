@@ -2,14 +2,14 @@ package org.eln2.sim.electrical.mna
 
 import org.eln2.debug.dprintln
 import org.eln2.sim.electrical.mna.component.Component
-import org.eln2.data.Set
+import org.eln2.data.DisjointSet
 
 /**
  * A "node", in MNA; the non-resistive connections between [Component]s.
  *
  * Aside from identifying [Component]s' connections, the Nodes' potentials (relative to [Circuit.ground]) are computed as a result of the MNA algorithm.
  */
-open class Node(var circuit: Circuit) : IDetail, Set() {
+open class Node(var circuit: Circuit) : IDetail, DisjointSet() {
     /**
      * The potential of this node, in Volts, relative to ground (as defined by the [Circuit]); an output of the simulation.
      */
