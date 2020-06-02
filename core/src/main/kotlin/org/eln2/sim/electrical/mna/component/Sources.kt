@@ -1,5 +1,6 @@
 package org.eln2.sim.electrical.mna.component
 
+import org.eln2.sim.electrical.mna.Node
 import org.eln2.sim.electrical.mna.VSource
 
 /**
@@ -12,7 +13,7 @@ class VoltageSource : Port() {
 
     override var potential: Double
         get() = vsources.first().potential
-        set(value) { vsources.first().potential = value }
+        set(value) { vsources.first().change(potential - value) }
 
     // The resistance over an ideal voltage source is zero.
     override val resistance: Double = 0.0
