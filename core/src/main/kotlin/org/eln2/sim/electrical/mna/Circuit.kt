@@ -127,6 +127,11 @@ class Circuit {
     var slack = 0.001
 
     /**
+     * The time in seconds of how long a simulation step occurs.
+     */
+    var timeStep = 0.05
+
+    /**
      * Set if the last step was successful.
      *
      * This is exactly the value returned from [step]; it is false when [computeResult] fails to solve or write out its results.
@@ -501,13 +506,12 @@ class Circuit {
      * The return value is the [success] field--whether or not [computeResult] was able to compute a solution. If this failed, the output data is likely meaningless; otherwise, the output data is stored in the fields of [nodes] and [voltageSources] to be consumed.
      */
     fun step(dt: Double): Boolean {
-        dprintln("C.s: dt=$dt")
         if (componentsChanged || connectivityChanged) {
             buildMatrix()
         }
 
-        preProcess.keys.forEach { it.process(dt) }
-        components.forEach { it.preStep(dt) }
+        preProcess.keys.forEach { it.process() }
+        components.forEach { it.preStep() }
 
         for (substep in 0 until maxSubSteps) {
             if (!(matrixChanged || rightSideChanged)) break  // Nothing to do
@@ -522,8 +526,8 @@ class Circuit {
             for (comp in components) comp.simStep()  // Allow non-linear components to request another substep
         }
 
-        components.forEach { it.postStep(dt) }
-        postProcess.keys.forEach { it.process(dt) }
+        components.forEach { it.postStep() }
+        postProcess.keys.forEach { it.process() }
 
         dprintln("C.s: success=$success")
         return success

@@ -86,12 +86,12 @@ abstract class Component : IDetail {
     /**
      * Called before substep iterations start in [Circuit.step].
      */
-    open fun preStep(dt: Double) {}
+    open fun preStep() {}
 
     /**
      * Called after substep iterations have finished in [Circuit.step].
      */
-    open fun postStep(dt: Double) {}
+    open fun postStep() {}
 
     /** The list of [Node]s held by this Component.
      *
@@ -169,7 +169,6 @@ abstract class Port : Component() {
      */
     final override val nodeCount = 2
 
-    // The orientation here is arbitrary, but helps keep signs consistent.
     /**
      * Get the positive [Node].
      *
@@ -191,4 +190,17 @@ abstract class Port : Component() {
      */
     open val potential: Double
         get() = if (isInCircuit) pos.potential - neg.potential else 0.0
+
+    /**
+     * The resistance of this component. Even if this component is not a resistor, it is used as a way of determining
+     * the current across the component since only the potential across the component is ultimately the only state
+     * that is recorded.
+     */
+    abstract val resistance: Double
+
+    /**
+     * The current across this component in Amperes.
+     */
+    open val current: Double
+        get() = potential / resistance
 }
