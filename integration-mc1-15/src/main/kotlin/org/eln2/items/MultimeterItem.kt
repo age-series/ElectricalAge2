@@ -13,9 +13,14 @@ import net.minecraft.world.World
  * This is used to measure the voltage of a circuit between the circuit and ground.
  * It also displays other useful information for some components.
  */
-class MultimeterItem: Item(Properties().defaultMaxDamage(255)) {
-	override fun addInformation(stack: ItemStack, worldIn: World?, tooltip: MutableList<ITextComponent>, flagIn: ITooltipFlag) {
-		super.addInformation(stack, worldIn, tooltip, flagIn)
-		tooltip.add(TranslationTextComponent("tooltip.eln2.item.multimeter"))
-	}
+class MultimeterItem : Item(Properties().defaultMaxDamage(255)) {
+    override fun addInformation(
+        stack: ItemStack,
+        worldIn: World?,
+        tooltip: MutableList<ITextComponent>,
+        flagIn: ITooltipFlag
+    ) {
+        super.addInformation(stack, worldIn, tooltip, flagIn)
+        tooltip.add(TranslationTextComponent("tooltip.eln2.item.multimeter"))
+    }
 }

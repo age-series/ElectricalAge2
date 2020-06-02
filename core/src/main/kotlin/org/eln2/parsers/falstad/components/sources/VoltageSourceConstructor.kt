@@ -10,9 +10,9 @@ import org.eln2.sim.electrical.mna.component.VoltageSource
  *
  * Basic Falstad voltage source. Two pin?
  */
-class VoltageSourceConstructor: PoleConstructor() {
-	override fun component(ccd: CCData) = VoltageSource()
-	override fun configure(ccd: CCData, cmp: Component) {
-		(cmp as VoltageSource).potential = ccd.data[2].toDouble()
-	}
+class VoltageSourceConstructor : PoleConstructor() {
+    override fun component(ccd: CCData) = VoltageSource()
+    override fun configure(ccd: CCData, cmp: Component) {
+        (cmp as VoltageSource).potential = ccd.data[2].toDouble()
+    }
 }

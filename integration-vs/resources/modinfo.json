@@ -6,6 +6,6 @@
     "description": "Electricity, in your base!",
     "version": "0.1.0",
     "dependency": {
-      "game": ""
+        "game": ""
     }
-  }
+}

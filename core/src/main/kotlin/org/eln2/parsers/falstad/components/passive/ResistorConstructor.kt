@@ -10,9 +10,9 @@ import org.eln2.sim.electrical.mna.component.Resistor
  *
  * Basic Falstad Resistor
  */
-class ResistorConstructor: PoleConstructor() {
-	override fun component(ccd: CCData) = Resistor()
-	override fun configure(ccd: CCData, cmp: Component) {
-		(cmp as Resistor).resistance = ccd.data[0].toDouble()
-	}
+class ResistorConstructor : PoleConstructor() {
+    override fun component(ccd: CCData) = Resistor()
+    override fun configure(ccd: CCData, cmp: Component) {
+        (cmp as Resistor).resistance = ccd.data[0].toDouble()
+    }
 }

@@ -1,16 +1,16 @@
 {
-  "type": "minecraft:crafting_shaped",
-  "pattern": [
-    "ccc",
-    "ccc",
-    "ccc"
-  ],
-  "key": {
-    "c": {
-      "item": "minecraft:clay"
+    "type": "minecraft:crafting_shaped",
+    "pattern": [
+        "ccc",
+        "ccc",
+        "ccc"
+    ],
+    "key": {
+        "c": {
+            "item": "minecraft:clay"
+        }
+    },
+    "result": {
+        "item": "eln2:flubber"
     }
-  },
-  "result": {
-    "item": "eln2:flubber"
-  }
 }
