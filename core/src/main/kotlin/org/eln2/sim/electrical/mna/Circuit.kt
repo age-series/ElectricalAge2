@@ -483,12 +483,12 @@ class Circuit {
 
             // Copy data back out to the references for Component use
             for ((i, n) in nodes.withIndex()) {
-                n.get()!!.potential = unknowns.getEntry(i)
+                n.get()!!.potential = -unknowns.getEntry(i)
             }
             // Microoptimization: pull this member access into a local variable for this tight loop
             val sz = nodes.size
             for ((i, v) in voltageSources.withIndex()) {
-                v.get()!!.current = unknowns.getEntry(i + sz)
+                v.get()!!.current = -unknowns.getEntry(i + sz)
             }
 
             success = true

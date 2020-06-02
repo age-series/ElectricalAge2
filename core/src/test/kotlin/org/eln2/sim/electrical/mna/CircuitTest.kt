@@ -1,5 +1,6 @@
 package org.eln2.sim.electrical.mna
 
+import org.eln2.debug.dprintln
 import org.eln2.sim.electrical.mna.component.Capacitor
 import org.eln2.sim.electrical.mna.component.Resistor
 import org.eln2.sim.electrical.mna.component.VoltageSource
@@ -42,7 +43,7 @@ internal class CircuitTest {
             vs.connect(0, r1, 0)
             c1.connect(0, r1, 0)
             vs.connect(1, c1, 1)
-            vs.connect(1, c.ground)
+            vs.connect(0, c.ground)
         }
     }
 
@@ -138,7 +139,10 @@ internal class CircuitTest {
     fun basicRCCircuit() {
         val ts = TrivialRCCircuit()
         ts.c.step(0.05)
-        assertEquals(ts.c1.current, 0.000732, 0.000001)
+        dprintln(ts.c1.detail())
+        dprintln(ts.r1.detail())
+        dprintln(ts.vs.detail())
+        assertEquals(ts.r1.current, 0.000732, 0.000001)
         assertEquals(ts.c1.potential, 6.315, 0.001)
         ts.c.step(0.05)
         assertEquals(ts.c1.current, 0.000270, 0.000001)

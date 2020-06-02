@@ -3,14 +3,16 @@ package org.eln2.sim.electrical.mna.component
 class Capacitor(var capacitance: Double) : Port() {
     override val name: String = "c"
 
-    override val resistance: Double = if (circuit != null) { circuit!!.timeStep / capacitance } else { 0.0 }
+    override val resistance: Double
+      get() = if (circuit == null) { 0.0 } else { circuit!!.timeStep / capacitance }
 
-    val charge : Double = capacitance * potential
+    val charge : Double
+        get() = capacitance * potential
 
     private var internalCurrentSource = CurrentSource()
 
     override val current: Double
-        get() = internalCurrentSource.current
+        get() = if (resistance > 0.0) internalCurrentSource.current else 0.0
 
     override fun added() {
         internalCurrentSource.circuit = circuit
@@ -25,9 +27,9 @@ class Capacitor(var capacitance: Double) : Port() {
 
     override fun stamp() {
         if (resistance > 0.0) {
+            circuit!!.stampResistor(pos.index, neg.index, resistance)
             internalCurrentSource.current = -potential / resistance
             internalCurrentSource.stamp()
-            circuit!!.stampResistor(pos.index, neg.index, resistance)
         }
     }
 
