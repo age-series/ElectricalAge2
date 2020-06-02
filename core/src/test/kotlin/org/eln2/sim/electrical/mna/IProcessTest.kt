@@ -9,11 +9,11 @@ internal class IProcessTest : IProcess {
 
     @Test
     fun iProcessTest() {
-        repeat(20) { process(0.05); } // Run the simulation 20 times for 50 ms each.
+        repeat(20) { process(); } // Run the simulation 20 times for 50 ms each.
         Assertions.assertEquals(timeRun, 1.0, 0.001) // Total time elapsed should be one second.
     }
 
-    override fun process(dt: Double) {
-        timeRun += dt
+    override fun process() {
+        timeRun += 0.05
     }
 }

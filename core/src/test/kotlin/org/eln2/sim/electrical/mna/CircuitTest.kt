@@ -1,6 +1,6 @@
 package org.eln2.sim.electrical.mna
 
-import org.eln2.sim.electrical.mna.component.Capacitor
+//import org.eln2.sim.electrical.mna.component.Capacitor
 import org.eln2.sim.electrical.mna.component.Resistor
 import org.eln2.sim.electrical.mna.component.VoltageSource
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -15,7 +15,7 @@ internal class CircuitTest {
     class TrivialResistiveCircuit {
         val c = Circuit()
         val vs = VoltageSource()
-        val r1 = Resistor()
+        val r1 = Resistor(5.0)
 
         init {
             c.add(vs, r1)
@@ -25,11 +25,10 @@ internal class CircuitTest {
             vs.connect(0, r1, 0)
             vs.connect(1, c.ground)
             vs.potential = 10.0
-            r1.resistance = 5.0
         }
     }
 
-    class TrivialRCCircuit {
+ /*   class TrivialRCCircuit {
         val c = Circuit()
         val vs = VoltageSource()
         val r1 = Resistor()
@@ -47,7 +46,7 @@ internal class CircuitTest {
             vs.connect(1, c1, 1)
             vs.connect(1, c.ground)
         }
-    }
+    }*/
 
     @Test
     fun parity() {
@@ -100,9 +99,8 @@ internal class CircuitTest {
         ts.c.step(0.5)
         val current = ts.r1.current
 
-        val r2 = Resistor()
+        val r2 = Resistor(5.0)
         ts.c.add(r2)
-        r2.resistance = ts.r1.resistance
         r2.connect(0, ts.r1, 0)
         r2.connect(1, ts.r1, 1)
 
@@ -122,12 +120,10 @@ internal class CircuitTest {
     fun resistorsInSeries() {
         val circuit = Circuit()
         val vs = VoltageSource()
-        val r1 = Resistor()
-        val r2 = Resistor()
+        val r1 = Resistor(5.0)
+        val r2 = Resistor(5.0)
 
         vs.potential = 10.0
-        r1.resistance = 5.0
-        r2.resistance = 5.0
 
         circuit.add(vs, r1, r2)
         vs.connect(1, r1, 1)
@@ -140,7 +136,7 @@ internal class CircuitTest {
         assertEquals(r1.current, 1.0, EPSILON)
     }
 
-    @Test
+ /*   @Test
     fun basicCapacitorCircuit() {
         val circuit = Circuit()
         val vs = VoltageSource()
@@ -208,5 +204,5 @@ internal class CircuitTest {
         }
 
         println("main_1: vs current: ${vs.current}\nmain_1: r1 current: ${r1.current}")
-    }
+    }*/
 }

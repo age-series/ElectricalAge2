@@ -8,8 +8,8 @@ import org.eln2.parsers.falstad.components.generic.Ignore
 import org.eln2.parsers.falstad.components.generic.InterpretGlobals
 import org.eln2.parsers.falstad.components.generic.OutputProbe
 import org.eln2.parsers.falstad.components.generic.WireConstructor
-import org.eln2.parsers.falstad.components.passive.CapacitorConstructor
-import org.eln2.parsers.falstad.components.passive.InductorConstructor
+//import org.eln2.parsers.falstad.components.passive.CapacitorConstructor
+//import org.eln2.parsers.falstad.components.passive.InductorConstructor
 import org.eln2.parsers.falstad.components.passive.ResistorConstructor
 import org.eln2.parsers.falstad.components.sources.CurrentSourceConstructor
 import org.eln2.parsers.falstad.components.sources.GroundConstructor
@@ -189,8 +189,8 @@ interface IComponentConstructor {
             "w" to WireConstructor(),
             "g" to GroundConstructor(),
             "r" to ResistorConstructor(),
-            "l" to InductorConstructor(),
-            "c" to CapacitorConstructor(),
+//            "l" to InductorConstructor(),
+//            "c" to CapacitorConstructor(),
             "v" to VoltageSourceConstructor(),
             "172" to VoltageRailConstructor(),
             "i" to CurrentSourceConstructor()

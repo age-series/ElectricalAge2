@@ -17,8 +17,7 @@ class OutputProbe : IComponentConstructor {
     }
 
     override fun construct(ccd: CCData) {
-        val r = Resistor()
-        r.resistance = HIGH_IMPEDANCE
+        val r = Resistor(HIGH_IMPEDANCE)
         ccd.circuit.add(r)
         r.connect(1, ccd.circuit.ground)
 
