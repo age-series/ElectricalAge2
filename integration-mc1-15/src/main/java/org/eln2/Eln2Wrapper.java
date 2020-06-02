@@ -4,12 +4,11 @@ import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.InterModComms;
 import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
-import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
-import net.minecraftforge.fml.event.lifecycle.InterModEnqueueEvent;
-import net.minecraftforge.fml.event.lifecycle.InterModProcessEvent;
+import net.minecraftforge.fml.event.lifecycle.*;
 import net.minecraftforge.fml.event.server.FMLServerStartingEvent;
 import thedarkcolour.kotlinforforge.eventbus.KotlinEventBus;
+import net.minecraftforge.fml.DeferredWorkQueue;
+
 
 import java.util.stream.Collectors;
 
@@ -22,29 +21,29 @@ import java.util.stream.Collectors;
 
 public class Eln2Wrapper
 {
-	public Eln2Wrapper() {
-		KotlinEventBus bus = thedarkcolour.kotlinforforge.forge.ForgeKt.getMOD_BUS();
-		// Register the setup method for modloading
-		bus.addListener(this::setup);
-		// Register the enqueueIMC method for modloading
-		bus.addListener(this::enqueueIMC);
-		// Register the processIMC method for modloading
-		bus.addListener(this::processIMC);
-		// Register the doClientStuff method for modloading
-		bus.addListener(this::doClientStuff);
+    public Eln2Wrapper() {
+        KotlinEventBus bus = thedarkcolour.kotlinforforge.forge.ForgeKt.getMOD_BUS();
+        // Register the setup method for modloading
+        bus.addListener(this::loadComplete);
+        // Register the enqueueIMC method for modloading
+        bus.addListener(this::enqueueIMC);
+        // Register the processIMC method for modloading
+        bus.addListener(this::processIMC);
+        // Register the doClientStuff method for modloading
+        bus.addListener(this::doClientStuff);
         // Register ourselves for server and other game events we are interested in
         MinecraftForge.EVENT_BUS.register(this);
 
         Eln2.INSTANCE.initialize();
     }
 
-    private void setup(final FMLCommonSetupEvent event) {
-        Eln2.INSTANCE.setup(event);
+    private void loadComplete(final FMLLoadCompleteEvent event) {
+        DeferredWorkQueue.runLater(() -> Eln2.INSTANCE.loadComplete(event));
     }
 
     private void doClientStuff(final FMLClientSetupEvent event) {
         // do something that can only be done on the client
-        Eln2.LOGGER.info("Got game settings {}", event.getMinecraftSupplier().get().gameSettings);
+        //Eln2.LOGGER.info("Got game settings {}", event.getMinecraftSupplier().get().gameSettings);
     }
 
     private void enqueueIMC(final InterModEnqueueEvent unused_event) {
