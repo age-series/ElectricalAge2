@@ -15,7 +15,7 @@ open class Inductor : Port() {
     /**
      * Self-inductance in Henries, singular Henry (Volts / Ampere).
      */
-    var l: Double = 0.0
+    var inductance: Double = 0.0
 
     /**
      * The simulation timestep in seconds.
@@ -28,7 +28,7 @@ open class Inductor : Port() {
      * The "equivalent resistance" of the Norton system, in Ohms.
      */
     private val eqR: Double
-        get() = l / ts
+        get() = inductance / ts
 
     /**
      * The current, in Amperes, presently sourced by this Norton system.
@@ -47,12 +47,12 @@ open class Inductor : Port() {
     var phi: Double = 0.0
 
     override fun detail(): String {
-        return "[inductor h:$l]"
+        return "[inductor h:$inductance]"
     }
 
     override fun preStep(dt: Double) {
         ts = dt
-        i = phi / l
+        i = phi / inductance
     }
 
     override fun postStep(dt: Double) {
