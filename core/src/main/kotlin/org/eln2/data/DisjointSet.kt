@@ -17,7 +17,7 @@ package org.eln2.data
  *
  * In the case of inheriting Set, you can also store data on the representative. Note that it is difficult to control which instance will ultimately *be* the representative; in the cases where it can't be avoided, [priority] can be used, but this is advisable only as a last resort (since it reduces the optimality of this algorithm).
 */
-open class Set {
+open class DisjointSet {
 
     /**
      * The size of this tree; loosely, how many Sets have been merged, including transitively, with this one.
@@ -31,7 +31,7 @@ open class Set {
      *
      * Following this recursively will lead to the [representative]. All representatives refer to themselves as their parent.
      */
-    var parent: Set = this
+    var parent: DisjointSet = this
 
     /**
      * The priority of the merge. If set, this overrides the "merge by size" algorithm in [unite].
@@ -47,7 +47,7 @@ open class Set {
      *
      * This is implemented using the "Path splitting" algorithm.
      */
-    val representative: Set
+    val representative: DisjointSet
         get() {
             var cur = this
             while (cur.parent != cur) {
@@ -65,7 +65,7 @@ open class Set {
      *
      * This is implemented using the "by size" merge algorithm, adjusted for [priority].
      */
-    fun unite(other: Set) {
+    fun unite(other: DisjointSet) {
         val trep = representative
         val orep = other.representative
         if (trep == orep) return
