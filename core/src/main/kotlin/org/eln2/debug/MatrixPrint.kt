@@ -4,6 +4,7 @@ import com.andreapivetta.kolor.Color
 import com.andreapivetta.kolor.Kolor
 import org.apache.commons.math3.linear.RealMatrix
 import org.apache.commons.math3.linear.RealVector
+import org.eln2.sim.electrical.mna.Circuit
 
 const val FORMAT_SIZE = 8
 
@@ -160,7 +161,7 @@ fun unknownsFormat(unknowns: RealVector?, headerfooter: Boolean = true): String 
     return output
 }
 
-fun mnaFormat(matrix: RealMatrix, knowns: RealVector, color: Boolean = true): String {
+fun mnaFormatNoUnknowns(matrix: RealMatrix, knowns: RealVector, color: Boolean = true): String {
     val mftLines = matrixFormat(matrix, false).split("\n")
     val kftLines = knownsFormat(knowns, false).split("\n")
     val biggest = kotlin.math.max(mftLines.size, kftLines.size)
@@ -182,8 +183,15 @@ fun mnaFormat(matrix: RealMatrix, knowns: RealVector, color: Boolean = true): St
     return output
 }
 
-fun mnaFormatAll(matrix: RealMatrix, knowns: RealVector, unknowns: RealVector?, color: Boolean = true): String {
-    if (unknowns == null) return mnaFormat(matrix, knowns, color)
+fun mnaFormat(circuit: Circuit, color: Boolean = true): String {
+    val localMatrix = circuit.matrix
+    val localKnowns = circuit.knowns
+    if ((localMatrix == null) or (localKnowns == null)) return ""
+    return mnaFormat(localMatrix!!, localKnowns!!, circuit.unknowns, color)
+}
+
+fun mnaFormat(matrix: RealMatrix, knowns: RealVector, unknowns: RealVector?, color: Boolean = true): String {
+    if (unknowns == null) return mnaFormatNoUnknowns(matrix, knowns, color)
     val mftLines = matrixFormat(matrix, false).split("\n")
     val kftLines = knownsFormat(knowns, false).split("\n")
     val uftLines = unknownsFormat(unknowns, false).split("\n")
@@ -209,6 +217,17 @@ fun mnaFormatAll(matrix: RealMatrix, knowns: RealVector, unknowns: RealVector?, 
     return output
 }
 
+@Suppress("UNUSED_PARAMETER") // Remove this line when implementation created.
+fun mnaIntelligentFormat(circuit: Circuit): String {
+    // TODO: https://github.com/eln2/eln2/issues/88
+
+    // Use https://lpsa.swarthmore.edu/Systems/Electrical/mna/MNA3.html as a guide.
+    // Please color the G matrix red. Every other matrix can be a color of your choosing, but please expose every internal matrix.
+    // (so, G, B, C, D, v, j, i, e)
+    // Tip: use Kolor.foreground("mytext", Color.RED) to color text. Avoid background colors and hard to see foreground colors.
+    return ""
+}
+
 @Suppress("unused")
 fun matrixPrint(matrix: RealMatrix) {
     println(matrixFormat(matrix, true))
@@ -225,11 +244,16 @@ fun unknownsPrint(unknowns: RealVector?) {
 }
 
 @Suppress("unused")
-fun mnaPrint(matrix: RealMatrix, knowns: RealVector, color: Boolean = true) {
-    println(mnaFormat(matrix, knowns, color))
+fun mnaPrint(matrix: RealMatrix, knowns: RealVector, unknowns: RealVector?, color: Boolean = true) {
+    println(mnaFormat(matrix, knowns, unknowns, color))
 }
 
 @Suppress("unused")
-fun mnaPrintAll(matrix: RealMatrix, knowns: RealVector, unknowns: RealVector?, color: Boolean = true) {
-    println(mnaFormatAll(matrix, knowns, unknowns, color))
+fun mnaPrint(circuit: Circuit, color: Boolean = true) {
+    println(mnaFormat(circuit, color))
+}
+
+@Suppress("unused")
+fun mnaIntelligentPrint(circuit: Circuit) {
+    println(mnaIntelligentFormat(circuit))
 }

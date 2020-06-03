@@ -178,6 +178,7 @@ class Circuit {
      * It is the "A Matrix" in the [MNA Algorithm][https://lpsa.swarthmore.edu/Systems/Electrical/mna/MNA3.html].
      */
     internal var matrix: RealMatrix? = null
+        private set
 
     /**
      * The "knowns" vector.
@@ -187,6 +188,19 @@ class Circuit {
      * This is the "z matrix" in the [MNA Algorithm][https://lpsa.swarthmore.edu/Systems/Electrical/mna/MNA3.html].
      */
     internal var knowns: RealVector? = null
+        private set
+
+    /**
+     * The "unknowns" vector, the results from the MNA solve. DO NOT SET ANYTHING HERE
+     *
+     * This is a column vector of size (unknown voltages + unknown currents); the first elements are the voltages to solve for, and the second elements are the unknown currents through the voltage sources.
+     *
+     * This is the "x matrix" in the [MNA Algorithm][https://lpsa.swarthmore.edu/Systems/Electrical/mna/MNA3.html].
+     *
+     * NOTE: This array is populated after [computeResult] and may be all sorts of invalid.
+     */
+    internal var unknowns: RealVector? = null
+        private set
 
     /**
      * A solver for [matrix], if it could be inverted.
@@ -203,6 +217,7 @@ class Circuit {
      * The order is significant; their position is their index into the rows and columns of [matrix] and [knowns]. This is also available via [Node.index] after a [buildMatrix].
      */
     internal var nodes: List<WeakReference<Node>> = emptyList()
+        private set
 
     /**
      * [VSource]s owned by this Circuit.
@@ -211,7 +226,9 @@ class Circuit {
      *
      * The order is significant; their position is their index into the rows and columns of [matrix] and [knowns] (offset, as need be, by the size of [nodes]). This is available via [VSource.index] after a [buildMatrix].
      */
-    private var voltageSources: List<WeakReference<VSource>> = emptyList()
+    @Suppress("MemberVisibilityCanBePrivate")
+    internal var voltageSources: List<WeakReference<VSource>> = emptyList()
+        private set
 
     /**
      * Add a value to a given row and column of [matrix].
@@ -468,31 +485,29 @@ class Circuit {
      * This routine can fail; [success] is set based on whether this method was successful.
      */
     // Step 3: With known current and voltage sources, solve for unknowns (node potentials and source currents).
-    internal fun computeResult(): RealVector? {
+    private fun computeResult() {
         dprintln("C.cR")
         rightSideChanged = false
         success = false
-        if (solver == null) return null
+        if (solver == null) return
         try {
-            val unknowns = solver!!.solve(knowns)
+            val localUnknowns = solver!!.solve(knowns)
+            unknowns = localUnknowns
 
             // Copy data back out to the references for Component use
             for ((i, n) in nodes.withIndex()) {
-                n.get()!!.potential = unknowns.getEntry(i)
+                n.get()!!.potential = localUnknowns.getEntry(i)
             }
             // Microoptimization: pull this member access into a local variable for this tight loop
             val sz = nodes.size
             for ((i, v) in voltageSources.withIndex()) {
-                v.get()!!.current = unknowns.getEntry(i + sz)
+                v.get()!!.current = localUnknowns.getEntry(i + sz)
             }
-
             success = true
-            return unknowns
         } catch (e: SingularMatrixException) {
             dprintln("Singular: $matrix")
             if (matrix != null) dprint(MATRIX_FORMAT.format(matrix))
         }
-        return null
     }
 
     /**

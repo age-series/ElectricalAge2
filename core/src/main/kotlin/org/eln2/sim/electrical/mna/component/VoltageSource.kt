@@ -30,7 +30,7 @@ class VoltageSource : Port() {
         get() = if (isInCircuit) vsources[0].current else 0.0
 
     override fun detail(): String {
-        return "[voltage source u:$potential]"
+        return "[voltage source ${potential}V, ${current}A, ${potential * current}W]"
     }
 
     override fun stamp() {
