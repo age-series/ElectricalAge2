@@ -177,7 +177,7 @@ class Circuit {
      *
      * It is the "A Matrix" in the [MNA Algorithm][https://lpsa.swarthmore.edu/Systems/Electrical/mna/MNA3.html].
      */
-    internal var matrix: RealMatrix? = null
+    var matrix: RealMatrix? = null
 
     /**
      * The "knowns" vector.
@@ -186,7 +186,7 @@ class Circuit {
      *
      * This is the "z matrix" in the [MNA Algorithm][https://lpsa.swarthmore.edu/Systems/Electrical/mna/MNA3.html].
      */
-    internal var knowns: RealVector? = null
+    var knowns: RealVector? = null
 
     /**
      * A solver for [matrix], if it could be inverted.
@@ -468,11 +468,11 @@ class Circuit {
      * This routine can fail; [success] is set based on whether this method was successful.
      */
     // Step 3: With known current and voltage sources, solve for unknowns (node potentials and source currents).
-    private fun computeResult() {
+    internal fun computeResult(): RealVector? {
         dprintln("C.cR")
         rightSideChanged = false
         success = false
-        if (solver == null) return
+        if (solver == null) return null
         try {
             val unknowns = solver!!.solve(knowns)
 
@@ -487,10 +487,12 @@ class Circuit {
             }
 
             success = true
+            return unknowns
         } catch (e: SingularMatrixException) {
             dprintln("Singular: $matrix")
             if (matrix != null) dprint(MATRIX_FORMAT.format(matrix))
         }
+        return null
     }
 
     /**

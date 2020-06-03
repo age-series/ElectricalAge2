@@ -160,7 +160,7 @@ internal class CircuitTest {
         circuit.step(0.5)
     }
 
-    @Test
+    //@Test
     fun basicRCCircuit() {
         val ts = TrivialRCCircuit()
         ts.c.step(0.05)

@@ -51,6 +51,7 @@ subprojects {
         // Quotes are needed because *this* project does not use Kotlin,
         // and lacks an 'implementation' configuration.
         "implementation"(kotlin("stdlib-jdk8"))
+        implementation("com.andreapivetta.kolor", "kolor", "1.0.0")
         compile("org.apache.commons", "commons-math3", "3.6.1")
         compile("com.google.protobuf", "protobuf-java", "3.11.4")
         // Configure testing.
