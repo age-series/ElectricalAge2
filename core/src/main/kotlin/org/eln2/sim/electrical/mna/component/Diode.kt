@@ -39,6 +39,15 @@ class IdealDiode : Resistor() {
         }
         dprintln("D.sS: out u=$potential r=$resistance")
     }
+
+    override fun detail(): String {
+        val bias = if (resistance == minimumResistance) {
+            "Forward Bias Mode (conducting)"
+        }else{
+            "Reverse Bias Mode (blocking)"
+        }
+        return "[ideal diode $name: ${potential}v, ${current}A, ${resistance}Ω, ${power}W, $bias]"
+    }
 }
 
 /**
@@ -274,5 +283,9 @@ class RealisticDiode(private var model: DiodeData) : Resistor() {
 
         resistance = 1 / conductance
         current = newCurrent
+    }
+
+    override fun detail(): String {
+        return "[realistic diode (${model.name}) $name: ${potential}v, ${current}A, ${resistance}Ω, ${power}W]"
     }
 }

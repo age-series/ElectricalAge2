@@ -21,7 +21,7 @@ class CurrentSource : Port() {
         }
 
     override fun detail(): String {
-        return "[current source i:$current]"
+        return "[current source ${current}A, ${potential}V, ${potential * current}W]"
     }
 
     override fun stamp() {

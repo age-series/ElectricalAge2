@@ -30,6 +30,14 @@ open class Capacitor : Port() {
     var capacitance: Double = 1e-5
 
     /**
+     * Energy Stored, in Joules
+     */
+    @Suppress("MemberVisibilityCanBePrivate")
+    val energy: Double
+        // https://wikimedia.org/api/rest_v1/media/math/render/svg/2d44d092abb138877538fad86bc77e18b26fb1bc
+        get() = 0.5 * capacitance * potential * potential
+
+    /**
      * The simulation timestep in seconds.
      *
      * This is set in [preStep], but the value is unfortunately not available during [stamp]; thus, it may be slightly out of date when [step] is actually called.
@@ -58,7 +66,7 @@ open class Capacitor : Port() {
     var idealU: Double = 0.0
 
     override fun detail(): String {
-        return "[capacitor c:$capacitance]"
+        return "[capacitor $name: ${potential}v, ${current}A, ${capacitance}F, ${energy}J]"
     }
 
     override fun preStep(dt: Double) {

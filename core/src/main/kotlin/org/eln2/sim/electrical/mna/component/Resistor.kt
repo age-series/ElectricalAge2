@@ -36,12 +36,11 @@ open class Resistor : Port() {
     /**
      * Returns the power dissipated by this resistor, as a function of its current and potential, in Watts.
      */
-    @Suppress("unused")
     open val power: Double
         get() = current * potential
 
     override fun detail(): String {
-        return "[resistor r:$resistance]"
+        return "[resistor $name: ${potential}v, ${current}A, ${resistance}Ω, ${power}W]"
     }
 
     override fun stamp() {
