@@ -169,11 +169,11 @@ fun mnaFormat(matrix: RealMatrix, knowns: RealVector, color: Boolean = true): St
     (0 until biggest).withIndex().forEach { entry ->
         if (color) {
             output +=Kolor.foreground(mftLines[entry.value], Color.RED)
-            if (entry.index == biggest - 2) output += " x = " else output += "     "
+            output += if (entry.index == biggest - 2) " x = " else "     "
             output += Kolor.foreground(kftLines[entry.value], Color.BLUE)
         }else{
             output +=mftLines[entry.value]
-            if (entry.index == biggest - 2) output += " x = " else output += "     "
+            output += if (entry.index == biggest - 2) " x = " else "     "
             output += " "
             output += kftLines[entry.value]
         }
