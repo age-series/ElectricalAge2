@@ -20,7 +20,7 @@ val MATRIX_FORMAT = RealMatrixFormat("", "", "\t", "\n", "", "\t")
  *
  * # Construction
  *
- * A Circuit is primarily configured through included [Component]s, which are [add]ed to the Circuit incrementally. Only _after_ such a Component is added does it get a proper sequence of [Node]s in its [Component.nodes] (as requested in its [Component.nodeCount]). These [NodeRef]s may be used to connect Components together once they are added to the simulation; generally, the order of Nodes is meaningful, and each Component subclass may define different meaning for the Nodes in this sequence. For example, [Port]s have a well-defined positive and negative terminal node.
+ * A Circuit is primarily configured through included [Component]s, which are [add]ed to the Circuit incrementally. Only _after_ such a Component is added does it get a proper sequence of [Node]s in its [Component.nodes] (as requested in its [Component.nodeCount]). These [Node]s may be used to connect Components together once they are added to the simulation; generally, the order of Nodes is meaningful, and each Component subclass may define different meaning for the Nodes in this sequence. For example, [Port]s have a well-defined positive and negative terminal node.
  *
  * Note that a Circuit should _only_ be made of a Connected Component (in the graph sense) of a circuit; having disjoint Connected Components in a Circuit will at least degrade performance considerably, and may cause the circuit to [become underconstrained][isFloating]--see below.
  *
@@ -177,7 +177,7 @@ class Circuit {
      *
      * It is the "A Matrix" in the [MNA Algorithm][https://lpsa.swarthmore.edu/Systems/Electrical/mna/MNA3.html].
      */
-    var matrix: RealMatrix? = null
+    internal var matrix: RealMatrix? = null
 
     /**
      * The "knowns" vector.
@@ -186,7 +186,7 @@ class Circuit {
      *
      * This is the "z matrix" in the [MNA Algorithm][https://lpsa.swarthmore.edu/Systems/Electrical/mna/MNA3.html].
      */
-    var knowns: RealVector? = null
+    internal var knowns: RealVector? = null
 
     /**
      * A solver for [matrix], if it could be inverted.
@@ -351,7 +351,7 @@ class Circuit {
     /**
      * Remove a [Component] from this Circuit.
      *
-     * All connections to any [NodeRef] of this Component are lost. The [Component] itself is guaranteed to be in such a state that, if it were added again and reconnected, the simulation would continue as if the removal did not happen.
+     * All connections to any [Node] of this Component are lost. The [Component] itself is guaranteed to be in such a state that, if it were added again and reconnected, the simulation would continue as if the removal did not happen.
      *
      * If the removal succeeded, [componentsChanged] is set, and [buildMatrix] will run on the next [step].
      */
@@ -393,7 +393,7 @@ class Circuit {
      *
      * This does not need to happen when [matrixChanged], but [factorMatrix] does.
      *
-     * These conditions are usually handled automatically for you, whenever [Component]s are [add]ed or [NodeRef]s are [Component.connect]ed.
+     * These conditions are usually handled automatically for you, whenever [Component]s are [add]ed or [Node]s are [Component.connect]ed.
      */
     // Step 1: Whenever the number of components, or their nodal connectivity (not resistances, e.g.) changes, allocate
     // a matrix of appropriate size.
