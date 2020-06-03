@@ -8,6 +8,13 @@ import org.eln2.sim.electrical.mna.Circuit
 
 const val FORMAT_SIZE = 8
 
+/**
+ * matrixFormat: Prints out the A matrix for the MNA
+ *
+ * @param matrix The A matrix
+ * @param headerfooter If you want a footer
+ * @return matrix output
+ */
 fun matrixFormat(matrix: RealMatrix, headerfooter: Boolean = true): String {
     val matrixData = matrix.data
     if (matrixData.isEmpty()) return ""
@@ -58,6 +65,13 @@ fun matrixFormat(matrix: RealMatrix, headerfooter: Boolean = true): String {
     return output
 }
 
+/**
+ * knownsFormat: Prints out the z matrix for the MNA
+ *
+ * @param knowns The z matrix
+ * @param headerfooter If you want a footer
+ * @return matrix output
+ */
 fun knownsFormat(knowns: RealVector, headerfooter: Boolean = true): String {
     val knownsData = knowns.toArray()
     if (knownsData.isEmpty()) return ""
@@ -109,6 +123,13 @@ fun knownsFormat(knowns: RealVector, headerfooter: Boolean = true): String {
     return output
 }
 
+/**
+ * unknownsFormat: Prints out the x matrix for the MNA
+ *
+ * @param unknowns The x matrix
+ * @param headerfooter If you want a footer
+ * @return matrix output
+ */
 fun unknownsFormat(unknowns: RealVector?, headerfooter: Boolean = true): String {
     if (unknowns == null) return ""
     val unknownsData = unknowns.toArray()
@@ -161,6 +182,14 @@ fun unknownsFormat(unknowns: RealVector?, headerfooter: Boolean = true): String 
     return output
 }
 
+/**
+ * mnaFormatNoUnknowns: Prints out the A and Z matrices, printing "x" for the X matrix.
+ *
+ * @param matrix The A matrix
+ * @param knowns The Z matrix
+ * @param color If you want colors
+ * @return matrix output
+ */
 fun mnaFormatNoUnknowns(matrix: RealMatrix, knowns: RealVector, color: Boolean = true): String {
     val mftLines = matrixFormat(matrix, false).split("\n")
     val kftLines = knownsFormat(knowns, false).split("\n")
@@ -183,6 +212,12 @@ fun mnaFormatNoUnknowns(matrix: RealMatrix, knowns: RealVector, color: Boolean =
     return output
 }
 
+/**
+ * mnaFormat: Prints out the A and Z matrices, printing "x" for the X matrix if it is unavailable
+ *
+ * @param circuit The circuit to print
+ * @return matrix output
+ */
 fun mnaFormat(circuit: Circuit, color: Boolean = true): String {
     val localMatrix = circuit.matrix
     val localKnowns = circuit.knowns
@@ -190,6 +225,15 @@ fun mnaFormat(circuit: Circuit, color: Boolean = true): String {
     return mnaFormat(localMatrix!!, localKnowns!!, circuit.unknowns, color)
 }
 
+/**
+ * mnaFormat: Prints out the A and Z matrices, printing "x" for the X matrix if it is unavailable
+ *
+ * @param matrix The A matrix
+ * @param knowns The Z matrix
+ * @param unknowns The X matrix
+ * @param color If you want colors
+ * @return matrix output
+ */
 fun mnaFormat(matrix: RealMatrix, knowns: RealVector, unknowns: RealVector?, color: Boolean = true): String {
     if (unknowns == null) return mnaFormatNoUnknowns(matrix, knowns, color)
     val mftLines = matrixFormat(matrix, false).split("\n")
@@ -217,6 +261,12 @@ fun mnaFormat(matrix: RealMatrix, knowns: RealVector, unknowns: RealVector?, col
     return output
 }
 
+/**
+ * mnaIntelligentFormat: Advanced color coded output of the entire G, B, C, D, v, j, i, and e matrices.
+ *
+ * @param circuit The circuit to print
+ * @return matrix output
+ */
 @Suppress("UNUSED_PARAMETER") // Remove this line when implementation created.
 fun mnaIntelligentFormat(circuit: Circuit): String {
     // TODO: https://github.com/eln2/eln2/issues/88
@@ -228,31 +278,58 @@ fun mnaIntelligentFormat(circuit: Circuit): String {
     return ""
 }
 
+/**
+ * matrixPrint: Print of the A matrix in the MNA
+ * @param matrix The A Matrix
+ */
 @Suppress("unused")
 fun matrixPrint(matrix: RealMatrix) {
     println(matrixFormat(matrix, true))
 }
 
+/**
+ * knownsPrint: Print of the Z matrix in the MNA
+ * @param knowns The Z Matrix
+ */
 @Suppress("unused")
 fun knownsPrint(knowns: RealVector) {
     println(knownsFormat(knowns, true))
 }
 
+/**
+ * unknownsPrint: Print of the X matrix in the MNA
+ * @param unknowns The X Matrix
+ */
 @Suppress("unused")
 fun unknownsPrint(unknowns: RealVector?) {
     if (unknowns != null) println(unknownsFormat(unknowns, true))
 }
 
+/**
+ * mnaPrint: Print of all MNA matrices
+ * @param matrix The A matrix
+ * @param knowns The Z matrix
+ * @param unknowns The X matrix
+ * @param color Whether to print in color or not
+ */
 @Suppress("unused")
 fun mnaPrint(matrix: RealMatrix, knowns: RealVector, unknowns: RealVector?, color: Boolean = true) {
     println(mnaFormat(matrix, knowns, unknowns, color))
 }
 
+/**
+ * mnaPrint: Print of all MNA matrices
+ * @param circuit The circuit
+ */
 @Suppress("unused")
 fun mnaPrint(circuit: Circuit, color: Boolean = true) {
     println(mnaFormat(circuit, color))
 }
 
+/**
+ * mnaIntelligentPrint: Print of all MNA matrices in a color coded output
+ * @param circuit The circuit
+ */
 @Suppress("unused")
 fun mnaIntelligentPrint(circuit: Circuit) {
     println(mnaIntelligentFormat(circuit))
