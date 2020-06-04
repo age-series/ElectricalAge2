@@ -15,19 +15,14 @@ open class Capacitor : Port() {
     override var name: String = "c"
 
     /**
-     * The current, in Amperes, presently sourced by this Norton system.
-     */
-    internal var i: Double = 0.0
-        set(value) {
-            if (isInCircuit)
-                circuit!!.stampCurrentSource(pos.index, neg.index, value - field)
-            field = value
-        }
-
-    /**
      * Capacitance, in Farads (Coulombs / Volt)
      */
     var capacitance: Double = 1e-5
+        set(value) {
+            if(isInCircuit) unstamp()
+            field = value
+            if(isInCircuit) stamp()
+        }
 
     /**
      * Energy Stored, in Joules
@@ -43,6 +38,11 @@ open class Capacitor : Port() {
      * This is set in [preStep], but the value is unfortunately not available during [stamp]; thus, it may be slightly out of date when [step] is actually called.
      */
     var ts: Double = 0.05  // A safe default
+        set(value) {
+            unstamp()
+            field = value
+            stamp()
+        }
 
     /**
      * The "equivalent resistance" of the Norton system, in Ohms.
@@ -55,8 +55,8 @@ open class Capacitor : Port() {
      */
     internal var current: Double = 0.0
         set(value) {
-            if (isInCircuit)
-                circuit!!.stampCurrentSource(pos.index, neg.index, value - field)
+            if (isInCircuit && pos != null && neg != null)
+                circuit!!.stampCurrentSource(pos!!.index, neg!!.index, value - field)
             field = value
         }
 
@@ -70,7 +70,7 @@ open class Capacitor : Port() {
     }
 
     override fun preStep(dt: Double) {
-        ts = dt
+        if(ts != dt) ts = dt  // May cause conductivity change/matrix solve step
         current = -idealU / eqR
         dprintln("C.preS: i=$current eqR=$eqR idealU=$idealU")
     }
@@ -82,6 +82,10 @@ open class Capacitor : Port() {
     }
 
     override fun stamp() {
-        pos.stampResistor(neg, eqR)
+        if(pos != null && neg != null) pos!!.stampResistor(neg!!, eqR)
+    }
+    
+    protected fun unstamp() {
+        if(pos != null && neg != null) pos!!.stampResistor(neg!!, -eqR)
     }
 }

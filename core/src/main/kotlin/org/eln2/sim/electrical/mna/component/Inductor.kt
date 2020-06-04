@@ -35,8 +35,8 @@ open class Inductor : Port() {
      */
     internal var i: Double = 0.0
         set(value) {
-            if (isInCircuit)
-                circuit!!.stampCurrentSource(pos.index, neg.index, value - field)
+            if (isInCircuit && pos != null && neg != null)
+                circuit!!.stampCurrentSource(pos!!.index, neg!!.index, value - field)
             field = value
         }
 
@@ -74,7 +74,7 @@ open class Inductor : Port() {
         phi += potential * ts
     }
 
-    override fun stamp() {
-        node(0).stampResistor(node(1), eqR)
+    override fun stamp() { 
+        pos!!.stampResistor(neg!!, eqR)
     }
 }

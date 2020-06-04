@@ -18,12 +18,12 @@ class MNATests {
 
         vs.connect(0, r, 0)
         vs.connect(1, r, 1)
-        vs.connect(0, c.ground)
+        vs.ground(0)
 
         vs.potential = 10.0
         r.resistance = 10.0
 
-        c.step(0.05)
+        assert(c.step(0.05))
         mnaPrint(c)
         assertEquals(true, (r.current > 0.99) and (r.current < 1.01))
     }
@@ -38,18 +38,18 @@ class MNATests {
 
         vs.connect(0, r, 0)
         vs.connect(1, r, 1)
-        vs.connect(0, c.ground)
+        vs.ground(0)
 
         vs.potential = 10.0
         r.resistance = 10.0
 
-        c.step(0.05)
+        assert(c.step(0.05))
         mnaPrint(c)
         assertEquals(true, (r.current > 0.99) and (r.current < 1.01))
 
         r.resistance = 50.0
 
-        c.step(0.05)
+        assert(c.step(0.05))
 
         mnaPrint(c)
         assertEquals(true, (r.current > 0.19) and (r.current < 0.21))
@@ -67,28 +67,28 @@ class MNATests {
         vs.connect(0, r1, 0)
         r1.connect(1, r2, 0)
         vs.connect(1, r2, 1)
-        vs.connect(0, c.ground)
+        vs.ground(0)
 
         vs.potential = 10.0
         r1.resistance = 10.0
         r2.resistance = 20.0
 
-        c.step(0.05)
+        assert(c.step(0.05))
         mnaPrint(c)
         assertEquals(true, (r1.current > 0.333) and (r1.current < 0.334))
         assertEquals(true, (r2.current > 0.333) and (r2.current < 0.334))
-        println(vs.nodes)
-        println(r1.nodes)
-        println(r2.nodes)
-        assertEquals(true, (r1.nodes[1].potential > 3.333) and (r1.nodes[1].potential < 3.334))
+        println(vs.pins)
+        println(r1.pins)
+        println(r2.pins)
+        assertEquals(true, ((r1.node(1)?.potential ?: 0.0) > 3.333) and ((r1.node(1)?.potential ?: 0.0) < 3.334))
 
         r2.resistance = 50.0
 
-        c.step(0.05)
+        assert(c.step(0.05))
 
         mnaPrint(c)
         assertEquals(true, (r1.current > 0.1666) and (r1.current < 0.1667))
         assertEquals(true, (r2.current > 0.1666) and (r2.current < 0.1667))
-        assertEquals(true, (r1.nodes[1].potential > 1.666) and (r1.nodes[1].potential < 1.667))
+        assertEquals(true, ((r1.node(1)?.potential ?: 0.0)> 1.666) and ((r1.node(1)?.potential ?: 0.0) < 1.667))
     }
 }

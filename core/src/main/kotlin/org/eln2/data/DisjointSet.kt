@@ -11,11 +11,12 @@ package org.eln2.data
  *
  * Typical use case is as follows:
  *
- * 1. Choose your method above; for the former, the Set object is `this`; for the latter, substitute your field.
- * 2. Unify Sets by calling [unite].
- * 3. Determine if two Sets are in the same component by testing their [representative] for equality.
+ * 1. Choose your method above; for the former, the DisjointSet object is `this`; for the latter, substitute your field.
+ * 2. Unify DisjointSets by calling [unite].
+ * 3. Determine if two DisjointSets are in the same component by testing their [representative] for equality.
+ * 4. Optionally, mutate the data on a DisjointSet subclass' representative, knowing that the mutations are visible from all DisjointSets with the same representative.
  *
- * In the case of inheriting Set, you can also store data on the representative. Note that it is difficult to control which instance will ultimately *be* the representative; in the cases where it can't be avoided, [priority] can be used, but this is advisable only as a last resort (since it reduces the optimality of this algorithm).
+ * Note that it is difficult to control which instance will ultimately *be* the representative; in the cases where it can't be avoided, [priority] can be used, but this is advisable only as a last resort (since it reduces the optimality of this algorithm).
 */
 open class DisjointSet {
 
@@ -41,7 +42,7 @@ open class DisjointSet {
     open val priority: Int = 0
 
     /**
-     * Find the representative of this set.
+     * Find the representative of this disjoint set.
      *
      * This instance is the same as all other instances that have been [unite]d, transitively, with this one.
      *
@@ -59,13 +60,13 @@ open class DisjointSet {
         }
 
     /**
-     * Unite this instance with another instance of Set.
+     * Unite this instance with another instance of DisjointSet.
      *
      * After this is done, both this and [other] will have the same [representative] as each other (and as all other Sets with which they were previously united).
      *
      * This is implemented using the "by size" merge algorithm, adjusted for [priority].
      */
-    fun unite(other: DisjointSet) {
+    open fun unite(other: DisjointSet) {
         val trep = representative
         val orep = other.representative
         if (trep == orep) return
