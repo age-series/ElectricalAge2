@@ -19,11 +19,13 @@ class IdealDiode : Resistor() {
     /**
      * The resistance this diode should have when forward-biased; ideally zero, but this will cause the MNA matrix to be ill-formed.
      */
+    @Suppress("MemberVisibilityCanBePrivate")
     var minimumResistance = 1e-3
 
     /**
      * The resistance this diode should have when reverse-biased; may be infinite, but this can cause component float, so it is just a large value by default.
      */
+    @Suppress("MemberVisibilityCanBePrivate")
     var maximumResistance = 1e10
 
     override fun simStep() {
@@ -36,6 +38,15 @@ class IdealDiode : Resistor() {
             if (resistance < maximumResistance) resistance = maximumResistance
         }
         dprintln("D.sS: out u=$potential r=$resistance")
+    }
+
+    override fun detail(): String {
+        val bias = if (resistance == minimumResistance) {
+            "Forward Bias Mode (conducting)"
+        }else{
+            "Reverse Bias Mode (blocking)"
+        }
+        return "[ideal diode $name: ${potential}v, ${current}A, ${resistance}Ω, ${power}W, $bias]"
     }
 }
 
@@ -92,11 +103,13 @@ data class DiodeData(
         /**
          * Boltzmann's constant, relating energy and temperature.
          */
+        @Suppress("MemberVisibilityCanBePrivate")
         const val boltzmann = 1.380649e-23 // J/K
 
         /**
          * The elementary charge of one electron in Coulombs.
          */
+        @Suppress("MemberVisibilityCanBePrivate")
         const val elemcharge = 1.602176634e-19 // Q
 
         /**
@@ -112,25 +125,26 @@ data class DiodeData(
          *
          * This parameter generally scales all other diode parameters, including the Zener band gap (below).
          */
-        inline fun thermalVoltage(temp: Double) = temp * boltzmann / elemcharge
+        fun thermalVoltage(temp: Double) = temp * boltzmann / elemcharge
 
         /**
          * Get the Zener coefficient at the given [temp] in Kelvin.
          *
          * This is the reciprocal of the thermal voltage.
          */
-        inline fun zenerCoefficient(temp: Double) = 1.0 / thermalVoltage(temp)
+        fun zenerCoefficient(temp: Double) = 1.0 / thermalVoltage(temp)
     }
 
     /**
      * Determine if this is a Zener-model diode (having nonzero breakdown voltage).
      */
+    @Suppress("unused")
     val isZener: Boolean get() = breakdownVoltage != 0.0
 
     /**
      * Get the "voltage scale" (the emission coefficient times the thermal voltage) at the given [temp] in Kelvin.
      */
-    fun voltageScaleAt(temp: Double) = emissionCoef * thermalVoltage(temp)
+    private fun voltageScaleAt(temp: Double) = emissionCoef * thermalVoltage(temp)
 
     /**
      * Get the "diode coefficient" (reciprocal of the "voltage scale") at the given [temp] in Kelvin.
@@ -140,12 +154,13 @@ data class DiodeData(
     /**
      * Get the forward voltage drop at the given [temp] in Kelvin.
      */
+    @Suppress("unused")
     fun fwDropAt(temp: Double) = ln(1.0 / satCurrent + 1.0) * voltageScaleAt(temp)
 
     /**
      * Get the "critical voltage" for the [temp] in Kelvin.
      */
-    fun voltageCriticalAt(temp: Double): Double {
+    private fun voltageCriticalAt(temp: Double): Double {
         val voltageThermalScaled = voltageScaleAt(temp)
         return voltageThermalScaled * ln(voltageThermalScaled / (sqrt2 * satCurrent))
     }
@@ -155,7 +170,7 @@ data class DiodeData(
      *
      * Despite being a reverse bias, this returns a positive value.
      */
-    fun voltageCriticalZenerAt(temp: Double): Double {
+    private fun voltageCriticalZenerAt(temp: Double): Double {
         val voltageThermal = thermalVoltage(temp)
         return voltageThermal * ln(voltageThermal / (sqrt2 * satCurrent))
     }
@@ -228,10 +243,10 @@ data class DiodeData(
  *
  * This is certainly not as computationally efficient as the [IdealDiode], but it is a vastly superior model. The cost is that it may take several substeps to converge (as a non-linear component), but the convergence should be exponential nonetheless.
  */
-class RealisticDiode(var model: DiodeData) : Resistor() {
-    var temp = 300.0
+class RealisticDiode(private var model: DiodeData) : Resistor() {
+    private var temp = 300.0
 
-    var lastPotential = 0.0
+    private var lastPotential = 0.0
 
     override var current: Double = 0.0
         set(value) {
@@ -268,5 +283,9 @@ class RealisticDiode(var model: DiodeData) : Resistor() {
 
         resistance = 1 / conductance
         current = newCurrent
+    }
+
+    override fun detail(): String {
+        return "[realistic diode (${model.name}) $name: ${potential}v, ${current}A, ${resistance}Ω, ${power}W]"
     }
 }

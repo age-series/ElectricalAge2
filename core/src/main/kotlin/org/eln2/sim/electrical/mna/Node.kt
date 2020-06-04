@@ -2,14 +2,14 @@ package org.eln2.sim.electrical.mna
 
 import org.eln2.debug.dprintln
 import org.eln2.sim.electrical.mna.component.Component
-import org.eln2.space.Set
+import org.eln2.data.DisjointSet
 
 /**
  * A "node", in MNA; the non-resistive connections between [Component]s.
  *
  * Aside from identifying [Component]s' connections, the Nodes' potentials (relative to [Circuit.ground]) are computed as a result of the MNA algorithm.
  */
-open class Node(var circuit: Circuit) : IDetail, Set() {
+open class Node(var circuit: Circuit) : IDetail, DisjointSet() {
     /**
      * The potential of this node, in Volts, relative to ground (as defined by the [Circuit]); an output of the simulation.
      */
@@ -68,25 +68,20 @@ open class Node(var circuit: Circuit) : IDetail, Set() {
 }
 
 /**
- * A Node subclass for representing [Circuit.ground], with a higher [mergePrecedence], always [potential] 0V and [index] -1 (not assigned).
+ * A Node subclass for representing [Circuit.ground], with a higher mergePrecedence, always [potential] 0V and [index] -1 (not assigned).
  *
- * The current recommended test for this special case is `node is GroundNode`.
+ * The current recommended test for this special case is `node.isGround`.
  */
 class GroundNode(circuit: Circuit) : Node(circuit) {
     override var potential: Double
         get() = 0.0
-        set(value) {}
+        set(_) {}
 
     override var index: Int
         get() = -1
-        set(value) {}
+        set(_) {}
 
     override val isGround = true
-}
 
-/**
- * A "NodeRef", which simply refers to an underlying [Node].
- *
- * This additional level of indirection allows nodes between [Component]s to be united normally, _and_ for a single connection to [Circuit.ground] to connect _all_ connected Components to ground, even if the connections between Components were established earlier. In this way, it resembles a simpler version of [Set].
- */
-data class NodeRef(var node: Node)
+    override val priority: Int = 100
+}

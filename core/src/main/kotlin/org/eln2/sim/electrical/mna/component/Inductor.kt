@@ -15,7 +15,7 @@ open class Inductor : Port() {
     /**
      * Self-inductance in Henries, singular Henry (Volts / Ampere).
      */
-    var l: Double = 0.0
+    var inductance: Double = 0.0
 
     /**
      * The simulation timestep in seconds.
@@ -27,11 +27,11 @@ open class Inductor : Port() {
     /**
      * The "equivalent resistance" of the Norton system, in Ohms.
      */
-    val eqR: Double
-        get() = l / ts
+    private val eqR: Double
+        get() = inductance / ts
 
     /**
-     * The current, in Amperes, presently sourced by this Norton system.
+     * The current, in Amperes, presently sourced by this Norton system. See [current] for the overall current.
      */
     internal var i: Double = 0.0
         set(value) {
@@ -41,17 +41,33 @@ open class Inductor : Port() {
         }
 
     /**
+     * Energy Stored, in Joules
+     */
+    @Suppress("MemberVisibilityCanBePrivate", "unused")
+    val energy: Double
+        get() = 0.5 * inductance * current * current
+
+    /**
+     * Current across the device (as a whole), in Amps. See [i] for the current sourced by the Norton system.
+     */
+    val current: Double
+        get() = if (eqR > 0) {
+                    potential / eqR + i
+                } else 0.0
+
+    /**
      * The current amount of magnetic flux, in Webers (Volt * second), based on the instantaneous derivative of the current in Amperes.
      */
+    @Suppress("MemberVisibilityCanBePrivate")
     var phi: Double = 0.0
 
     override fun detail(): String {
-        return "[inductor h:$l]"
+        return "[inductor $name: ${potential}v, ${current}A, ${inductance}H, ${energy}J]"
     }
 
     override fun preStep(dt: Double) {
         ts = dt
-        i = phi / l
+        i = phi / inductance
     }
 
     override fun postStep(dt: Double) {

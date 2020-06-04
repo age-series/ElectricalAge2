@@ -1,3 +1,5 @@
+@file:Suppress("unused")
+
 package org.eln2.debug
 
 /**
@@ -39,12 +41,12 @@ fun dprintln() = if (DEBUG) println() else Unit
 
 /**
  * dprintln: Print's object (toString) followed by newline if DEBUG = True
- * @param debug_string The Object you want to print.
+ * @param a The Object you want to print.
  */
 fun dprintln(a: Any?) = if (DEBUG) println(a) else Unit
 
 /**
  * dprint: Print's object (toString) (with no newline)if DEBUG = True
- * @param debug_string The object you want to print
+ * @param a The object you want to print
  */
 fun dprint(a: Any?) = if (DEBUG) print(a) else Unit

@@ -17,11 +17,10 @@ import org.eln2.parsers.falstad.components.sources.VoltageRailConstructor
 import org.eln2.parsers.falstad.components.sources.VoltageSourceConstructor
 import org.eln2.sim.electrical.mna.Circuit
 import org.eln2.sim.electrical.mna.Node
-import org.eln2.sim.electrical.mna.NodeRef
 import org.eln2.sim.electrical.mna.component.Component
 import org.eln2.sim.electrical.mna.component.Resistor
 import org.eln2.sim.electrical.mna.component.VoltageSource
-import org.eln2.space.Set
+import org.eln2.data.DisjointSet
 import org.eln2.space.Vec2i
 
 /**
@@ -162,11 +161,11 @@ data class CCData(val falstad: Falstad, val line: FalstadLine) {
 }
 
 /**
- * A [Set] subclass which holds a [PinPos].
+ * A [DisjointSet] subclass which holds a [PinPos].
  *
  * The Set class is used to implement the Disjoint Sets algorithm; the representative of the merged sets is used to determine which PinPos' are connected by wires, and thus merged into [Node]s as present in the [Circuit].
  */
-data class PosSet(val pos: PinPos) : Set()
+data class PosSet(val pos: PinPos) : DisjointSet()
 
 /**
  * An interface for constructing [Component]s (usually)
@@ -256,7 +255,7 @@ abstract class PoleConstructor : IComponentConstructor {
  */
 class Falstad(val source: String) {
     /**
-     * "List of roots" (of the [Disjoint Set][Set] forest); a mapping from [PinPos] to [PosSet].
+     * "List of roots" (of the [Disjoint Set][DisjointSet] forest); a mapping from [PinPos] to [PosSet].
      *
      * The values of this map are members of the forest (not necessarily "roots", but the root can easily be found as the representative).
      */
