@@ -198,15 +198,15 @@ internal class CircuitTest {
 
         print("main_1: matrix:\n${MATRIX_FORMAT.format(c.matrix)}")
 
-        for (comp in c.components) {
+        c.components.forEach { comp ->
             println("main_1: comp $comp name ${comp.name} pins ${comp.pins} vs ${comp.vsources}")
-            for (pin in comp.pins) {
+            comp.pins.forEach { pin ->
                 val node = pin.node
                 println("\t node $node index ${node?.index} ground ${node?.isGround} potential ${node?.potential}")
             }
         }
 
-        for (node in c.nodes) {
+        c.nodes.forEach { node ->
             println("main_1: node ${node.get()} index ${node.get()?.index} potential ${node.get()?.potential}")
         }
 

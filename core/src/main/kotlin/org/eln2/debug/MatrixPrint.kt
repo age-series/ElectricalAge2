@@ -14,8 +14,8 @@ import org.eln2.sim.electrical.mna.Circuit
  * @param headerfooter If you want a footer
  * @return matrix output
  */
-fun matrixFormat(matrix: RealMatrix, headerfooter: Boolean = true): String {
-    if (matrix.data.isEmpty()) return ""
+fun matrixFormat(matrix: RealMatrix?, headerfooter: Boolean = true): String {
+    if(matrix == null || matrix.data.isEmpty()) return ""
     val rows = matrix.rowDimension
     val columns = matrix.columnDimension
     val singleRow = rows <= 1
@@ -69,26 +69,14 @@ fun matrixFormat(matrix: RealMatrix, headerfooter: Boolean = true): String {
 }
 
 /**
- * knownsFormat: Prints out the z matrix for the MNA
- *
- * @param knowns The z matrix
- * @param headerfooter If you want a footer
- * @return matrix output
+ * Format a column vector into a string.
  */
-fun knownsFormat(knowns: RealVector, headerfooter: Boolean = true): String {
-    return matrixFormat(MatrixUtils.createColumnRealMatrix(knowns.toArray()), headerfooter)
-}
-
-/**
- * unknownsFormat: Prints out the x matrix for the MNA
- *
- * @param unknowns The x matrix
- * @param headerfooter If you want a footer
- * @return matrix output
- */
-fun unknownsFormat(unknowns: RealVector?, headerfooter: Boolean = true): String {
-    if(unknowns == null) return ""
-    return matrixFormat(MatrixUtils.createColumnRealMatrix(unknowns.toArray()), headerfooter)
+fun vectorFormat(vector: RealVector?, headerfooter: Boolean = true): String {
+    return matrixFormat(
+        vector.let {
+            if (it == null) null else MatrixUtils.createColumnRealMatrix(it.toArray())
+        }, headerfooter
+    )
 }
 
 /**
@@ -101,7 +89,7 @@ fun unknownsFormat(unknowns: RealVector?, headerfooter: Boolean = true): String 
  */
 fun mnaFormatNoUnknowns(matrix: RealMatrix, knowns: RealVector, color: Boolean = true): String {
     val mftLines = matrixFormat(matrix, false).split("\n").filter { it.isNotBlank() }
-    val kftLines = knownsFormat(knowns, false).split("\n").filter { it.isNotBlank() }
+    val kftLines = vectorFormat(knowns, false).split("\n").filter { it.isNotBlank() }
     val biggest = kotlin.math.max(mftLines.size, kftLines.size)
     val midpoint = biggest / 2
     val sb = StringBuilder()
@@ -147,8 +135,8 @@ fun mnaFormat(circuit: Circuit, color: Boolean = true): String {
 fun mnaFormat(matrix: RealMatrix, knowns: RealVector, unknowns: RealVector?, color: Boolean = true): String {
     if (unknowns == null) return mnaFormatNoUnknowns(matrix, knowns, color)
     val mftLines = matrixFormat(matrix, false).split("\n").filter { it.isNotBlank() }
-    val kftLines = knownsFormat(knowns, false).split("\n").filter { it.isNotBlank() }
-    val uftLines = unknownsFormat(unknowns, false).split("\n").filter { it.isNotBlank() }
+    val kftLines = vectorFormat(knowns, false).split("\n").filter { it.isNotBlank() }
+    val uftLines = vectorFormat(unknowns, false).split("\n").filter { it.isNotBlank() }
     val biggest = kotlin.math.max(mftLines.size, kotlin.math.max(kftLines.size, uftLines.size))
     val midpoint = biggest / 2
     val even = biggest % 2 == 0
@@ -205,7 +193,7 @@ fun mnaIntelligentFormat(circuit: Circuit): String {
  * @param matrix The A Matrix
  */
 @Suppress("unused")
-fun matrixPrint(matrix: RealMatrix) {
+fun matrixPrintln(matrix: RealMatrix) {
     print(matrixFormat(matrix, true))
 }
 
@@ -214,8 +202,8 @@ fun matrixPrint(matrix: RealMatrix) {
  * @param knowns The Z Matrix
  */
 @Suppress("unused")
-fun knownsPrint(knowns: RealVector) {
-    print(knownsFormat(knowns, true))
+fun knownsPrintln(knowns: RealVector) {
+    print(vectorFormat(knowns, true))
 }
 
 /**
@@ -223,8 +211,8 @@ fun knownsPrint(knowns: RealVector) {
  * @param unknowns The X Matrix
  */
 @Suppress("unused")
-fun unknownsPrint(unknowns: RealVector?) {
-    if (unknowns != null) println(unknownsFormat(unknowns, true))
+fun unknownsPrintln(unknowns: RealVector?) {
+    if (unknowns != null) println(vectorFormat(unknowns, true))
 }
 
 /**
@@ -235,7 +223,7 @@ fun unknownsPrint(unknowns: RealVector?) {
  * @param color Whether to print in color or not
  */
 @Suppress("unused")
-fun mnaPrint(matrix: RealMatrix, knowns: RealVector, unknowns: RealVector?, color: Boolean = true) {
+fun mnaPrintln(matrix: RealMatrix, knowns: RealVector, unknowns: RealVector?, color: Boolean = true) {
     print(mnaFormat(matrix, knowns, unknowns, color))
 }
 
@@ -244,7 +232,7 @@ fun mnaPrint(matrix: RealMatrix, knowns: RealVector, unknowns: RealVector?, colo
  * @param circuit The circuit
  */
 @Suppress("unused")
-fun mnaPrint(circuit: Circuit, color: Boolean = true) {
+fun mnaPrintln(circuit: Circuit, color: Boolean = true) {
     print(mnaFormat(circuit, color))
 }
 
@@ -253,6 +241,6 @@ fun mnaPrint(circuit: Circuit, color: Boolean = true) {
  * @param circuit The circuit
  */
 @Suppress("unused")
-fun mnaIntelligentPrint(circuit: Circuit) {
+fun mnaIntelligentPrintln(circuit: Circuit) {
     print(mnaIntelligentFormat(circuit))
 }

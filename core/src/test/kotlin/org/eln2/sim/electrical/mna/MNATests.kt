@@ -1,6 +1,6 @@
 package org.eln2.sim.electrical.mna
 
-import org.eln2.debug.mnaPrint
+import org.eln2.debug.mnaPrintln
 import org.eln2.sim.electrical.mna.component.Resistor
 import org.eln2.sim.electrical.mna.component.VoltageSource
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -24,7 +24,7 @@ class MNATests {
         r.resistance = 10.0
 
         assert(c.step(0.05))
-        mnaPrint(c)
+        mnaPrintln(c)
         assertEquals(true, (r.current > 0.99) and (r.current < 1.01))
     }
 
@@ -44,14 +44,14 @@ class MNATests {
         r.resistance = 10.0
 
         assert(c.step(0.05))
-        mnaPrint(c)
+        mnaPrintln(c)
         assertEquals(true, (r.current > 0.99) and (r.current < 1.01))
 
         r.resistance = 50.0
 
         assert(c.step(0.05))
 
-        mnaPrint(c)
+        mnaPrintln(c)
         assertEquals(true, (r.current > 0.19) and (r.current < 0.21))
     }
 
@@ -74,7 +74,7 @@ class MNATests {
         r2.resistance = 20.0
 
         assert(c.step(0.05))
-        mnaPrint(c)
+        mnaPrintln(c)
         assertEquals(true, (r1.current > 0.333) and (r1.current < 0.334))
         assertEquals(true, (r2.current > 0.333) and (r2.current < 0.334))
         println(vs.pins)
@@ -86,7 +86,7 @@ class MNATests {
 
         assert(c.step(0.05))
 
-        mnaPrint(c)
+        mnaPrintln(c)
         assertEquals(true, (r1.current > 0.1666) and (r1.current < 0.1667))
         assertEquals(true, (r2.current > 0.1666) and (r2.current < 0.1667))
         assertEquals(true, ((r1.node(1)?.potential ?: 0.0)> 1.666) and ((r1.node(1)?.potential ?: 0.0) < 1.667))
