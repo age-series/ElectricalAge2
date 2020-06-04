@@ -1,5 +1,6 @@
 package org.eln2.sim.electrical.mna.component
 
+import org.eln2.debug.dprintln
 import org.eln2.sim.electrical.mna.Circuit
 
 /**
@@ -18,13 +19,15 @@ open class Resistor : Port() {
      */
     open var resistance: Double = 1.0
         set(value) {
-            // Remove our contribution to the matrix (using a negative resistance... should work)
-            field = -field
-            stamp()
+            if(isInCircuit) {
+                // Remove our contribution to the matrix (using a negative resistance... should work)
+                field = -field
+                stamp()
+            }
 
             // Add our new contribution
             field = value
-            stamp()
+            if(isInCircuit) stamp()
         }
 
     /**
@@ -44,7 +47,8 @@ open class Resistor : Port() {
     }
 
     override fun stamp() {
-        if (!isInCircuit) return
-        node(0).stampResistor(node(1), resistance)
+        dprintln("R.s: pos=$pos neg=$neg r=$resistance")
+        // We have to guard here specifically against stamp() being called out of context from the resistance setter above.
+        if(pos != null && neg != null) pos!!.stampResistor(neg!!, resistance)
     }
 }

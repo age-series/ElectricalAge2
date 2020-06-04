@@ -250,8 +250,8 @@ class RealisticDiode(private var model: DiodeData) : Resistor() {
 
     override var current: Double = 0.0
         set(value) {
-            if (isInCircuit)
-                circuit!!.stampCurrentSource(pos.index, neg.index, value - field)
+            if (isInCircuit && pos != null && neg != null)
+                circuit!!.stampCurrentSource(pos!!.index, neg!!.index, value - field)
             field = value
         }
 

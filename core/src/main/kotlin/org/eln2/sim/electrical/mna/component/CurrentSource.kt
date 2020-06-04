@@ -15,8 +15,8 @@ class CurrentSource : Port() {
      */
     var current: Double = 0.0
         set(value) {
-            if (isInCircuit)
-                circuit!!.stampCurrentSource(pos.index, neg.index, value - field)
+            if (isInCircuit && pos != null && neg != null)
+                circuit!!.stampCurrentSource(pos!!.index, neg!!.index, value - field)
             field = value
         }
 
@@ -25,7 +25,6 @@ class CurrentSource : Port() {
     }
 
     override fun stamp() {
-        if (!isInCircuit) return
-        circuit!!.stampCurrentSource(pos.index, neg.index, current)
+        circuit!!.stampCurrentSource(pos!!.index, neg!!.index, current)
     }
 }

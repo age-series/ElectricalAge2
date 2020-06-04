@@ -35,6 +35,6 @@ class VoltageSource : Port() {
 
     override fun stamp() {
         if (!isInCircuit) return
-        vsources[0].stamp(pos, neg, potential)
+        vsources[0].stamp(pos!!, neg!!, potential)
     }
 }

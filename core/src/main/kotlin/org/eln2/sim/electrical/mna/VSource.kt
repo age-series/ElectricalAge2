@@ -62,6 +62,7 @@ class VSource(var circuit: Circuit) : IDetail {
      * This also adds [dv] to [potential].
      */
     fun change(dv: Double) {
+        if(index < 0) return
         circuit.stampVoltageChange(index, dv)
         potential += dv
     }
