@@ -11,6 +11,13 @@ import org.eln2.data.DisjointSet
  */
 open class Node(var circuit: Circuit) : IDetail, DisjointSet() {
     companion object {
+        /**
+         * Determine which of two (nullable) Nodes should subsume the other when the two are about to be merged.
+         *
+         * This respects [priority], and tries to return the distinguished one, if any, which is not null.
+         *
+         * It also tries to propagate [name] as best it can.
+         */
         fun mergeData(a: Node?, b: Node?): Node? {
             val res = when(Pair(a == null, b == null)) {
                 Pair(true, true) -> null
