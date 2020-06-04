@@ -12,8 +12,6 @@ import java.lang.ref.WeakReference
 import java.util.*
 import kotlin.collections.ArrayList
 
-class PinDebugQueueEntry(val pin: Pin, val lastSibling: Boolean)
-
 /**
  * The default format for debug matrix printouts from Circuits.
  */
@@ -399,6 +397,8 @@ class Circuit {
                 }
             }
         }
+    
+    private class PinDebugQueueEntry(val pin: Pin, val lastSibling: Boolean)
 
     /**
      * Build the [matrix] and the [nodes] and [voltageSources], imparting each with indices.
