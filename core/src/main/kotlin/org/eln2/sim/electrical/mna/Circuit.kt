@@ -9,7 +9,7 @@ import org.eln2.debug.dprintln
 import org.eln2.sim.IProcess
 import org.eln2.sim.electrical.mna.component.*
 import java.lang.ref.WeakReference
-import java.util.*
+import java.util.WeakHashMap
 import kotlin.collections.ArrayList
 
 /**
