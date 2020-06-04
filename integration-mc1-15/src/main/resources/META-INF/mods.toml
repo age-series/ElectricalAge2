@@ -23,12 +23,12 @@ Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed mollis lacinia magn
 '''
 
 # A dependency - use the . to indicate dependency for a specific modid. Dependencies are optional.
-[[dependencies.eln2]]
-    modId="kotlinforforge"
-    mandatory=true
-    versionRange="[1.2,]"
-    ordering="NONE"
-    side="BOTH"
+#[[dependencies.eln2]]
+#    modId="kotlinforforge"
+#    mandatory=true
+#    versionRange="[1.2,]"
+#    ordering="NONE"
+#    side="BOTH"
 [[dependencies.eln2]]
     modId="bookshelf"
     mandatory=true
