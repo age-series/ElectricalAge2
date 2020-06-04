@@ -20,7 +20,7 @@ class OutputProbe : IComponentConstructor {
         val r = Resistor()
         r.resistance = HIGH_IMPEDANCE
         ccd.circuit.add(r)
-        r.connect(1, ccd.circuit.ground)
+        r.ground(1)
 
         val pp = (ccd.falstad.getPin(ccd.pos).representative as PosSet)
         val pr = PinRef(r, 0)

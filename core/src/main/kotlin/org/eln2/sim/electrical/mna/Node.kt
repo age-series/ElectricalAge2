@@ -5,11 +5,37 @@ import org.eln2.sim.electrical.mna.component.Component
 import org.eln2.data.DisjointSet
 
 /**
- * A "node", in MNA; the non-resistive connections between [Component]s.
+ * A "node", in MNA; the non-resistive connections between [Component]s. All [Pin]s which are connected share a single instance of Node.
  *
  * Aside from identifying [Component]s' connections, the Nodes' potentials (relative to [Circuit.ground]) are computed as a result of the MNA algorithm.
  */
 open class Node(var circuit: Circuit) : IDetail, DisjointSet() {
+    companion object {
+        /**
+         * Determine which of two (nullable) Nodes should subsume the other when the two are about to be merged.
+         *
+         * This respects [priority], and tries to return the distinguished one, if any, which is not null.
+         *
+         * It also tries to propagate [name] as best it can.
+         */
+        fun mergeData(a: Node?, b: Node?): Node? {
+            val res = when(Pair(a == null, b == null)) {
+                Pair(true, true) -> null
+                Pair(true, false) -> b
+                Pair(false, true) -> a
+                Pair(false, false) -> {
+                    // Forgive me some non-null assertions; the compiler cannot see that these variables will not be
+                    // null in this branch by very virtue of the test, but we know it to be true :)
+                    val (higher, lower) = if(a!!.priority > b!!.priority) Pair(a, b) else Pair(b, a)
+                    if(lower.nameSet) higher.name = lower.name
+                    higher
+                }
+                else -> error("unreachable")  // TODO: Any better function for this?
+            }
+            dprintln("N.mD: $a, $b => $res")
+            return res
+        }
+    }
     /**
      * The potential of this node, in Volts, relative to ground (as defined by the [Circuit]); an output of the simulation.
      */
@@ -55,7 +81,7 @@ open class Node(var circuit: Circuit) : IDetail, DisjointSet() {
     }
 
     override fun detail(): String {
-        return "[$name ${this::class.simpleName}@${System.identityHashCode(this).toString(16)} ${potential}V]"
+        return "[$name ${this::class.simpleName}@${System.identityHashCode(this).toString(16)} ${potential}V @$index]"
     }
 
     override fun toString() = detail()

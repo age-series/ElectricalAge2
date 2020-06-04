@@ -5,9 +5,9 @@ package org.eln2.sim.electrical.mna.component
  *
  * Inductors are defined by a characteristic of "self-inductance", wherein magnetic flux (change in magnetic field) induces an electric field, quantified as magnetic flux per unit of current. Since induced voltage is proportional to magnetic flux, we can take the derivative of current with respect to time and determine instantaneous voltage.
  *
- * Of the two out-of-phase values that could be stored (the derivative of current, or the magnetic flux), this implementation uses the magnetic flux.
+ * Of the two out-of-phase values that could be stored (the derivative of current, or the magnetic flux), this implementation uses the magnetic flux [phi].
  *
- * This reactive component is simulated using a Norton system, as designed by Falstad. It is not "non-linear", however, and does not need any substeps to compute. It does, however, need to know the timescale of the simulation steps.
+ * This reactive component is simulated using a Norton system, as designed by Falstad. It is not "non-linear", however, and does not need any substeps to compute. It does, however, need to know the timescale of the simulation steps. Changing the simulation timestep dynamically can cause performance problems, however, and is best avoided.
  */
 open class Inductor : Port() {
     override var name: String = "l"
@@ -16,6 +16,11 @@ open class Inductor : Port() {
      * Self-inductance in Henries, singular Henry (Volts / Ampere).
      */
     var inductance: Double = 0.0
+        set(value) {
+            if(isInCircuit) unstamp()
+            field = value
+            if(isInCircuit) stamp()
+        }
 
     /**
      * The simulation timestep in seconds.
@@ -23,6 +28,11 @@ open class Inductor : Port() {
      * This is set in [preStep], but the value is unfortunately not available during [stamp]; thus, it may be slightly out of date when [step] is actually called.
      */
     var ts: Double = 0.05 // A safe default
+        set(value) {
+            if(isInCircuit) unstamp()
+            field = value
+            if(isInCircuit) stamp()
+        }
 
     /**
      * The "equivalent resistance" of the Norton system, in Ohms.
@@ -35,8 +45,8 @@ open class Inductor : Port() {
      */
     internal var i: Double = 0.0
         set(value) {
-            if (isInCircuit)
-                circuit!!.stampCurrentSource(pos.index, neg.index, value - field)
+            if (isInCircuit && pos != null && neg != null)
+                circuit!!.stampCurrentSource(pos!!.index, neg!!.index, value - field)
             field = value
         }
 
@@ -66,7 +76,7 @@ open class Inductor : Port() {
     }
 
     override fun preStep(dt: Double) {
-        ts = dt
+        if(ts != dt) ts = dt  // May cause a matrix solve--avoid this if possible
         i = phi / inductance
     }
 
@@ -74,7 +84,11 @@ open class Inductor : Port() {
         phi += potential * ts
     }
 
-    override fun stamp() {
-        node(0).stampResistor(node(1), eqR)
+    override fun stamp() { 
+        pos!!.stampResistor(neg!!, eqR)
+    }
+
+    protected fun unstamp() {
+        if(pos != null && neg != null) pos!!.stampResistor(neg!!, -eqR)
     }
 }

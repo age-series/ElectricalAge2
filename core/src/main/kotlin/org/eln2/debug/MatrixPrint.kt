@@ -2,11 +2,10 @@ package org.eln2.debug
 
 import com.andreapivetta.kolor.Color
 import com.andreapivetta.kolor.Kolor
+import org.apache.commons.math3.linear.MatrixUtils
 import org.apache.commons.math3.linear.RealMatrix
 import org.apache.commons.math3.linear.RealVector
 import org.eln2.sim.electrical.mna.Circuit
-
-const val FORMAT_SIZE = 8
 
 /**
  * matrixFormat: Prints out the A matrix for the MNA
@@ -15,171 +14,69 @@ const val FORMAT_SIZE = 8
  * @param headerfooter If you want a footer
  * @return matrix output
  */
-fun matrixFormat(matrix: RealMatrix, headerfooter: Boolean = true): String {
-    val matrixData = matrix.data
-    if (matrixData.isEmpty()) return ""
-    val singleMatrix = matrixData[0].size <= 1
-    var output = ""
+fun matrixFormat(matrix: RealMatrix?, headerfooter: Boolean = true): String {
+    if(matrix == null || matrix.data.isEmpty()) return ""
+    val rows = matrix.rowDimension
+    val columns = matrix.columnDimension
+    val singleRow = rows <= 1
+    val sb = StringBuilder()
 
-    if (headerfooter)
-    output += "== Begin MNA Matrix ==\n"
+    if (headerfooter) sb.append("== Begin MNA Matrix ==\n")
+    
+    val columnWidths = (0 until columns).map {
+        matrix.getColumn(it).map { entry -> entry.toString().length }.max() ?: 0
+    }.toList()
 
-    matrixData.withIndex().forEach {
-        output += if (!singleMatrix) {
-            when (it.index) {
+    for(row in 0 until rows) {
+        sb.append(if (!singleRow) {
+            when (row) {
                 0 -> {
-                    "┌ "
+                    "┌"
                 }
-                matrixData.size - 1 -> {
-                    "└ "
+                rows - 1 -> {
+                    "└"
                 }
                 else -> {
-                    "│ "
+                    "│"
                 }
             }
-        }else {
-            "[ "
-        }
+        } else {
+            "["
+        })
 
-        it.value.forEach { entry -> output += ("${entry.toString().format(FORMAT_SIZE)}, ") }
+        matrix.getRow(row).withIndex().forEach { (index, entry) -> sb.append(" %${columnWidths[index]}s ".format(entry.toString())) }
 
-        output += if (!singleMatrix) {
-            when (it.index) {
+        sb.append(if (!singleRow) {
+            when (row) {
                 0 -> {
-                    " ┐"
+                    "┐"
                 }
-                matrixData.size - 1 -> {
-                    " ┘"
+                rows- 1 -> {
+                    "┘"
                 }
                 else -> {
-                    " │"
+                    "│"
                 }
             }
         }else{
-            " ]"
-        }
-        output += "\n"
+            "]"
+        })
+        sb.append("\n")
     }
 
-    if (headerfooter) output += "== End MNA Matrix ===\n"
-    return output
+    if (headerfooter) sb.append("== End MNA Matrix ===\n")
+    return sb.toString()
 }
 
 /**
- * knownsFormat: Prints out the z matrix for the MNA
- *
- * @param knowns The z matrix
- * @param headerfooter If you want a footer
- * @return matrix output
+ * Format a column vector into a string.
  */
-fun knownsFormat(knowns: RealVector, headerfooter: Boolean = true): String {
-    val knownsData = knowns.toArray()
-    if (knownsData.isEmpty()) return ""
-    val singleKnown = knownsData.size <= 1
-    var output = ""
-
-    if (headerfooter)
-        output += "== Begin MNA Matrix ==\n"
-
-    knownsData.withIndex().forEach {
-        output += if (!singleKnown) {
-            when (it.index) {
-                0 -> {
-                    "┌ "
-                }
-                knownsData.size - 1 -> {
-                    "└ "
-                }
-                else -> {
-                    "│ "
-                }
-            }
-        }else {
-            "[ "
-        }
-
-        output += it.value.toString().format(FORMAT_SIZE)
-
-
-        output += if (!singleKnown) {
-            when (it.index) {
-                0 -> {
-                    " ┐"
-                }
-                knownsData.size - 1 -> {
-                    " ┘"
-                }
-                else -> {
-                    " │"
-                }
-            }
-        }else{
-            " ]"
-        }
-        output += "\n"
-    }
-
-    if (headerfooter) output += "== End Knowns Matrix ===\n"
-    return output
-}
-
-/**
- * unknownsFormat: Prints out the x matrix for the MNA
- *
- * @param unknowns The x matrix
- * @param headerfooter If you want a footer
- * @return matrix output
- */
-fun unknownsFormat(unknowns: RealVector?, headerfooter: Boolean = true): String {
-    if (unknowns == null) return ""
-    val unknownsData = unknowns.toArray()
-    if (unknownsData.isEmpty()) return ""
-    val singleKnown = unknownsData.size <= 1
-    var output = ""
-
-    if (headerfooter)
-        output += "== Begin MNA Matrix ==\n"
-
-    unknownsData.withIndex().forEach {
-        output += if (!singleKnown) {
-            when (it.index) {
-                0 -> {
-                    "┌ "
-                }
-                unknownsData.size - 1 -> {
-                    "└ "
-                }
-                else -> {
-                    "│ "
-                }
-            }
-        }else {
-            "[ "
-        }
-
-        output += it.value.toString().format(FORMAT_SIZE)
-
-
-        output += if (!singleKnown) {
-            when (it.index) {
-                0 -> {
-                    " ┐"
-                }
-                unknownsData.size - 1 -> {
-                    " ┘"
-                }
-                else -> {
-                    " │"
-                }
-            }
-        }else{
-            " ]"
-        }
-        output += "\n"
-    }
-
-    if (headerfooter) output += "== End Unknowns Matrix ===\n"
-    return output
+fun vectorFormat(vector: RealVector?, headerfooter: Boolean = true): String {
+    return matrixFormat(
+        vector.let {
+            if (it == null) null else MatrixUtils.createColumnRealMatrix(it.toArray())
+        }, headerfooter
+    )
 }
 
 /**
@@ -191,25 +88,26 @@ fun unknownsFormat(unknowns: RealVector?, headerfooter: Boolean = true): String 
  * @return matrix output
  */
 fun mnaFormatNoUnknowns(matrix: RealMatrix, knowns: RealVector, color: Boolean = true): String {
-    val mftLines = matrixFormat(matrix, false).split("\n")
-    val kftLines = knownsFormat(knowns, false).split("\n")
+    val mftLines = matrixFormat(matrix, false).split("\n").filter { it.isNotBlank() }
+    val kftLines = vectorFormat(knowns, false).split("\n").filter { it.isNotBlank() }
     val biggest = kotlin.math.max(mftLines.size, kftLines.size)
-    var output = ""
+    val midpoint = biggest / 2
+    val sb = StringBuilder()
 
     (0 until biggest).withIndex().forEach { entry ->
         if (color) {
-            output +=Kolor.foreground(mftLines[entry.value], Color.RED)
-            output += if (entry.index == biggest - 2) " x = " else "     "
-            output += Kolor.foreground(kftLines[entry.value], Color.BLUE)
-        }else{
-            output +=mftLines[entry.value]
-            output += if (entry.index == biggest - 2) " x = " else "     "
-            output += " "
-            output += kftLines[entry.value]
+            sb.append(Kolor.foreground(mftLines[entry.value], Color.RED))
+            sb.append(if (entry.index == midpoint) " x = " else "     ")
+            sb.append(Kolor.foreground(kftLines[entry.value], Color.BLUE))
+        } else {
+            sb.append(mftLines[entry.value])
+            sb.append(if (entry.index == midpoint) " x = " else "     ")
+            sb.append(" ")
+            sb.append(kftLines[entry.value])
         }
-        output += "\n"
+        sb.append("\n")
     }
-    return output
+    return sb.toString()
 }
 
 /**
@@ -236,29 +134,41 @@ fun mnaFormat(circuit: Circuit, color: Boolean = true): String {
  */
 fun mnaFormat(matrix: RealMatrix, knowns: RealVector, unknowns: RealVector?, color: Boolean = true): String {
     if (unknowns == null) return mnaFormatNoUnknowns(matrix, knowns, color)
-    val mftLines = matrixFormat(matrix, false).split("\n")
-    val kftLines = knownsFormat(knowns, false).split("\n")
-    val uftLines = unknownsFormat(unknowns, false).split("\n")
+    val mftLines = matrixFormat(matrix, false).split("\n").filter { it.isNotBlank() }
+    val kftLines = vectorFormat(knowns, false).split("\n").filter { it.isNotBlank() }
+    val uftLines = vectorFormat(unknowns, false).split("\n").filter { it.isNotBlank() }
     val biggest = kotlin.math.max(mftLines.size, kotlin.math.max(kftLines.size, uftLines.size))
-    var output = ""
+    val midpoint = biggest / 2
+    val even = biggest % 2 == 0
+    val sb = StringBuilder()
 
     (0 until biggest).withIndex().forEach { entry ->
         if (color) {
-            output +=Kolor.foreground(mftLines[entry.value], Color.RED)
-            output += " "
-            output += Kolor.foreground(uftLines[entry.value], Color.GREEN)
-            output += if (entry.index == biggest - 2) " = " else "   "
-            output += Kolor.foreground(kftLines[entry.value], Color.BLUE)
+            sb.append(Kolor.foreground(mftLines[entry.value], Color.RED))
+            sb.append(" ")
+            sb.append(Kolor.foreground(uftLines[entry.value], Color.GREEN))
+            sb.append(when {
+                !even && entry.index == midpoint -> " = "
+                even && entry.index == midpoint - 1 -> " _ "
+                even && entry.index == midpoint -> " ‾ "
+                else -> "   "
+            })
+            sb.append(Kolor.foreground(kftLines[entry.value], Color.BLUE))
         }else{
-            output +=mftLines[entry.value]
-            output += " "
-            output += uftLines[entry.value]
-            output += if (entry.index == biggest - 2) " = " else "   "
-            output += kftLines[entry.value]
+            sb.append(mftLines[entry.value])
+            sb.append(" ")
+            sb.append(uftLines[entry.value])
+            sb.append(when {
+                !even && entry.index == midpoint -> " = "
+                even && entry.index == midpoint - 1 -> " _ "
+                even && entry.index == midpoint -> " ‾ "
+                else -> "   "
+            })
+            sb.append(kftLines[entry.value])
         }
-        output += "\n"
+        sb.append("\n")
     }
-    return output
+    return sb.toString()
 }
 
 /**
@@ -283,8 +193,8 @@ fun mnaIntelligentFormat(circuit: Circuit): String {
  * @param matrix The A Matrix
  */
 @Suppress("unused")
-fun matrixPrint(matrix: RealMatrix) {
-    println(matrixFormat(matrix, true))
+fun matrixPrintln(matrix: RealMatrix) {
+    print(matrixFormat(matrix, true))
 }
 
 /**
@@ -292,8 +202,8 @@ fun matrixPrint(matrix: RealMatrix) {
  * @param knowns The Z Matrix
  */
 @Suppress("unused")
-fun knownsPrint(knowns: RealVector) {
-    println(knownsFormat(knowns, true))
+fun knownsPrintln(knowns: RealVector) {
+    print(vectorFormat(knowns, true))
 }
 
 /**
@@ -301,8 +211,8 @@ fun knownsPrint(knowns: RealVector) {
  * @param unknowns The X Matrix
  */
 @Suppress("unused")
-fun unknownsPrint(unknowns: RealVector?) {
-    if (unknowns != null) println(unknownsFormat(unknowns, true))
+fun unknownsPrintln(unknowns: RealVector?) {
+    if (unknowns != null) println(vectorFormat(unknowns, true))
 }
 
 /**
@@ -313,8 +223,8 @@ fun unknownsPrint(unknowns: RealVector?) {
  * @param color Whether to print in color or not
  */
 @Suppress("unused")
-fun mnaPrint(matrix: RealMatrix, knowns: RealVector, unknowns: RealVector?, color: Boolean = true) {
-    println(mnaFormat(matrix, knowns, unknowns, color))
+fun mnaPrintln(matrix: RealMatrix, knowns: RealVector, unknowns: RealVector?, color: Boolean = true) {
+    print(mnaFormat(matrix, knowns, unknowns, color))
 }
 
 /**
@@ -322,8 +232,8 @@ fun mnaPrint(matrix: RealMatrix, knowns: RealVector, unknowns: RealVector?, colo
  * @param circuit The circuit
  */
 @Suppress("unused")
-fun mnaPrint(circuit: Circuit, color: Boolean = true) {
-    println(mnaFormat(circuit, color))
+fun mnaPrintln(circuit: Circuit, color: Boolean = true) {
+    print(mnaFormat(circuit, color))
 }
 
 /**
@@ -331,6 +241,6 @@ fun mnaPrint(circuit: Circuit, color: Boolean = true) {
  * @param circuit The circuit
  */
 @Suppress("unused")
-fun mnaIntelligentPrint(circuit: Circuit) {
-    println(mnaIntelligentFormat(circuit))
+fun mnaIntelligentPrintln(circuit: Circuit) {
+    print(mnaIntelligentFormat(circuit))
 }

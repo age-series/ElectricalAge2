@@ -19,11 +19,12 @@ internal class CircuitTest {
 
         init {
             c.add(vs, r1)
-            vs.neg.named("vneg")
-            vs.pos.named("vpos")
+            // TODO: figure out how to name nodes early again
+            // vs.neg.named("vneg")
+            // vs.pos.named("vpos")
             vs.connect(1, r1, 1)
             vs.connect(0, r1, 0)
-            vs.connect(1, c.ground)
+            vs.ground(1)
             vs.potential = 10.0
             r1.resistance = 5.0
         }
@@ -37,15 +38,16 @@ internal class CircuitTest {
 
         init {
             c.add(vs, r1, c1)
-            vs.neg.named("vneg")
-            vs.pos.named("vpos")
+            // TODO: idem
+            // vs.neg.named("vneg")
+            // vs.pos.named("vpos")
             vs.potential = 10.0
             r1.resistance = 5.0
             c1.capacitance = 0.01
             vs.connect(0, r1, 0)
             c1.connect(0, r1, 0)
             vs.connect(1, c1, 1)
-            vs.connect(1, c.ground)
+            vs.ground(1)
         }
     }
 
@@ -54,7 +56,7 @@ internal class CircuitTest {
         val ts = TrivialResistiveCircuit()
         for (u in -1..1) {
             ts.vs.potential = u.toDouble()
-            ts.c.step(0.5)
+            assert(ts.c.step(0.5))
             assertEquals(sign(ts.vs.potential), sign(ts.r1.current))
         }
     }
@@ -64,7 +66,7 @@ internal class CircuitTest {
         val ts = TrivialResistiveCircuit()
         for (r in 1..10) {
             ts.r1.resistance = r.toDouble()
-            ts.c.step(0.5)
+            assert(ts.c.step(0.5))
             assertEquals(ts.r1.current, ts.vs.potential / r, EPSILON)
         }
     }
@@ -75,7 +77,7 @@ internal class CircuitTest {
         val ts = TrivialResistiveCircuit()
         for (r in 1..10) {
             ts.r1.resistance = r.toDouble()
-            ts.c.step(0.5)
+            assert(ts.c.step(0.5))
             try {
                 assertEquals(-ts.vs.current, ts.r1.current, EPSILON) { "r:${ts.r1.resistance} u:${ts.vs.potential}" }
             } catch (e: AssertionFailedError) {
@@ -89,7 +91,7 @@ internal class CircuitTest {
         val ts = TrivialResistiveCircuit()
         for (r in 1..10) {
             ts.r1.resistance = r.toDouble()
-            ts.c.step(0.5)
+            assert(ts.c.step(0.5))
             assertEquals(ts.vs.potential, ts.r1.potential, EPSILON)
         }
     }
@@ -106,14 +108,14 @@ internal class CircuitTest {
         r2.connect(0, ts.r1, 0)
         r2.connect(1, ts.r1, 1)
 
-        ts.c.step(0.5)
+        assert(ts.c.step(0.5))
         assertEquals(r2.current, ts.r1.current, EPSILON)
         assertEquals(ts.r1.current, current, EPSILON) { "i1_1=${ts.r1.current} i1_0=$current i2=${r2.current}" }
         assertEquals(ts.vs.current, current * 2.0, EPSILON)
 
         ts.c.remove(r2)
 
-        ts.c.step(0.5)
+        assert(ts.c.step(0.5))
         assertEquals(ts.r1.current, current, EPSILON)
         assertEquals(r2.circuit, null)
     }
@@ -133,9 +135,9 @@ internal class CircuitTest {
         vs.connect(1, r1, 1)
         r1.connect(0, r2, 1)
         r2.connect(0, vs, 0)
-        vs.connect(1, circuit.ground)
+        vs.ground(1)
 
-        circuit.step(0.5)
+        assert(circuit.step(0.5))
         assertEquals(r1.current, r2.current, EPSILON)
         assertEquals(r1.current, 1.0, EPSILON)
     }
@@ -152,25 +154,25 @@ internal class CircuitTest {
         circuit.add(vs, c1)
         vs.connect(1, c1, 1)
         vs.connect(0, c1, 0)
-        vs.connect(1, circuit.ground)
+        vs.ground(1)
 
-        circuit.step(0.5)
-        circuit.step(0.5)
-        circuit.step(0.5)
-        circuit.step(0.5)
+        assert(circuit.step(0.5))
+        assert(circuit.step(0.5))
+        assert(circuit.step(0.5))
+        assert(circuit.step(0.5))
     }
 
     //@Test
     fun basicRCCircuit() {
         val ts = TrivialRCCircuit()
-        ts.c.step(0.05)
-        assertEquals(ts.c1.current, 0.000732, 0.000001)
+        assert(ts.c.step(0.05))
+        assertEquals(ts.c1.i, 0.000732, 0.000001)
         assertEquals(ts.c1.potential, 6.315, 0.001)
-        ts.c.step(0.05)
-        assertEquals(ts.c1.current, 0.000270, 0.000001)
+        assert(ts.c.step(0.05))
+        assertEquals(ts.c1.i, 0.000270, 0.000001)
         assertEquals(ts.c1.potential, 8.660, 0.001)
-        ts.c.step(0.05)
-        assertEquals(ts.c1.current, 0.000099, 0.000001)
+        assert(ts.c.step(0.05))
+        assertEquals(ts.c1.i, 0.000099, 0.000001)
         assertEquals(ts.c1.potential, 9.506, 0.001)
     }
 
@@ -187,23 +189,24 @@ internal class CircuitTest {
 
         vs.connect(1, r1, 0)
         vs.connect(0, r1, 1)
-        vs.connect(1, c.ground)
+        vs.ground(1)
 
         vs.potential = 10.0
         r1.resistance = 100.0
 
-        c.step(0.5)
+        assert(c.step(0.5))
 
         print("main_1: matrix:\n${MATRIX_FORMAT.format(c.matrix)}")
 
-        for (comp in c.components) {
-            println("main_1: comp $comp name ${comp.name} nodes ${comp.nodes} vs ${comp.vsources}")
-            for (node in comp.nodes) {
-                println("\t node $node index ${node.index} ground ${node.isGround} potential ${node.potential}")
+        c.components.forEach { comp ->
+            println("main_1: comp $comp name ${comp.name} pins ${comp.pins} vs ${comp.vsources}")
+            comp.pins.forEach { pin ->
+                val node = pin.node
+                println("\t node $node index ${node?.index} ground ${node?.isGround} potential ${node?.potential}")
             }
         }
 
-        for (node in c.nodes) {
+        c.nodes.forEach { node ->
             println("main_1: node ${node.get()} index ${node.get()?.index} potential ${node.get()?.potential}")
         }
 

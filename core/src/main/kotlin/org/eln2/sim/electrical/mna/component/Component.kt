@@ -1,5 +1,7 @@
 package org.eln2.sim.electrical.mna.component
 
+import org.eln2.data.DisjointSet
+import org.eln2.debug.dprintln
 import org.eln2.sim.electrical.mna.*
 
 /**
@@ -9,6 +11,33 @@ import org.eln2.sim.electrical.mna.*
 */
 class ConnectionMutationException: Exception()
 
+/**
+ * A connectable "point" on a component. The [representative] of this [DisjointSet] owns a [Node].
+ */
+class Pin: DisjointSet() {
+    private var internalNode: Node? = null
+    var node: Node?
+        get() = (representative as Pin).internalNode
+        set(value) {
+            dprintln("P.n.<set>: $this from=$node to=$value on=${representative as Pin}")
+            (representative as Pin).internalNode = value
+            dprintln("P.n.<set>: out $this node=$node")
+        }
+
+    override fun unite(other: DisjointSet) {
+        val opin = other as? Pin
+        if(opin != null) {  // This should be the hot path
+            val node = Node.mergeData(internalNode, opin.internalNode)
+            internalNode = node
+            opin.internalNode = node
+        }
+        super.unite(other)
+    }
+
+    override fun toString(): String {
+        return "Pin@${System.identityHashCode(this).toString(16)},rep@${System.identityHashCode(representative).toString(16)},node=$node"
+    }
+}
 
 /**
  * The Component is an entity which can be simulated in a [Circuit]; generally speaking, these are little more than object-oriented interfaces to the state of the Circuit as expressed through its [Circuit.matrix], [Circuit.knowns], [Circuit.solver], and so forth. Much of the actual math implemented for a component depends on the "stamp" family of methods--see those for details.
@@ -18,8 +47,9 @@ class ConnectionMutationException: Exception()
  * The bare minimum required to implement a Component, as of this writing (but check for which fields and methods are abstract in your version):
  *
  * - [name]: A String used to identify the component for debugging.
- * - [nodeCount]: The number of [Node]s ("pins") this component will have.
+ * - [pinCount]: The number of [Pin]s (equivalently, unique, disparate [Node]s) this component will have.
  * - [stamp]: How this component initially contributes to the Circuit.
+ * - [detail]: Return a human-readable String describing this Component's state for debug purposes.
  *
  * In keeping with good practice, please try to keep this list of _requirements_ as small as possible. There are many more fields which have default implementations (including a great many methods which do nothing) but which are needed for specific functionality; if a default implementation makes sense, define one at this level.
  */
@@ -27,7 +57,9 @@ abstract class Component : IDetail {
     /**
      *  Ask this component to contribute (initial) values to the MNA matrices.
      *
-     *  This is requested from [Circuit.buildMatrix]. It may not be called on every step (indeed, it shouldn't be), so this should only be relied upon to set the initial steady state. (Despite the name, the other Circuit "stamp" methods can be called at any time.)
+     *  This is requested from [Circuit.buildMatrix]. It may not be called on every step (indeed, ideally it shouldn't be), so this should only be relied upon to set the initial steady state. (Despite the name, the other Circuit "stamp" methods can be called at any time.)
+     *
+     *  While the return value of [node] is a `[Node]?`, it is safe to non-null assert its value anytime after a Component has been [added] and [stamp]ed, up until it is [removed], as long as [stamp] is ONLY called from [Circuit]. Some buggy implementations might call [stamp] from elsewhere; you have been warned.
      */
     abstract fun stamp()
 
@@ -45,11 +77,11 @@ abstract class Component : IDetail {
     open val imageName: String? = null
 
     /**
-     * How many nodes this component should have.
+     * How many pins this component should have.
      *
-     * `nodes` will be of this size only AFTER this component is added to a Circuit.
+     * `pins` will be of this size only AFTER this component is added to a Circuit.
      */
-    abstract val nodeCount: Int
+    abstract val pinCount: Int
 
     /** How many potential sources are inside this component. There should be at least two nodes per source (although
     they can overlap). This contributes to a different part of the MNA parameters.
@@ -64,13 +96,21 @@ abstract class Component : IDetail {
      * (Although the visibility doesn't do much in *this* project, this variable should be set from NOWHERE else.  - Grissess)
      */
     internal var circuit: Circuit? = null
+
+    /**
+     * True if this Component is in a [Circuit].
+     *
+     * If this is true, it is reasonable to assume that [pins] and [vsources] are filled out, but not safe to assume that [node] is non-null.
+     */
     internal val isInCircuit: Boolean
         get() = circuit != null
 
     /**
      * Called when the Component has finished being added to a circuit--a good time for any extra registration steps.
      *
-     * This is called after all the internal state--[nodes], [circuit], etc. have been initialized, and this is in [Circuit.components].
+     * This is called after all the internal state--[pins], [circuit], etc. have been initialized, and this is in [Circuit.components]. Thus, it is safe to non-null assert [node] returns in this function.
+     * 
+     * While the [pins] are initialized, the [Node]s likely are not; accessing [node] directly is likely to return null.
      */
     open fun added() {}
 
@@ -85,72 +125,78 @@ abstract class Component : IDetail {
 
     /**
      * Called before substep iterations start in [Circuit.step].
+     *
+     * It is always safe to non-null assert [node] returns in this function.
      */
     open fun preStep(dt: Double) {}
 
     /**
      * Called after substep iterations have finished in [Circuit.step].
+     *
+     * It is always safe to non-null assert [node] returns in this function.
      */
     open fun postStep(dt: Double) {}
 
-    /** The list of [Node]s held by this Component.
+    /** The list of [Pin]s held by this Component.
      *
      * Component implementations should index this list and avoid storing references anywhere else. The owning
     Circuit holds all Nodes it grants weakly, so taking other references will result in a memory leak.
      */
     @Suppress("LeakingThis") // Safe in a single threaded setting, apparently.
-    var nodes: MutableList<Node> = ArrayList(nodeCount)
+    var pins: MutableList<Pin> = ArrayList(pinCount)
 
     /**
      * The list of [VSource]s held by this Component.
      *
-     * Like [nodes], these are only weakly held by the [Circuit].
+     * Like [pins], these are only weakly held by the [Circuit].
      */
     @Suppress("LeakingThis") // Safe in a single threaded setting, apparently.
     var vsources: MutableList<VSource> = ArrayList(vsCount)
 
     /**
-     * Get a [Node] by index
+     * Get a [Node] by [Pin] index, or null if it has not yet been assigned.
+     *
+     * The [Node]s are granted to [Pin]s by [Circuit.buildMatrix], so it is only safe to do so:
+     *
+     * - After this has been [added] to a [Circuit] with [Circuit.add], AND
+     * - After [Node] indices have been assigned in [Circuit.buildMatrix].
+     *
+     * This is safe UNTIL the Component is [removed] with [Circuit.remove].
+     *
+     * Certain callbacks on this class are guaranteed to be called within this program state, such as [preStep], [postStep], [stamp], and possibly others, as long as [Circuit] is the sole invoker. Check the method documentation for details; if it does not explicitly state safety, you should gracefully handle null. In general, for these methods, you should take extra care not to call them unless this context is already guaranteed, or the method is known to guard against null nodes.
+     *
+     * Knowing this precise state's context is hard, since [Node]s can be reassigned at any time (which happens often for the [GroundNode]). It is safe to be defensive and check all nodes as needed.
      */
-    fun node(i: Int) = nodes[i].representative as Node
+    fun node(i: Int) = pins[i].node
 
     /** Connects two Components--makes nodes[nidx].representative the SAME Node as to.nodes[tidx].representative, respecting precedence.
 
-    This is ONLY safe to call AFTER the Component has been added to a Circuit.
+    This is ONLY safe to call AFTER the Component has been added to a [Circuit].
      */
     fun connect(nidx: Int, to: Component, tidx: Int) {
         if (circuit == null) return
-        val n = nodes[nidx]
-        val tn = to.nodes[tidx]
-        val (nnamed, tnnamed) = Pair(n.nameSet, tn.nameSet)
-            if(nnamed && !tnnamed) tn.named(n.name)
-            if(tnnamed && !nnamed) n.named(tn.name)
-            if (n.representative == tn.representative) return  // Already connected
-            tn.unite(n)
-            markConnectivityChanged()
-        }
+        pins[nidx].unite(to.pins[tidx])
+        markConnectivityChanged()
+    }
+
+    /**
+     * Ground the given [Pin].
+     *
+     * This is only safe to do AFTER the Component has been added to a [Circuit].
+     */
+    fun ground(nidx: Int) {
+        if(circuit == null) return
+        pins[nidx].node = circuit!!.ground
+        markConnectivityChanged()
+    }
 
     private fun markConnectivityChanged() {
         if(circuit == null) throw ConnectionMutationException()
         circuit!!.connectivityChanged = true
     }
 
-    /** Sets a Node directly. This is generally only reasonable for circuit.ground.
-
-    This is ONLY safe to call AFTER the Component has been added to a Circuit.
-     */
-    fun connect(nidx: Int, tn: Node) {
-        if (circuit == null) return
-        val n = nodes[nidx]
-        val (nnamed, tnnamed) = Pair(n.nameSet, tn.nameSet)
-        if (nnamed && !tnnamed) tn.named(n.name)
-        if (tnnamed && !nnamed) n.named(tn.name)
-        tn.unite(n)
-        markConnectivityChanged()
-    }
-
     override fun toString(): String {
-        return "${this::class.simpleName}@${System.identityHashCode(this).toString(16)} ${nodes.map { it.detail() }}"
+        return "${this::class.simpleName}@${System.identityHashCode(this).toString(16)} ${pins.map { it.node?.detail() }}"
     }
 }
 
@@ -167,7 +213,7 @@ abstract class Port : Component() {
     /**
      * A Port is, by definition, two nodes; thus, this cannot be overridden.
      */
-    final override val nodeCount = 2
+    final override val pinCount = 2
 
     // The orientation here is arbitrary, but helps keep signs consistent.
     /**
@@ -175,7 +221,7 @@ abstract class Port : Component() {
      *
      * By arbitrary convention, for compatibility with the Falstad circuit format, this is the second node.
      */
-    open val pos: Node
+    open val pos: Node?
         get() = node(1)
 
     /**
@@ -183,12 +229,12 @@ abstract class Port : Component() {
      *
      * This is arbitrarily the first Node, for Falstad compatibility.
      */
-    open val neg: Node
+    open val neg: Node?
         get() = node(0)
 
     /**
      * Get the potential across [pos] and [neg], signed positive when [pos] has a greater potential than [neg].
      */
     open val potential: Double
-        get() = if (isInCircuit) pos.potential - neg.potential else 0.0
+        get() = (pos?.potential ?: 0.0) - (neg?.potential ?: 0.0)
 }

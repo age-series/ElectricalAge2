@@ -156,6 +156,8 @@ class MutableSetMapMultiMap<K, V>(iter: Iterator<Pair<K, V>>) : MutableMultiMap<
     /** This implementation is O(keyMappingSize). */
     override val entriesSize: Int
         get() = map.entries.map { (_, vs) -> vs.size }.sum()
+
+    override fun toString() = map.toString()
 }
 
 /**

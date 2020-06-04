@@ -1,12 +1,16 @@
 package org.eln2.sim.electrical.mna
 
 import org.apache.commons.math3.linear.*
+import org.eln2.data.MutableMultiMap
+import org.eln2.data.mutableMultiMapOf
+import org.eln2.debug.DEBUG
 import org.eln2.debug.dprint
 import org.eln2.debug.dprintln
 import org.eln2.sim.IProcess
 import org.eln2.sim.electrical.mna.component.*
 import java.lang.ref.WeakReference
 import java.util.WeakHashMap
+import kotlin.collections.ArrayList
 
 /**
  * The default format for debug matrix printouts from Circuits.
@@ -143,13 +147,6 @@ class Circuit {
      * It should be an invariant that `this.components.all { it.circuit == this }`.
      */
     val components = mutableListOf<Component>()
-
-    /**
-     * A map from [Node] to the owning [Component].
-     *
-     * This does not include the [ground] NodeRef owned by the Circuit.
-     */
-    private val compNodeMap = WeakHashMap<Node, Component>()
 
     /**
      * A map from [VSource] to the owning [Component].
@@ -298,6 +295,7 @@ class Circuit {
      * This calls [stampMatrix] and [stampKnown] internally. It should only ever be called from [Component.stamp].
      */
     internal fun stampVoltageSource(pos: Int, neg: Int, num: Int, v: Double) {
+        if(num < 0) return  // Don't accidentally stamp conductances
         val vs = num + nodes.size
         stampMatrix(vs, neg, -1.0)
         stampMatrix(vs, pos, 1.0)
@@ -341,10 +339,8 @@ class Circuit {
         componentsChanged = true
         // This is the ONLY place where this should be set.
         comp.circuit = this
-        for (i in 0 until comp.nodeCount) {
-            val n = Node(this)
-            compNodeMap[n] = comp
-            comp.nodes.add(n)
+        for (i in 0 until comp.pinCount) {
+            comp.pins.add(Pin())
         }
         for (i in 0 until comp.vsCount) {
             val vs = VSource(this)
@@ -353,7 +349,7 @@ class Circuit {
         }
         comp.added()
 
-        dprintln("C.a: $comp has nodes ${comp.nodes} vs ${comp.vsources}")
+        dprintln("C.a: $comp has pins ${comp.pins} vs ${comp.vsources}")
         return comp
     }
 
@@ -376,8 +372,7 @@ class Circuit {
     fun remove(comp: Component): Boolean {
         return if (components.remove(comp)) {
             comp.removed()
-            comp.nodes.forEach { compNodeMap.remove(it) }
-            comp.nodes.clear()
+            comp.pins.clear()
             comp.vsources.forEach { compVsMap.remove(it) }
             comp.vsources.clear()
             // This is the ONLY place where this should be cleared.
@@ -397,11 +392,13 @@ class Circuit {
         get() {
             if (componentsChanged || connectivityChanged) buildMatrix()
             return !components.any {component ->
-                component.nodes.any {
-                    it.representative == ground
+                component.pins.any {
+                    it.node == ground
                 }
             }
         }
+    
+    private class PinDebugQueueEntry(val pin: Pin, val lastSibling: Boolean)
 
     /**
      * Build the [matrix] and the [nodes] and [voltageSources], imparting each with indices.
@@ -416,19 +413,87 @@ class Circuit {
     // a matrix of appropriate size.
     internal fun buildMatrix() {
         dprintln("C.bM")
-        val nodeSet: MutableSet<Node> = mutableSetOf()
+        val pinSet: MutableSet<Pin> = mutableSetOf()
         val voltageSourceSet: MutableSet<VSource> = mutableSetOf()
 
         components.forEach {component ->
-            dprintln("C.bM: component $component nodes ${component.nodes}")
-            nodeSet.addAll(component.nodes.map { it.representative as Node }.filter { it != ground })
+            dprintln("C.bM: component $component pinreps ${component.pins.map { it.representative as Pin }}")
+            pinSet.addAll(component.pins.map { it.representative as Pin })
             voltageSourceSet.addAll(component.vsources)
         }
 
-        nodes = nodeSet.map { WeakReference(it) }.toList()
-        voltageSources = voltageSourceSet.map { WeakReference(it) }.toList()
+        dprintln("C.bM: pinreps $pinSet")
+        
+        val newNodes = ArrayList<WeakReference<Node>>(pinSet.size)
+        var i = 0
+        for(p in pinSet) {
+            if(p.node == null) {
+                p.node = Node(this)
+            }
+            if(p.node != ground) {
+                p.node!!.index = i++
+                newNodes.add(WeakReference(p.node))
+            }
+        }
+        nodes = newNodes
 
-        for ((i, n) in nodes.withIndex()) n.get()!!.index = i
+        if(DEBUG) {
+            val pinForest: MutableMultiMap<Pin, Pin> = mutableMultiMapOf()
+            val pinMapping: MutableMap<Pin, Pair<Component, Int>> = mutableMapOf()
+            
+            components.forEach { comp ->
+                println("C.bM: pins for $comp:")
+                comp.pins.withIndex().forEach { (idx, pin) ->
+                    println("C.bM: $idx: $pin")
+                    pinForest[pin.parent as Pin] = pin
+                    pinMapping[pin] = Pair(comp, idx)
+                }
+            }
+
+            println("C.bM: pinForest=$pinForest pinMapping=$pinMapping")
+
+            println("C.bM: pin forest:")
+            
+            val roots: MutableSet<Pin> = pinForest.keys.filter { it in pinForest[it] }.toMutableSet()
+            val unvisited: MutableSet<Pin> = pinMapping.keys.toMutableSet()
+            val queue: MutableList<PinDebugQueueEntry> = mutableListOf()
+
+            while(unvisited.isNotEmpty()) {
+                if(queue.isEmpty()) {
+                    if(roots.isEmpty()) {
+                        println("C.bM: ERROR: no roots and unvisited nonempty: $unvisited")
+                        break
+                    }
+
+                    println()
+                    val root = roots.iterator().next()
+                    roots.remove(root)
+                    queue.add(PinDebugQueueEntry(root, true))
+                    print("root: ")
+                }
+                
+                val front = queue.removeAt(0)
+                unvisited.remove(front.pin)
+                val children = pinForest[front.pin].filter { it in unvisited }
+                children.withIndex().forEach { (idx, pin) ->
+                    queue.add(PinDebugQueueEntry(pin,
+                        front.lastSibling && idx == children.size - 1
+                    ))
+                }
+                
+                print("${front.pin} (${children.size} children)")
+                val owner = pinMapping[front.pin]
+                if(owner != null) {
+                    val (comp, idx) = owner
+                    print(" (owner $comp pin $idx)")
+                } else {
+                    print(" (no owner?)")
+                }
+                print(if(front.lastSibling) "\n" else "\t")
+            }
+        }
+
+        voltageSources = voltageSourceSet.map { WeakReference(it) }.toList()
         for ((i, v) in voltageSources.withIndex()) v.get()!!.index = i
 
         dprintln("C.bM: n ${nodes.map { it.get()?.detail() }} vs ${voltageSources.map { it.get()?.detail() }}")
@@ -585,15 +650,15 @@ class Circuit {
         sb.append("\n\t// Connections\n")
         components.forEach { cmp ->
             // This may be broken. It used to use .withIndex() but that resulted in too many possible results. We don't have tests for this, so wheee!
-            cmp.nodes.forEach {
-                val port = when (it.index) {
+            cmp.pins.forEach {
+                val port = when (it.node?.index) {
                     0 -> ":w"
                     1 -> ":e"
                     else -> ""
                 }
                 val node = it.representative as Node
                 sb.append("\t\"c${System.identityHashCode(cmp)}\"$port -- \"${if(node.isGround) "ground" else "n${node.index}"}\" [shape=box ")
-                when (it.index) {
+                when (it.node?.index) {
                     0 -> sb.append("color=red")
                     1 -> sb.append("color=blue")
                     else -> sb.append("color=gray")

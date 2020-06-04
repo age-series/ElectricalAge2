@@ -382,7 +382,7 @@ class Falstad(val source: String) {
             if (pinset.isNotEmpty()) {
                 // Only need to connect 1; the disjoint PosSets are merged right now
                 val pr = pinset.iterator().next()
-                pr.component.connect(pr.pinidx, circuit.ground)
+                pr.component.ground(pr.pinidx)
             }
         }
 
@@ -394,7 +394,7 @@ class Falstad(val source: String) {
             for (comp in circuit.components) {
                 if (comp is VoltageSource) {
                     dprintln("F.<init>: floating: ground $comp pin 1 (node ${comp.node(1)}")
-                    comp.connect(1, circuit.ground)
+                    comp.ground(1)
                     found = true
                     break
                 }
@@ -441,15 +441,15 @@ class Falstad(val source: String) {
 
                 dprintln("outputs:")
                 f.outputNodes.withIndex().forEach { nodeidx ->
-                    println("${nodeidx.index}: ${nodeidx.value.potential}V @${nodeidx.value.index}")
+                    println("${nodeidx.index}: ${nodeidx.value?.potential}V @${nodeidx.value?.index}")
                 }
             }
 
             val on = f.outputNodes
-            println("#T\t${on.indices.map { i -> "O${i + 1}" }.joinToString("\t")}")
+            println("#T\t${on.indices.joinToString("\t") { i -> "O${i + 1}" }}")
             (1..steps).forEach { step ->
                 if (!f.circuit.step(f.nominalTimestep)) error("step error (singularity?)")
-                println("${step * f.nominalTimestep}\t${on.map { node -> node.potential }.joinToString("\t")}")
+                println("${step * f.nominalTimestep}\t${on.joinToString("\t") { node -> node?.potential.toString() }}")
             }
 
             // FileOutputStream("falstad.dot").bufferedWriter().also {
