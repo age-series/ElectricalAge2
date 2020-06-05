@@ -37,20 +37,23 @@ var DEBUG =
 /**
  * dprintln: Prints an object (toString) with context to where it was called followed by newline if [DEBUG] = True
  * @param a The Object you want to print.
+ * @param b Print the debug header is true
  */
-fun dprintln(a: Any? = "") = if (!DEBUG) Unit else if(a == "") println() else {
+fun dprintln(a: Any? = "", b: Boolean = true) =
+    if (!DEBUG) Unit else if(a == "") println() else if (!b) println(a) else {
     val stackWalker = StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE)
-    val caller = stackWalker.walk { it.skip(1).findFirst().get() }
-    println("${caller.declaringClass.simpleName}.${caller.methodName}: $a")
+    val caller = stackWalker.walk { it.skip(2).findFirst().get() }
+    println("{${caller.declaringClass.simpleName}.${caller.methodName}}:  $a")
 }
 
 /**
  * dprint: Prints an object (toString) with context to where is was called without a newline if [DEBUG] = True
  * @param a The object you want to print
+ * @param b Print the debug header is true
  */
-fun dprint(a: Any?) = if (DEBUG) {
+fun dprint(a: Any?, b: Boolean = false) = if (DEBUG && !b) print(a) else if(DEBUG) {
     val stackWalker = StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE)
-    val caller = stackWalker.walk { it.skip(1).findFirst().get() }
-    print("${caller.declaringClass.simpleName}.${caller.methodName}: $a")
+    val caller = stackWalker.walk { it.skip(2).findFirst().get() }
+    print("{${caller.declaringClass.simpleName}.${caller.methodName}}:  $a")
 } else Unit
 
