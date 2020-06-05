@@ -17,6 +17,9 @@ import kotlin.collections.ArrayList
  */
 val MATRIX_FORMAT = RealMatrixFormat("", "", "\t", "\n", "", "\t")
 
+const val POSITIVE = 1
+const val NEGATIVE = 0
+
 /**
  * The Circuit class: a representation of a nodal electrical circuit simulation.
  *
