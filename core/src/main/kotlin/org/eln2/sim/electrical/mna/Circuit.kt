@@ -525,7 +525,7 @@ class Circuit {
 
         // Ask each component to contribute its steady state to the matrix
         dprintln("stamp all $components")
-        components.forEach { dprintln("C.bM: stamp $it"); it.stamp() }
+        components.forEach { dprintln("stamp $it"); it.stamp() }
         dprintln("final matrix:\n${MATRIX_FORMAT.format(matrix)}")
     }
 
