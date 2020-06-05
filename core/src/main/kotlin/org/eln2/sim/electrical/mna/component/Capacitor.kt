@@ -80,13 +80,13 @@ open class Capacitor : Port() {
     override fun preStep(dt: Double) {
         if(ts != dt) ts = dt  // May cause conductivity change/matrix solve step--avoid this if possible
         i = -idealU / eqR
-        dprintln("C.preS: i=$i eqR=$eqR idealU=$idealU")
+        dprintln("i=$i eqR=$eqR idealU=$idealU")
     }
 
 
     override fun postStep(dt: Double) {
         idealU = potential
-        dprintln("C.postS: potential=$potential (-> idealU)")
+        dprintln("potential=$potential (-> idealU)")
     }
 
     override fun stamp() {
