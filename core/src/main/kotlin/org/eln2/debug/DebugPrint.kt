@@ -35,18 +35,27 @@ var DEBUG =
         ).isNotEmpty()
 
 /**
- * dprintln: Print's empty newline if DEBUG = True
+ * dprintln: Prints empty newline if DEBUG = True
  */
 fun dprintln() = if (DEBUG) println() else Unit
 
 /**
- * dprintln: Print's object (toString) followed by newline if DEBUG = True
+ * dprintln: Prints an object (toString) with context to where it was called followed by newline if [DEBUG] = True
  * @param a The Object you want to print.
  */
-fun dprintln(a: Any?) = if (DEBUG) println(a) else Unit
+fun dprintln(a: Any?) = if (DEBUG) {
+    val stackWalker = StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE)
+    val caller = stackWalker.walk { it.skip(1).findFirst().get() }
+    println("${caller.declaringClass.simpleName}.${caller.methodName}: ${a.toString()}")
+} else Unit
 
 /**
- * dprint: Print's object (toString) (with no newline)if DEBUG = True
+ * dprint: Prints an object (toString) with context to where is was called without a newline if [DEBUG] = True
  * @param a The object you want to print
  */
-fun dprint(a: Any?) = if (DEBUG) print(a) else Unit
+fun dprint(a: Any?) = if (DEBUG) {
+    val stackWalker = StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE)
+    val caller = stackWalker.walk { it.skip(1).findFirst().get() }
+    print("${caller.declaringClass.simpleName}.${caller.methodName}: ${a.toString()}")
+} else Unit
+
