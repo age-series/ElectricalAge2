@@ -46,7 +46,7 @@ fun dprintln() = if (DEBUG) println() else Unit
 fun dprintln(a: Any?) = if (DEBUG) {
     val stackWalker = StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE)
     val caller = stackWalker.walk { it.skip(1).findFirst().get() }
-    println("${caller.declaringClass.simpleName}.${caller.methodName}: ${a.toString()}")
+    println("${caller.declaringClass.simpleName}.${caller.methodName}: $a")
 } else Unit
 
 /**
@@ -56,6 +56,6 @@ fun dprintln(a: Any?) = if (DEBUG) {
 fun dprint(a: Any?) = if (DEBUG) {
     val stackWalker = StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE)
     val caller = stackWalker.walk { it.skip(1).findFirst().get() }
-    print("${caller.declaringClass.simpleName}.${caller.methodName}: ${a.toString()}")
+    print("${caller.declaringClass.simpleName}.${caller.methodName}: $a")
 } else Unit
 
