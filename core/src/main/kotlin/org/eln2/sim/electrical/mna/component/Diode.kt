@@ -31,13 +31,13 @@ class IdealDiode : Resistor() {
     override fun simStep() {
         // Theorem: changing the resistance should never lead to a change in sign of the current for a *SINGLE* timestep
         // as long as that is valid, this won't oscillate:
-        dprintln("D.sS: in u=$potential r=$resistance")
+        dprintln("in u=$potential r=$resistance")
         if (potential > 0) {
             if (resistance > minimumResistance) resistance = minimumResistance
         } else {
             if (resistance < maximumResistance) resistance = maximumResistance
         }
-        dprintln("D.sS: out u=$potential r=$resistance")
+        dprintln("out u=$potential r=$resistance")
     }
 
     override fun detail(): String {
@@ -256,12 +256,12 @@ class RealisticDiode(private var model: DiodeData) : Resistor() {
         }
 
     override fun simStep() {
-        dprintln("RD.sS: u=$potential lastU=$lastPotential")
+        dprintln("u=$potential lastU=$lastPotential")
         if (abs(potential - lastPotential) < circuit!!.slack) return
 
         val newPotential = model.solveIter(temp, potential, lastPotential)
         lastPotential = potential
-        dprintln("RD.sS: newU=$newPotential")
+        dprintln("newU=$newPotential")
 
         val voltageDiodeCoefficient = model.voltageDiodeCoefficientAt(temp)
         val ex = exp(newPotential * voltageDiodeCoefficient)
@@ -279,7 +279,7 @@ class RealisticDiode(private var model: DiodeData) : Resistor() {
                 (ex - exp((-newPotential - model.zenerOffsetAt(temp)) * DiodeData.zenerCoefficient(temp)) - 1.0) * model.satCurrent + conductance * (-newPotential)
             }
 
-        dprintln("RD.sS: geq=$conductance r=${1 / conductance} i=$newCurrent")
+        dprintln("geq=$conductance r=${1 / conductance} i=$newCurrent")
 
         resistance = 1 / conductance
         current = newCurrent
