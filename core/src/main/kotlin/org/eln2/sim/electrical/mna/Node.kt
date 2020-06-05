@@ -32,7 +32,7 @@ open class Node(var circuit: Circuit) : IDetail, DisjointSet() {
                 }
                 else -> error("unreachable")  // TODO: Any better function for this?
             }
-            dprintln("N.mD: $a, $b => $res")
+            dprintln("$a, $b => $res")
             return res
         }
     }
@@ -74,7 +74,7 @@ open class Node(var circuit: Circuit) : IDetail, DisjointSet() {
      */
     fun named(nm: String) = with(this) {
         if (nameSet && name != nm) {
-            dprintln("N.n: WARN: node already named $name being renamed to $nm")
+            dprintln("WARN: node already named $name being renamed to $nm")
         }
         name = nm
         nameSet = true
@@ -87,7 +87,7 @@ open class Node(var circuit: Circuit) : IDetail, DisjointSet() {
     override fun toString() = detail()
 
     fun stampResistor(to: Node, r: Double) {
-        dprintln("N.sR $this $to $r")
+        dprintln("$this $to $r")
         circuit.stampResistor(index, to.index, r)
     }
 
