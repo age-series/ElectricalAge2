@@ -8,7 +8,7 @@ import org.eln2.sim.electrical.mna.component.VoltageSource
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
-class MNATests {
+internal class MNATests {
 
     @Test
     fun resistorVoltageSourceTest() {
