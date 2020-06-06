@@ -1,11 +1,9 @@
 //import sun.awt.Mutex
-import kotlin.concurrent.*
 import kotlinx.coroutines.*
 //import kotlin.coroutines.*
 import kotlinx.coroutines.sync.*
-import kotlin.system.*
 
-class thermalInterface{
+class ThermalInterface{
 
     var mutex = Mutex()
     var R = 1f //heat resistance at the interface
@@ -23,12 +21,12 @@ class thermalInterface{
         }
     }
 
-    lateinit var e0 : thermalElement
-    lateinit var e1 : thermalElement
+    lateinit var e0 : ThermalElement
+    lateinit var e1 : ThermalElement
 }
 
-class signedThermalInterface(thInterface : thermalInterface, sgn : Float){
-    var mThermalInterface :thermalInterface = thInterface
+class SignedThermalInterface(thInterface : ThermalInterface, sgn : Float){
+    var mThermalInterface :ThermalInterface = thInterface
     var sign : Float = sgn
 
     fun computeHeatTransfer(dt : Float, tickNumber : Int):Float{
@@ -37,7 +35,7 @@ class signedThermalInterface(thInterface : thermalInterface, sgn : Float){
     }
 }
 
-class thermalElement{
+class ThermalElement{
     var C = 1f; //Heat capacity of a given element
     var P = 0f; //Power dissipated as heat in the thermal element (from electrical circuit)
 
@@ -71,10 +69,10 @@ class thermalElement{
             }
     }
 
-    var themalInterfacesList = ArrayList<signedThermalInterface>()
+    var themalInterfacesList = ArrayList<SignedThermalInterface>()
 }
 
-class thermalSimulator{
+class ThermalSimulator{
 
     suspend fun updateSimulation(dt : Float,tickNumber : Int) = runBlocking{
         for(l in L){
@@ -86,46 +84,29 @@ class thermalSimulator{
         }
     }
 
-    var L = ArrayList<thermalElement>()
+    var L = ArrayList<ThermalElement>()
 }
 
 
 fun main() = runBlocking<Unit> {
 
-    var a1 = thermalElement();
-    var a2 = thermalElement();
-    var i12 = thermalInterface()
-    i12.e0 = a1
-    i12.e1 = a2
-    var si12 = signedThermalInterface(i12,1f)
-    var si21 = signedThermalInterface(i12,-1f)
-    a1.themalInterfacesList.add(si12)
-    a2.themalInterfacesList.add(si21)
-    //var a2 = a1;
-    a2.C = 1000f;
-    a1.T0 = 200f
-    a1.T1 = 200f
 
-    //var L = ArrayList<thermalElement>()
-    //L.add(a1)
-    //L.add(a2)
-
-    var sim = thermalSimulator()
+    var sim = ThermalSimulator()
     //sim.L = L
     for(i in 0..100){
-        var a = thermalElement()
+        var a = ThermalElement()
         a.T0 = 300f + 10f * i
         a.T1 = 300f + 10f * i
         sim.L.add(a)
 
         //add cpnnection with previous element
         if(i > 0) {
-            var i12 = thermalInterface()
+            var i12 = ThermalInterface()
             i12.e0 = sim.L[i-1]
             i12.e1 = sim.L[i]
 
-            var si12 = signedThermalInterface(i12,1f)
-            var si21 = signedThermalInterface(i12,-1f)
+            var si12 = SignedThermalInterface(i12,1f)
+            var si21 = SignedThermalInterface(i12,-1f)
             sim.L[i-1].themalInterfacesList.add(si12)
             sim.L[i].themalInterfacesList.add(si21)
         }
@@ -135,18 +116,10 @@ fun main() = runBlocking<Unit> {
     var dt = 0.05f
 
     for(tickNumber in 0..10){
-        //val c = GlobalScope.launch {
-            sim.updateSimulation(dt, tickNumber)
-        //}
-        //c.join()
-        //a1.updateT(dt,tickNumber)
-        //a2.updateT(dt,tickNumber)
+        sim.updateSimulation(dt, tickNumber)
         println(sim.L[0].getT(0))
         println(sim.L[1].getT(0))
         println("looop ed")
     }
-    //a2.getT() = 10f
-    //println(a2.getT(0))
-    //println(a1.C)
-    //println("Hello World!")
+
 }
