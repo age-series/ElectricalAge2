@@ -1,7 +1,6 @@
-//import sun.awt.Mutex
 import kotlinx.coroutines.*
-//import kotlin.coroutines.*
 import kotlinx.coroutines.sync.*
+import kotlin.math.*
 
 class ThermalInterface{
 
@@ -72,6 +71,26 @@ class ThermalElement{
     var themalInterfacesList = ArrayList<SignedThermalInterface>()
 }
 
+//TODO: change name?
+//helper class that creates thermal elements / interfaces from real world physical values
+class ThermalBuilder{
+
+    fun createWireThermalElement(length: Float, radius : Float):ThermalElement{
+        var wire = ThermalElement()
+
+        var volume = length * PI * radius*radius
+        var volumicMass = 8940f //copper volumic mass in kg/m^3
+        var mass = volume * volumicMass
+        var heatCapacityPerKilogram = 385f //copper heat capacity per Kg in J/Kg/K
+
+        wire.C = (mass*heatCapacityPerKilogram).toFloat()
+        println("C")
+        println(wire.C)
+        return wire
+    }
+}
+
+
 class ThermalSimulator{
 
     suspend fun updateSimulation(dt : Float,tickNumber : Int) = runBlocking{
@@ -92,9 +111,11 @@ fun main() = runBlocking<Unit> {
 
 
     var sim = ThermalSimulator()
+
+    var builder = ThermalBuilder()
     //sim.L = L
     for(i in 0..100){
-        var a = ThermalElement()
+        var a = builder.createWireThermalElement(1f,0.01f)//ThermalElement()
         a.T0 = 300f + 10f * i
         a.T1 = 300f + 10f * i
         sim.L.add(a)
