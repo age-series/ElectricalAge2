@@ -1,6 +1,6 @@
+import kotlin.math.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.*
-import kotlin.math.*
 
 
 /**
@@ -9,10 +9,10 @@ import kotlin.math.*
 class ThermalInterface {
 
     var mutex = Mutex()
-    var R = 1.0 //heat resistance at the interface
-    var heatTranfer = 0.0 //heat transfer during a simulation tick through this interface
+    var R = 1.0 // heat resistance at the interface
+    var heatTranfer = 0.0 // heat transfer during a simulation tick through this interface
 
-    var lastTickComputed = 0 //number of the last tick where the heat transfer was computed. Tick number switch between 0 and 1. This is here to prevent computing twice the heat trasnfered when not needed
+    var lastTickComputed = 0 // number of the last tick where the heat transfer was computed. Tick number switch between 0 and 1. This is here to prevent computing twice the heat trasnfered when not needed
 
     /**
      * compute the heat transfer from object 0 to object 1 during time dt for a given tick.
@@ -53,12 +53,12 @@ class SignedThermalInterface(thInterface: ThermalInterface, sgn: Double) {
  * It also posses a list of signed thermal interfaces.
  */
 class ThermalElement {
-    var C = 1.0 //Heat capacity of a given element
-    var P = 0.0 //Power dissipated as heat in the thermal element (from electrical circuit)
+    var C = 1.0 // Heat capacity of a given element
+    var P = 0.0 // Power dissipated as heat in the thermal element (from electrical circuit)
 
-    //temperature needs to be stored twice: at time $t$, we use T0, then we use that to
-    //compute temperature at time $t+dt$ that we store in T1, then for $t + dt+dt$ we
-    //store it in T0 again etc
+    // temperature needs to be stored twice: at time $t$, we use T0, then we use that to
+    // compute temperature at time $t+dt$ that we store in T1, then for $t + dt+dt$ we
+    // store it in T0 again etc
     var T0 = 300.0 //in Kelvin
     var T1 = 300.0
     //var useT0T1 = 0
@@ -150,14 +150,13 @@ fun main() = runBlocking<Unit> {
     var sim = ThermalSimulator()
 
     var builder = ThermalBuilder()
-    //sim.L = L
     for(i in 0..100){
         var a = builder.createWireThermalElement(1.0,0.01)//ThermalElement()
         a.T0 = 300.0 + 10.0 * i
         a.T1 = 300.0 + 10.0 * i
         sim.L.add(a)
 
-        //add cpnnection with previous element
+        // add cpnnection with previous element
         if(i > 0) {
             var i12 = ThermalInterface()
             i12.e0 = sim.L[i-1]
@@ -170,7 +169,6 @@ fun main() = runBlocking<Unit> {
         }
     }
 
-    //var tickNumber = 0
     var dt = 0.05
 
     for(tickNumber in 0..10){
