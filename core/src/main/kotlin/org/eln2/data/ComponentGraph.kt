@@ -102,7 +102,7 @@ open class ComponentGraph {
 			a.incident.remove(b)
 			b.incident.remove(a)
 			edges.remove(edge)
-			
+
 			true
 		} else {
 			false
@@ -172,6 +172,11 @@ open class ComponentGraph {
 			vertex, _, isRoot, _ ->
 			dprintln("CG.aC: visiting $vertex root=$isRoot")
 			if(isRoot) {
+                if(vertex.component in newComponents) {
+                    // Don't allow a vertex to, by identity, share a component already registered if it is a root; this
+                    // state means this particular vertex was formerly connected, but now is not.
+                    vertex.component = constructComponent(vertex)
+                }
 				currentComponent = vertex.component
 				newComponents.add(currentComponent!!)
 				currentComponent!!.clear()

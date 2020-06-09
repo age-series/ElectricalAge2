@@ -1,5 +1,6 @@
 package org.eln2.data
 
+import org.eln2.debug.DEBUG
 import org.eln2.debug.dprintln
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
@@ -39,16 +40,16 @@ internal class ComponentGraphTest {
 	
 	fun debugDump(cg: ComponentGraph) {
 		dprintln("GRAPH $cg:")
-		dprintln("  vertices:")
+		dprintln("  vertices (${cg.vertices.size}):")
 		cg.vertices.forEach {
 			dprintln("    $it in ${it.component} with ${it.component.vertices}")
 			dprintln("      incidence ${it.incident} degree ${it.incident.size}")
 		}
-		dprintln("  edges:")
+		dprintln("  edges (${cg.edges.size}):")
 		cg.edges.forEach {
 			dprintln("    $it between (${it.a}, ${it.b})")
 		}
-		dprintln("  components:")
+		dprintln("  components (${cg.components.size}):")
 		cg.components.forEach {
 			dprintln("    $it has ${it.vertices.size} vertices:")
 			it.vertices.forEach { v->
@@ -56,8 +57,19 @@ internal class ComponentGraphTest {
 			}
 		}
 	}
+    
+    fun fullConsistencyCheck(cg: ComponentGraph) {
+        try {
+            fullConsistencyCheckImpl(cg)
+        } catch(e: Throwable) {
+            DEBUG = true
+            System.err.println("The following graph failed consistency checks:")
+            debugDump(cg)
+            throw e
+        }
+    }
 	
-	fun fullConsistencyCheck(cg: ComponentGraph) {
+	fun fullConsistencyCheckImpl(cg: ComponentGraph) {
 		debugDump(cg)
 
 		val seenEdges: MutableSet<Edge> = mutableSetOf()
@@ -217,4 +229,75 @@ internal class ComponentGraphTest {
 			assertEquals(cg.edges.size, cardinality)
 		}
 	}
+    
+    @Test
+    fun incrementalBilinearGraph() {
+        val cg = makeInstance()
+
+        val (a, b) = cg.mutate {
+            Pair(newVertex(), newVertex())
+        }
+        val (aSet, bSet) = Pair(mutableSetOf(a), mutableSetOf(b))
+
+        fullConsistencyCheck(cg)
+        assertEquals(cg.vertices, aSet + bSet)
+        assertEquals(cg.vertices.size, 2)
+        assertEquals(cg.components.size, 2)
+        assertEquals(cg.edges.size, 0)
+        
+        var (nextA, nextB) = Pair(a, b)
+        
+        (1 .. 10).forEach {
+            val (aNew, bNew) = cg.mutate {
+                val (an, bn) = Pair(newVertex(), newVertex())
+                connect(an, nextA)
+                connect(bn, nextB)
+                Pair(an, bn)
+            }
+            
+            nextA = aNew
+            nextB = bNew
+            aSet.add(aNew)
+            bSet.add(bNew)
+
+            fullConsistencyCheck(cg)
+            assertEquals(cg.vertices, aSet + bSet)
+            assertEquals(cg.components.size, 2)
+            assertEquals(cg.edges.size, 2 * it)
+            assertEquals(a.component.vertices, aSet)
+            assertEquals(b.component.vertices, bSet)
+        }
+        
+        aSet.forEach { selectedA ->
+            bSet.forEach { selectedB ->
+                cg.mutate {
+                    connect(selectedA, selectedB)
+                }
+                fullConsistencyCheck(cg)
+                assertEquals(cg.components.size, 1)
+                cg.mutate {
+                    disconnect(selectedA, selectedB)
+                }
+                fullConsistencyCheck(cg)
+                assertEquals(cg.components.size, 2)
+            }
+        }
+    }
+    
+    @Test
+    fun edgelessGraphs() {
+        val cg = makeInstance()
+        
+        val vertices: MutableSet<Vertex> = mutableSetOf()
+
+        (0 .. 10).forEach {
+            cg.mutate {
+                vertices.add(newVertex())
+            }
+
+            fullConsistencyCheck(cg)
+            assertEquals(cg.vertices, vertices)
+            assertEquals(cg.components.size, vertices.size)
+        }
+    }
 }
