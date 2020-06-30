@@ -1,10 +1,7 @@
 package org.eln2.sim.electrical.mna
 
 import org.eln2.debug.mnaPrintln
-import org.eln2.sim.electrical.mna.component.Capacitor
-import org.eln2.sim.electrical.mna.component.Inductor
-import org.eln2.sim.electrical.mna.component.Resistor
-import org.eln2.sim.electrical.mna.component.VoltageSource
+import org.eln2.sim.electrical.mna.component.*
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -28,6 +25,27 @@ internal class MNATests {
         assert(c.step(0.05))
         mnaPrintln(c)
         assertEquals(true, (r.current > 0.99) and (r.current < 1.01))
+    }
+
+    @Test
+    fun resistorCurrentSourceTest() {
+        val c = Circuit()
+        val r = Resistor()
+        val cs = CurrentSource()
+
+        c.add(cs, r)
+
+        cs.connect(POSITIVE, r, POSITIVE)
+        cs.connect(NEGATIVE, r, NEGATIVE)
+
+        cs.current = 1.0
+        r.resistance = 10.0
+
+        assert(c.step(0.05))
+        mnaPrintln(c)
+        assertEquals(true, (r.current > 0.99) and (r.current < 1.01))
+        assertEquals(true, (r.potential > 9.99) and (r.current < 10.01))
+        assertEquals(true, (cs.potential > 9.99) and (cs.current < 10.01))
     }
 
     @Test
