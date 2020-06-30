@@ -41,9 +41,8 @@ var DEBUG =
  */
 fun dprintln(a: Any? = "", b: Boolean = true) =
     if (!DEBUG) Unit else if(a == "") println() else if (!b) println(a) else {
-    val stackWalker = StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE)
-    val caller = stackWalker.walk { it.skip(2).findFirst().get() }
-    println("{${caller.declaringClass.simpleName}.${caller.methodName}}:  $a")
+        val caller = Thread.currentThread().stackTrace[3]
+        println("{${caller.className.split('.').last()}.${caller.methodName}}:  $a")
 }
 
 /**
@@ -52,8 +51,7 @@ fun dprintln(a: Any? = "", b: Boolean = true) =
  * @param b Print the debug header is true
  */
 fun dprint(a: Any?, b: Boolean = false) = if (DEBUG && !b) print(a) else if(DEBUG) {
-    val stackWalker = StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE)
-    val caller = stackWalker.walk { it.skip(2).findFirst().get() }
-    print("{${caller.declaringClass.simpleName}.${caller.methodName}}:  $a")
+    val caller = Thread.currentThread().stackTrace[2]
+    print("{${caller.className.split('.').last()}.${caller.methodName}}:  $a")
 } else Unit
 
