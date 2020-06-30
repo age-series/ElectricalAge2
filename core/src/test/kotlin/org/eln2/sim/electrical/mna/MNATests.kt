@@ -131,7 +131,6 @@ internal class MNATests {
         r1.resistance = 200.0
         c1.capacitance = 0.0001
 
-
         assert(c.step(0.05))
         mnaPrintln(c)
         println(c1.detail())

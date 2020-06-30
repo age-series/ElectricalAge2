@@ -166,13 +166,13 @@ internal class CircuitTest {
     fun basicRCCircuit() {
         val ts = TrivialRCCircuit()
         assert(ts.c.step(0.05))
-        assertEquals(ts.c1.i, 0.000732, 0.000001)
+        assertEquals(ts.c1.internalCurrent, 0.000732, 0.000001)
         assertEquals(ts.c1.potential, 6.315, 0.001)
         assert(ts.c.step(0.05))
-        assertEquals(ts.c1.i, 0.000270, 0.000001)
+        assertEquals(ts.c1.internalCurrent, 0.000270, 0.000001)
         assertEquals(ts.c1.potential, 8.660, 0.001)
         assert(ts.c.step(0.05))
-        assertEquals(ts.c1.i, 0.000099, 0.000001)
+        assertEquals(ts.c1.internalCurrent, 0.000099, 0.000001)
         assertEquals(ts.c1.potential, 9.506, 0.001)
     }
 
