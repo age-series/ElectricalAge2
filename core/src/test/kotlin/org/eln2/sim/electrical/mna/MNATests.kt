@@ -37,8 +37,9 @@ internal class MNATests {
 
         cs.connect(POSITIVE, r, POSITIVE)
         cs.connect(NEGATIVE, r, NEGATIVE)
+        cs.ground(NEGATIVE)
 
-        cs.current = 1.0
+        cs.current = -1.0
         r.resistance = 10.0
 
         assert(c.step(0.05))
