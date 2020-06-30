@@ -74,7 +74,7 @@ open class Capacitor : Port() {
     var charge: Double = 0.0
 
     override fun detail(): String {
-        return "[capacitor $name: ${potential}v, ${internalCurrent}A, ${capacitance}F, ${energy}J, ${charge}C]"
+        return "[capacitor $name: ${potential}v, ${current}A (${internalCurrent}A), ${capacitance}F, ${energy}J, ${charge}C]"
     }
 
     override fun preStep(dt: Double) {
