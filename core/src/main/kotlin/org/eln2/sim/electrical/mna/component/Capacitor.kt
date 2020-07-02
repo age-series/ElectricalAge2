@@ -85,8 +85,9 @@ open class Capacitor : Port() {
 
 
     override fun postStep(dt: Double) {
-        charge = capacitance * potential
-        dprintln("charge=$potential * $capacitance")
+        charge += current * dt
+        dprintln("charge += $current * $dt")
+        dprintln("charge = $charge")
     }
 
     override fun stamp() {

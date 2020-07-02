@@ -1,11 +1,22 @@
 package org.eln2.sim.electrical.mna
 
+import org.eln2.debug.dprintln
 import org.eln2.debug.mnaPrintln
 import org.eln2.sim.electrical.mna.component.*
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
+import kotlin.math.abs
 
 internal class MNATests {
+
+    /**
+     *
+     **/
+    fun within_tolerable_error(simulated: Double, actual: Double, tolerance: Double) : Boolean {
+        val percentError = abs((simulated - actual) / actual)
+        dprintln("Percent Error is $percentError")
+        return percentError < tolerance
+    }
 
     @Test
     fun resistorVoltageSourceTest() {
@@ -122,38 +133,28 @@ internal class MNATests {
 
         c.add(r1, c1, vs)
 
-        vs.connect(POSITIVE, r1, POSITIVE)
-        r1.connect(NEGATIVE, c1, POSITIVE)
-        c1.connect(NEGATIVE, vs, NEGATIVE)
+        vs.connect(POSITIVE, c1, POSITIVE)
+        c1.connect(NEGATIVE, r1, POSITIVE)
+        r1.connect(NEGATIVE, vs, NEGATIVE)
         vs.ground(NEGATIVE)
 
-        vs.potential = 10.0
-        r1.resistance = 100.0
-        c1.capacitance = 0.05
+        vs.potential = 5.0
+        r1.resistance = 267.0 + 22.0
+        c1.capacitance = 0.000932
 
-        /* Voltage and current equations for this circuit:
-            I(t) = Vs/R * e^(-t/RC) = e^(-t/5)/10
-            V_C(t) = Vs * (1-e^(-t/RC)) = 10 - 10e^(-t/5)
-            V_R(t) = Vs * e^(-t/RC) = 10e^(-t/5)
+        /*
+            The following uses data from measuring real circuits rather than comparing against Falstad.
          */
-
-        assert(c.step(0.05)) // 0.05 seconds after sim start.
-        assert((r1.current > 0.098) and (r1.current < 0.100)) // Should be e^(-1/100)/10 (~0.099005) A
-        assert((c1.current > 0.098) and (c1.current < 0.100)) // Ditto
-        assert((r1.potential > 9.8) and (r1.potential < 10.0)) // Should be 10e^(-1/100) (~) V
-        assert((c1.potential > 0.098) and (c1.potential < 0.100)) // Should be 10 - 10e^(-1/100) (~0.09950) V
-
-        assert(c.step(0.05)) // 0.10 seconds after sim start.
-        assert((r1.current > 0.098) and (r1.current < 0.099)) // Should be e^(-1/50)/10 (~0.098020) A
-        assert((c1.current > 0.098) and (c1.current < 0.099)) // Ditto
-        assert((r1.potential > 9.8) and (r1.potential < 9.9)) // Should be 10e^(-1/50) (~9.80199) V
-        assert((c1.potential > 0.197) and (c1.potential < 0.199)) // Should be 10 - 10e^(-1/50) (~0.198013) V
-
-        for (it in 2..100) assert(c.step(0.05)) // 1.00 seconds after sim start.
-        assert((r1.current > 0.035) and (r1.current < 0.037)) // Should be 0.1/e (~0.0367879) A
-        assert((c1.current > 0.035) and (c1.current < 0.037)) // Ditto
-        assert((r1.potential > 3.5) and (r1.potential < 3.7)) // Should be 10/e (~3.67879) V
-        assert((c1.potential > 6.2) and (c1.potential < 6.4)) // Should be 10 - 10/e (~6.32121) V
+        assert(c.step(0.002))
+        //assert(within_tolerable_error(r1.potential, 4.090909, 0.05))
+        //assert(within_tolerable_error(c1.potential, 5 - 4.090909, 0.15))
+        dprintln(r1.current)
+        dprintln(c1.current)
+        for (it in 1..100) assert(c.step(0.002))
+        dprintln(r1.potential)
+        dprintln(r1.current)
+        dprintln(c1.potential)
+        dprintln(c1.current)
     }
 
     @Test
@@ -172,10 +173,19 @@ internal class MNATests {
 
         vs.potential = 10.0
         r1.resistance = 20.0
-        i1.inductance = 1.0
+        i1.inductance = 0.05
 
         assert(c.step(0.05))
+        mnaPrintln(c)
+        println(i1.detail())
+        println(r1.detail())
         assert(c.step(0.05))
+        mnaPrintln(c)
+        println(i1.detail())
+        println(r1.detail())
         assert(c.step(0.05))
+        mnaPrintln(c)
+        println(i1.detail())
+        println(r1.detail())
     }
 }
