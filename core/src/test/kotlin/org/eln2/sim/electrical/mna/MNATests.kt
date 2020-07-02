@@ -177,25 +177,27 @@ internal class MNATests {
 
         // Discharging
 
+        vs.potential = 0.0
+
         assert(c.step(0.05)) // 0.050 s
         assert(within_tolerable_error(c1.potential, 4.0909, tolerance))
-        assert(within_tolerable_error(r1.potential, 5 - 4.0909, tolerance))
-        assert(within_tolerable_error(c1.current, 0.0142, tolerance))
+        assert(within_tolerable_error(r1.potential, -4.0909, tolerance))
+        assert(within_tolerable_error(c1.current, -0.0142, tolerance))
 
         assert(c.step(0.05)) // 0.100 s
         assert(within_tolerable_error(c1.potential, 3.4017, tolerance))
-        assert(within_tolerable_error(r1.potential, 5 - 3.4017, tolerance))
-        assert(within_tolerable_error(c1.current, 0.0118, tolerance))
+        assert(within_tolerable_error(r1.potential, -3.4017, tolerance))
+        assert(within_tolerable_error(c1.current, -0.0118, tolerance))
 
         assert(c.step(0.05)) // 0.150 s
         assert(within_tolerable_error(c1.potential, 2.8250, tolerance))
-        assert(within_tolerable_error(r1.potential, 5 - 2.8250, tolerance))
-        assert(within_tolerable_error(c1.current, 0.0098, tolerance))
+        assert(within_tolerable_error(r1.potential,  -2.8250, tolerance))
+        assert(within_tolerable_error(c1.current, -0.0098, tolerance))
 
         assert(c.step(0.05)) // 0.200 s
         assert(within_tolerable_error(c1.potential, 2.3412, tolerance))
-        assert(within_tolerable_error(r1.potential, 5 - 2.3412, tolerance))
-        assert(within_tolerable_error(c1.current, 0.0081, tolerance))
+        assert(within_tolerable_error(r1.potential, -2.3412, tolerance))
+        assert(within_tolerable_error(c1.current, -0.0081, tolerance))
     }
 
     @Test
