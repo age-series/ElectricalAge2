@@ -14,11 +14,10 @@ import org.eln2.debug.dprintln
  *   Capacitors are an electrical component that stores electric charge within a magnetic field. From a mathematical
  *      perspective, it relates electric charge to electrical potential. This is expressed by the ratio Q/V, in which
  *      the proportionality constant here is the capacitance C. As a circuit with current will change the amount of
- *      charge in the capacitor, the voltage will change proportionaly. That is, dQ/dV = C.
- *
- *   When performing MNA, each component must report if it has any resistance, is sourcing any current or is sourcing
- *      any voltage. On the surface, these appear to not describe a capacitor at all; however, Norton's Theorum allows
- *      us to express the capacitor in terms of a current source and a resistor for a certain time interval.
+ *      charge in the capacitor, the voltage will change proportionaly. That is, dQ/dV = C. When performing MNA, each
+ *      component must report if it has any resistance, is sourcing any current or is sourcing any voltage. On the
+ *      surface, these appear to not describe a capacitor at all; however, Norton's Theorum allows us to express the
+ *      capacitor in terms of a current source and a resistor for a certain time interval.
  *
  *   First, the resistance of the equivalent resistor needs to be found. Ohm's Law gives the relation R = V/I.
  *      Substituting the capacitance relation (rearranged to dV = dQ/C) in results in the new equation R = Q/CI. Note
@@ -96,23 +95,33 @@ open class Capacitor : Port() {
     /**
      * Remember the potential across the capacitor from the previous simulation step.
      */
-    private var lastPotential : Double = 0.0
+    private var lastPotential: Double = 0.0
 
     /**
      * The amount of charge this capacitor has current accumulated in coulumbs.
      */
     var charge: Double = 0.0
 
+    /**
+     * Returns a string containing all the relevant electrical information about this capacitor.
+     */
     override fun detail(): String {
         return "[capacitor $name: ${potential}v, ${current}A (${internalCurrent}A), ${capacitance}F, ${energy}J, ${charge}C]"
     }
 
+    /**
+     * Function called by simulation before performing a step. Configures the virtual current source based on the charge
+     * of the capacitor at this point in time.
+     */
     override fun preStep(dt: Double) {
-        if(timeStep != dt) timeStep = dt  // May cause conductivity change/matrix solve step--avoid this if possible
+        if (timeStep != dt) timeStep = dt  // May cause conductivity change/matrix solve step--avoid this if possible
         internalCurrent = - charge / dt
         dprintln("v=$potential c=$charge is=$internalCurrent it=$current eqR=$equivalentResistance")
     }
 
+    /**
+     * Function called by simulation after performing a step. Performs accumulation of charge and updates memory state.
+     */
     override fun postStep(dt: Double) {
         val dv = potential - lastPotential
         val dq = capacitance * dv
@@ -123,11 +132,17 @@ open class Capacitor : Port() {
         dprintln("v=$potential c=$charge is=$internalCurrent it=$current eqR=$equivalentResistance")
     }
 
+    /**
+     * Commits the capacitor's equivalent resistance to the MNA matrix.
+     */
     override fun stamp() {
-        if(pos != null && neg != null) pos!!.stampResistor(neg!!, equivalentResistance)
+        if (pos != null && neg != null) pos!!.stampResistor(neg!!, equivalentResistance)
     }
-    
+
+    /**
+     * Removes the capacitor's equivalent resistance from the MNA matrix.
+     */
     protected fun unstamp() {
-        if(pos != null && neg != null) pos!!.stampResistor(neg!!, -equivalentResistance)
+        if (pos != null && neg != null) pos!!.stampResistor(neg!!, -equivalentResistance)
     }
 }

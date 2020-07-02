@@ -76,7 +76,7 @@ open class Inductor : Port() {
     }
 
     override fun preStep(dt: Double) {
-        if(timeStep != dt) timeStep = dt  // May cause a matrix solve--avoid this if possible
+        if (timeStep != dt) timeStep = dt  // May cause a matrix solve--avoid this if possible
         internalCurrent = flux / inductance
     }
 
@@ -85,10 +85,10 @@ open class Inductor : Port() {
     }
 
     override fun stamp() { 
-        if(pos != null && neg != null) pos!!.stampResistor(neg!!, equivalentResistance)
+        if (pos != null && neg != null) pos!!.stampResistor(neg!!, equivalentResistance)
     }
 
     protected fun unstamp() {
-        if(pos != null && neg != null) pos!!.stampResistor(neg!!, -equivalentResistance)
+        if (pos != null && neg != null) pos!!.stampResistor(neg!!, -equivalentResistance)
     }
 }

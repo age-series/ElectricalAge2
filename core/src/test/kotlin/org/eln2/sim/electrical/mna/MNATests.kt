@@ -1,16 +1,21 @@
 package org.eln2.sim.electrical.mna
 
+import kotlin.math.abs
 import org.eln2.debug.dprintln
 import org.eln2.debug.mnaPrintln
-import org.eln2.sim.electrical.mna.component.*
+import org.eln2.sim.electrical.mna.component.CurrentSource
+import org.eln2.sim.electrical.mna.component.VoltageSource
+import org.eln2.sim.electrical.mna.component.Resistor
+import org.eln2.sim.electrical.mna.component.Capacitor
+import org.eln2.sim.electrical.mna.component.Inductor
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
-import kotlin.math.abs
 
 internal class MNATests {
 
     /**
-     *
+     *  A percent error function that returns true if the given simulated and actual values are within the given
+     *  tolerance percentage.
      **/
     fun within_tolerable_error(simulated: Double, actual: Double, tolerance: Double) : Boolean {
         val percentError = abs((simulated - actual) / actual)
@@ -125,7 +130,7 @@ internal class MNATests {
     }
 
     @Test
-    fun resistorCapacitorTest() {
+    fun RCCircuitTest() {
         val c = Circuit()
         val r1 = Resistor()
         val c1 = Capacitor()
@@ -191,7 +196,7 @@ internal class MNATests {
 
         assert(c.step(0.05)) // 0.150 s
         assert(within_tolerable_error(c1.potential, 2.8250, tolerance))
-        assert(within_tolerable_error(r1.potential,  -2.8250, tolerance))
+        assert(within_tolerable_error(r1.potential, -2.8250, tolerance))
         assert(within_tolerable_error(c1.current, -0.0098, tolerance))
 
         assert(c.step(0.05)) // 0.200 s
@@ -201,7 +206,7 @@ internal class MNATests {
     }
 
     @Test
-    fun resistorInductorTest() {
+    fun RLCircuitTest() {
         val c = Circuit()
         val r1 = Resistor()
         val i1 = Inductor()
@@ -214,21 +219,26 @@ internal class MNATests {
         i1.connect(NEGATIVE, vs, NEGATIVE)
         vs.ground(NEGATIVE)
 
-        vs.potential = 10.0
-        r1.resistance = 20.0
-        i1.inductance = 0.05
+        vs.potential = 5.0
+        r1.resistance = 100.0
+        i1.inductance = 1.0
 
-        assert(c.step(0.05))
+        assert(c.step(0.001))
         mnaPrintln(c)
         println(i1.detail())
         println(r1.detail())
-        assert(c.step(0.05))
+        assert(c.step(0.001))
         mnaPrintln(c)
         println(i1.detail())
         println(r1.detail())
-        assert(c.step(0.05))
+        assert(c.step(0.001))
         mnaPrintln(c)
         println(i1.detail())
         println(r1.detail())
+    }
+
+    @Test
+    fun RCLCircuitTest() {
+
     }
 }
