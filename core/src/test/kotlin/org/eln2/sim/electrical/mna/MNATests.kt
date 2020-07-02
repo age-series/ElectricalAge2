@@ -144,17 +144,25 @@ internal class MNATests {
 
         /*
             The following uses data from measuring real circuits rather than comparing against Falstad.
+            See /testdata/discharging_data.ods
          */
-        assert(c.step(0.002))
-        //assert(within_tolerable_error(r1.potential, 4.090909, 0.05))
-        //assert(within_tolerable_error(c1.potential, 5 - 4.090909, 0.15))
-        dprintln(r1.current)
-        dprintln(c1.current)
-        for (it in 1..100) assert(c.step(0.002))
-        dprintln(r1.potential)
-        dprintln(r1.current)
-        dprintln(c1.potential)
-        dprintln(c1.current)
+
+        assert(c.step(0.05))
+        println("4.0909/0.0142")
+        println(r1.detail())
+        println(c1.detail())
+        assert(c.step(0.05))
+        println("3.4017/0.0118")
+        println(r1.detail())
+        println(c1.detail())
+        assert(c.step(0.05))
+        println("2.8250/0.0098")
+        println(r1.detail())
+        println(c1.detail())
+        assert(c.step(0.05))
+        println("2.3412/0.0081")
+        println(r1.detail())
+        println(c1.detail())
     }
 
     @Test

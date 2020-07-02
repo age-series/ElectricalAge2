@@ -30,7 +30,7 @@ open class Capacitor : Port() {
     @Suppress("MemberVisibilityCanBePrivate")
     val energy: Double
         // https://wikimedia.org/api/rest_v1/media/math/render/svg/2d44d092abb138877538fad86bc77e18b26fb1bc
-        get() = 0.5 * charge * charge / capacitance
+        get() = 0.5 * capacitance * potential * potential
 
     /**
      * The simulation timestep in seconds.
@@ -68,8 +68,10 @@ open class Capacitor : Port() {
             field = value
         }
 
+    private var lastPotential : Double = 0.0
+
     /**
-     * The amount of charge stored in this capacitor in coulumbs.
+     * The amount of charge this capacitor has current accumulated in coulumbs.
      */
     var charge: Double = 0.0
 
@@ -79,15 +81,18 @@ open class Capacitor : Port() {
 
     override fun preStep(dt: Double) {
         if(timeStep != dt) timeStep = dt  // May cause conductivity change/matrix solve step--avoid this if possible
-        internalCurrent = - charge * dt / (capacitance * capacitance)
-        dprintln("i=$internalCurrent eqR=$equivalentResistance")
+        internalCurrent = - charge / dt
+        dprintln("v=$potential c=$charge is=$internalCurrent it=$current eqR=$equivalentResistance")
     }
 
-
     override fun postStep(dt: Double) {
-        charge += current * dt
-        dprintln("charge += $current * $dt")
-        dprintln("charge = $charge")
+        val dv = potential - lastPotential
+        val dq = capacitance * dv
+
+        charge += dq
+        lastPotential = potential
+        dprintln("dq = $dq, dv = $dv")
+        dprintln("v=$potential c=$charge is=$internalCurrent it=$current eqR=$equivalentResistance")
     }
 
     override fun stamp() {
