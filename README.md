@@ -3,6 +3,13 @@
 
 This is the home of Eln2, a Minecraft and Vintage Story mod.
 
+## Community Links
+
+* Discord: [https://discord.gg/YjK2JAD](https://discord.gg/YjK2JAD)
+* Eln2 Website: [eln2.org](https://eln2.org)
+* Eln Website: [electrical-age.net](https://electrical-age.net)
+* Eln Wiki: [wiki.electrical-age.net](https://wiki.electrical-age.net)
+
 ## Game Support
 
 Planned support for:
