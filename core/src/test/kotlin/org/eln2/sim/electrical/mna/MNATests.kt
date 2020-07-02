@@ -14,7 +14,7 @@ internal class MNATests {
      **/
     fun within_tolerable_error(simulated: Double, actual: Double, tolerance: Double) : Boolean {
         val percentError = abs((simulated - actual) / actual)
-        dprintln("Percent Error is $percentError")
+        dprintln("sim = $simulated, act = $actual, %err = $percentError")
         return percentError < tolerance
     }
 
@@ -147,22 +147,55 @@ internal class MNATests {
             See /testdata/discharging_data.ods
          */
 
-        assert(c.step(0.05))
-        println("4.0909/0.0142")
-        println(r1.detail())
-        println(c1.detail())
-        assert(c.step(0.05))
-        println("3.4017/0.0118")
-        println(r1.detail())
-        println(c1.detail())
-        assert(c.step(0.05))
-        println("2.8250/0.0098")
-        println(r1.detail())
-        println(c1.detail())
-        assert(c.step(0.05))
-        println("2.3412/0.0081")
-        println(r1.detail())
-        println(c1.detail())
+        // Setting the tolerance of inaccuracy to 15% error.
+        val tolerance = 0.15
+
+        // Charging
+
+        assert(c.step(0.05)) // 0.050 s
+        assert(within_tolerable_error(r1.potential, 4.0909, tolerance))
+        assert(within_tolerable_error(c1.potential, 5 - 4.0909, tolerance))
+        assert(within_tolerable_error(c1.current, 0.0142, tolerance))
+
+        assert(c.step(0.05)) // 0.100 s
+        assert(within_tolerable_error(r1.potential, 3.4017, tolerance))
+        assert(within_tolerable_error(c1.potential, 5 - 3.4017, tolerance))
+        assert(within_tolerable_error(c1.current, 0.0118, tolerance))
+
+        assert(c.step(0.05)) // 0.150 s
+        assert(within_tolerable_error(r1.potential, 2.8250, tolerance))
+        assert(within_tolerable_error(c1.potential, 5 - 2.8250, tolerance))
+        assert(within_tolerable_error(c1.current, 0.0098, tolerance))
+
+        assert(c.step(0.05)) // 0.200 s
+        assert(within_tolerable_error(r1.potential, 2.3412, tolerance))
+        assert(within_tolerable_error(c1.potential, 5 - 2.3412, tolerance))
+        assert(within_tolerable_error(c1.current, 0.0081, tolerance))
+
+        // Should finish charging within 2.00 seconds.
+        for (it in 4..40) assert(c.step(0.05))
+
+        // Discharging
+
+        assert(c.step(0.05)) // 0.050 s
+        assert(within_tolerable_error(c1.potential, 4.0909, tolerance))
+        assert(within_tolerable_error(r1.potential, 5 - 4.0909, tolerance))
+        assert(within_tolerable_error(c1.current, 0.0142, tolerance))
+
+        assert(c.step(0.05)) // 0.100 s
+        assert(within_tolerable_error(c1.potential, 3.4017, tolerance))
+        assert(within_tolerable_error(r1.potential, 5 - 3.4017, tolerance))
+        assert(within_tolerable_error(c1.current, 0.0118, tolerance))
+
+        assert(c.step(0.05)) // 0.150 s
+        assert(within_tolerable_error(c1.potential, 2.8250, tolerance))
+        assert(within_tolerable_error(r1.potential, 5 - 2.8250, tolerance))
+        assert(within_tolerable_error(c1.current, 0.0098, tolerance))
+
+        assert(c.step(0.05)) // 0.200 s
+        assert(within_tolerable_error(c1.potential, 2.3412, tolerance))
+        assert(within_tolerable_error(r1.potential, 5 - 2.3412, tolerance))
+        assert(within_tolerable_error(c1.current, 0.0081, tolerance))
     }
 
     @Test
