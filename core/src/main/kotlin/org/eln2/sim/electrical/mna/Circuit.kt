@@ -17,6 +17,9 @@ import kotlin.collections.ArrayList
  */
 val MATRIX_FORMAT = RealMatrixFormat("", "", "\t", "\n", "", "\t")
 
+const val POSITIVE = 1
+const val NEGATIVE = 0
+
 /**
  * The Circuit class: a representation of a nodal electrical circuit simulation.
  *
@@ -242,7 +245,7 @@ class Circuit {
 	 */
     @Suppress("MemberVisibilityCanBePrivate")
     internal fun stampMatrix(a: Int, b: Int, x: Double) {
-        dprintln("C.sM $a $b $x")
+        dprintln("$a $b $x")
         if (a < 0 || b < 0) return
         matrix!!.addToEntry(a, b, x)
         matrixChanged = true
@@ -257,7 +260,7 @@ class Circuit {
      */
     @Suppress("MemberVisibilityCanBePrivate")
     internal fun stampKnown(i: Int, x: Double) {
-        dprintln("C.sK $i $x")
+        dprintln("$i $x")
         if (i < 0) return
         knowns!!.addToEntry(i, x)
         rightSideChanged = true
@@ -278,7 +281,7 @@ class Circuit {
      * This calls [stampMatrix] internally. It should only ever be called from [Component.stamp].
      */
     internal fun stampResistor(a: Int, b: Int, r: Double) {
-        dprintln("C.sR $a $b $r")
+        dprintln("$a $b $r")
         val c = 1 / r
         if (!c.isFinite()) throw IllegalArgumentException("resistance $r is invalid")
         // Contribute positively to the on-diagonal elements
@@ -329,7 +332,7 @@ class Circuit {
      * Adding a component causes [componentsChanged] to become true; thus, [buildMatrix] is usually required before the next solve [step].
      */
     fun add(comp: Component): Component {
-        dprintln("C.a: $comp")
+        dprintln("$comp")
         if (comp.circuit != null) {  // Are we stealing this component?
             if (comp.circuit == this) return comp  // No need to do anything, it's already ours
             comp.circuit?.remove(comp)
@@ -349,7 +352,7 @@ class Circuit {
         }
         comp.added()
 
-        dprintln("C.a: $comp has pins ${comp.pins} vs ${comp.vsources}")
+        dprintln("$comp has pins ${comp.pins} vs ${comp.vsources}")
         return comp
     }
 
@@ -412,17 +415,17 @@ class Circuit {
     // Step 1: Whenever the number of components, or their nodal connectivity (not resistances, e.g.) changes, allocate
     // a matrix of appropriate size.
     internal fun buildMatrix() {
-        dprintln("C.bM")
+        dprintln("Building Matrix...")
         val pinSet: MutableSet<Pin> = mutableSetOf()
         val voltageSourceSet: MutableSet<VSource> = mutableSetOf()
 
         components.forEach {component ->
-            dprintln("C.bM: component $component pinreps ${component.pins.map { it.representative as Pin }}")
+            dprintln("component $component pinreps ${component.pins.map { it.representative as Pin }}")
             pinSet.addAll(component.pins.map { it.representative as Pin })
             voltageSourceSet.addAll(component.vsources)
         }
 
-        dprintln("C.bM: pinreps $pinSet")
+        dprintln("pinreps $pinSet")
         
         val newNodes = ArrayList<WeakReference<Node>>(pinSet.size)
         var i = 0
@@ -442,17 +445,17 @@ class Circuit {
             val pinMapping: MutableMap<Pin, Pair<Component, Int>> = mutableMapOf()
             
             components.forEach { comp ->
-                println("C.bM: pins for $comp:")
+                dprintln("pins for $comp:")
                 comp.pins.withIndex().forEach { (idx, pin) ->
-                    println("C.bM: $idx: $pin")
+                    dprintln("$idx: $pin")
                     pinForest[pin.parent as Pin] = pin
                     pinMapping[pin] = Pair(comp, idx)
                 }
             }
 
-            println("C.bM: pinForest=$pinForest pinMapping=$pinMapping")
+            dprintln("pinForest=$pinForest pinMapping=$pinMapping")
 
-            println("C.bM: pin forest:")
+            dprintln("pin forest:")
             
             val roots: MutableSet<Pin> = pinForest.keys.filter { it in pinForest[it] }.toMutableSet()
             val unvisited: MutableSet<Pin> = pinMapping.keys.toMutableSet()
@@ -461,7 +464,7 @@ class Circuit {
             while(unvisited.isNotEmpty()) {
                 if(queue.isEmpty()) {
                     if(roots.isEmpty()) {
-                        println("C.bM: ERROR: no roots and unvisited nonempty: $unvisited")
+                        dprintln("ERROR: no roots and unvisited nonempty: $unvisited")
                         break
                     }
 
@@ -469,7 +472,7 @@ class Circuit {
                     val root = roots.iterator().next()
                     roots.remove(root)
                     queue.add(PinDebugQueueEntry(root, true))
-                    print("root: ")
+                    dprint("root: ")
                 }
                 
                 val front = queue.removeAt(0)
@@ -481,22 +484,22 @@ class Circuit {
                     ))
                 }
                 
-                print("${front.pin} (${children.size} children)")
+                dprint("${front.pin} (${children.size} children)")
                 val owner = pinMapping[front.pin]
                 if(owner != null) {
                     val (comp, idx) = owner
-                    print(" (owner $comp pin $idx)")
+                    dprint(" (owner $comp pin $idx)")
                 } else {
-                    print(" (no owner?)")
+                    dprint(" (no owner?)")
                 }
-                print(if(front.lastSibling) "\n" else "\t")
+                dprint(if(front.lastSibling) "\n" else "\t")
             }
         }
 
         voltageSources = voltageSourceSet.map { WeakReference(it) }.toList()
         for ((i, v) in voltageSources.withIndex()) v.get()!!.index = i
 
-        dprintln("C.bM: n ${nodes.map { it.get()?.detail() }} vs ${voltageSources.map { it.get()?.detail() }}")
+        dprintln("n ${nodes.map { it.get()?.detail() }} vs ${voltageSources.map { it.get()?.detail() }}")
 
         // Acknowledge that changes have been dealt with
         componentsChanged = false
@@ -516,14 +519,14 @@ class Circuit {
         }
 
         val size = nodes.size + voltageSources.size
-        dprintln("C.bM: size $size")
+        dprintln("size $size")
         matrix = MatrixUtils.createRealMatrix(size, size)
         knowns = ArrayRealVector(size)
 
         // Ask each component to contribute its steady state to the matrix
-        dprintln("C.bM: stamp all $components")
-        components.forEach { dprintln("C.bM: stamp $it"); it.stamp() }
-        dprintln("C.bM: final matrix:\n${MATRIX_FORMAT.format(matrix)}")
+        dprintln("stamp all $components")
+        components.forEach { dprintln("stamp $it"); it.stamp() }
+        dprintln("final matrix:\n${MATRIX_FORMAT.format(matrix)}")
     }
 
     /**
@@ -535,7 +538,7 @@ class Circuit {
      */
     // Step 2: With the conductance and connectivity matrix populated, solve.
     private fun factorMatrix() {
-        dprintln("C.fM")
+        dprintln("Factoring matrix...")
         solver = if (matrix != null) LUDecomposition(matrix).solver else null
         matrixChanged = false
     }
@@ -551,7 +554,7 @@ class Circuit {
      */
     // Step 3: With known current and voltage sources, solve for unknowns (node potentials and source currents).
     private fun computeResult() {
-        dprintln("C.cR")
+        dprintln("Computing result...")
         rightSideChanged = false
         success = false
         if (solver == null) return
@@ -583,7 +586,7 @@ class Circuit {
      * The return value is the [success] field--whether or not [computeResult] was able to compute a solution. If this failed, the output data is likely meaningless; otherwise, the output data is stored in the fields of [nodes] and [voltageSources] to be consumed.
      */
     fun step(dt: Double): Boolean {
-        dprintln("C.s: dt=$dt")
+        dprintln("dt=$dt")
         if (componentsChanged || connectivityChanged) {
             buildMatrix()
         }
@@ -607,7 +610,7 @@ class Circuit {
         components.forEach { it.postStep(dt) }
         postProcess.keys.forEach { it.process(dt) }
 
-        dprintln("C.s: success=$success")
+        dprintln("success=$success")
         return success
     }
 

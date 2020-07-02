@@ -47,7 +47,7 @@ open class Resistor : Port() {
     }
 
     override fun stamp() {
-        dprintln("R.s: pos=$pos neg=$neg r=$resistance")
+        dprintln("pos=$pos neg=$neg r=$resistance")
         // We have to guard here specifically against stamp() being called out of context from the resistance setter above.
         if(pos != null && neg != null) pos!!.stampResistor(neg!!, resistance)
     }
