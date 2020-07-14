@@ -1,6 +1,5 @@
 package org.eln2.sim.electrical.mna
 
-import kotlin.math.abs
 import org.eln2.debug.dprintln
 import org.eln2.debug.mnaPrintln
 import org.eln2.sim.electrical.mna.component.CurrentSource
@@ -10,6 +9,7 @@ import org.eln2.sim.electrical.mna.component.Capacitor
 import org.eln2.sim.electrical.mna.component.Inductor
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
+import kotlin.math.abs
 
 internal class MNATests {
 
@@ -66,6 +66,28 @@ internal class MNATests {
     }
 
     @Test
+    fun resistorsInSeriesTest() {
+        val circuit = Circuit()
+        val vs = VoltageSource()
+        val r1 = Resistor()
+        val r2 = Resistor()
+
+        vs.potential = 10.0
+        r1.resistance = 5.0
+        r2.resistance = 5.0
+
+        circuit.add(vs, r1, r2)
+        vs.connect(1, r1, 1)
+        r1.connect(0, r2, 1)
+        r2.connect(0, vs, 0)
+        vs.ground(1)
+
+        assert(circuit.step(0.5))
+        assert(within_tolerable_error(r1.current, r2.current, 0.001))
+        assert(within_tolerable_error(r1.current, 1.0, 0.01))
+    }
+
+    @Test
     fun resistorVoltageSourceModificationTest() {
         val c = Circuit()
         val r = Resistor()
@@ -81,14 +103,11 @@ internal class MNATests {
         r.resistance = 10.0
 
         assert(c.step(0.05))
-        mnaPrintln(c)
         assertEquals(true, (r.current > 0.99) and (r.current < 1.01))
 
         r.resistance = 50.0
 
         assert(c.step(0.05))
-
-        mnaPrintln(c)
         assertEquals(true, (r.current > 0.19) and (r.current < 0.21))
     }
 
@@ -111,26 +130,55 @@ internal class MNATests {
         r2.resistance = 20.0
 
         assert(c.step(0.05))
-        mnaPrintln(c)
-        assertEquals(true, (r1.current > 0.333) and (r1.current < 0.334))
-        assertEquals(true, (r2.current > 0.333) and (r2.current < 0.334))
-        println(vs.pins)
-        println(r1.pins)
-        println(r2.pins)
-        assertEquals(true, ((r1.node(1)?.potential ?: 0.0) > 3.333) and ((r1.node(1)?.potential ?: 0.0) < 3.334))
+        assert((r1.current > 0.333) and (r1.current < 0.334))
+        assert((r2.current > 0.333) and (r2.current < 0.334))
+        assert(((r1.node(1)?.potential ?: 0.0) > 3.333) and ((r1.node(1)?.potential ?: 0.0) < 3.334))
 
         r2.resistance = 50.0
 
         assert(c.step(0.05))
-
-        mnaPrintln(c)
-        assertEquals(true, (r1.current > 0.1666) and (r1.current < 0.1667))
-        assertEquals(true, (r2.current > 0.1666) and (r2.current < 0.1667))
-        assertEquals(true, ((r1.node(1)?.potential ?: 0.0)> 1.666) and ((r1.node(1)?.potential ?: 0.0) < 1.667))
+        assert((r1.current > 0.1666) and (r1.current < 0.1667))
+        assert((r2.current > 0.1666) and (r2.current < 0.1667))
+        assert(((r1.node(1)?.potential ?: 0.0)> 1.666) and ((r1.node(1)?.potential ?: 0.0) < 1.667))
     }
 
     @Test
-    fun RCCircuitTest() {
+    fun resistorsInParallelAndConsistencyTest() {
+        val c = Circuit()
+        val vs = VoltageSource()
+        val r1 = Resistor()
+        val r2 = Resistor()
+
+        c.add(vs, r1)
+
+        vs.connect(POSITIVE, r1, POSITIVE)
+        vs.connect(NEGATIVE, r1, NEGATIVE)
+        vs.ground(NEGATIVE)
+
+        vs.potential = 10.0
+        r1.resistance = 5.0
+
+        assert(c.step(0.5))
+        val current = r1.current
+
+        c.add(r2)
+        r2.resistance = r1.resistance
+        r2.connect(POSITIVE, r1, POSITIVE)
+        r2.connect(NEGATIVE, r1, NEGATIVE)
+
+        assert(c.step(0.5))
+        assertEquals(r2.current, r1.current, 1e-9)
+        assertEquals(r1.current, current, 1e-9)
+        assertEquals(vs.current, current * 2.0, 1e-9)
+
+        c.remove(r2)
+        assert(c.step(0.5))
+        assertEquals(r1.current, current, 1e-9)
+        assertEquals(r2.circuit, null)
+    }
+
+    @Test
+    fun resistorCapacitorCircuitTest() {
         val c = Circuit()
         val r1 = Resistor()
         val c1 = Capacitor()
@@ -206,7 +254,7 @@ internal class MNATests {
     }
 
     @Test
-    fun RLCircuitTest() {
+    fun resistorInductorCircuitTest() {
         val c = Circuit()
         val r1 = Resistor()
         val i1 = Inductor()
@@ -223,22 +271,17 @@ internal class MNATests {
         r1.resistance = 100.0
         i1.inductance = 1.0
 
-        assert(c.step(0.001))
-        mnaPrintln(c)
-        println(i1.detail())
-        println(r1.detail())
-        assert(c.step(0.001))
-        mnaPrintln(c)
-        println(i1.detail())
-        println(r1.detail())
-        assert(c.step(0.001))
-        mnaPrintln(c)
-        println(i1.detail())
-        println(r1.detail())
-    }
+        // Setting the tolerance of inaccuracy to 15% error.
+        val tolerance = 0.15
 
-    @Test
-    fun RCLCircuitTest() {
-
+        assert(c.step(0.001))
+        assert(within_tolerable_error(i1.potential, 4.525, tolerance))
+        assert(within_tolerable_error(i1.current, 4.247e-3, tolerance))
+        assert(c.step(0.001))
+        assert(within_tolerable_error(i1.potential, 4.095, tolerance))
+        assert(within_tolerable_error(i1.current, 9.053e-3, tolerance))
+        assert(c.step(0.001))
+        assert(within_tolerable_error(i1.potential, 3.703, tolerance))
+        assert(within_tolerable_error(i1.current, 12.968e-3, tolerance))
     }
 }
