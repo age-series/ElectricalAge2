@@ -16,6 +16,5 @@ class CapacitorConstructor: PoleConstructor() {
 		val c = (cmp as Capacitor)
 		c.timeStep = ccd.falstad.nominalTimestep
 		c.capacitance = ccd.data[0].toDouble()
-		//c.idealU = ccd.data[1].toDouble()
 	}
 }
