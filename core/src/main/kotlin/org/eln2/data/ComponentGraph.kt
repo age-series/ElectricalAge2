@@ -485,7 +485,14 @@ open class ComponentGraph {
          */
         var visitRoot: Vertex? = null
             protected set
-        
+
+        /**
+         * Set the [visitRoot].
+         *
+         * This can only be done once per guard, and should only be done just before returning from a [mutate] closure.
+         *
+         * Remember that this is just a hint, and can't guarantee how visitation will occur.
+         */
         fun setRoot(v: Vertex) {
             assert(visitRoot == null) { "tried to set visit root $v when already set to $visitRoot" }
             visitRoot = v
