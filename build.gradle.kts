@@ -76,6 +76,8 @@ subprojects {
                 showExceptions = true
                 showCauses = true
                 showStackTraces = true
+                // TODO: add the other envvars that can trigger debug output
+                showStandardStreams = System.getenv("MODS_ELN_DEBUG") != ""
 
                 // At log-level INFO or DEBUG, print everything.
                 debug {

@@ -14,6 +14,14 @@ class DebugListener: ComponentListener, VertexListener, EdgeListener {
 		dprintln("component unrealized: $c")
 	}
 
+    override fun realizedComponentModificationStarted(c: ConnectedComponent) {
+        dprintln("realized component modification started: $c")
+    }
+
+    override fun realizedComponentModificationFinished(c: ConnectedComponent) {
+        dprintln("realized component modification finished: $c")
+    }
+
 	override fun vertexAdded(v: Vertex) {
 		dprintln("vertex added: $v")
 	}
@@ -298,6 +306,36 @@ internal class ComponentGraphTest {
             fullConsistencyCheck(cg)
             assertEquals(cg.vertices, vertices)
             assertEquals(cg.components.size, vertices.size)
+        }
+    }
+    
+    @Test
+    fun incrementalComponentModification() {
+        val cg = makeInstance()
+
+        var updateCounter = 0
+
+        cg.addListener(object: ComponentListener {
+            override fun componentRealized(c: ConnectedComponent) {}
+            override fun componentUnrealized(c: ConnectedComponent) {}
+            override fun realizedComponentModificationStarted(c: ConnectedComponent) {
+                updateCounter += 1
+            }
+            override fun realizedComponentModificationFinished(c: ConnectedComponent) {
+                updateCounter += 1
+            }
+        })
+        
+        val vertex = cg.mutate { newVertex() }
+
+        (1..10).forEach {
+            updateCounter = 0
+            cg.mutate { 
+                val v = newVertex()
+                connect(v, vertex)
+                setRoot(vertex)
+            }
+            assertEquals(updateCounter, 2)
         }
     }
 }
