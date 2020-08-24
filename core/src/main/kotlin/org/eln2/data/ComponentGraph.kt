@@ -2,7 +2,7 @@ package org.eln2.data
 
 import org.eln2.debug.dprintln
 import java.lang.StringBuilder
-import java.util.*
+import java.util.Stack
 
 /**
  * An edge in the [ComponentGraph], connecting two vertices bidirectionally.
@@ -355,13 +355,13 @@ open class ComponentGraph {
 
 		while(unvisited.isNotEmpty()) {
 			if(stack.isEmpty()) {
-				dprintln("CG.vDF: adding a new root")
+				dprintln("adding a new root")
 				stack.push(Visitation(start ?: unvisited.first(), Visitation.Phase.Down, true))
 			}
 
 			val visitation = stack.pop()
 			val vertex = visitation.vertex
-			dprintln("CG.vDF: visiting $vertex phase ${visitation.phase} root ${visitation.root}")
+			dprintln("visiting $vertex phase ${visitation.phase} root ${visitation.root}")
 
 			when(visitation.phase) {
 				Visitation.Phase.Down -> {
@@ -369,9 +369,9 @@ open class ComponentGraph {
 					stack.push(Visitation(vertex, Visitation.Phase.Up))
 
 					val neighbors = vertex.incident.keys
-					dprintln("CG.vDF: pre-down neighbors: $neighbors")
+					dprintln("pre-down neighbors: $neighbors")
 					downPhase(vertex, depth, visitation.root, neighbors)
-					dprintln("CG.vDF: post-down neighbors: $neighbors")
+					dprintln("post-down neighbors: $neighbors")
 					neighbors.forEach { if (it in unvisited) stack.push(Visitation(it, Visitation.Phase.Down)) }
 					depth++
 				}
@@ -398,18 +398,18 @@ open class ComponentGraph {
 
 		visitDepthFirst({
 			vertex, _, isRoot, _ ->
-			dprintln("CG.aC: visiting $vertex root=$isRoot")
+			dprintln("visiting $vertex root=$isRoot")
 			if(isRoot) {
                 if(vertex.component in newComponents) {
-                    dprintln("CG.aC: forcing new component onto $vertex")
+                    dprintln("forcing new component onto $vertex")
                     // Don't allow a vertex to, by identity, share a component already registered if it is a root; this
                     // state means this particular vertex was formerly connected, but now is not.
                     vertex.component = constructComponent(vertex)
                 }
 				currentComponent = vertex.component
-                dprintln("CG.aC: current component is $currentComponent realized=${currentComponent!!.realized}")
+                dprintln("current component is $currentComponent realized=${currentComponent!!.realized}")
                 if(currentComponent!!.realized) {
-                    dprintln("CG.aC: component $currentComponent already realized")
+                    dprintln("component $currentComponent already realized")
                     componentListeners.forEach { listener -> listener.realizedComponentModificationStarted(currentComponent!!)}
                     modifiedComponents.add(currentComponent!!)
                 }
@@ -422,7 +422,7 @@ open class ComponentGraph {
 			}
 		}, {_, _ -> Unit}, start)
 
-		dprintln("CG.aC: old components $components, new components $newComponents")
+		dprintln("old components $components, new components $newComponents")
 
 		// Process removed components which were realized
 		(components - newComponents).forEach {
@@ -500,7 +500,7 @@ open class ComponentGraph {
 
 		init {
 			outstandingGuards++
-			dprintln("CG.MG.<init>: beginning mutation, nest level $outstandingGuards")
+			dprintln("beginning mutation, nest level $outstandingGuards")
 		}
 
         /**
@@ -538,7 +538,7 @@ open class ComponentGraph {
          * Once this is done, it is _not safe_ to use any other method on this instance.
          */
         fun drop() {
-			dprintln("CG.MG.drop: ending mutation, nest level $outstandingGuards")
+			dprintln("ending mutation, nest level $outstandingGuards")
 			if(--outstandingGuards == 0) {
 				assignComponents(visitRoot)
 			}
