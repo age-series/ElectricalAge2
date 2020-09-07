@@ -1,0 +1,36 @@
+modLoader="javafml"
+loaderVersion="[33,)"
+issueTrackerURL="https://github.com/eln2/eln2/issues" #optional
+license="MIT"
+
+# A list of mods - how many allowed here is determined by the individual mod loader
+[[mods]]
+modId="eln2"
+version="${file.jarVersion}"
+displayName="Electrical Age"
+# A URL to query for updates for this mod. See the JSON update specification <here>
+#updateJSONURL="http://myurl.me/"
+displayURL="https://electrical-age.net/"
+logoFile="eln2.png"
+credits="The Electrical Age recreation team"
+authors="The Electrical Age recreation team"
+# The description text for the mod (multi line!) (#mandatory)
+description='''
+This is a long form description of the mod. You can write whatever you want here
+'''
+
+# A dependency - use the . to indicate dependency for a specific modid. Dependencies are optional.
+[[dependencies.eln2]] #optional
+    modId="forge"
+    mandatory=true
+    versionRange="[33,)"
+    # An ordering relationship for the dependency - BEFORE or AFTER required if the relationship is not mandatory
+    ordering="NONE"
+    # Side this dependency is applied on - BOTH, CLIENT or SERVER
+    side="BOTH"
+[[dependencies.eln2]]
+    modId="minecraft"
+    mandatory=true
+    versionRange="[1.16.2]"
+    ordering="NONE"
+    side="BOTH"

@@ -3,7 +3,7 @@ import org.jetbrains.dokka.gradle.DokkaTask
 
 plugins {
     java
-    kotlin("multiplatform") version "1.4-M1" apply false
+    kotlin("multiplatform") version "1.4.0" apply false
     jacoco
     id("com.github.johnrengelman.shadow") version "5.2.0"
     idea
@@ -53,11 +53,11 @@ subprojects {
         "implementation"(kotlin("stdlib-jdk8"))
         implementation("com.andreapivetta.kolor", "kolor", "1.0.0")
         compile("org.apache.commons", "commons-math3", "3.6.1")
-        compile("com.google.protobuf", "protobuf-java", "3.11.4")
+        compile("com.google.protobuf", "protobuf-java", "3.13.0")
         // Configure testing.
-        testImplementation("org.assertj", "assertj-core", "3.12.2")
-        testImplementation("org.junit.jupiter", "junit-jupiter-api", "5.4.2")
-        testRuntime("org.junit.jupiter", "junit-jupiter-engine", "5.4.2")
+        testImplementation("org.assertj", "assertj-core", "3.17.2")
+        testImplementation("org.junit.jupiter", "junit-jupiter-api", "5.6.2")
+        testRuntime("org.junit.jupiter", "junit-jupiter-engine", "5.6.2")
     }
 
     tasks {
