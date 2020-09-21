@@ -38,4 +38,8 @@ class Switch: Resistor() {
     override fun detail(): String {
         return "[switch $name: ${potential}v, ${current}A, open: ${openResistance}Ω, closed: ${closedResistance}Ω, ${power}W]"
     }
+
+    fun toggle() {
+        open = !open
+    }
 }
