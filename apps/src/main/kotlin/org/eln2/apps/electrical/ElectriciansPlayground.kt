@@ -1,6 +1,7 @@
 package org.eln2.apps.electrical
 
 import org.eln2.debug.mnaPrintln
+import org.eln2.sim.electrical.component.Switch
 import org.eln2.sim.electrical.mna.Circuit
 import org.eln2.sim.electrical.mna.NEGATIVE
 import org.eln2.sim.electrical.mna.POSITIVE
@@ -18,6 +19,7 @@ import org.eln2.sim.electrical.mna.component.VoltageSource
  *
  * Have fun, and if you have questions, ask in the Discord: https://discord.gg/YjK2JAD
  */
+@Suppress("UNUSED_VARIABLE")
 fun main() {
     val circuit = Circuit()
 
@@ -76,7 +78,13 @@ fun main() {
      */
     val di2 = RealisticDiode(DiodeData.diodes.getOrElse("1N4004") { throw Exception("Could not find diode data") })
 
-    // Step 2: Add the components you want to use in the circuit
+    // A basic toggle switch
+    val sw1 = Switch()
+    // How to open and close the switch (default open)
+    sw1.closed = true
+    sw1.open = true
+
+    // Step 2: Add the components you want to use in the circuit to the circuit
 
     circuit.add(r1, i1, vs1)
 
