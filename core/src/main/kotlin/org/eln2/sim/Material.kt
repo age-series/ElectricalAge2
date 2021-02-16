@@ -11,15 +11,37 @@ enum class Material {
 	COPPER {
 		override val resistivity: Double = 1.68 * 10.0.pow(-8.0)
 		override val thermalConductivity: Double = 385.0
+        override val specficHeat: Double = 0.0
+        override val density: Double = 8940.0
 	},
 	RUBBER {
 		override val resistivity: Double = 1 * 10.0.pow(13.0)
 		override val thermalConductivity: Double = 0.15
+        override val specficHeat: Double = 0.0
+        override val density: Double = 1522.0
 	},
 	IRON {
 		override val resistivity: Double = 9.71 * 10.0.pow(-8.0)
 		override val thermalConductivity: Double = 79.5
+        override val specficHeat: Double = 0.0
+        override val density: Double = 7874.0
 	};
+
+    // Density of the material (km/m^3)
+    abstract val density: Double
+
+/*
+Density (STP)
+
+H2O 	    1,000
+Iron	    7,874
+Copper	    8,950
+Tungsten	19,250
+Gold	    19,300
+Platinum	21,450
+
+Source: https://www.calculator.net/density-calculator.html
+ */
 
 	// resistivity (ohms/meter)
 	abstract val resistivity: Double
@@ -60,6 +82,8 @@ Water:      0.6
 Air:        0.024
 Source: http://hyperphysics.phy-astr.gsu.edu/hbase/Tables/thrcn.html
 */
+
+    abstract val specficHeat: Double
 
 	// amperage per material type per mm^2 (possibly - calculate from thermal conductivity, power and thermal conductivity
 	// abstract val amperageMaterial: Double
