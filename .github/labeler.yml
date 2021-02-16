@@ -1,0 +1,27 @@
+target:core:
+    - core/**/*
+    - ./*
+
+target:shared:
+    - shared/**/*
+
+target:minecraft:
+    - integration-mc*/**/*
+
+target:vintagestory:
+    - integration-vs/**/*
+
+type:documentation:
+    - '*.md'
+
+type:code:
+    - '*.kt'
+    - '*.java'
+
+type:build:
+    - '*.kts'
+    - '*gradle*'
+    - .github/**/*
+
+type:protocol:
+    - '*.proto'

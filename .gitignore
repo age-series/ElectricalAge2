@@ -1,0 +1,44 @@
+# Ignore Gradle project-specific cache directory
+.gradle
+.classpath
+.project
+.settings
+.metadata
+
+# Build and run artifacts
+build
+/dist
+*/eclipse
+*/run
+*/logs
+*/config
+*/saves
+options.txt
+*/out
+*/classes
+*/obj/
+
+# IntelliJ
+.idea
+*.iml
+*.ipr
+*.iws
+
+# Blender backup files
+*.blend1
+*.blend2
+
+# C# projects
+*.csproj.user
+App.config
+obj/
+bin/
+
+# Rust Projects
+logcollector/target/
+
+# Ignore logs from testing the log collector
+logcollector/*.log
+
+# Project Specific
+core/*.dat
