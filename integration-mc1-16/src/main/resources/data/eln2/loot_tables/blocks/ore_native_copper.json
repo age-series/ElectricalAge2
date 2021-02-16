@@ -2,11 +2,12 @@
     "type": "minecraft:block",
     "pools": [
         {
+            "name": "eln2:ore_native_copper",
             "rolls": 1,
             "entries": [
                 {
                     "type": "minecraft:item",
-                    "name": "eln2:flubber"
+                    "name": "eln2:ore_chunks_copper"
                 }
             ],
             "conditions": [

@@ -1,9 +1,0 @@
-{
-    "block.eln2.flubber": "Flubber",
-    "item.eln2.multimeter": "Multimeter",
-    "item.eln2.ore_chunks_copper": "Native Copper Ore",
-    "block.eln2.ore_native_copper": "Native Copper Ore",
-    "tooltip.eln2.block.flubber": "This is flubber. Flubber is bouncy. Bounce bounce.",
-    "tooltip.eln2.item.multimeter": "This is a multimeter, used to measure voltage",
-    "tooltip.eln2.item.ore": "A pile of crushed ore and stone"
-}
