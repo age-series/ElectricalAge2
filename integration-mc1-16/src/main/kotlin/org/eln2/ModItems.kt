@@ -9,5 +9,5 @@ import org.eln2.items.OreChunks
  */
 enum class ModItems(val items: Item) {
     MULTIMETER(MultimeterItem()),
-    ore_chunks_copper(OreChunks())
+    ORE_CHUNKS_COPPER(OreChunks())
 }

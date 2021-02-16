@@ -23,7 +23,6 @@ object OreGen {
     /**
      * Configures ore generation in the world. Registers against Forge.
      */
-    //var copper_ore = Feature.ORE.withConfiguration(OreFeatureConfig(OreFeatureConfig.FillerBlockType.BASE_STONE_OVERWORLD,ModBlocks.ore_native_copper.block.defaultState,4)).range(64).square().func_242731_b(128)
 
     fun setupOreGeneration() {
          ores = ModBlocks.values().map {
@@ -34,7 +33,6 @@ object OreGen {
                 )
             ).range(64).square().func_242731_b(120)
         }
-            //Registry.register(WorldGenRegistries.CONFIGURED_FEATURE, ResourceLocation(org.eln2.MODID,"ore_native_copper"), copper_ore)
     }
 
     fun biomeModification(event: BiomeLoadingEvent) {
@@ -42,6 +40,5 @@ object OreGen {
             event.generation.withFeature(GenerationStage.Decoration.UNDERGROUND_ORES, it)
             print(event.generation.getFeatures(GenerationStage.Decoration.UNDERGROUND_ORES))
         }
-
     }
 }
