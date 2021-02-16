@@ -2,7 +2,11 @@ package org.eln2.sim.electrical.mna.component
 
 import org.eln2.data.DisjointSet
 import org.eln2.debug.dprintln
-import org.eln2.sim.electrical.mna.*
+import org.eln2.sim.electrical.mna.Circuit
+import org.eln2.sim.electrical.mna.GroundNode
+import org.eln2.sim.electrical.mna.IDetail
+import org.eln2.sim.electrical.mna.Node
+import org.eln2.sim.electrical.mna.VSource
 
 /**
 * The Exception thrown when a [Component]'s [Circuit] is mutated during [Component.connect].
@@ -173,7 +177,7 @@ abstract class Component : IDetail {
 
     This is ONLY safe to call AFTER the Component has been added to a [Circuit].
      */
-    fun connect(nidx: Int, to: Component, tidx: Int) {
+    open fun connect(nidx: Int, to: Component, tidx: Int) {
         if (circuit == null) return
         pins[nidx].unite(to.pins[tidx])
         markConnectivityChanged()

@@ -1,13 +1,12 @@
 import org.gradle.api.tasks.testing.logging.TestLogEvent
-import org.jetbrains.dokka.gradle.DokkaTask
 
 plugins {
     java
-    kotlin("multiplatform") version "1.4.0" apply false
+    kotlin("multiplatform") version "1.4.30" apply false
     jacoco
-    id("com.github.johnrengelman.shadow") version "5.2.0"
+    id("com.github.johnrengelman.shadow") version "6.1.0"
     idea
-    id("org.jetbrains.dokka") version "0.10.1"
+    id("org.jetbrains.dokka") version "1.4.20"
 }
 
 allprojects {
@@ -112,9 +111,9 @@ subprojects {
             }
         }
 
-        val dokka by getting(DokkaTask::class) {
-            configuration {
-                includeNonPublic = true
+        dokkaHtml {
+            dokkaSourceSets.configureEach {
+                includeNonPublic.set(true)
             }
         }
     }
@@ -143,7 +142,7 @@ tasks {
     }
 
     named<Wrapper>("wrapper") {
-        gradleVersion = "5.6.4"
+        gradleVersion = "6.8.2"
         distributionType = Wrapper.DistributionType.ALL
     }
 }

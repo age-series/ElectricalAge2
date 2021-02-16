@@ -31,6 +31,6 @@ This is a long form description of the mod. You can write whatever you want here
 [[dependencies.eln2]]
     modId="minecraft"
     mandatory=true
-    versionRange="[1.16.2]"
+    versionRange="[1.16.5]"
     ordering="NONE"
     side="BOTH"
