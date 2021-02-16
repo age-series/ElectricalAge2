@@ -59,14 +59,6 @@ IDEA is pretty simple.
 2. Find the `build.gradle.kts` file in the root of the repository, then click next.
 3. Select all defaults on following screens.
 
-The project will import. Once it has done that, you need to configure it for Kotlin 1.4M.
-
-1. Open File -> Settings
-2. Under Languages and Frameworks, select Kotlin
-3. Change the update channel from `Stable` to `Early Access Preview 1.4.x`
-4. Update the plugins, if it asks you to after you make your selection
-5. Close and re-open IDEA
-
 ## Add build configurations, and run
 
 From the main IDEA window, you can configure different tasks to run with Gradle.
@@ -88,9 +80,9 @@ Different build configurations:
 | eln2:apps | build | Builds the Eln2 Applications (requires eln2:core automatically) |
 | eln2 | build | Builds and runs tests for all of Eln2 |
 | eln2 | bundle | Builds and runs tests for all of Eln2 |
-| eln2:integration-mc-1-15 | runClient | Runs a minecraft client in a development environment (no username, cannot connect to servers) |
-| eln2:integration-mc-1-15 | runServer | Runs a minecraft server in a development environment |
-| eln2:integration-mc-1-15 | publish | Supposedly, builds a usable Minecraft mod. You will need to install Bookshelf, Forge, and some other tidbits... |
+| eln2:integration-mc-1-16 | runClient | Runs a minecraft client in a development environment (no username, cannot connect to servers) |
+| eln2:integration-mc-1-16 | runServer | Runs a minecraft server in a development environment |
+| eln2:integration-mc-1-16 | publish | Supposedly, builds a usable Minecraft mod. You will need to install Bookshelf, Forge, and some other tidbits... |
 
 ## Contributing back
 
@@ -114,5 +106,5 @@ Mostly the following:
             * Otherwise, do:
                 1. `git push origin master` ("origin" will be your fork)
 6. Make a pull request. If you are confident that you are done with writing the code, and it meets contribution guidelines in [CONTRIBUTING.md](CONTRIBUTING.md), then make it as a standard pull request. Otherwise, select the down arrow and then `Draft PR` and then click Create Pull Request.
-7. If you have further changes, start with step 1 and continue to step 5. It will update the PR with changes.
+7. If you have further changes, start with step 2 and continue to step 5. It will update the PR with changes.
 8. Wait for someone to accept or reject your PR. We get email notifications when PR's are created. We may make suggestions, in which you fix your code and come back to us with those changes.
