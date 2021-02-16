@@ -10,7 +10,7 @@ Feel free to make pull requests or issues, but please note that we are currently
 * Keep commits in a PR to one topic, if possible. This permits us to use version control to find software regressions more easily.
 * Avoid mass operations such as folder moves and restructures next to logical changes in the code in the same commit. It makes the commit diffs messy and difficult to follow.
 * Use the PR message on GitHub to describe changes; use markdown check marks to show intended progress towards a goal.
-* Keep your PR up to date with the `master` branch to ease merges. It is preferred that you rebase rather than merge where possible.
+* Keep your PR up to date with the `dev` branch to ease merges. It is preferred that you rebase rather than merge where possible.
 * PR's should come with their code documented and unit tested (as much as possible, as decided by the head developers).
 * If you make a PR, you agree to the licenses of the project, and that the code and content you are contributing complies with the applicable license.
 
@@ -21,12 +21,12 @@ For example, `feature/add-variable-resistor` may describe some new Variable Resi
 
 The following naming convention is to be used.
 
-* `master` – Branch that all of the developers work out of.
+* `dev` – Branch that all of the developers work out of.
+* `stable` - When applicable, stable releases of the code
 * `feature/(branch name)` – Branches created by developers that add new features
 
-We're using a rolling release strategy, so having multiple branches doesn't really help.
 Unit testing should be sufficient for watching for errors in the code. If a buf is found, push a fix and push a release.
-Releases will just be simple release tags/labels on the `master` branch.
+Releases will just be simple release tags/labels on the `dev` or `stable` branch.
 
 ## Licensing breakdown
 
@@ -46,6 +46,8 @@ All of the content (images, models, etc) in this repository is currently [CC0](h
 
 ## Code Layout
 
+Subject to change, feel free to update if this becomes stale:
+
 * apps: Standalone Applications
     * Asm Computer UI
 * core: Core Simulation Code
@@ -55,8 +57,5 @@ All of the content (images, models, etc) in this repository is currently [CC0](h
     * parsers: Parsers and import/export tools
     * sim: Electrical and Thermal simulators
     * space: various data structures and algorithms
-* images: Images for the falstad importer when exporting circuit data
-* integration-mc1-15: Minecraft 1.15.2 Integration Code
-* integration-vs: Vintage Story Integration Code
-* logcollector: A rust statistics and (crash) logging server
+* integration-mc1-16: Minecraft 1.16.5 Integration Code
 * proto: A set of [Google Protocol Buffers](https://developers.google.com/protocol-buffers) for communication with all of our applications (proto3)

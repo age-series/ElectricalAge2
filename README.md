@@ -1,7 +1,7 @@
 # eln2
 ![CI](https://github.com/eln2/eln2/workflows/CI/badge.svg)
 
-This is the home of Eln2, a Minecraft and Vintage Story mod.
+This is the home of Eln2, a Minecraft mod.
 
 ## Community Links
 
@@ -14,8 +14,8 @@ This is the home of Eln2, a Minecraft and Vintage Story mod.
 
 Planned support for:
 
-* [Minecraft](https://minecraft.net) 1.15.2 (Forge only)
-* [Vintage Story](https://www.vintagestory.at/)
+* [Minecraft](https://minecraft.net) 1.16.5 (Forge only)
+* [Vintage Story](https://www.vintagestory.at/) (someday)
 
 ## Licensing
 
