@@ -1,0 +1,6 @@
+{
+"parent": "item/generated",
+	"textures": {
+		"layer0": "eln2:item/ore_chunks_wolframite"
+	}
+}

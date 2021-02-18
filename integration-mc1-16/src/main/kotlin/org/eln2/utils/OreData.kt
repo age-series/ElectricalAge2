@@ -8,6 +8,12 @@ import net.minecraft.item.ItemStack
  *
  * @param hardness How hard is the block (pickaxe type basically)
  * @param name Name of the ore (eg, "native_copper")
+ * @param rarity Rarity of the ore (eg, ->
+ * Very Rare 1 (times 2 for ore vein size, times 25 for world spawn height)
+ * Rare 2
+ * Uncommon 3
+ * Common 4
+ * Very Common 5)
  * @param result The item to drop
  */
-data class OreData(val hardness: Float, val name: String, val rarity: Float, val result: ItemStack)
+data class OreData(val hardness: Float, val name: String, val rarity: Int, val result: ItemStack)
