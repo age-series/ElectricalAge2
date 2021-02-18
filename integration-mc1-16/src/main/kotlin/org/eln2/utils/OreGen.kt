@@ -36,9 +36,6 @@ object OreGen {
     }
 
     fun biomeModification(event: BiomeLoadingEvent) {
-        ores.forEach{
-            event.generation.withFeature(GenerationStage.Decoration.UNDERGROUND_ORES, it)
-            print(event.generation.getFeatures(GenerationStage.Decoration.UNDERGROUND_ORES))
-        }
+        ores.forEach{event.generation.withFeature(GenerationStage.Decoration.UNDERGROUND_ORES, it)}
     }
 }
