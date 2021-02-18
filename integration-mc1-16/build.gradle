@@ -100,6 +100,7 @@ dependencies {
     // The userdev artifact is a special name and will get all sorts of transformations applied to it.
     minecraft 'net.minecraftforge:forge:1.16.5-36.0.22'
     implementation 'thedarkcolour:kotlinforforge:1.9.0'
+    implementation project(':core')
 
     compile "net.darkhax.bookshelf:Bookshelf-1.16.5:10.0.1:deobf"
 
