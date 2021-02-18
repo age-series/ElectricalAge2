@@ -10,4 +10,4 @@ import net.minecraft.item.ItemStack
  * @param name Name of the ore (eg, "native_copper")
  * @param result The item to drop
  */
-data class OreData(val hardness: Float, val name: String, val result: ItemStack)
+data class OreData(val hardness: Float, val name: String, val rarity: Float, val result: ItemStack)
