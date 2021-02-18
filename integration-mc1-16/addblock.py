@@ -100,7 +100,7 @@ class ${name}Block : Block(Properties.create(Material.IRON)) {
 }
 
 /*
-====== Code to move to ModBlocks.kt ======
+====== Code to move to OreBlocks.kt ======
 
 val $U{name} = ${name}Block()
 

@@ -12,4 +12,7 @@ class OreBlock(val oreType: OreData) : Block(Properties.from(Blocks.IRON_ORE).ha
     override fun asItem(): Item {
         return oreType.result.item
     }
+    fun getRarity() : Int{
+        return oreType.rarity
+    }
 }

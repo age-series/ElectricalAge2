@@ -1,0 +1,65 @@
+package org.eln2
+
+import net.minecraft.item.Item
+import org.eln2.items.MultimeterItem
+import org.eln2.items.OreChunks
+
+/**
+ * Items added here are automatically registered.
+ */
+enum class ChunkItems(val items: Item) {
+    ORE_CHUNKS_ACANTHITE(OreChunks()),
+    ORE_CHUNKS_ANTHRACITE_COAL(OreChunks()),
+    ORE_CHUNKS_AZURITE(OreChunks()),
+    ORE_CHUNKS_BAUXITE(OreChunks()),
+    ORE_CHUNKS_BISMUTHINITE(OreChunks()),
+    ORE_CHUNKS_BITUMINOUS_COAL(OreChunks()),
+    ORE_CHUNKS_BORAX(OreChunks()),
+    ORE_CHUNKS_CASSITERITE(OreChunks()),
+    ORE_CHUNKS_CASSITERITE_RARE(OreChunks()),
+    ORE_CHUNKS_CATTIERITE(OreChunks()),
+    ORE_CHUNKS_CERUSSITE(OreChunks()),
+    ORE_CHUNKS_CHALCOCITE(OreChunks()),
+    ORE_CHUNKS_CHALCOPYRITE(OreChunks()),
+    ORE_CHUNKS_CHROMITE(OreChunks()),
+    ORE_CHUNKS_CINNABAR(OreChunks()),
+    ORE_CHUNKS_COPPER(OreChunks()),
+    ORE_CHUNKS_CORUNDUM(OreChunks()),
+    ORE_CHUNKS_CRYOLITE(OreChunks()),
+    ORE_CHUNKS_ESKOLAITE(OreChunks()),
+    ORE_CHUNKS_FLUORITE(OreChunks()),
+    ORE_CHUNKS_GALENA(OreChunks()),
+    ORE_CHUNKS_GRAPHITE(OreChunks()),
+    ORE_CHUNKS_HALITE(OreChunks()),
+    ORE_CHUNKS_HEMATITE(OreChunks()),
+    ORE_CHUNKS_ILMENITE(OreChunks()),
+    ORE_CHUNKS_KERNITE(OreChunks()),
+    ORE_CHUNKS_LEPIDOLITE(OreChunks()),
+    ORE_CHUNKS_LIMONITE(OreChunks()),
+    ORE_CHUNKS_MAGNETITE(OreChunks()),
+    ORE_CHUNKS_MALACHITE(OreChunks()),
+    ORE_CHUNKS_MILLERITE(OreChunks()),
+    ORE_CHUNKS_NATIVE_COPPER(OreChunks()),
+    ORE_CHUNKS_NATIVE_PLATNIUM(OreChunks()),
+    ORE_CHUNKS_NATIVE_SULFUR(OreChunks()),
+    ORE_CHUNKS_PENTLANDITE(OreChunks()),
+    ORE_CHUNKS_PETALITE(OreChunks()),
+    ORE_CHUNKS_PSILOMELANE(OreChunks()),
+    ORE_CHUNKS_PYRITE(OreChunks()),
+    ORE_CHUNKS_PYROLUSITE(OreChunks()),
+    ORE_CHUNKS_QUARTZ(OreChunks()),
+    ORE_CHUNKS_RHODOCHROSITE(OreChunks()),
+    ORE_CHUNKS_RUTILE(OreChunks()),
+    ORE_CHUNKS_SCHEELITE(OreChunks()),
+    ORE_CHUNKS_SIDERITE(OreChunks()),
+    ORE_CHUNKS_SILVER(OreChunks()),
+    ORE_CHUNKS_SMITHSONITE(OreChunks()),
+    ORE_CHUNKS_SPHALERITE(OreChunks()),
+    ORE_CHUNKS_SPHEROCOBALTITE(OreChunks()),
+    ORE_CHUNKS_SPODUMENE(OreChunks()),
+    ORE_CHUNKS_STANNITE(OreChunks()),
+    ORE_CHUNKS_SYLVITE(OreChunks()),
+    ORE_CHUNKS_TANTALITE(OreChunks()),
+    ORE_CHUNKS_TITANITE(OreChunks()),
+    ORE_CHUNKS_WOLFRAMITE(OreChunks())
+}
