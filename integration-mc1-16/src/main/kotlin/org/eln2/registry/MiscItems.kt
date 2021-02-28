@@ -1,4 +1,4 @@
-package org.eln2
+package org.eln2.registry
 
 import net.minecraft.item.Item
 import org.eln2.items.MultimeterItem
