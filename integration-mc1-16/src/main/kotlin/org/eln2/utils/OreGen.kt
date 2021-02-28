@@ -17,11 +17,9 @@ object OreGen {
     private var ores: List<ConfiguredFeature<*, *>> = mutableListOf()
 
     /**
-     * Configures ore generation in the world. Registers against Forge.
+     * Configures ore generation in the world
      */
-
     fun setupOreGeneration() {
-
          ores = OreBlocks.values().map {
              Feature.ORE.withConfiguration(
                  OreFeatureConfig(OreFeatureConfig.FillerBlockType.BASE_STONE_OVERWORLD,
@@ -34,7 +32,14 @@ object OreGen {
         }
     }
 
-    fun biomeModification(event: BiomeLoadingEvent) {
-        ores.forEach{event.generation.withFeature(GenerationStage.Decoration.UNDERGROUND_ORES, it)}
+    /**
+     * Registers the ore generation with Forge
+     *
+     * @event The event from Forge as part of the annotation.
+     */
+    fun registerOreGeneration(event: BiomeLoadingEvent) {
+        ores.forEach{
+            event.generation.withFeature(GenerationStage.Decoration.UNDERGROUND_ORES, it)
+        }
     }
 }

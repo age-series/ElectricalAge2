@@ -1,33 +1,34 @@
 package org.eln2
 
-import net.darkhax.bookshelf.item.ItemGroupBase
 import net.darkhax.bookshelf.registry.RegistryHelper
-import net.minecraft.client.gui.screen.inventory.CreativeScreen
-import net.minecraft.item.ItemGroup
-import net.minecraft.item.ItemStack
+import net.minecraftforge.fml.common.thread.SidedThreadGroups
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent
+import net.minecraftforge.fml.event.lifecycle.FMLLoadCompleteEvent
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.eln2.registry.*
+import org.eln2.utils.AnalyticsHandler
 import org.eln2.utils.OreGen
-
-const val MODID = "eln2"
 
 /**
  * The main entry point and registry holder for Electrical Age.
+ *
+ * The @JvmField annotation is needed on some calls, because [Eln2Wrapper] is a Java class that can't see Kotlin stuff.
  */
 object Eln2 {
-    // Directly reference a log4j logger.
     @JvmField
     val LOGGER: Logger = LogManager.getLogger()
+    const val MODID = "eln2"
 
     private val registry: RegistryHelper = RegistryHelper(MODID, LOGGER)
+
+    val logicalServer = Thread.currentThread().threadGroup == SidedThreadGroups.SERVER
 
     /**
      * Initialization.
      *
-     * This is run at class construction time, and should do as little as possible.
+     * This is run at class construction time, and should do as little as possible (register blocks/items)
      */
     fun initialize() {
         // Register Items
@@ -47,5 +48,9 @@ object Eln2 {
      */
     fun setup(event: FMLCommonSetupEvent) {
         OreGen.setupOreGeneration()
+    }
+
+    fun loadComplete(event: FMLLoadCompleteEvent) {
+        AnalyticsHandler.sendAnalyticsData()
     }
 }
