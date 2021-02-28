@@ -1,10 +1,15 @@
 package org.eln2
 
+import net.darkhax.bookshelf.item.ItemGroupBase
 import net.darkhax.bookshelf.registry.RegistryHelper
+import net.minecraft.client.gui.screen.inventory.CreativeScreen
+import net.minecraft.item.ItemGroup
+import net.minecraft.item.ItemStack
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
+import org.eln2.registry.*
 import org.eln2.utils.OreGen
 
 const val MODID = "eln2"
@@ -25,12 +30,13 @@ object Eln2 {
      * This is run at class construction time, and should do as little as possible.
      */
     fun initialize() {
-        // Register blocks and items
-        // TODO:  Break out into creative tabs being registered (ie, CableBlocks, CableItems, etc.)
+        // Register Items
         ChunkItems.values().forEach { registry.items.register(it.items, it.name.toLowerCase()) }
-        OreBlocks.values().forEach { registry.blocks.register(it.block, it.name.toLowerCase()) }
         MiscItems.values().forEach { registry.items.register(it.items, it.name.toLowerCase()) }
-        MiscBlocks.values().forEach {registry.blocks.register(it.block, it.name.toLowerCase())}
+
+        // Register Blocks
+        OreBlocks.values().forEach { registry.blocks.register(it.block, it.name.toLowerCase()) }
+        MiscBlocks.values().forEach { registry.blocks.register(it.block, it.name.toLowerCase()) }
         registry.initialize(FMLJavaModLoadingContext.get().modEventBus)
     }
 
@@ -41,6 +47,5 @@ object Eln2 {
      */
     fun setup(event: FMLCommonSetupEvent) {
         OreGen.setupOreGeneration()
-
     }
 }

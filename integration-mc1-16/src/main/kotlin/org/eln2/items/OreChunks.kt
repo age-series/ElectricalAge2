@@ -6,12 +6,13 @@ import net.minecraft.item.ItemStack
 import net.minecraft.util.text.ITextComponent
 import net.minecraft.util.text.TranslationTextComponent
 import net.minecraft.world.World
+import org.eln2.registry.genProperties
 
 /**
  * It's a chunk of ore! This is what you get when you break the ore block.
  * Minecraft handing you a block that you can place makes ~0 sense.
  */
-class OreChunks : Item(Properties().maxStackSize(64)) {
+class OreChunks : Item(genProperties(64)) {
     override fun addInformation(
         stack: ItemStack,
         worldIn: World?,
