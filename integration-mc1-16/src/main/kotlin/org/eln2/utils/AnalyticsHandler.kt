@@ -5,6 +5,7 @@ import net.minecraftforge.fml.loading.FMLEnvironment
 import org.apache.http.client.methods.HttpGet
 import org.apache.http.impl.client.HttpClientBuilder
 import org.eln2.Eln2
+import org.eln2.config.CleintConfigs
 
 /*
 
@@ -56,13 +57,13 @@ object AnalyticsHandler {
      * Sends data out to one of our servers.
      */
     fun sendAnalyticsData() {
-        Eln2.LOGGER.debug("Trying to send data. Enable Analytics is currently ${GameConfig.enableAnalytics}")
-        if(!GameConfig.enableAnalytics) hasRun = true
+        Eln2.LOGGER.debug("Trying to send data. Enable Analytics is currently ${CleintConfigs.enableAnalytics}")
+        if(!CleintConfigs.enableAnalytics) hasRun = true
         if (!hasRun) {
             Eln2.LOGGER.debug("Preparing analytics thread")
             val thread = Thread {
-                val analyticsServer = GameConfig.analyticsServer
-                Eln2.LOGGER.debug("Analytics thread sees server as ${GameConfig.analyticsServer}")
+                val analyticsServer = CleintConfigs.analyticsServer
+                Eln2.LOGGER.debug("Analytics thread sees server as ${CleintConfigs.analyticsServer}")
                 val statMap = mutableMapOf<String, Any>()
                 statMap["isDedicatedServer"] = FMLEnvironment.dist.isDedicatedServer
                 if (!Eln2.logicalServer) {

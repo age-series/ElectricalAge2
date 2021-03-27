@@ -10,7 +10,7 @@ import net.minecraftforge.fml.config.ModConfig;
 import net.minecraftforge.fml.event.lifecycle.*;
 import net.minecraftforge.fml.event.server.FMLServerStartingEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
-import org.eln2.utils.GameConfig;
+import org.eln2.config.CleintConfigs;
 import org.eln2.utils.OreGen;
 import java.util.stream.Collectors;
 
@@ -31,9 +31,6 @@ public class Eln2Wrapper {
         // Register the doClientStuff method for modloading
         FMLJavaModLoadingContext.get().getModEventBus().addListener(this::doClientStuff);
         FMLJavaModLoadingContext.get().getModEventBus().addListener(this::done);
-
-        // Client config stuff
-        ModLoadingContext.get().registerConfig(ModConfig.Type.CLIENT, GameConfig.CLIENT_SPEC);
 
         // Register ourselves for server and other game events we are interested in
         MinecraftForge.EVENT_BUS.register(this);
