@@ -7,6 +7,7 @@ import net.minecraftforge.fml.event.lifecycle.FMLLoadCompleteEvent
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
+import org.eln2.config.ConfigHandler
 import org.eln2.registry.*
 import org.eln2.utils.AnalyticsHandler
 import org.eln2.utils.OreGen
@@ -47,6 +48,7 @@ object Eln2 {
      * This is run in a threaded context, so we cannot communicate with other mods without using IMC.
      */
     fun setup(event: FMLCommonSetupEvent) {
+        ConfigHandler()
         OreGen.setupOreGeneration()
     }
 
