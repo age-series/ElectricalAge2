@@ -1,6 +1,7 @@
 package org.eln2.registry
 
 import org.eln2.blocks.OreBlock
+import org.eln2.node.NodeBlock
 import org.eln2.utils.OreData
 
 /**

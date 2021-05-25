@@ -1,14 +1,23 @@
 package org.eln2
 
 import net.darkhax.bookshelf.registry.RegistryHelper
+import net.minecraft.world.storage.FolderName
 import net.minecraftforge.fml.common.thread.SidedThreadGroups
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent
 import net.minecraftforge.fml.event.lifecycle.FMLLoadCompleteEvent
+import net.minecraftforge.fml.event.server.FMLServerAboutToStartEvent
+import net.minecraftforge.fml.event.server.FMLServerStartingEvent
+import net.minecraftforge.fml.event.server.FMLServerStoppingEvent
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext
+import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
+import org.apache.logging.log4j.core.config.Configurator
 import org.eln2.config.ConfigHandler
-import org.eln2.registry.*
+import org.eln2.registry.ChunkItems
+import org.eln2.registry.MiscBlocks
+import org.eln2.registry.MiscItems
+import org.eln2.registry.OreBlocks
 import org.eln2.utils.AnalyticsHandler
 import org.eln2.utils.OreGen
 
@@ -32,6 +41,7 @@ object Eln2 {
      * This is run at class construction time, and should do as little as possible (register blocks/items)
      */
     fun initialize() {
+        Configurator.setLevel(LOGGER.name, Level.ALL)
         // Register Items
         ChunkItems.values().forEach { registry.items.register(it.items, it.name.toLowerCase()) }
         MiscItems.values().forEach { registry.items.register(it.items, it.name.toLowerCase()) }
@@ -54,5 +64,19 @@ object Eln2 {
 
     fun loadComplete(event: FMLLoadCompleteEvent) {
         AnalyticsHandler.sendAnalyticsData()
+    }
+
+    fun serverPreStart(event: FMLServerAboutToStartEvent) {
+        val saveFolder = event.server.func_240776_a_(FolderName.DOT).parent.toAbsolutePath()
+        val eln2DataPath = saveFolder.resolve("eln2.dat")
+        org.eln2.node.NodeManager.path = eln2DataPath
+    }
+
+    fun serverStart(event: FMLServerStartingEvent) {
+
+    }
+
+    fun serverStop(event: FMLServerStoppingEvent) {
+
     }
 }

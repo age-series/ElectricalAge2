@@ -1,17 +1,20 @@
 package org.eln2;
 
+import net.minecraft.world.storage.FolderName;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.world.BiomeLoadingEvent;
+import net.minecraftforge.event.world.WorldEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.InterModComms;
-import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.config.ModConfig;
 import net.minecraftforge.fml.event.lifecycle.*;
+import net.minecraftforge.fml.event.server.FMLServerAboutToStartEvent;
 import net.minecraftforge.fml.event.server.FMLServerStartingEvent;
+import net.minecraftforge.fml.event.server.FMLServerStoppingEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
-import org.eln2.config.CleintConfigs;
 import org.eln2.utils.OreGen;
+
+import java.nio.file.Path;
 import java.util.stream.Collectors;
 
 /**
@@ -65,8 +68,18 @@ public class Eln2Wrapper {
     }
 
     @SubscribeEvent
+    public void onServerPreStart(FMLServerAboutToStartEvent event) {
+        Eln2.INSTANCE.serverPreStart(event);
+    }
+
+    @SubscribeEvent
     public void onServerStarting(FMLServerStartingEvent event) {
-        Eln2.LOGGER.info("Hello from the server code :)");
+        Eln2.INSTANCE.serverStart(event);
+    }
+
+    @SubscribeEvent
+    public void onServerStopping(FMLServerStoppingEvent event) {
+        Eln2.INSTANCE.serverStop(event);
     }
 
     /**

@@ -14,7 +14,11 @@ import org.eln2.utils.Coordinate
 
 class NodeBlock(): Block(Properties.create(Material.ROCK)), INodeNBT {
 
+    // Location of the node
     var coordinate: Coordinate? = null
+
+    // The simulations that the node participates in (eg, Electrical Sim, Thermal Sim, etc.)
+    var participatingSimulations = mutableListOf<ISim>()
 
     override fun onBlockPlacedBy(
         world: World,
