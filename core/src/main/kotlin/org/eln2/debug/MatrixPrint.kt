@@ -1,7 +1,5 @@
 package org.eln2.debug
 
-import com.andreapivetta.kolor.Color
-import com.andreapivetta.kolor.Kolor
 import org.apache.commons.math3.linear.MatrixUtils
 import org.apache.commons.math3.linear.RealMatrix
 import org.apache.commons.math3.linear.RealVector
@@ -24,7 +22,7 @@ fun matrixFormat(matrix: RealMatrix?, headerfooter: Boolean = true): String {
     if (headerfooter) sb.append("== Begin MNA Matrix ==\n")
     
     val columnWidths = (0 until columns).map {
-        matrix.getColumn(it).map { entry -> entry.toString().length }.max() ?: 0
+        matrix.getColumn(it).map { entry -> entry.toString().length }.maxOrNull() ?: 0
     }.toList()
 
     for(row in 0 until rows) {
@@ -96,9 +94,9 @@ fun mnaFormatNoUnknowns(matrix: RealMatrix, knowns: RealVector, color: Boolean =
 
     (0 until biggest).withIndex().forEach { entry ->
         if (color) {
-            sb.append(Kolor.foreground(mftLines[entry.value], Color.RED))
+            //sb.append(Kolor.foreground(mftLines[entry.value], Color.RED))
             sb.append(if (entry.index == midpoint) " x = " else "     ")
-            sb.append(Kolor.foreground(kftLines[entry.value], Color.BLUE))
+            //sb.append(Kolor.foreground(kftLines[entry.value], Color.BLUE))
         } else {
             sb.append(mftLines[entry.value])
             sb.append(if (entry.index == midpoint) " x = " else "     ")
@@ -144,16 +142,16 @@ fun mnaFormat(matrix: RealMatrix, knowns: RealVector, unknowns: RealVector?, col
 
     (0 until biggest).withIndex().forEach { entry ->
         if (color) {
-            sb.append(Kolor.foreground(mftLines[entry.value], Color.RED))
+            //sb.append(Kolor.foreground(mftLines[entry.value], Color.RED))
             sb.append(" ")
-            sb.append(Kolor.foreground(uftLines[entry.value], Color.GREEN))
+            //sb.append(Kolor.foreground(uftLines[entry.value], Color.GREEN))
             sb.append(when {
                 !even && entry.index == midpoint -> " = "
                 even && entry.index == midpoint - 1 -> " _ "
                 even && entry.index == midpoint -> " ‾ "
                 else -> "   "
             })
-            sb.append(Kolor.foreground(kftLines[entry.value], Color.BLUE))
+            //sb.append(Kolor.foreground(kftLines[entry.value], Color.BLUE))
         }else{
             sb.append(mftLines[entry.value])
             sb.append(" ")

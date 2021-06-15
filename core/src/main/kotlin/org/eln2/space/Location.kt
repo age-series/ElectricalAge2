@@ -116,7 +116,7 @@ enum class Axis(val int: Int) {
         fun fromVecMajor(v: Vec3i): Axis {
             var (x, y, z) = v
             x = abs(x); y = abs(y); z = abs(z)
-            val max = arrayOf(x, y, z).max()
+            val max = arrayOf(x, y, z).maxOrNull()
             return when (max) {
                 x -> X
                 y -> Y

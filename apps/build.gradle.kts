@@ -3,7 +3,7 @@ plugins {
 }
 
 dependencies {
-    compile(project(":core"))
+    compileOnly(project(":core"))
 }
 
 application.mainClassName = "org.eln2.apps.compute.AsmComputerUiKt"

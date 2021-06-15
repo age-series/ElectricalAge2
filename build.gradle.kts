@@ -2,11 +2,11 @@ import org.gradle.api.tasks.testing.logging.TestLogEvent
 
 plugins {
     java
-    kotlin("multiplatform") version "1.4.30" apply false
+    kotlin("multiplatform") version "1.5.10" apply false
     jacoco
-    id("com.github.johnrengelman.shadow") version "6.1.0"
+    id("com.github.johnrengelman.shadow") version "7.0.0"
     idea
-    id("org.jetbrains.dokka") version "1.4.20"
+    id("org.jetbrains.dokka") version "1.4.30"
 }
 
 allprojects {
@@ -15,13 +15,11 @@ allprojects {
 
     buildscript {
         repositories {
-            jcenter()
             mavenCentral()
         }
     }
 
     repositories {
-        jcenter()
         mavenCentral()
         maven(url = "https://dl.bintray.com/kotlin/kotlin-eap")
         maven(url = "https://kotlin.bintray.com/kotlinx")
@@ -29,8 +27,6 @@ allprojects {
 }
 
 subprojects {
-    // We assume all subprojects use Java/Kotlin.
-    // This isn't true for the logcollector, but Rust code won't use Gradle.
     apply {
         plugin("java")
         plugin("kotlin")
@@ -40,23 +36,13 @@ subprojects {
         plugin("org.jetbrains.dokka")
     }
 
-    java {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
-    }
-
     dependencies {
-        // Configure them to use the same Kotlin version.
-        // Quotes are needed because *this* project does not use Kotlin,
-        // and lacks an 'implementation' configuration.
-        "implementation"(kotlin("stdlib-jdk8"))
-        implementation("com.andreapivetta.kolor", "kolor", "1.0.0")
-        compile("org.apache.commons", "commons-math3", "3.6.1")
-        compile("com.google.protobuf", "protobuf-java", "3.13.0")
-        // Configure testing.
-        testImplementation("org.assertj", "assertj-core", "3.17.2")
-        testImplementation("org.junit.jupiter", "junit-jupiter-api", "5.6.2")
-        testRuntime("org.junit.jupiter", "junit-jupiter-engine", "5.6.2")
+        implementation("org.apache.commons", "commons-math3", "3.6.1")
+        implementation("com.google.protobuf", "protobuf-java", "3.17.3")
+
+        testImplementation("org.assertj", "assertj-core", "3.19.0")
+        testImplementation("org.junit.jupiter", "junit-jupiter-api", "5.7.2")
+        testRuntimeOnly("org.junit.jupiter", "junit-jupiter-engine", "5.7.2")
     }
 
     tasks {
@@ -142,7 +128,7 @@ tasks {
     }
 
     named<Wrapper>("wrapper") {
-        gradleVersion = "6.8.2"
+        gradleVersion = "7.0.2"
         distributionType = Wrapper.DistributionType.ALL
     }
 }

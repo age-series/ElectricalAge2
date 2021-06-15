@@ -6,12 +6,11 @@
 buildscript {
     repositories {
         maven { url = 'https://files.minecraftforge.net/maven' }
-        jcenter()
         mavenCentral()
     }
     dependencies {
         // https://files.minecraftforge.net/maven/net/minecraftforge/gradle/ForgeGradle/
-        classpath group: 'net.minecraftforge.gradle', name: 'ForgeGradle', version: '4.0.16', changing: true
+        classpath group: 'net.minecraftforge.gradle', name: 'ForgeGradle', version: '5.0.11', changing: true
     }
 }
 apply plugin: 'net.minecraftforge.gradle'
@@ -34,7 +33,7 @@ minecraft {
     // stable_#            Stables are built at the discretion of the MCP team.
     // Use non-default mappings at your own risk. they may not always work.
     // Simply re-run your setup task after changing the mappings to update your workspace.
-    mappings channel: 'snapshot', version: '20201028-1.16.3'
+    mappings channel: 'official', version: '1.16.5'
     // makeObfSourceJar = false // an Srg named sources jar is made by default. uncomment this to disable.
 
     // accessTransformer = file('src/main/resources/META-INF/accesstransformer.cfg')
@@ -98,11 +97,11 @@ dependencies {
     // Specify the version of Minecraft to use, If this is any group other then 'net.minecraft' it is assumed
     // that the dep is a ForgeGradle 'patcher' dependency. And it's patches will be applied.
     // The userdev artifact is a special name and will get all sorts of transformations applied to it.
-    minecraft 'net.minecraftforge:forge:1.16.5-36.0.22'
+    minecraft 'net.minecraftforge:forge:1.16.5-36.1.31'
     implementation 'thedarkcolour:kotlinforforge:1.9.0'
 
     implementation project(':core')
-    compile "net.darkhax.bookshelf:Bookshelf-1.16.5:10.0.1:deobf"
+    implementation "net.darkhax.bookshelf:Bookshelf-1.16.5:10.0.1:deobf"
 
     // You may put jars on which you depend on in ./libs or you may define them like so..
     // compile "some.group:artifact:version:classifier"
@@ -129,9 +128,9 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 tasks.withType(KotlinCompile).all {
     kotlinOptions {
-        jvmTarget = '1.8'
-        languageVersion = '1.4'
-        apiVersion = '1.4'
+        jvmTarget = '11'
+        languageVersion = '1.5'
+        apiVersion = '1.5'
     }
 
     // Required to run in dev environment
