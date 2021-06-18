@@ -12,16 +12,16 @@ import org.eln2.node.INodeNBT
 class Coordinate(var world: World, var pos: BlockPos): INodeNBT {
 
     override fun toString(): String {
-        return "${world.dimensionKey.location}_${pos.x}_${pos.y}_${pos.z}"
+        return "${world.dimension().location()}_${pos.x}_${pos.y}_${pos.z}"
     }
 
     override fun read(p0: CompoundNBT) {
         val server = LogicalSidedProvider.INSTANCE.get<MinecraftServer>(LogicalSide.SERVER)
         //Minecraft.getInstance().world.server.worlds
 
-        println("Coordinate read function looking at server: ${server.worlds.map { it.dimensionKey.location.toString() }}")
+        println("Coordinate read function looking at server: ${server.allLevels.map { it.level.freeMapId }}")
 
-        server.worlds.filter {it.dimensionKey.location.toString() == p0.getString("dim")}
+        server.allLevels.filter {it.level.freeMapId.toString() == p0.getString("dim")}
     }
 
     override fun write(p0: CompoundNBT): CompoundNBT {

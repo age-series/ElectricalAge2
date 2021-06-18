@@ -4,7 +4,7 @@ plugins {
     java
     kotlin("multiplatform") version "1.5.10" apply false
     jacoco
-    id("com.github.johnrengelman.shadow") version "7.0.0"
+    id("com.github.johnrengelman.shadow") version "6.1.0"
     idea
     id("org.jetbrains.dokka") version "1.4.30"
 }

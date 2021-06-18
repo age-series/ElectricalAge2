@@ -40,7 +40,9 @@ object NodeManager {
     fun addNode(coord: Coordinate, block: NodeBlock) {
         // TODO: Get world file and verify that these nodes are actually ours
         nodeList[coord] = block
-        Eln2.LOGGER.debug("Dim info2: ${block.coordinate?.world?.dimensionKey?.location}")
+
+
+        Eln2.LOGGER.debug("Dim info2: ${block.coordinate?.world?.dimension()?.location()?.path}")
         writeNodes()
     }
 

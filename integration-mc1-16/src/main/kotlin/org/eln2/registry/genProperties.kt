@@ -4,6 +4,6 @@ import net.minecraft.item.Item
 
 fun genProperties(maxStack: Int): Item.Properties {
     val prop = Item.Properties()
-    prop.maxStackSize(maxStack)
+    prop.stacksTo(maxStack)
     return prop
 }

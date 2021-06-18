@@ -1,7 +1,5 @@
 package org.eln2
 
-import net.darkhax.bookshelf.registry.RegistryHelper
-import net.minecraft.world.storage.FolderName
 import net.minecraftforge.fml.common.thread.SidedThreadGroups
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent
 import net.minecraftforge.fml.event.lifecycle.FMLLoadCompleteEvent
@@ -9,6 +7,7 @@ import net.minecraftforge.fml.event.server.FMLServerAboutToStartEvent
 import net.minecraftforge.fml.event.server.FMLServerStartingEvent
 import net.minecraftforge.fml.event.server.FMLServerStoppingEvent
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext
+import net.minecraftforge.registries.ForgeRegistries
 import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
@@ -31,8 +30,6 @@ object Eln2 {
     val LOGGER: Logger = LogManager.getLogger()
     const val MODID = "eln2"
 
-    private val registry: RegistryHelper = RegistryHelper(MODID, LOGGER)
-
     val logicalServer = Thread.currentThread().threadGroup == SidedThreadGroups.SERVER
 
     /**
@@ -42,14 +39,27 @@ object Eln2 {
      */
     fun initialize() {
         Configurator.setLevel(LOGGER.name, Level.ALL)
+        val modEventBus = FMLJavaModLoadingContext.get().modEventBus
+
         // Register Items
-        ChunkItems.values().forEach { registry.items.register(it.items, it.name.toLowerCase()) }
-        MiscItems.values().forEach { registry.items.register(it.items, it.name.toLowerCase()) }
+        ChunkItems.values().forEach {
+            ForgeRegistries.ITEMS.register(it.items)
+            modEventBus.register(it.items)
+        }
+        MiscItems.values().forEach {
+            ForgeRegistries.ITEMS.register(it.items)
+            modEventBus.register(it.items)
+        }
 
         // Register Blocks
-        OreBlocks.values().forEach { registry.blocks.register(it.block, it.name.toLowerCase()) }
-        MiscBlocks.values().forEach { registry.blocks.register(it.block, it.name.toLowerCase()) }
-        registry.initialize(FMLJavaModLoadingContext.get().modEventBus)
+        OreBlocks.values().forEach {
+            ForgeRegistries.BLOCKS.register(it.block)
+            modEventBus.register(it.block)
+        }
+        MiscBlocks.values().forEach {
+            ForgeRegistries.BLOCKS.register(it.block)
+            modEventBus.register(it.block)
+        }
     }
 
     /**
@@ -67,9 +77,9 @@ object Eln2 {
     }
 
     fun serverPreStart(event: FMLServerAboutToStartEvent) {
-        val saveFolder = event.server.func_240776_a_(FolderName.DOT).parent.toAbsolutePath()
-        val eln2DataPath = saveFolder.resolve("eln2.dat")
-        org.eln2.node.NodeManager.path = eln2DataPath
+        //val saveFolder = event.server.func_240776_a_(FolderName.DOT).parent.toAbsolutePath()
+        //val eln2DataPath = saveFolder.resolve("eln2.dat")
+        //org.eln2.node.NodeManager.path = eln2DataPath
     }
 
     fun serverStart(event: FMLServerStartingEvent) {

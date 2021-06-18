@@ -13,13 +13,15 @@ import org.eln2.registry.genProperties
  * Minecraft handing you a block that you can place makes ~0 sense.
  */
 class OreChunks : Item(genProperties(64)) {
-    override fun addInformation(
+    override fun appendHoverText(
         stack: ItemStack,
         worldIn: World?,
         tooltip: MutableList<ITextComponent>,
         flagIn: ITooltipFlag
     ) {
-        super.addInformation(stack, worldIn, tooltip, flagIn)
+        super.appendHoverText(stack, worldIn, tooltip, flagIn)
         tooltip.add(TranslationTextComponent("tooltip.eln2.item.ore"))
     }
+
+
 }

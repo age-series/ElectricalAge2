@@ -15,28 +15,28 @@ import net.minecraft.world.IBlockReader
  *
  * This is flubber. Flubber is bouncy. Bounce bounce.
  */
-class FlubberBlock : SlimeBlock(Properties.from(Blocks.SLIME_BLOCK)) {
+class FlubberBlock : SlimeBlock(Properties.copy(Blocks.SLIME_BLOCK)) {
 
     /**
      * Called when an Entity lands on this Block. This method *must* update motionY because the entity will not do that
      * on its own
      */
-    override fun onLanded(world: IBlockReader, entity: Entity) {
+    override fun updateEntityAfterFallOn(world: IBlockReader, entity: Entity) {
         if (entity.isSuppressingBounce) {
-            super.onLanded(world, entity)
+            super.updateEntityAfterFallOn(world, entity)
         } else {
-            val motion: Vector3d = entity.motion
-            entity.setMotion(motion.x, -motion.y * 1.6, motion.z)
+            val motion: Vector3d = entity.deltaMovement
+            entity.setDeltaMovement(motion.x, -motion.y * 1.6, motion.z)
         }
     }
 
-    override fun addInformation(
+    override fun appendHoverText(
         stack: ItemStack,
         worldIn: IBlockReader?,
         tooltip: MutableList<ITextComponent>,
         flagIn: ITooltipFlag
     ) {
-        super.addInformation(stack, worldIn, tooltip, flagIn)
+        super.appendHoverText(stack, worldIn, tooltip, flagIn)
         tooltip.add(TranslationTextComponent("tooltip.eln2.block.flubber"))
     }
 }

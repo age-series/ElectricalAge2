@@ -12,7 +12,7 @@ import net.minecraft.world.Explosion
 import net.minecraft.world.World
 import org.eln2.utils.Coordinate
 
-class NodeBlock(): Block(Properties.create(Material.ROCK)), INodeNBT {
+class NodeBlock(): Block(Properties.of(Material.STONE)), INodeNBT {
 
     // Location of the node
     var coordinate: Coordinate? = null
@@ -20,25 +20,25 @@ class NodeBlock(): Block(Properties.create(Material.ROCK)), INodeNBT {
     // The simulations that the node participates in (eg, Electrical Sim, Thermal Sim, etc.)
     var participatingSimulations = mutableListOf<ISim>()
 
-    override fun onBlockPlacedBy(
+    override fun setPlacedBy(
         world: World,
         pos: BlockPos,
         state: BlockState,
         entity: LivingEntity?,
         stack: ItemStack
     ) {
-        super.onBlockPlacedBy(world, pos, state, entity, stack)
+        super.setPlacedBy(world, pos, state, entity, stack)
         coordinate = Coordinate(world, pos)
         NodeManager.addNode(coordinate!!, this)
     }
 
-    override fun onBlockHarvested(
+    override fun playerWillDestroy(
         world: World,
         pos: BlockPos,
         state: BlockState,
         player: PlayerEntity
     ) {
-        super.onBlockHarvested(world, pos, state, player)
+        super.playerWillDestroy(world, pos, state, player)
         NodeManager.removeNode(coordinate!!)
     }
 

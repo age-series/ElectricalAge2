@@ -68,11 +68,11 @@ object AnalyticsHandler {
                 statMap["isDedicatedServer"] = FMLEnvironment.dist.isDedicatedServer
                 if (!Eln2.logicalServer) {
                     // Only valid on the client side
-                    val mcLang = Minecraft.getInstance().languageManager.currentLanguage.javaLocale.language
-                    val mcCountry = Minecraft.getInstance().languageManager.currentLanguage.javaLocale.country
+                    val mcLang = Minecraft.getInstance().languageManager.selected.javaLocale.language
+                    val mcCountry = Minecraft.getInstance().languageManager.selected.javaLocale.country
                     statMap["mc_lang"] = "${mcLang}_$mcCountry"
-                    statMap["player"] = Minecraft.getInstance().player?.name?.unformattedComponentText.toString()
-                    statMap["uuid"] = Minecraft.getInstance().player?.uniqueID.toString()
+                    statMap["player"] = Minecraft.getInstance().player?.name?.contents.toString()
+                    statMap["uuid"] = Minecraft.getInstance().player?.id.toString()
                 }
                 val lang = System.getProperty("user.language")?: ""
                 val country = System.getProperty("user.country")?: ""

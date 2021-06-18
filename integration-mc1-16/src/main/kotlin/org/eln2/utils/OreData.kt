@@ -16,4 +16,4 @@ import net.minecraft.item.ItemStack
  * Very Common 5)
  * @param result The item to drop
  */
-data class OreData(val hardness: Float, val name: String, val rarity: Int, val result: ItemStack)
+data class OreData(val hardness: Int, val name: String, val rarity: Int, val result: ItemStack)

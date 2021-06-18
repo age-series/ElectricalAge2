@@ -21,14 +21,14 @@ object OreGen {
      */
     fun setupOreGeneration() {
          ores = OreBlocks.values().map {
-             Feature.ORE.withConfiguration(
-                 OreFeatureConfig(OreFeatureConfig.FillerBlockType.BASE_STONE_OVERWORLD,
-                     it.block.defaultState,
+             Feature.ORE.configured(
+                 OreFeatureConfig(OreFeatureConfig.FillerBlockType.NATURAL_STONE,
+                     it.block.defaultBlockState(),
                      (it.block.getRarity()*2) //Vein size, calculated using the ore rarity times 2
                  )
              ).range(
                  (it.block.getRarity()*25) // Max height for the block to appear, calculated using rarity times 25 for a max of 125
-             ).square().func_242731_b(it.block.getRarity())
+             ).squared().chance(it.block.getRarity())
         }
     }
 
@@ -39,7 +39,7 @@ object OreGen {
      */
     fun registerOreGeneration(event: BiomeLoadingEvent) {
         ores.forEach{
-            event.generation.withFeature(GenerationStage.Decoration.UNDERGROUND_ORES, it)
+            event.generation.addFeature(GenerationStage.Decoration.UNDERGROUND_ORES, it)
         }
     }
 }
