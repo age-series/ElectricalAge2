@@ -1,5 +1,6 @@
 package org.eln2.utils
 
+import net.minecraft.block.Block
 import net.minecraft.item.ItemStack
 
 /**
@@ -14,6 +15,6 @@ import net.minecraft.item.ItemStack
  * Uncommon 3
  * Common 4
  * Very Common 5)
- * @param result The item to drop
+ * @param chunkItem The item to drop
  */
-data class OreData(val hardness: Int, val name: String, val rarity: Int, val result: ItemStack)
+data class OreData(val hardness: Int, val name: String, val rarity: Int)

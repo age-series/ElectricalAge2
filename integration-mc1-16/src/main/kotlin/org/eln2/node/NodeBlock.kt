@@ -7,12 +7,17 @@ import net.minecraft.entity.LivingEntity
 import net.minecraft.entity.player.PlayerEntity
 import net.minecraft.item.ItemStack
 import net.minecraft.nbt.CompoundNBT
+import net.minecraft.util.ResourceLocation
 import net.minecraft.util.math.BlockPos
 import net.minecraft.world.Explosion
 import net.minecraft.world.World
 import org.eln2.utils.Coordinate
 
 class NodeBlock(): Block(Properties.of(Material.STONE)), INodeNBT {
+
+    init {
+        this.registryName = ResourceLocation("eln2", "node")
+    }
 
     // Location of the node
     var coordinate: Coordinate? = null

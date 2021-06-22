@@ -1,6 +1,6 @@
 {
     "parent": "block/cube_all",
     "textures": {
-        "all": "eln2:block/flubber_block"
+        "all": "eln2:block/block_flubber"
     }
 }

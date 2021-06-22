@@ -1,5 +1,8 @@
 package org.eln2
 
+import net.minecraft.block.Block
+import net.minecraft.item.Item
+import net.minecraftforge.fml.common.registry.GameRegistry
 import net.minecraftforge.fml.common.thread.SidedThreadGroups
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent
 import net.minecraftforge.fml.event.lifecycle.FMLLoadCompleteEvent
@@ -7,16 +10,17 @@ import net.minecraftforge.fml.event.server.FMLServerAboutToStartEvent
 import net.minecraftforge.fml.event.server.FMLServerStartingEvent
 import net.minecraftforge.fml.event.server.FMLServerStoppingEvent
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext
-import net.minecraftforge.registries.ForgeRegistries
 import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.apache.logging.log4j.core.config.Configurator
+import org.eln2.blocks.createOreBlocks
+import org.eln2.blocks.oreBlockMap
 import org.eln2.config.ConfigHandler
-import org.eln2.registry.ChunkItems
+import org.eln2.items.createOreChunks
+import org.eln2.items.oreChunkMap
 import org.eln2.registry.MiscBlocks
 import org.eln2.registry.MiscItems
-import org.eln2.registry.OreBlocks
 import org.eln2.utils.AnalyticsHandler
 import org.eln2.utils.OreGen
 
@@ -35,29 +39,33 @@ object Eln2 {
     /**
      * Initialization.
      *
-     * This is run at class construction time, and should do as little as possible (register blocks/items)
+     * This is run at class construction time, and should do as little as possible (register blocks/item)
      */
     fun initialize() {
         Configurator.setLevel(LOGGER.name, Level.ALL)
         val modEventBus = FMLJavaModLoadingContext.get().modEventBus
+        val itemRegistry = GameRegistry.findRegistry(Item::class.java)
+        val blockRegistry = GameRegistry.findRegistry(Block::class.java)
 
         // Register Items
-        ChunkItems.values().forEach {
-            ForgeRegistries.ITEMS.register(it.items)
-            modEventBus.register(it.items)
+        createOreChunks()
+        oreChunkMap.forEach {
+            itemRegistry.register(it.value)
+            modEventBus.register(it.value)
         }
         MiscItems.values().forEach {
-            ForgeRegistries.ITEMS.register(it.items)
-            modEventBus.register(it.items)
+            itemRegistry.register(it.item)
+            modEventBus.register(it.item)
         }
 
         // Register Blocks
-        OreBlocks.values().forEach {
-            ForgeRegistries.BLOCKS.register(it.block)
-            modEventBus.register(it.block)
+        createOreBlocks()
+        oreBlockMap.forEach {
+            blockRegistry.register(it.value)
+            modEventBus.register(it.value)
         }
         MiscBlocks.values().forEach {
-            ForgeRegistries.BLOCKS.register(it.block)
+            blockRegistry.register(it.block)
             modEventBus.register(it.block)
         }
     }

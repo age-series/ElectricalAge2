@@ -6,7 +6,7 @@
             "entries": [
                 {
                     "type": "minecraft:item",
-                    "name": "eln2:flubber_block"
+                    "name": "eln2:block_flubber"
                 }
             ],
             "conditions": [

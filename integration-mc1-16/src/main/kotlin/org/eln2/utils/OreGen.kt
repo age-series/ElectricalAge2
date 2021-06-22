@@ -6,7 +6,7 @@ import net.minecraft.world.gen.feature.Feature
 import net.minecraft.world.gen.feature.OreFeatureConfig
 import net.minecraftforge.event.world.BiomeLoadingEvent
 import net.minecraftforge.fml.common.Mod
-import org.eln2.registry.OreBlocks
+import org.eln2.blocks.oreBlockMap
 
 /**
  * Handles ore generation for Eln2
@@ -20,15 +20,15 @@ object OreGen {
      * Configures ore generation in the world
      */
     fun setupOreGeneration() {
-         ores = OreBlocks.values().map {
+         ores = oreBlockMap.map {
              Feature.ORE.configured(
                  OreFeatureConfig(OreFeatureConfig.FillerBlockType.NATURAL_STONE,
-                     it.block.defaultBlockState(),
-                     (it.block.getRarity()*2) //Vein size, calculated using the ore rarity times 2
+                     it.value.defaultBlockState(),
+                     (it.value.getRarity()*2) //Vein size, calculated using the ore rarity times 2
                  )
              ).range(
-                 (it.block.getRarity()*25) // Max height for the block to appear, calculated using rarity times 25 for a max of 125
-             ).squared().chance(it.block.getRarity())
+                 (it.value.getRarity()*25) // Max height for the block to appear, calculated using rarity times 25 for a max of 125
+             ).squared().chance(it.value.getRarity())
         }
     }
 

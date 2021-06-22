@@ -5,6 +5,7 @@ import net.minecraft.block.SlimeBlock
 import net.minecraft.client.util.ITooltipFlag
 import net.minecraft.entity.Entity
 import net.minecraft.item.ItemStack
+import net.minecraft.util.ResourceLocation
 import net.minecraft.util.math.vector.Vector3d
 import net.minecraft.util.text.ITextComponent
 import net.minecraft.util.text.TranslationTextComponent
@@ -38,5 +39,9 @@ class FlubberBlock : SlimeBlock(Properties.copy(Blocks.SLIME_BLOCK)) {
     ) {
         super.appendHoverText(stack, worldIn, tooltip, flagIn)
         tooltip.add(TranslationTextComponent("tooltip.eln2.block.flubber"))
+    }
+
+    init {
+        this.registryName = ResourceLocation("eln2", "block_flubber")
     }
 }
