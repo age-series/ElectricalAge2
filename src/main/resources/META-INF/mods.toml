@@ -1,5 +1,5 @@
-modLoader="javafml"
-loaderVersion="[38,)"
+modLoader="kotlinforforge"
+loaderVersion="[3,)"
 license="Code - MIT, Content - CC0"
 issueTrackerURL="https://github.com/age-series/eln2/issues" #optional
 

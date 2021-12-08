@@ -1,4 +1,5 @@
 buildscript {
+    ext.kotlin_version = '1.6.0'
     repositories {
         // These repositories are only for Gradle plugins, put any other repositories in the repository block further below
         maven { url = 'https://maven.minecraftforge.net' }
@@ -6,9 +7,12 @@ buildscript {
     }
     dependencies {
         classpath group: 'net.minecraftforge.gradle', name: 'ForgeGradle', version: '5.1.+', changing: true
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
     }
 }
 apply plugin: 'net.minecraftforge.gradle'
+apply plugin: 'kotlin'
+apply from: 'https://raw.githubusercontent.com/thedarkcolour/KotlinForForge/site/thedarkcolour/kotlinforforge/gradle/kff-3.0.0.gradle'
 // Only edit below this line, the above code adds and enables the necessary things for Forge to be setup.
 apply plugin: 'eclipse'
 apply plugin: 'maven-publish'
@@ -74,6 +78,7 @@ minecraft {
 sourceSets.main.resources { srcDir 'src/generated/resources' }
 
 repositories {
+    mavenCentral()
     // Put repositories for dependencies here
     // ForgeGradle automatically adds the Forge maven and Maven Central for you
 
@@ -84,7 +89,8 @@ repositories {
 }
 
 dependencies {
-    minecraft 'net.minecraftforge:forge:1.18-38.0.14'
+    minecraft 'net.minecraftforge:forge:1.18-38.0.16'
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
 
     // Real mod deobf dependency examples - these get remapped to your current mappings
     // compileOnly fg.deobf("mezz.jei:jei-${mc_version}:${jei_version}:api") // Adds JEI API as a compile dependency
@@ -111,5 +117,15 @@ jar {
 
 // This is the preferred method to reobfuscate your jar file
 jar.finalizedBy('reobfJar')
+compileKotlin {
+    kotlinOptions {
+        jvmTarget = "17"
+    }
+}
+compileTestKotlin {
+    kotlinOptions {
+        jvmTarget = "17"
+    }
+}
 // However if you are in a multi-project build, dev time needs unobfed jar files, so you can delay the obfuscation until publishing by doing
 // publish.dependsOn('reobfJar')
