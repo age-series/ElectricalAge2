@@ -1,0 +1,43 @@
+modLoader="javafml"
+loaderVersion="[38,)"
+license="Code - MIT, Content - CC0"
+issueTrackerURL="https://github.com/age-series/eln2/issues" #optional
+
+[[mods]]
+modId="eln2"
+version="${file.jarVersion}"
+displayName="Electrical Age 2"
+# A URL to query for updates for this mod. See the JSON update specification https://mcforge.readthedocs.io/en/latest/gettingstarted/autoupdate/
+#updateJSONURL="https://change.me.example.invalid/updates.json" #optional
+# A URL for the "homepage" for this mod, displayed in the mod UI
+displayURL="https://eln2.org/"
+# A file name (in the root of the mod JAR) containing a logo for display
+logoFile=""
+credits="The Age Series Team"
+authors="jrddunbr, Caeleron, Grissess, Baughn"
+
+description='''
+Electrical Age 2 - Electricity, in your base!
+
+Also try the other Age Series mods!
+* Computer Age: Go back to the 80's 8 bit microprocessor era with style!
+* Processing Age: Process all those raw materials into something useful!
+* Chemistry Age: Like alchemy, but with less magic!
+* Server Age: Real computing power for hardcore technical players!
+'''
+
+[[dependencies.eln2]]
+    modId="forge"
+    mandatory=true
+    versionRange="[38,)"
+    # An ordering relationship for the dependency - BEFORE or AFTER required if the relationship is not mandatory
+    ordering="NONE"
+    # Side this dependency is applied on - BOTH, CLIENT or SERVER
+    side="BOTH"
+[[dependencies.eln2]]
+    modId="minecraft"
+    mandatory=true
+# This version range declares a minimum of the current minecraft version up to but not including the next major version
+    versionRange="[1.18,1.19)"
+    ordering="NONE"
+    side="BOTH"

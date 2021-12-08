@@ -17,6 +17,7 @@ options.txt
 */out
 */classes
 */obj/
+run/
 
 # IntelliJ
 .idea

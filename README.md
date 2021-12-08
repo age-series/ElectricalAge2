@@ -5,17 +5,16 @@ This is the home of Eln2, a Minecraft mod that simulates physical systems such a
 
 ## Community Links
 
-* Discord: [https://discord.gg/YjK2JAD](https://discord.gg/YjK2JAD)
+* Eln1 Discord: [https://discord.gg/YjK2JAD](https://discord.gg/YjK2JAD)
 * Eln2 Website: [eln2.org](https://eln2.org)
-* Eln Website: [electrical-age.net](https://electrical-age.net)
-* Eln Wiki: [wiki.electrical-age.net](https://wiki.electrical-age.net)
+* Eln1 Website: [electrical-age.net](https://electrical-age.net)
+* Eln1 Wiki: [wiki.electrical-age.net](https://wiki.electrical-age.net)
+
+An age-series-development server exists but is for developers only.
 
 ## Game Support
 
-Planned support for:
-
-* [Minecraft](https://minecraft.net) 1.16.5 → 1.17.x (Forge only)
-* [Vintage Story](https://www.vintagestory.at/) (someday)
+Planned support for Minecraft 1.18.x (Forge only)
 
 ## Licensing
 
