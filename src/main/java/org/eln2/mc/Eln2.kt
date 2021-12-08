@@ -8,14 +8,14 @@ import net.minecraftforge.fml.InterModComms
 import net.minecraftforge.fml.event.lifecycle.InterModProcessEvent
 import net.minecraftforge.fml.InterModComms.IMCMessage
 import java.util.stream.Collectors
-import net.minecraftforge.eventbus.api.SubscribeEvent
 import net.minecraftforge.event.server.ServerStartingEvent
-import net.minecraftforge.fml.common.Mod.EventBusSubscriber
 import net.minecraftforge.event.RegistryEvent
+import net.minecraftforge.eventbus.api.EventPriority
 import net.minecraftforge.fml.common.Mod
 import org.apache.logging.log4j.LogManager
 import thedarkcolour.kotlinforforge.forge.FORGE_BUS
 import thedarkcolour.kotlinforforge.forge.MOD_BUS
+import thedarkcolour.kotlinforforge.forge.addGenericListener
 
 @Mod("eln2")
 class Eln2 {
@@ -42,12 +42,8 @@ class Eln2 {
         LOGGER.info("HELLO from server starting")
     }
 
-    @EventBusSubscriber(bus = EventBusSubscriber.Bus.MOD)
-    object RegistryEvents {
-        @SubscribeEvent
-        fun onBlocksRegistry(blockRegistryEvent: RegistryEvent.Register<Block?>?) {
-            LOGGER.info("HELLO from Register Block")
-        }
+    private fun onBlocksRegistry(event: RegistryEvent.Register<Block>) {
+        LOGGER.info("Hello from block registry")
     }
 
     companion object {
@@ -58,8 +54,10 @@ class Eln2 {
         MOD_BUS.addListener { event: FMLCommonSetupEvent -> setup(event) }
         MOD_BUS.addListener { event: InterModEnqueueEvent -> enqueueIMC(event) }
         MOD_BUS.addListener { event: InterModProcessEvent -> processIMC(event) }
+        MOD_BUS.addGenericListener({ event: RegistryEvent.Register<Block> -> onBlocksRegistry(event)})
+        MOD_BUS.register(this)
+
         FORGE_BUS.addListener { event: ServerStartingEvent -> onServerStarting(event) }
         FORGE_BUS.register(this)
-        MOD_BUS.register(this)
     }
 }
