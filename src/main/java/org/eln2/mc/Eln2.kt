@@ -10,15 +10,17 @@ import net.minecraftforge.fml.InterModComms.IMCMessage
 import java.util.stream.Collectors
 import net.minecraftforge.event.server.ServerStartingEvent
 import net.minecraftforge.event.RegistryEvent
-import net.minecraftforge.eventbus.api.EventPriority
 import net.minecraftforge.fml.common.Mod
 import org.apache.logging.log4j.LogManager
 import thedarkcolour.kotlinforforge.forge.FORGE_BUS
 import thedarkcolour.kotlinforforge.forge.MOD_BUS
 import thedarkcolour.kotlinforforge.forge.addGenericListener
 
-@Mod("eln2")
-class Eln2 {
+@Mod(Eln2.MODID)
+object Eln2 {
+    const val MODID: String = "eln2"
+    val LOGGER = LogManager.getLogger()
+
     private fun setup(event: FMLCommonSetupEvent) {
         LOGGER.info("HELLO FROM PREINIT")
         LOGGER.info("DIRT BLOCK >> {}", Blocks.DIRT.registryName)
@@ -44,10 +46,6 @@ class Eln2 {
 
     private fun onBlocksRegistry(event: RegistryEvent.Register<Block>) {
         LOGGER.info("Hello from block registry")
-    }
-
-    companion object {
-        private val LOGGER = LogManager.getLogger()
     }
 
     init {
