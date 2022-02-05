@@ -4,8 +4,8 @@ import net.minecraftforge.fml.common.Mod
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.eln2.mc.common.blocks.BlockRegistry
-import org.eln2.mc.common.blocks.ItemRegistry
 import org.eln2.mc.common.cell.CellRegistry
+import org.eln2.mc.common.items.ItemRegistry
 import thedarkcolour.kotlinforforge.forge.MOD_BUS
 
 @Mod(Eln2.MODID)

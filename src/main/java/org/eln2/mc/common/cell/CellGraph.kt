@@ -12,7 +12,7 @@ import kotlin.collections.HashMap
 
 // the manager is required for marking changes!
 class CellGraph(val id : UUID, val manager : CellGraphManager) {
-    private val _cells = ArrayList<CellBase>();
+    private val _cells = ArrayList<CellBase>()
     private val _posCells = HashMap<BlockPos, CellBase>()
 
     val cells get() = _cells

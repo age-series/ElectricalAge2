@@ -1,14 +1,11 @@
-package org.eln2.mc.common.blocks
+package org.eln2.mc.common.items
 
-import net.minecraft.world.item.BlockItem
-import net.minecraft.world.item.Item
 import net.minecraftforge.eventbus.api.IEventBus
 import net.minecraftforge.registries.DeferredRegister
 import net.minecraftforge.registries.ForgeRegistries
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.eln2.mc.Eln2
-import thedarkcolour.kotlinforforge.forge.registerObject
 
 object ItemRegistry {
     private val LOGGER : Logger = LogManager.getLogger()

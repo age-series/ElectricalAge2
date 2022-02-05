@@ -18,8 +18,8 @@ import org.eln2.mc.common.cell.types.TestCell
 object CellRegistry {
     private val LOGGER = LogManager.getLogger()
     private val CELLS = DeferredRegister.create(CellProvider::class.java, Eln2.MODID)
-    private var REGISRY : IForgeRegistry<CellProvider>? = null
-    val registry get() = REGISRY!!
+    private var REGISTRY : IForgeRegistry<CellProvider>? = null
+    val registry get() = REGISTRY!!
 
     val TEST_CELL = register("test", TestCell.Provider())
 
@@ -33,7 +33,7 @@ object CellRegistry {
         val reg = RegistryBuilder<CellProvider>()
         reg.setName(ResourceLocation(Eln2.MODID, "cells"))
         reg.type = CellProvider::class.java
-        REGISRY = reg.create()
+        REGISTRY = reg.create()
         LOGGER.info("Prepared cell registry!")
     }
 
