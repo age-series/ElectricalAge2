@@ -457,7 +457,7 @@ class CellTileEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Blo
 
     /**
      * This method will set the connections of our cell using the adjacent cells, but will exclude the provided cell.
-     * @param cell The cell to be excluded from our adjacency list.
+     * @param remoteCell The cell to be excluded from our adjacency list.
     */
     @In(Side.LogicalServer)
     private fun updateCellConnectionsButExclude(remoteCell : CellBase) {
@@ -477,7 +477,7 @@ class CellTileEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Blo
     /**
      * This method will set the graph and connections of our cell, but exclude the provided cell from the connections.
      * The graph is the one in our graph property.
-     * @param cell The cell to exclude from our adjacency list.
+     * @param remoteCell The cell to exclude from our adjacency list.
     */
     @In(Side.LogicalServer)
     private fun updateCellConnectionsAndGraphButExclude(remoteCell : CellBase) {

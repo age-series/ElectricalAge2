@@ -1,6 +1,5 @@
 package org.eln2.mc.common.cell
 
-import net.minecraft.core.BlockPos
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.nbt.ListTag
 import net.minecraft.server.level.ServerLevel
@@ -10,7 +9,6 @@ import org.apache.logging.log4j.LogManager
 import org.eln2.mc.common.In
 import org.eln2.mc.common.Side
 import java.util.*
-import kotlin.collections.HashMap
 
 @In(Side.LogicalServer)
 class CellGraphManager(val level : Level) : SavedData() {
