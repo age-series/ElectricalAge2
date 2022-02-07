@@ -4,56 +4,41 @@ import net.minecraft.core.BlockPos
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.nbt.ListTag
 import net.minecraft.resources.ResourceLocation
-import org.apache.logging.log4j.LogManager
 import org.eln2.mc.extensions.NbtExtensions.getBlockPos
 import org.eln2.mc.extensions.NbtExtensions.putBlockPos
 import java.util.*
-import kotlin.collections.HashMap
 
-// the manager is required for marking changes!
 class CellGraph(val id : UUID, val manager : CellGraphManager) {
-    private val _cells = ArrayList<CellBase>()
-    private val _posCells = HashMap<BlockPos, CellBase>()
-
-    val cells get() = _cells
-
-    fun clear() {
-        cells.clear()
-        _posCells.clear()
-        manager.setDirty()
-    }
+    val cells = ArrayList<CellBase>()
+    private val posCells = HashMap<BlockPos, CellBase>()
 
     fun getCellAt(pos: BlockPos): CellBase {
-        return _posCells[pos] ?: throw Exception("Could not find cell at $pos!")
-    }
-
-    fun containsCell(cell : CellBase) : Boolean{
-        return _cells.contains(cell)
+        return posCells[pos] ?: throw Exception("Could not find cell at $pos!")
     }
 
     fun removeCell(cell : CellBase) {
-        _cells.remove(cell)
-        _posCells.remove(cell.pos)
+        cells.remove(cell)
+        posCells.remove(cell.pos)
         manager.setDirty()
     }
 
     fun addCell(cell : CellBase) {
-        _cells.add(cell)
-        _posCells[cell.pos] = cell
+        cells.add(cell)
+        posCells[cell.pos] = cell
         manager.setDirty()
     }
 
     fun copyTo(graph : CellGraph){
-        graph._cells.addAll(_cells)
+        graph.cells.addAll(cells)
         manager.setDirty()
     }
 
-    fun destroy() {
+    fun destroyAndRemove() {
         manager.removeGraph(this)
         manager.setDirty()
     }
 
-    fun serializeNbt() : CompoundTag {
+    fun toNbt() : CompoundTag {
         val circuitCompound = CompoundTag()
         circuitCompound.putUUID("ID", id)
 
@@ -63,7 +48,7 @@ class CellGraph(val id : UUID, val manager : CellGraphManager) {
             val cellTag = CompoundTag()
             val connectionsTag = ListTag()
 
-            cell.getCurrentConnections().forEach { conn->
+            cell.connections.forEach { conn->
                 val connCompound = CompoundTag()
                 connCompound.putBlockPos("Position", conn.pos)
                 connectionsTag.add(connCompound)
@@ -82,9 +67,7 @@ class CellGraph(val id : UUID, val manager : CellGraphManager) {
     }
 
     companion object {
-        private val LOGGER = LogManager.getLogger()
-
-        fun deserializeNbt(graphCompound : CompoundTag, manager : CellGraphManager) : CellGraph {
+        fun fromNbt(graphCompound : CompoundTag, manager : CellGraphManager) : CellGraph {
             val id = graphCompound.getUUID("ID")
             val result = CellGraph(id, manager)
             val cellListTag = graphCompound.get("Cells") as ListTag?
@@ -112,7 +95,7 @@ class CellGraph(val id : UUID, val manager : CellGraphManager) {
 
                 cellConnections[cell] = connectionPositions
 
-                cell.setId(cellId)
+                cell.id = cellId
                 result.addCell(cell)
             }
 
@@ -124,7 +107,9 @@ class CellGraph(val id : UUID, val manager : CellGraphManager) {
                 val connections = ArrayList(connectionPositions.map { pos -> result.getCellAt(pos) })
 
                 // now set graph and connection
-                cell.setGraphAndConnections(result, connections)
+                cell.graph = result
+                cell.connections = connections
+                cell.update(connectionsChanged = true, graphChanged = true)
                 cell.completeDiskLoad()
             }
 

@@ -3,63 +3,51 @@ package org.eln2.mc.common.cell
 import net.minecraft.core.BlockPos
 import net.minecraft.resources.ResourceLocation
 import org.eln2.mc.common.*
+import org.eln2.mc.common.blocks.CellTileEntity
 
 abstract class CellBase(val pos : BlockPos) {
-    // used to store the cell type on the disk using the graph manager, null before setId
-    private var _id : ResourceLocation? = null
-    val id get() = _id!!
+    lateinit var id : ResourceLocation
+    lateinit var graph: CellGraph
+    lateinit var connections : ArrayList<CellBase>
+    var tile : CellTileEntity? = null
 
-    @In(Side.LogicalServer)
-    fun setId(id : ResourceLocation){
-        _id = id
-    }
+    /**
+     * Called when the tile entity is being unloaded.
+     * After this method is called, the field will be null.
+    */
+    open fun tileUnloaded(){}
+
+    /**
+     * Called when the tile entity is being loaded.
+     * The field is assigned before this is called.
+    */
+    open fun tileLoaded(){}
+
+    fun hasGraph() : Boolean { return this::graph.isInitialized }
 
     /**
      * Called when the graph manager completed loading this cell from the disk.
     */
-    abstract fun completeDiskLoad()
+    @In(Side.LogicalServer)
+    open fun completeDiskLoad(){}
 
     /**
-     *   Called when the tile entity was placed.
-     *   @param currentConnections The adjacent cells that are connected.
+     *   Called when the tile entity placing is complete.
     */
     @In(Side.LogicalServer)
-    abstract fun setPlaced(currentConnections : ArrayList<CellBase>)
-
-    /**
-     *  Called when the neighbouring cells update.
-     *  @param connections The connections after the neighbours updated.
-    */
-    @In(Side.LogicalServer)
-    abstract fun setConnections(connections : ArrayList<CellBase>)
-
-    /**
-     *  Called when the graph is being rebuilt. E.G when a removed cell split the graph.
-     *  @param newGraph The new graph we are part of.
-    */
-    @In(Side.LogicalServer)
-    abstract fun setGraph(newGraph: CellGraph)
-
-    /**
-     *  Called when the cell is being moved to a new graph or when the cell is being loaded from the disk
-     *  @param newGraph The new graph.
-     *  @param connections The connections after the update.
-    */
-    @In(Side.LogicalServer)
-    abstract fun setGraphAndConnections(newGraph : CellGraph, connections : ArrayList<CellBase>)
+    open fun setPlaced(){}
 
     /**
      * Called when the tile entity is destroyed.
     */
     @In(Side.LogicalServer)
-    abstract fun destroy()
+    open fun destroy() {
+        graph.removeCell(this)
+    }
 
     /**
-     * At the moment, the graph uses this to store the connection block positions to disk.
+     * Called when the graph and/or neighbouring cells are updated.
     */
     @In(Side.LogicalServer)
-    abstract fun getCurrentConnections() : ArrayList<CellBase>
-
-    @In(Side.LogicalServer)
-    abstract fun getCurrentGraph() : CellGraph
+    abstract fun update(connectionsChanged : Boolean, graphChanged : Boolean)
 }
