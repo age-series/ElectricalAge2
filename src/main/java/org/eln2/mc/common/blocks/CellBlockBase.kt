@@ -14,41 +14,26 @@ import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.level.material.FluidState
 import net.minecraft.world.level.material.Material
-import org.apache.logging.log4j.LogManager
-import org.apache.logging.log4j.Logger
 import org.eln2.mc.common.In
 import org.eln2.mc.common.Side
 import org.eln2.mc.common.cell.CellRegistry
 
 abstract class CellBlockBase : Block(Properties.of(Material.STONE)), EntityBlock {
-    private val _logger : Logger = LogManager.getLogger()
-
-    override fun setPlacedBy(
-        level : Level,
-        position : BlockPos,
-        blockState : BlockState,
-        entity : LivingEntity?,
-        itemStack : ItemStack
+    override fun setPlacedBy(lvl : Level, pos : BlockPos, blState : BlockState, ent : LivingEntity?, itemStack : ItemStack
     ) {
-        val cellEntity = level.getBlockEntity(position)!! as CellTileEntity
-        cellEntity.setPlacedBy(level, position, blockState, entity, itemStack, CellRegistry.registry.getValue(getCellProvider())!!)
+        val cellEntity = lvl.getBlockEntity(pos)!! as CellTileEntity
+        cellEntity.setPlacedBy(lvl, pos, blState, ent, itemStack, CellRegistry.registry.getValue(getCellProvider())!!)
     }
 
-    override fun onBlockExploded(state: BlockState?, world: Level?, pos: BlockPos?, explosion: Explosion?) {
-        destroy(world!!, pos!!)
-        super.onBlockExploded(state, world, pos, explosion)
+    override fun onBlockExploded(blState: BlockState?, lvl: Level?, pos: BlockPos?, exp: Explosion?) {
+        destroy(lvl!!, pos!!)
+        super.onBlockExploded(blState, lvl, pos, exp)
     }
 
-    override fun onDestroyedByPlayer(
-        state: BlockState?,
-        world: Level?,
-        pos: BlockPos?,
-        player: Player?,
-        willHarvest: Boolean,
-        fluid: FluidState?
+    override fun onDestroyedByPlayer(blState: BlockState?, lvl: Level?, pos: BlockPos?, pl: Player?, wh: Boolean, flState: FluidState?
     ): Boolean {
-        destroy(world!!, pos!!)
-        return super.onDestroyedByPlayer(state, world, pos, player, willHarvest, fluid)
+        destroy(lvl!!, pos!!)
+        return super.onDestroyedByPlayer(blState, lvl, pos, pl, wh, flState)
     }
 
     private fun destroy(level: Level, pos: BlockPos){
@@ -65,7 +50,7 @@ abstract class CellBlockBase : Block(Properties.of(Material.STONE)), EntityBlock
     }
 
     @In(Side.LogicalServer)
-    override fun onNeighborChange(state: BlockState?, world: LevelReader?, pos: BlockPos?, neighbor: BlockPos?) {
+    override fun onNeighborChange(blockState: BlockState?, world: LevelReader?, pos: BlockPos?, neighbor: BlockPos?) {
         if(world!!.isClientSide) {
             return
         }

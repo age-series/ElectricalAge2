@@ -12,45 +12,45 @@ import java.util.*
 
 @In(Side.LogicalServer)
 class CellGraphManager(val level : Level) : SavedData() {
-    private val _logger = LogManager.getLogger()
-    private val _graphs = HashMap<UUID, CellGraph>()
+    private val logger = LogManager.getLogger()
+    private val graphs = HashMap<UUID, CellGraph>()
 
     fun containsGraph(graph : CellGraph) : Boolean{
-        return _graphs.containsKey(graph.id)
+        return graphs.containsKey(graph.id)
     }
 
     fun containsGraphWithId(id : UUID) : Boolean{
-        return _graphs.containsKey(id)
+        return graphs.containsKey(id)
     }
 
     fun addGraph(graph : CellGraph) {
-        _graphs[graph.id] = graph
-        _logger.info("Added graph ${graph.id}!")
+        graphs[graph.id] = graph
+        //_logger.info("Added graph ${graph.id}!")
         setDirty()
     }
 
     fun removeGraph(graph : CellGraph) {
-        _graphs.remove(graph.id)
-        _logger.info("Removed graph ${graph.id}!")
+        graphs.remove(graph.id)
+        logger.info("Removed graph ${graph.id}!")
         setDirty()
     }
 
     override fun save(tag: CompoundTag): CompoundTag {
         val graphListTag = ListTag()
 
-        _graphs.values.forEach { graph->
-            graphListTag.add(graph.serializeNbt())
+        graphs.values.forEach { graph->
+            graphListTag.add(graph.toNbt())
         }
 
         tag.put("Graphs", graphListTag)
 
-        _logger.info("Wrote ${_graphs.count()} graphs to disk.")
+        logger.info("Wrote ${graphs.count()} graphs to disk.")
 
         return tag
     }
 
     fun getGraphWithId(id : UUID) : CellGraph{
-        return _graphs[id]!!
+        return graphs[id]!!
     }
 
     companion object {
@@ -68,7 +68,7 @@ class CellGraphManager(val level : Level) : SavedData() {
 
             graphListTag.forEach { circuitNbt ->
                 val graphCompound  = circuitNbt as CompoundTag
-                val graph = CellGraph.deserializeNbt(graphCompound, manager)
+                val graph = CellGraph.fromNbt(graphCompound, manager)
 
                 if(graph.cells.isEmpty()){
                    LOGGER.error("Loaded circuit with no cells!")
