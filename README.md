@@ -5,6 +5,7 @@ This is the home of Eln2, a Minecraft mod that simulates physical systems such a
 
 ## Community Links
 
+* Electrical Age 2 Development Discord [https://discord.gg/AVMcxuVy6n](https://discord.gg/AVMcxuVy6n)
 * Eln1 Discord: [https://discord.gg/YjK2JAD](https://discord.gg/YjK2JAD)
 * Eln2 Website: [eln2.org](https://eln2.org)
 * Eln1 Website: [electrical-age.net](https://electrical-age.net)
