@@ -12,7 +12,7 @@ import thedarkcolour.kotlinforforge.forge.MOD_BUS
 object Eln2 {
     const val MODID: String = "eln2"
 
-    private val LOGGER: Logger = LogManager.getLogger()
+    public val LOGGER: Logger = LogManager.getLogger()
 
     init {
 

@@ -10,6 +10,7 @@ import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.state.BlockState
 import org.apache.logging.log4j.LogManager
+import org.eln2.mc.Eln2
 import org.eln2.mc.common.*
 import org.eln2.mc.common.cell.*
 import java.util.*
@@ -19,7 +20,6 @@ import kotlin.concurrent.thread
 import kotlin.system.measureNanoTime
 
 class CellTileEntity(var pos : BlockPos, var state: BlockState): BlockEntity(BlockRegistry.TEST_CELL_ENTITY.get(), pos, state) {
-    private val logger = LogManager.getLogger()
     private lateinit var manager : CellGraphManager
     lateinit var cell : CellBase
 
@@ -86,7 +86,7 @@ class CellTileEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Blo
         if(adjacentTiles.isEmpty()){
            // we are alone
             cell.graph.destroyAndRemove()
-            logger.info("Destroyed ourselves")
+            Eln2.LOGGER.info("Destroyed ourselves")
             return
         }
 
@@ -140,11 +140,12 @@ class CellTileEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Blo
             }
         }
 
-        logger.info("Remove nanoseconds: $nanoTime")
+        Eln2.LOGGER.info("Remove nanoseconds: $nanoTime")
 
         cell.graph.destroyAndRemove()
 
-        val t = thread (start = true) {
+        thread (start = true) {
+            // TODO: We're creating a thread... and then HttpPlot is creating it's own thread for every item in the list. This should be cleaned up, it won't scale once we release.
             plotList.forEach {
                 HttpPlot.connectAndSend(it)
                 Thread.sleep(2000)
@@ -408,21 +409,15 @@ class CellTileEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Blo
     */
     @In(Side.LogicalServer)
     private fun canConnectFrom(entity : CellTileEntity, dir : Direction) : Boolean {
-        val localDir = dir.opposite
+        return connectPredicate(dir.opposite)
 
-        if(connectPredicate(localDir)){
-            return true
-        }
-
-        return false
     }
 
     override fun saveAdditional(pTag: CompoundTag) {
         if(!cell.hasGraph()){
-            logger.info("save additional: graph null")
+            Eln2.LOGGER.info("save additional: graph null")
             return
         }
-
         pTag.putString("GraphID", cell.graph.id.toString())
     }
 
@@ -442,7 +437,7 @@ class CellTileEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Blo
         }
 
         loadGraphId = UUID.fromString(pTag.getString("GraphID"))!!
-        logger.info("tile load $pos")
+        Eln2.LOGGER.info("tile load $pos")
         // warning! level is not available at this stage!
         // we override setLevel in order to load the rest of the data.
     }

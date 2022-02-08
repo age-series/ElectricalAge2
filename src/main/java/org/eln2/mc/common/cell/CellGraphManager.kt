@@ -5,14 +5,14 @@ import net.minecraft.nbt.ListTag
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.saveddata.SavedData
-import org.apache.logging.log4j.LogManager
+import org.eln2.mc.Eln2
 import org.eln2.mc.common.In
 import org.eln2.mc.common.Side
+import java.lang.IndexOutOfBoundsException
 import java.util.*
 
 @In(Side.LogicalServer)
 class CellGraphManager(val level : Level) : SavedData() {
-    private val logger = LogManager.getLogger()
     private val graphs = HashMap<UUID, CellGraph>()
 
     fun containsGraph(graph : CellGraph) : Boolean{
@@ -31,62 +31,52 @@ class CellGraphManager(val level : Level) : SavedData() {
 
     fun removeGraph(graph : CellGraph) {
         graphs.remove(graph.id)
-        logger.info("Removed graph ${graph.id}!")
+        Eln2.LOGGER.info("Removed graph ${graph.id}!")
         setDirty()
     }
 
     override fun save(tag: CompoundTag): CompoundTag {
         val graphListTag = ListTag()
-
         graphs.values.forEach { graph->
             graphListTag.add(graph.toNbt())
         }
-
         tag.put("Graphs", graphListTag)
-
-        logger.info("Wrote ${graphs.count()} graphs to disk.")
-
+        Eln2.LOGGER.info("Wrote ${graphs.count()} graphs to disk.")
         return tag
     }
 
     fun getGraphWithId(id : UUID) : CellGraph{
-        return graphs[id]!!
+        return graphs[id]?: throw IndexOutOfBoundsException("Graph ID was not found in the cell graph ${graphs}: $id")
     }
 
     companion object {
-        private val LOGGER = LogManager.getLogger()
-
         private fun load(tag : CompoundTag, level : ServerLevel) : CellGraphManager {
             val manager = CellGraphManager(level)
 
             val graphListTag = tag.get("Graphs") as ListTag?
 
             if(graphListTag == null){
-                LOGGER.info("No nodes to be loaded!")
+                Eln2.LOGGER.info("No nodes to be loaded!")
                 return manager
             }
 
             graphListTag.forEach { circuitNbt ->
                 val graphCompound  = circuitNbt as CompoundTag
                 val graph = CellGraph.fromNbt(graphCompound, manager)
-
                 if(graph.cells.isEmpty()){
-                   LOGGER.error("Loaded circuit with no cells!")
+                   Eln2.LOGGER.error("Loaded circuit with no cells!")
                     return@forEach
                 }
 
                 manager.addGraph(graph)
-                LOGGER.info("Loaded ${graph.cells.count()} cells for ${graph.id}!")
+                Eln2.LOGGER.info("Loaded ${graph.cells.count()} cells for ${graph.id}!")
             }
-
             return manager
         }
 
         fun getFor(level : ServerLevel) : CellGraphManager {
-            val storage = level.dataStorage
-
             // this will return the instance or create a new one
-            return storage.computeIfAbsent({ load(it, level) }, { CellGraphManager(level) }, "CellManager")
+            return level.dataStorage.computeIfAbsent({ load(it, level) }, { CellGraphManager(level) }, "CellManager")
         }
     }
 }

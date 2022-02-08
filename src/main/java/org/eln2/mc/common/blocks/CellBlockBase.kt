@@ -19,20 +19,31 @@ import org.eln2.mc.common.Side
 import org.eln2.mc.common.cell.CellRegistry
 
 abstract class CellBlockBase : Block(Properties.of(Material.STONE)), EntityBlock {
-    override fun setPlacedBy(lvl : Level, pos : BlockPos, blState : BlockState, ent : LivingEntity?, itemStack : ItemStack
+    override fun setPlacedBy(
+        lvl : Level,
+        pos : BlockPos,
+        blState : BlockState,
+        ent : LivingEntity?,
+        itemStack : ItemStack
     ) {
         val cellEntity = lvl.getBlockEntity(pos)!! as CellTileEntity
-        cellEntity.setPlacedBy(lvl, pos, blState, ent, itemStack, CellRegistry.registry.getValue(getCellProvider())!!)
+        cellEntity.setPlacedBy(lvl, pos, blState, ent, itemStack, CellRegistry.registry.getValue(getCellProvider())?: throw Exception("Unable to get cell provider"))
     }
 
     override fun onBlockExploded(blState: BlockState?, lvl: Level?, pos: BlockPos?, exp: Explosion?) {
-        destroy(lvl!!, pos!!)
+        destroy(lvl?: throw Exception("Level was null"), pos?: throw Exception("Position was null"))
         super.onBlockExploded(blState, lvl, pos, exp)
     }
 
-    override fun onDestroyedByPlayer(blState: BlockState?, lvl: Level?, pos: BlockPos?, pl: Player?, wh: Boolean, flState: FluidState?
+    override fun onDestroyedByPlayer(
+        blState: BlockState?,
+        lvl: Level?,
+        pos: BlockPos?,
+        pl: Player?,
+        wh: Boolean,
+        flState: FluidState?
     ): Boolean {
-        destroy(lvl!!, pos!!)
+        destroy(lvl?: throw Exception("Level was null"), pos?: throw Exception("Position was null"))
         return super.onDestroyedByPlayer(blState, lvl, pos, pl, wh, flState)
     }
 
@@ -40,7 +51,6 @@ abstract class CellBlockBase : Block(Properties.of(Material.STONE)), EntityBlock
         if(level.isClientSide){
             return
         }
-
         val cellEntity = level.getBlockEntity(pos)!! as CellTileEntity
         cellEntity.setDestroyed()
     }
@@ -51,14 +61,13 @@ abstract class CellBlockBase : Block(Properties.of(Material.STONE)), EntityBlock
 
     @In(Side.LogicalServer)
     override fun onNeighborChange(blockState: BlockState?, world: LevelReader?, pos: BlockPos?, neighbor: BlockPos?) {
-        if(world!!.isClientSide) {
+        if(world?.isClientSide?: throw Exception("World was null")) {
             return
         }
-        val cellEntity = world.getBlockEntity(pos!!)!! as CellTileEntity
-        cellEntity.neighbourUpdated(neighbor!!)
+        val cellEntity = world.getBlockEntity(pos?: throw Exception("Position was null")) as CellTileEntity
+        cellEntity.neighbourUpdated(neighbor?: throw Exception("Neighbor location is null"))
     }
 
     // override this:
-
     abstract fun getCellProvider() : ResourceLocation
 }
