@@ -11,12 +11,11 @@ import net.minecraftforge.registries.RegistryBuilder
 import net.minecraftforge.registries.RegistryObject
 import org.apache.logging.log4j.LogManager
 import org.eln2.mc.Eln2
+import org.eln2.mc.Eln2.LOGGER
 import org.eln2.mc.common.cell.types.TestCell
-
 
 @Mod.EventBusSubscriber(bus = Mod.EventBusSubscriber.Bus.MOD)
 object CellRegistry {
-    private val LOGGER = LogManager.getLogger()
     private val CELLS = DeferredRegister.create(CellProvider::class.java, Eln2.MODID)
     private var REGISTRY : IForgeRegistry<CellProvider>? = null
     val registry get() = REGISTRY!!

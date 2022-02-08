@@ -7,8 +7,6 @@ import org.apache.logging.log4j.LogManager
 
 @Mod.EventBusSubscriber
 object CommonEvents {
-    private val LOGGER = LogManager.getLogger()
-
     @SubscribeEvent
     fun onServerStarted(event : ServerStartedEvent) {
         // we can now start the electrical simulator
