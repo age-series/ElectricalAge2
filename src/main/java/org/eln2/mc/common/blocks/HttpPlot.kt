@@ -7,6 +7,7 @@ import org.apache.http.entity.StringEntity
 import org.apache.http.impl.client.HttpClients
 import org.eln2.mc.Eln2.LOGGER
 import org.eln2.mc.common.cell.CellGraph
+import org.eln2.mc.common.cell.CellRegistry
 import kotlin.concurrent.thread
 
 object HttpPlot {
@@ -16,7 +17,7 @@ object HttpPlot {
     fun connectAndSend(circuit : CellGraph) {
         if (attempts >= ATTEMPT_COUNT) {return} // Exit quickly if we've exceeded global attempt count.
         val str = Gson().toJson(JsonFrame(circuit.cells.map {
-            JsonCell(it.pos.x, it.pos.z, emptyList())
+            JsonCell(it.pos.x, it.pos.z, emptyList(),  CellRegistry.registry.getValue(it.id)!!.symbol)
         }))
         thread(start = true){
             val serverURL = "http://127.0.0.1:3141/"
@@ -31,7 +32,7 @@ object HttpPlot {
             }
             catch(ex : Exception) {
                 LOGGER.warn("Was unable to send data to the test harness.")
-                ex.printStackTrace()
+                // ex.printStackTrace()
                 attempts += 1 // we do 3 attempts
                 if (attempts >= ATTEMPT_COUNT) {
                     LOGGER.warn("We are unable to send data to the test harness, and exceeded the max attempt count.")
@@ -41,22 +42,6 @@ object HttpPlot {
         }
     }
 
-    private class JsonCell(val x : Int, val y : Int, val connections : List<Int>)
+    private class JsonCell(val x : Int, val y : Int, val connections : List<Int>, val symbol : Char)
     private class JsonFrame(val cells : List<JsonCell>)
-
-    private fun prepareJsonNode(tile : CellTileEntity) : JsonCell {
-        val sides = ArrayList<Int>()
-
-        tile.getAdjacentSides().forEach {
-            when(it){
-                Direction.NORTH -> sides.add(0)
-                Direction.SOUTH -> sides.add(1)
-                Direction.EAST -> sides.add(2)
-                Direction.WEST -> sides.add(3)
-                else -> {throw Exception("Plotter does not support Y axis!")}
-            }
-        }
-
-        return JsonCell(tile.pos.x, tile.pos.z, sides)
-    }
 }

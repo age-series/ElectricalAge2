@@ -7,9 +7,9 @@ import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.Level
+import net.minecraft.world.level.block.HorizontalDirectionalBlock
 import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.state.BlockState
-import org.apache.logging.log4j.LogManager
 import org.eln2.mc.Eln2
 import org.eln2.mc.common.*
 import org.eln2.mc.common.cell.*
@@ -19,7 +19,7 @@ import kotlin.collections.HashSet
 import kotlin.concurrent.thread
 import kotlin.system.measureNanoTime
 
-class CellTileEntity(var pos : BlockPos, var state: BlockState): BlockEntity(BlockRegistry.TEST_CELL_ENTITY.get(), pos, state) {
+class CellTileEntity(var pos : BlockPos, var state: BlockState): BlockEntity(BlockRegistry.CELL_BLOCK_ENTITY.get(), pos, state) {
     private lateinit var manager : CellGraphManager
     lateinit var cell : CellBase
 
@@ -61,8 +61,15 @@ class CellTileEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Blo
         cell.tile = this
         cell.id = cellProvider.registryName!!
 
+        val placeDir = PlacementRotation (state.getValue(HorizontalDirectionalBlock.FACING))
+
+        Eln2.LOGGER.info("north <-> ${placeDir.getRelativeFromAbsolute(Direction.NORTH)}")
+        Eln2.LOGGER.info("south <-> ${placeDir.getRelativeFromAbsolute(Direction.SOUTH)}")
+        Eln2.LOGGER.info("east  <-> ${placeDir.getRelativeFromAbsolute(Direction.EAST)}")
+        Eln2.LOGGER.info("west  <-> ${placeDir.getRelativeFromAbsolute(Direction.WEST)}")
+
         connectPredicate = {
-            cellProvider.connectionPredicate(it)
+            connectionPredicate(placeDir, it, cellProvider)
         }
 
         manager = CellGraphManager.getFor(level as ServerLevel)
@@ -71,6 +78,15 @@ class CellTileEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Blo
         cell.setPlaced()
 
         setChanged()
+    }
+
+    private fun connectionPredicate(place : PlacementRotation, dir : Direction, provider: CellProvider) : Boolean{
+        val relative = place.getRelativeFromAbsolute(dir)
+        if(!provider.connectableDirections.contains(relative)){
+            return false
+        }
+
+        return provider.connectionPredicate(relative)
     }
 
     /**
@@ -482,10 +498,11 @@ class CellTileEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Blo
         // fetch provider
         val provider = CellRegistry.registry.getValue(cell.id)!!
 
-        connectPredicate = {
-            provider.connectionPredicate(it)
-        }
+        val absolute = blockState.getValue(HorizontalDirectionalBlock.FACING)
+        val placeDir = PlacementRotation(absolute)
 
-        // all done!
+        connectPredicate = {
+            connectionPredicate(placeDir, absolute, provider)
+        }
     }
 }

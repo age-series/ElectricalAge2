@@ -9,10 +9,14 @@ import net.minecraftforge.registries.DeferredRegister
 import net.minecraftforge.registries.IForgeRegistry
 import net.minecraftforge.registries.RegistryBuilder
 import net.minecraftforge.registries.RegistryObject
-import org.apache.logging.log4j.LogManager
 import org.eln2.mc.Eln2
 import org.eln2.mc.Eln2.LOGGER
-import org.eln2.mc.common.cell.types.TestCell
+import org.eln2.mc.common.cell.providers.FourPinCellProvider
+import org.eln2.mc.common.cell.providers.TwoPinCellProvider
+import org.eln2.mc.common.cell.types.GroundCell
+import org.eln2.mc.common.cell.types.ResistorCell
+import org.eln2.mc.common.cell.types.VoltageSourceCell
+import org.eln2.mc.common.cell.types.WireCell
 
 @Mod.EventBusSubscriber(bus = Mod.EventBusSubscriber.Bus.MOD)
 object CellRegistry {
@@ -20,11 +24,14 @@ object CellRegistry {
     private var REGISTRY : IForgeRegistry<CellProvider>? = null
     val registry get() = REGISTRY!!
 
-    val TEST_CELL = register("test", TestCell.Provider())
+    val RESISTOR_CELL = register("resistor", TwoPinCellProvider({ ResistorCell(it) }, 'R'))
+    val WIRE_CELL = register("wire", FourPinCellProvider({ WireCell(it) }, 'W'))
+    val VOLTAGE_SOURCE_CELL = register("voltage_source", FourPinCellProvider({ VoltageSourceCell(it) }, 'V'))
+    val GROUND_CELL = register("ground", FourPinCellProvider({ GroundCell(it)}, 'G'))
 
     fun setup(bus : IEventBus) {
         CELLS.register(bus)
-        LOGGER.info("Prepared cell registry queue.")
+        LOGGER.info("Prepared cell registry.")
     }
 
     @SubscribeEvent
@@ -33,7 +40,7 @@ object CellRegistry {
         reg.setName(ResourceLocation(Eln2.MODID, "cells"))
         reg.type = CellProvider::class.java
         REGISTRY = reg.create()
-        LOGGER.info("Prepared cell registry!")
+        LOGGER.info("Created cell registry!")
     }
 
     private fun register(id : String, provider: CellProvider) : RegistryObject<CellProvider> {
