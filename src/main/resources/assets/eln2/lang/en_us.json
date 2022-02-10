@@ -1,0 +1,5 @@
+{
+    "item.eln2.voltage_source": "Voltage Source",
+    "item.eln2.resistor" : "Resistor",
+    "item.eln2.wire" : "Wire"
+}

@@ -1,34 +1,52 @@
 package org.eln2.mc.common.blocks
 
 import net.minecraft.core.BlockPos
+import net.minecraft.core.Direction
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.item.ItemStack
+import net.minecraft.world.item.context.BlockPlaceContext
 import net.minecraft.world.level.Explosion
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.LevelReader
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.EntityBlock
+import net.minecraft.world.level.block.HorizontalDirectionalBlock
 import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.state.BlockState
+import net.minecraft.world.level.block.state.StateDefinition
 import net.minecraft.world.level.material.FluidState
 import net.minecraft.world.level.material.Material
 import org.eln2.mc.common.In
 import org.eln2.mc.common.Side
 import org.eln2.mc.common.cell.CellRegistry
 
-abstract class CellBlockBase : Block(Properties.of(Material.STONE)), EntityBlock {
+abstract class CellBlockBase : HorizontalDirectionalBlock(Properties.of(Material.STONE)), EntityBlock {
+    init {
+        registerDefaultState(getStateDefinition().any().setValue(FACING, Direction.NORTH))
+    }
+
+    override fun getStateForPlacement(pContext: BlockPlaceContext): BlockState? {
+        return super.defaultBlockState().setValue(FACING, pContext.horizontalDirection.opposite)
+    }
+
+    override fun createBlockStateDefinition(pBuilder: StateDefinition.Builder<Block, BlockState>) {
+        super.createBlockStateDefinition(pBuilder)
+        pBuilder.add(FACING)
+    }
+
     override fun setPlacedBy(
-        lvl : Level,
+        level : Level,
         pos : BlockPos,
-        blState : BlockState,
-        ent : LivingEntity?,
+        blockState : BlockState,
+        entity : LivingEntity?,
         itemStack : ItemStack
     ) {
-        val cellEntity = lvl.getBlockEntity(pos)!! as CellTileEntity
-        cellEntity.setPlacedBy(lvl, pos, blState, ent, itemStack, CellRegistry.registry.getValue(getCellProvider())?: throw Exception("Unable to get cell provider"))
+        val cellEntity = level.getBlockEntity(pos)!! as CellTileEntity
+        cellEntity.setPlacedBy(level, pos, blockState, entity, itemStack, CellRegistry.registry.getValue(getCellProvider())?: throw Exception("Unable to get cell provider"))
     }
+
 
     override fun onBlockExploded(blState: BlockState?, lvl: Level?, pos: BlockPos?, exp: Explosion?) {
         destroy(lvl?: throw Exception("Level was null"), pos?: throw Exception("Position was null"))

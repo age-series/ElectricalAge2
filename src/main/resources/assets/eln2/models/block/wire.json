@@ -1,0 +1,11 @@
+{
+    "parent": "minecraft:block/cube",
+    "textures": {
+        "up": "eln2:block/wire/up",
+        "down": "eln2:block/wire/down",
+        "north": "eln2:block/wire/front",
+        "south": "eln2:block/wire/back",
+        "west": "eln2:block/wire/left",
+        "east": "eln2:block/wire/right"
+    }
+}

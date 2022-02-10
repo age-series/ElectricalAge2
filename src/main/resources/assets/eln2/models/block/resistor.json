@@ -1,0 +1,11 @@
+{
+    "parent": "minecraft:block/cube",
+    "textures": {
+        "up": "eln2:block/resistor/up",
+        "down": "eln2:block/resistor/down",
+        "north": "eln2:block/resistor/front",
+        "south": "eln2:block/resistor/back",
+        "west": "eln2:block/resistor/left",
+        "east": "eln2:block/resistor/right"
+    }
+}

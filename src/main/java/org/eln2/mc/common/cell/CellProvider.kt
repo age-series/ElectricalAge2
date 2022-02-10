@@ -4,9 +4,13 @@ import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
 import net.minecraftforge.registries.ForgeRegistryEntry
 import org.eln2.mc.common.In
+import org.eln2.mc.common.RelativeRotationDirection
 import org.eln2.mc.common.Side
 
 abstract class CellProvider : ForgeRegistryEntry<CellProvider>() {
+    abstract val symbol : Char
+    val connectableDirections = HashSet<RelativeRotationDirection>()
+
     /**
      * Used to create a new instance of the cell. Called when the cell block is placed
      * or when the cell manager is loading cells from the disk.
@@ -21,5 +25,5 @@ abstract class CellProvider : ForgeRegistryEntry<CellProvider>() {
      * @return True if the connection is accepted. Otherwise, false.
     */
     @In(Side.LogicalServer)
-    abstract fun connectionPredicate(dir : Direction) : Boolean
+    abstract fun connectionPredicate(dir : RelativeRotationDirection) : Boolean
 }

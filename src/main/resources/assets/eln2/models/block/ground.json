@@ -1,0 +1,11 @@
+{
+    "parent": "minecraft:block/cube",
+    "textures": {
+        "up": "eln2:block/ground/up",
+        "down": "eln2:block/ground/down",
+        "north": "eln2:block/ground/front",
+        "south": "eln2:block/ground/back",
+        "west": "eln2:block/ground/left",
+        "east": "eln2:block/ground/right"
+    }
+}

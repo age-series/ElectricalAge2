@@ -1,0 +1,11 @@
+{
+    "parent": "minecraft:block/cube",
+    "textures": {
+        "up": "eln2:block/voltage_source/up",
+        "down": "eln2:block/voltage_source/down",
+        "north": "eln2:block/voltage_source/front",
+        "south": "eln2:block/voltage_source/back",
+        "west": "eln2:block/voltage_source/left",
+        "east": "eln2:block/voltage_source/right"
+    }
+}
