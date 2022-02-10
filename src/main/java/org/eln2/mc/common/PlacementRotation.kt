@@ -10,9 +10,6 @@ enum class RelativeRotationDirection {
 }
 
 class PlacementRotation(val placementDirection : Direction) {
-    private val relativeToAbsolute = HashMap(RelativeRotationDirection.values().associateWith { getAbsoluteFromRelative(it) })
-    private val absoluteToRelative = relativeToAbsolute.entries.associateBy({ it.value }){ it.key }
-
     fun getAbsoluteFromRelative(rotation : RelativeRotationDirection) : Direction {
         return when(rotation){
             RelativeRotationDirection.Front -> placementDirection
@@ -23,7 +20,13 @@ class PlacementRotation(val placementDirection : Direction) {
     }
 
     fun getRelativeFromAbsolute(direction: Direction) : RelativeRotationDirection {
-        return absoluteToRelative[direction]!!
+        return when(direction){
+            placementDirection -> RelativeRotationDirection.Front
+            placementDirection.opposite -> RelativeRotationDirection.Back
+            placementDirection.clockWise -> RelativeRotationDirection.Right
+            placementDirection.counterClockWise -> RelativeRotationDirection.Left
+            else -> throw Exception("Direction not implemented: $direction")
+        }
     }
 }
 
