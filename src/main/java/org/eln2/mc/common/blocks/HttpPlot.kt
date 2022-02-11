@@ -6,6 +6,7 @@ import org.apache.http.client.methods.HttpPost
 import org.apache.http.entity.StringEntity
 import org.apache.http.impl.client.HttpClients
 import org.eln2.mc.Eln2.LOGGER
+import org.eln2.mc.client.overlay.plotter.PlotterOverlay
 import org.eln2.mc.common.cell.CellGraph
 import org.eln2.mc.common.cell.CellRegistry
 import java.util.concurrent.atomic.AtomicBoolean
@@ -16,6 +17,10 @@ object HttpPlot {
     var allowed = AtomicBoolean(true)
 
     fun connectAndSend(circuit : CellGraph) {
+        if(circuit.cells.count() > 1){
+            PlotterOverlay.latestGraph = circuit
+        }
+
         if (!allowed.get()) {
             return
         }
