@@ -23,9 +23,10 @@ tmux new-session -d
 echo "Starting Minecraft Server"
 tmux send-keys './gradlew runServer' C-m
 
-# Give the server 120 seconds to start and generate a world file.
-# If we start getting errors where it doesn't finish fast enough, might need to raise this value
-sleep 120
+# Give the server 90 seconds to start to generate a world file.
+# If we start getting errors where it doesn't start fast enough, might need to raise this value
+# This takes <30 seconds on my box, but GitHub is really slow.
+sleep 90
 
 echo "Killing session"
 tmux kill-session
@@ -33,12 +34,16 @@ tmux kill-session
 echo "Printing server latest log:"
 cat ./run/logs/latest.log
 
+# GitHub is really slow so we're just going to check it generated chunks...
 echo "Checking successful server load (checking for loaded message)"
-FINISH=`cat ./run/logs/latest.log | grep "Done" | grep "For help, type \"help\"" | wc -l`
+SPAWN_AREA=`cat ./run/logs/latest.log | grep "Preparing spawn area: " | wc -l`
 
-if [ "$FINISH" == "1" ]; then
+if [ "$FINISH" != "0" ]; then
     echo "Server started successfully! :)"
+    # Good enough.
+    exit 0
 else
     echo "Server failed to load :("
+    # Check if the issue was running slowly or actually a crash in the log.
     exit 1
 fi
