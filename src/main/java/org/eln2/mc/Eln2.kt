@@ -23,5 +23,7 @@ object Eln2 {
         CellRegistry.setup(MOD_BUS)
 
         LOGGER.info("Prepared registries.")
+
+        LibelectricTest.test()
     }
 }
