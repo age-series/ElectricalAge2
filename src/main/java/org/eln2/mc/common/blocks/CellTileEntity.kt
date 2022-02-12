@@ -11,12 +11,11 @@ import net.minecraft.world.level.block.HorizontalDirectionalBlock
 import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.state.BlockState
 import org.eln2.mc.Eln2
-import org.eln2.mc.common.*
+import org.eln2.mc.common.In
+import org.eln2.mc.common.PlacementRotation
+import org.eln2.mc.common.Side
 import org.eln2.mc.common.cell.*
 import java.util.*
-import kotlin.collections.ArrayList
-import kotlin.collections.HashSet
-import kotlin.concurrent.thread
 import kotlin.system.measureNanoTime
 
 class CellTileEntity(var pos : BlockPos, var state: BlockState): BlockEntity(BlockRegistry.CELL_BLOCK_ENTITY.get(), pos, state) {
@@ -109,15 +108,12 @@ class CellTileEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Blo
         if(adjacentTiles.count() == 1){
             adjacentTiles.first().cell.connections.remove(cell)
             adjacentTiles.first().cell.update(connectionsChanged = true, graphChanged = false)
-            HttpPlot.connectAndSend(cell.graph)
             return
         }
 
         fun isVisited(c : CellBase) : Boolean{
             return c.graph != cell.graph
         }
-
-        val plotList = LinkedList<CellGraph>()
 
         val queue = LinkedList<CellBase>()
         val nanoTime = measureNanoTime {
@@ -152,21 +148,12 @@ class CellTileEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Blo
                 }
 
                 manager.addGraph(results)
-                plotList.add(results)
             }
         }
 
         Eln2.LOGGER.info("Remove nanoseconds: $nanoTime")
 
         cell.graph.destroyAndRemove()
-
-        thread (start = true) {
-            // TODO: We're creating a thread... and then HttpPlot is creating it's own thread for every item in the list. This should be cleaned up, it won't scale once we release.
-            plotList.forEach {
-                HttpPlot.connectAndSend(it)
-                Thread.sleep(2000)
-            }
-        }
     }
 
     /**
@@ -275,9 +262,6 @@ class CellTileEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Blo
 
         cell.graph = remoteGraph
 
-        // plot
-        HttpPlot.connectAndSend(cell.graph)
-
         setChanged()
     }
 
@@ -328,8 +312,6 @@ class CellTileEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Blo
         }
 
         manager.addGraph(newCircuit)
-
-        HttpPlot.connectAndSend(cell.graph)
     }
 
     /**

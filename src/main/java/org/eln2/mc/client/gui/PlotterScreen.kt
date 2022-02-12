@@ -6,15 +6,25 @@ import net.minecraft.client.gui.GuiComponent
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.renderer.GameRenderer
 import net.minecraft.core.BlockPos
+import net.minecraft.network.FriendlyByteBuf
 import net.minecraft.network.chat.TextComponent
 import net.minecraft.resources.ResourceLocation
 import org.apache.logging.log4j.LogManager
 import org.eln2.mc.Eln2
-import org.eln2.mc.client.overlay.plotter.PlotterOverlay
 import org.eln2.mc.common.cell.CellRegistry
+import org.eln2.mc.extensions.ByteBufferExtensions.readString
+import org.eln2.mc.extensions.ByteBufferExtensions.writeString
 import kotlin.math.max
 
-class CellInfo(val type : String, val info : String, val pos : BlockPos)
+class CellInfo(val type : String, val info : String, val pos : BlockPos){
+    constructor(buffer : FriendlyByteBuf) : this(buffer.readString(), buffer.readString(), buffer.readBlockPos())
+
+    fun serialize(buffer : FriendlyByteBuf){
+        buffer.writeString(type)
+        buffer.writeString(info)
+        buffer.writeBlockPos(pos)
+    }
+}
 
 class PlotterScreen(private val cells : ArrayList<CellInfo>) : Screen(TextComponent("Plotter")) {
     private var scale = 1.0f
@@ -59,8 +69,8 @@ class PlotterScreen(private val cells : ArrayList<CellInfo>) : Screen(TextCompon
     private val cellInfoCollection = ArrayList<CellInfo>()
 
     private fun prepare() {
-        val minX = PlotterOverlay.latestGraph!!.cells.minOf { it.pos.x }
-        val minY = PlotterOverlay.latestGraph!!.cells.minOf { it.pos.z }
+        val minX = cells.minOf { it.pos.x }
+        val minY = cells.minOf { it.pos.z }
         val offX = if(minX < 0) kotlin.math.abs(minX) else -minX
         val offY = if(minY < 0) kotlin.math.abs(minY) else -minY
 

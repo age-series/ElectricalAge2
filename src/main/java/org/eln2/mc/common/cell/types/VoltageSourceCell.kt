@@ -1,11 +1,8 @@
 package org.eln2.mc.common.cell.types
 
 import net.minecraft.core.BlockPos
-import org.apache.logging.log4j.LogManager
 import org.eln2.mc.Eln2
-import org.eln2.mc.common.RelativeRotationDirection
 import org.eln2.mc.common.cell.CellBase
-import org.eln2.mc.common.cell.CellProvider
 
 class VoltageSourceCell(pos : BlockPos) : CellBase(pos) {
     override fun tileLoaded(){

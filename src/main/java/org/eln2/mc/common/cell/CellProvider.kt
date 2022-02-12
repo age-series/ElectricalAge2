@@ -1,7 +1,6 @@
 package org.eln2.mc.common.cell
 
 import net.minecraft.core.BlockPos
-import net.minecraft.core.Direction
 import net.minecraftforge.registries.ForgeRegistryEntry
 import org.eln2.mc.common.In
 import org.eln2.mc.common.RelativeRotationDirection

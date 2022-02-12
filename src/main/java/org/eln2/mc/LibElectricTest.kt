@@ -4,7 +4,7 @@ import org.eln2.libelectric.sim.electrical.mna.Circuit
 import org.eln2.libelectric.sim.electrical.mna.component.Resistor
 import org.eln2.libelectric.sim.electrical.mna.component.VoltageSource
 
-object LibelectricTest {
+object LibElectricTest {
     fun test() {
         val thing = object: org.eln2.libelectric.sim.IProcess {
             override fun process(dt: Double) {

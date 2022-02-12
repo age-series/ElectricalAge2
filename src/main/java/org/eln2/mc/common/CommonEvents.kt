@@ -3,7 +3,6 @@ package org.eln2.mc.common
 import net.minecraftforge.event.server.ServerStartedEvent
 import net.minecraftforge.eventbus.api.SubscribeEvent
 import net.minecraftforge.fml.common.Mod
-import org.apache.logging.log4j.LogManager
 
 @Mod.EventBusSubscriber
 object CommonEvents {

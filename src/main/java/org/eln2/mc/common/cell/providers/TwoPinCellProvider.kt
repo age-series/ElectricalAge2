@@ -5,7 +5,6 @@ import org.apache.logging.log4j.LogManager
 import org.eln2.mc.common.RelativeRotationDirection
 import org.eln2.mc.common.cell.CellBase
 import org.eln2.mc.common.cell.CellProvider
-import org.eln2.mc.common.cell.types.ResistorCell
 
 class TwoPinCellProvider(val factory : ((pos : BlockPos) -> CellBase), override val symbol: Char) : CellProvider() {
     init {
