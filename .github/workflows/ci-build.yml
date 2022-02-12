@@ -1,6 +1,6 @@
 # This workflow runs the CI for pull requests & master.
 
-name: CI
+name: CI Build
 
 # Controls when the action will run
 on: [push]

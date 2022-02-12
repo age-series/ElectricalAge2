@@ -23,9 +23,9 @@ tmux new-session -d
 echo "Starting Minecraft Server"
 tmux send-keys './gradlew runServer' C-m
 
-# Give the server 60 seconds to start and generate a world file.
+# Give the server 120 seconds to start and generate a world file.
 # If we start getting errors where it doesn't finish fast enough, might need to raise this value
-sleep 60
+sleep 120
 
 echo "Killing session"
 tmux kill-session
