@@ -85,5 +85,7 @@ object PlotterOverlay : IIngameOverlay {
         }
 
         mStack.popPose()
+
+        GuiComponent.drawString(mStack, gui.font, "Count: ${cells.count()}", 5, 5, 0xFFFFFF)
     }
 }

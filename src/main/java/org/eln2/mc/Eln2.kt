@@ -10,9 +10,8 @@ import thedarkcolour.kotlinforforge.forge.MOD_BUS
 
 @Mod(Eln2.MODID)
 object Eln2 {
-    const val MODID: String = "eln2"
-
-    public val LOGGER: Logger = LogManager.getLogger()
+    const val MODID = "eln2"
+    val LOGGER: Logger = LogManager.getLogger()
 
     init {
 
