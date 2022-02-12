@@ -1,0 +1,40 @@
+# This workflow runs the CI for pull requests & master.
+
+name: CI Build
+
+# Controls when the action will run
+on: [push]
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+    # This workflow contains a single job called "build"
+    build:
+        # The type of runner that the job will run on
+        runs-on: ubuntu-latest
+
+        # Steps represent a sequence of tasks that will be executed as part of the job
+        steps:
+            # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+            -   uses: actions/checkout@v2
+            -   uses: actions/setup-java@v1
+                with:
+                    java-version: 17
+
+            -   uses: actions/cache@v1
+                with:
+                    path: ~/.gradle/caches
+                    key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*') }}
+                    # This allows restoring a *non-matching* cache on a cache miss, and considers it a match even if
+                    # (anything but) the gradle files have changed. Since it's the gradle cache directory
+                    # we're restoring, this is still acceptable and potentially useful.
+                    restore-keys: |
+                        ${{ runner.os }}-gradle-
+
+            -   name: Change Gradlew permission
+                run: chmod +x ./gradlew
+
+            -   name: Build the project
+                run: ./gradlew build
+
+            -   name: Run tests
+                run: ./gradlew test

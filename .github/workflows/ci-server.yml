@@ -1,6 +1,6 @@
 # This workflow runs the CI for pull requests & master.
 
-name: CI
+name: CI Run Server
 
 # Controls when the action will run
 on: [push]
@@ -36,5 +36,5 @@ jobs:
             -   name: Build the project
                 run: ./gradlew build
 
-            -   name: Run tests
-                run: ./gradlew test
+            -   name: Run Server
+                run: ./.github/workflows/run_server.sh
