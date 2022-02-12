@@ -35,7 +35,7 @@ echo "Printing server latest log:"
 cat ./run/logs/latest.log
 
 # GitHub is really slow so we're just going to check it generated chunks...
-echo "Checking successful server load (checking for loaded message)"
+echo "Checking for successful chunkloading (\"Preparing spawn area: \" messages)"
 SPAWN_AREA=`cat ./run/logs/latest.log | grep "Preparing spawn area: " | wc -l`
 
 if [ "$FINISH" != "0" ]; then
