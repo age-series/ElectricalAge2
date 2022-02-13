@@ -32,6 +32,7 @@ class CellTileEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Blo
      * We use this to invalidate the adjacency cache. Next time we use it, we will query the world for the changes.
      * @see adjacentUpdateRequired
     */
+    @Suppress("UNUSED_PARAMETER") // Will very likely be needed later and helps to know the name of the args.
     @In(Side.LogicalServer)
     fun neighbourUpdated(pos : BlockPos) {
         adjacentUpdateRequired = true
@@ -43,6 +44,7 @@ class CellTileEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Blo
      * It will add our cell to an existing circuit, or join multiple existing circuits, or create a new one
      * with ourselves.
     */
+    @Suppress("UNUSED_PARAMETER") // Will very likely be needed later and helps to know the name of the args.
     @In(Side.LogicalServer)
     fun setPlacedBy(
         level : Level,
@@ -218,6 +220,7 @@ class CellTileEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Blo
      * Will set our cell's connections to the neighbours but exclude the provided cell.
      * @param exclude The cell to exclude.
     */
+    // TODO: Do we want this still?
     @In(Side.LogicalServer)
     private fun setCellConnectionsToAdjacentButExclude(exclude : CellBase){
         val adjacent = getAdjacentCellsFast()
@@ -318,6 +321,7 @@ class CellTileEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Blo
      * Will get the direction of adjacent cells to us. Warning! this does not use a caching mechanism, it will query the world.
      * @return The directions where adjacent cells are located.
     */
+    // TODO: Do we want this still?
     @In(Side.LogicalServer)
     fun getAdjacentSides() : LinkedList<Direction>  {
         val result = LinkedList<Direction>()
@@ -405,6 +409,7 @@ class CellTileEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Blo
      * @param dir The direction towards entity.
      * @return True if the connection is accepted.
     */
+    @Suppress("UNUSED_PARAMETER") // Will very likely be needed later and helps to know the name of the args.
     @In(Side.LogicalServer)
     private fun canConnectFrom(entity : CellTileEntity, dir : Direction) : Boolean {
         return connectPredicate(dir.opposite)

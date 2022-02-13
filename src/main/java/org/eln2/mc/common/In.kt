@@ -1,3 +1,5 @@
+@file:Suppress("unused") // Specifier doesn't have any actual code use cases currently
+
 package org.eln2.mc.common
 
 enum class Side {

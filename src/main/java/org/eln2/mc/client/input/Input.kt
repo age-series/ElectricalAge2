@@ -11,7 +11,7 @@ import net.minecraftforge.client.event.InputEvent
 import net.minecraftforge.client.settings.KeyConflictContext
 import net.minecraftforge.eventbus.api.SubscribeEvent
 import net.minecraftforge.fml.common.Mod
-import org.apache.logging.log4j.LogManager
+import org.eln2.mc.Eln2
 import org.eln2.mc.common.Networking
 import org.eln2.mc.common.blocks.CellBlockBase
 import org.eln2.mc.common.packets.clientToServer.CircuitExplorerOpenPacket
@@ -33,12 +33,12 @@ object Input {
     @SubscribeEvent
     fun inputEvent(event: InputEvent.KeyInputEvent){
         if(OPEN_CIRCUIT_PLOTTER.isDown && event.action == GLFW.GLFW_PRESS){
-            LogManager.getLogger().info("handle!")
+            Eln2.LOGGER.info("handle!")
             handleOpenCircuitPlotter()
         }
         else
         {
-            LogManager.getLogger().info("no, is down: ${OPEN_CIRCUIT_PLOTTER.isDown} action: ${event.action}")
+            Eln2.LOGGER.info("no, is down: ${OPEN_CIRCUIT_PLOTTER.isDown} action: ${event.action}")
         }
     }
 
@@ -48,13 +48,13 @@ object Input {
         val pickResult = player.pick(100.0, 0f, false)
 
         if(pickResult.type != HitResult.Type.BLOCK){
-            LogManager.getLogger().info("did not hit")
+            Eln2.LOGGER.info("did not hit")
             return
         }
 
         val blockHit = pickResult as BlockHitResult
         if(player.level.getBlockState(blockHit.blockPos).block !is CellBlockBase){
-            LogManager.getLogger().info("it is not the block we're looking for")
+            Eln2.LOGGER.info("it is not the block we're looking for")
             return
         }
 

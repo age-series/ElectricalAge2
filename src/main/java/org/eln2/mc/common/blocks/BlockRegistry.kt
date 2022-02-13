@@ -1,15 +1,14 @@
+@file:Suppress("unused") // Because block variables here would be suggested for deletion.
+
 package org.eln2.mc.common.blocks
 
 import net.minecraft.world.item.BlockItem
 import net.minecraft.world.item.Item
-import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.entity.BlockEntityType
 import net.minecraftforge.eventbus.api.IEventBus
 import net.minecraftforge.registries.DeferredRegister
 import net.minecraftforge.registries.ForgeRegistries
 import net.minecraftforge.registries.RegistryObject
-import org.apache.logging.log4j.LogManager
-import org.apache.logging.log4j.Logger
 import org.eln2.mc.Eln2
 import org.eln2.mc.common.blocks.cell.GroundCellBlock
 import org.eln2.mc.common.blocks.cell.ResistorCellBlock
@@ -17,8 +16,6 @@ import org.eln2.mc.common.blocks.cell.VoltageSourceCellBlock
 import org.eln2.mc.common.blocks.cell.WireCellBlock
 
 object BlockRegistry {
-    private val LOGGER : Logger = LogManager.getLogger()
-
     private val BLOCK_REGISTRY = DeferredRegister.create(ForgeRegistries.BLOCKS, Eln2.MODID)
     private val BLOCK_ITEM_REGISTRY = DeferredRegister.create(ForgeRegistries.ITEMS, Eln2.MODID)
     private val BLOCK_ENTITY_REGISTRY = DeferredRegister.create(ForgeRegistries.BLOCK_ENTITIES, Eln2.MODID)
@@ -27,7 +24,7 @@ object BlockRegistry {
         BLOCK_REGISTRY.register(bus)
         BLOCK_ITEM_REGISTRY.register(bus)
         BLOCK_ENTITY_REGISTRY.register(bus)
-        LOGGER.info("Prepared block, block item and block entity registry.")
+        Eln2.LOGGER.info("Prepared block, block item and block entity registry.")
     }
 
     val CELL_BLOCK_ENTITY: RegistryObject<BlockEntityType<CellTileEntity>> = BLOCK_ENTITY_REGISTRY.register("cell"){

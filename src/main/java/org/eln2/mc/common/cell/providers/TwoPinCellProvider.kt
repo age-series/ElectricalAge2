@@ -1,7 +1,7 @@
 package org.eln2.mc.common.cell.providers
 
 import net.minecraft.core.BlockPos
-import org.apache.logging.log4j.LogManager
+import org.eln2.mc.Eln2
 import org.eln2.mc.common.RelativeRotationDirection
 import org.eln2.mc.common.cell.CellBase
 import org.eln2.mc.common.cell.CellProvider
@@ -19,7 +19,7 @@ class TwoPinCellProvider(val factory : ((pos : BlockPos) -> CellBase), override 
     }
 
     override fun connectionPredicate(dir: RelativeRotationDirection): Boolean {
-        LogManager.getLogger().info("DIR: $dir")
+        Eln2.LOGGER.info("DIR: $dir")
         return true
     }
 }

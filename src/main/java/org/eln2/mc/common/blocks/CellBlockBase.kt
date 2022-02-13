@@ -24,6 +24,7 @@ import org.eln2.mc.common.cell.CellRegistry
 
 abstract class CellBlockBase : HorizontalDirectionalBlock(Properties.of(Material.STONE)), EntityBlock {
     init {
+        @Suppress("LeakingThis")
         registerDefaultState(getStateDefinition().any().setValue(FACING, Direction.NORTH))
     }
 
