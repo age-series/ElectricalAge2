@@ -5,7 +5,6 @@ import net.minecraft.server.level.ServerPlayer
 import net.minecraft.world.phys.BlockHitResult
 import net.minecraft.world.phys.HitResult
 import net.minecraftforge.network.NetworkEvent
-import org.apache.logging.log4j.LogManager
 import org.eln2.mc.Eln2
 import org.eln2.mc.client.gui.CellInfo
 import org.eln2.mc.common.Networking
@@ -17,7 +16,9 @@ class CircuitExplorerOpenPacket() {
     constructor(buffer : FriendlyByteBuf) : this() { }
 
     companion object{
+        @Suppress("UNUSED_PARAMETER") // This will be useful later
         fun encode(packet : CircuitExplorerOpenPacket, buffer : FriendlyByteBuf){ }
+        @Suppress("UNUSED_PARAMETER") // This will be useful later
         fun handle(packet : CircuitExplorerOpenPacket, supplier : Supplier<NetworkEvent.Context>){
             val context = supplier.get()
 
@@ -30,7 +31,7 @@ class CircuitExplorerOpenPacket() {
             val pickResult = player.pick(100.0, 0f, false)
 
             if(pickResult.type != HitResult.Type.BLOCK){
-                LogManager.getLogger().info("server did not hit")
+                Eln2.LOGGER.info("server did not hit")
                 return
             }
 
@@ -38,7 +39,7 @@ class CircuitExplorerOpenPacket() {
             val tile = player.level.getBlockEntity(blockHit.blockPos) as CellTileEntity?
 
             if(tile !is CellTileEntity){
-                Eln2.LOGGER.info("it is not the tile, it is $tile")
+                Eln2.LOGGER.info("it is not the tile, it is ${player.level.getBlockEntity(blockHit.blockPos)}")
                 return
             }
 

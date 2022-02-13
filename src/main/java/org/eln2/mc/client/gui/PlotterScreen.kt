@@ -9,7 +9,6 @@ import net.minecraft.core.BlockPos
 import net.minecraft.network.FriendlyByteBuf
 import net.minecraft.network.chat.TextComponent
 import net.minecraft.resources.ResourceLocation
-import org.apache.logging.log4j.LogManager
 import org.eln2.mc.Eln2
 import org.eln2.mc.common.cell.CellRegistry
 import org.eln2.mc.extensions.ByteBufferExtensions.readString
@@ -143,7 +142,7 @@ class PlotterScreen(private val cells : ArrayList<CellInfo>) : Screen(TextCompon
     }
 
     override fun keyPressed(pKeyCode: Int, pScanCode: Int, pModifiers: Int): Boolean {
-        LogManager.getLogger().info("keycode: $blueprintTex scan: $pScanCode mod: $pModifiers")
+        Eln2.LOGGER.info("keycode: $blueprintTex scan: $pScanCode mod: $pModifiers")
 
         return super.keyPressed(pKeyCode, pScanCode, pModifiers)
     }

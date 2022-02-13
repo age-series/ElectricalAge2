@@ -13,6 +13,11 @@ import org.eln2.mc.common.packets.serverToClient.CircuitExplorerContextPacket
 typealias CEOPacket = CircuitExplorerOpenPacket
 typealias CECPacket = CircuitExplorerContextPacket
 
+enum class PacketType(val id: Int) {
+    CIRCUIT_EXPLORER_OPEN_PACKET(0),
+    CIRCUIT_EXPLORER_CONTEXT_PACKET(1)
+}
+
 object Networking {
     private const val protocolVersion = "1"
     private const val channelName = "main"
@@ -24,10 +29,8 @@ object Networking {
 
 
     fun setup(){
-        var id = -1
-
-        channel.registerMessage(++id, CEOPacket::class.java, CEOPacket::encode, ::CEOPacket, CEOPacket::handle)
-        channel.registerMessage(++id, CECPacket::class.java, CECPacket::encode, ::CECPacket, CECPacket::handle)
+        channel.registerMessage(PacketType.CIRCUIT_EXPLORER_OPEN_PACKET.id, CEOPacket::class.java, CEOPacket::encode, ::CEOPacket, CEOPacket::handle)
+        channel.registerMessage(PacketType.CIRCUIT_EXPLORER_CONTEXT_PACKET.id, CECPacket::class.java, CECPacket::encode, ::CECPacket, CECPacket::handle)
     }
 
     /**

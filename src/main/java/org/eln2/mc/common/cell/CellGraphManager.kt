@@ -15,6 +15,7 @@ import java.util.*
 class CellGraphManager(val level : Level) : SavedData() {
     private val graphs = HashMap<UUID, CellGraph>()
 
+    // TODO: Is this still useful?
     fun containsGraph(graph : CellGraph) : Boolean{
         return graphs.containsKey(graph.id)
     }
