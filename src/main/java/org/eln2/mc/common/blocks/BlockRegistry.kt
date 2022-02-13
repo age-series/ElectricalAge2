@@ -24,7 +24,6 @@ object BlockRegistry {
         BLOCK_REGISTRY.register(bus)
         BLOCK_ITEM_REGISTRY.register(bus)
         BLOCK_ENTITY_REGISTRY.register(bus)
-        Eln2.LOGGER.info("Prepared block, block item and block entity registry.")
     }
 
     val CELL_BLOCK_ENTITY: RegistryObject<BlockEntityType<CellTileEntity>> = BLOCK_ENTITY_REGISTRY.register("cell"){

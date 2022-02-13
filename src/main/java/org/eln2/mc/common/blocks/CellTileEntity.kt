@@ -103,7 +103,6 @@ class CellTileEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Blo
         if(adjacentTiles.isEmpty()){
            // we are alone
             cell.graph.destroyAndRemove()
-            Eln2.LOGGER.info("Destroyed ourselves")
             return
         }
 
