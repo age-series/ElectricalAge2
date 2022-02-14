@@ -79,6 +79,8 @@ class CellTileEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Blo
         cell.setPlaced()
 
         setChanged()
+
+        cell.graph.build()
     }
 
     private fun connectionPredicate(place : PlacementRotation, dir : Direction, provider: CellProvider) : Boolean{
@@ -149,6 +151,7 @@ class CellTileEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Blo
                 }
 
                 manager.addGraph(results)
+                results.build()
             }
         }
 
