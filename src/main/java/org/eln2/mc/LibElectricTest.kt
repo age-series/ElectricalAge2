@@ -13,21 +13,38 @@ object LibElectricTest {
         }
         thing.process(0.5)
 
-        // Example circuit roughly nabbed from libelectric test suite.
         val circuit = Circuit()
+
+
         val vs = VoltageSource()
-        val rs = Resistor()
+        vs.potential = 100.0
+        val vsR = Resistor()
+        val resistor = Resistor()
+        val gndR = Resistor()
 
-        vs.potential = 5.0
-        rs.resistance = 100.0
+        circuit.add(vs, vsR, resistor, gndR)
 
-        circuit.add(vs, rs)
-        vs.connect(0, rs, 0)
-        vs.connect(1, rs, 1)
-        vs.ground(1)
+        vs.ground(0)
+        gndR.ground(0)
+
+        // connect local VS resistor to VS
+
+        vsR.connect(0, vs, 1)
+
+        // connect resistor to ground and voltage
+        resistor.connect(0, vsR, 1)
+        resistor.connect(1, gndR, 1)
+
+        // connect ground to resistor
+        gndR.connect(1, resistor, 1)
+
+        // connect voltage to resistor
+        vsR.connect(1, resistor, 0)
+
+        // p.s pin 1 is the "public" pin
 
         circuit.step(0.5)
 
-        Eln2.LOGGER.info("Resistor current is ${rs.current}A")
+        Eln2.LOGGER.info("Resistor current is ${resistor.current}")
     }
 }

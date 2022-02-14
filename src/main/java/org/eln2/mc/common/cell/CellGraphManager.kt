@@ -13,11 +13,10 @@ import java.util.*
 
 @In(Side.LogicalServer)
 class CellGraphManager(val level : Level) : SavedData() {
-    private val graphs = HashMap<UUID, CellGraph>()
+    val graphs = HashMap<UUID, CellGraph>()
 
-    // TODO: Is this still useful?
-    fun containsGraph(graph : CellGraph) : Boolean{
-        return graphs.containsKey(graph.id)
+    fun tickAll(){
+        graphs.values.forEach{ it.serverTick() }
     }
 
     fun containsGraphWithId(id : UUID) : Boolean{
@@ -71,7 +70,9 @@ class CellGraphManager(val level : Level) : SavedData() {
 
                 manager.addGraph(graph)
                 Eln2.LOGGER.info("Loaded ${graph.cells.count()} cells for ${graph.id}!")
+                graph.build()
             }
+
             return manager
         }
 

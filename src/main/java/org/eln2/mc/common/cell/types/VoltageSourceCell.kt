@@ -1,27 +1,54 @@
 package org.eln2.mc.common.cell.types
 
 import net.minecraft.core.BlockPos
+import org.eln2.libelectric.sim.electrical.mna.Circuit
+import org.eln2.libelectric.sim.electrical.mna.component.Component
+import org.eln2.libelectric.sim.electrical.mna.component.Resistor
+import org.eln2.libelectric.sim.electrical.mna.component.VoltageSource
 import org.eln2.mc.Eln2
 import org.eln2.mc.common.cell.CellBase
+import org.eln2.mc.common.cell.ComponentInfo
+import org.eln2.mc.extensions.ComponentExtensions.connectTo
 
 class VoltageSourceCell(pos : BlockPos) : CellBase(pos) {
-    override fun tileLoaded(){
-        Eln2.LOGGER.info("Voltage source loaded $pos")
+    private lateinit var source : VoltageSource
+
+    override fun clearForRebuild() {
+        source = VoltageSource()
+        source.potential = 100.0
+        neighbourToResistorLookup.clear()
     }
 
-    override fun tileUnloaded() {
-        Eln2.LOGGER.info("Voltage source unloaded $pos")
+    override fun componentForNeighbour(neighbour: CellBase): ComponentInfo {
+        val circuit = graph.circuit
+
+        return ComponentInfo(neighbourToResistorLookup.computeIfAbsent(neighbour) {
+            val r = Resistor()
+            r.resistance = 0.001
+            if(!circuit.components.contains(r)){
+                circuit.add(r)
+                // attention! o(1) lookup required todo!
+            }
+            r
+        }, 1)
     }
 
-    override fun completeDiskLoad() {
-        Eln2.LOGGER.info("Voltage source completed disk load $pos")
+    override fun buildConnections() {
+        val circuit = graph.circuit
+        circuit.add(source)
+        source.ground(0)
+
+        connections.forEach { remoteCell ->
+            val localResistor = componentForNeighbour(remoteCell).component
+            val remoteComponentInfo = remoteCell.componentForNeighbour(this)
+            localResistor.connectTo(1,  remoteComponentInfo)
+            localResistor.connect(0, source, 1)
+        }
     }
 
-    override fun setPlaced() {
-        Eln2.LOGGER.info("Voltage source set placed $pos")
-    }
+    private val neighbourToResistorLookup = HashMap<CellBase, Resistor>()
 
-    override fun update(connectionsChanged: Boolean, graphChanged: Boolean) {
-        Eln2.LOGGER.info("Voltage source $pos update -> connections: $connectionsChanged graphs: $graphChanged")
+    override fun createDataPrint(): String {
+        return "I: ${source.current}, V: ${source.potential}"
     }
 }

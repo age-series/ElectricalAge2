@@ -43,8 +43,8 @@ class CircuitExplorerOpenPacket() {
                 return
             }
 
-            val cells = ArrayList(tile.cell.graph.cells.map { CellInfo(it.id.toString(), "n/a", it.pos) })
-            Networking.sendTo(CircuitExplorerContextPacket(cells), player)
+            val cells = ArrayList(tile.cell.graph.cells.map { CellInfo(it.id.toString(), it.createDataPrint(), it.pos) })
+            Networking.sendTo(CircuitExplorerContextPacket(cells, tile.cell.graph.latestSolveTime), player)
         }
     }
 }

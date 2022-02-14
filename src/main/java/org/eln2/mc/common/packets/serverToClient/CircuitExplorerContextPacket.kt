@@ -12,6 +12,9 @@ import java.util.function.Supplier
 
 class CircuitExplorerContextPacket() {
     lateinit var cells : ArrayList<CellInfo>
+    var nanoTime : Long = 0L
+        get() = field
+        private set(value : Long) { field = value }
 
     constructor(buffer : FriendlyByteBuf) : this(){
         val count = buffer.readInt()
@@ -22,16 +25,19 @@ class CircuitExplorerContextPacket() {
         }
 
         cells = ArrayList(buffer.readCollection({ArrayList<CellInfo>(count)}, ::CellInfo))
+        nanoTime = buffer.readLong()
     }
 
-    constructor(cells : ArrayList<CellInfo>) : this(){
+    constructor(cells : ArrayList<CellInfo>, nanoTime : Long) : this(){
         this.cells = cells
+        this.nanoTime = nanoTime
     }
 
     companion object {
         fun encode(packet : CircuitExplorerContextPacket, buffer : FriendlyByteBuf){
             buffer.writeInt(packet.cells.count())
             buffer.writeCollection(packet.cells) { pBuffer, info -> info.serialize(pBuffer)}
+            buffer.writeLong(packet.nanoTime)
         }
 
         fun handle(packet : CircuitExplorerContextPacket, supplier : Supplier<NetworkEvent.Context>){
@@ -48,9 +54,7 @@ class CircuitExplorerContextPacket() {
                 return
             }
 
-            mc.setScreen(PlotterScreen(packet.cells))
-
-            Eln2.LOGGER.info("Received explorer packet and handled it!")
+            mc.setScreen(PlotterScreen(packet.cells, packet.nanoTime))
         }
     }
 }

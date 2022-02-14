@@ -4,13 +4,62 @@ import net.minecraft.core.BlockPos
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.nbt.ListTag
 import net.minecraft.resources.ResourceLocation
+import org.apache.logging.log4j.LogManager
+import org.eln2.libelectric.sim.electrical.mna.Circuit
+import org.eln2.libelectric.sim.electrical.mna.component.Component
+import org.eln2.libelectric.sim.electrical.mna.component.PinRef
+import org.eln2.libelectric.sim.electrical.mna.component.Port
+import org.eln2.libelectric.sim.electrical.mna.component.Resistor
+import org.eln2.mc.Eln2
 import org.eln2.mc.extensions.NbtExtensions.getBlockPos
 import org.eln2.mc.extensions.NbtExtensions.putBlockPos
+import java.io.File
 import java.util.*
+import kotlin.collections.ArrayList
+import kotlin.collections.HashMap
+import kotlin.collections.HashSet
+import kotlin.system.measureNanoTime
 
 class CellGraph(val id : UUID, val manager : CellGraphManager) {
     val cells = ArrayList<CellBase>()
     private val posCells = HashMap<BlockPos, CellBase>()
+
+    lateinit var circuit : Circuit
+    val hasCircuit get() = this::circuit.isInitialized
+
+    var latestSolveTime = 0L
+
+    fun serverTick(){
+        if(hasCircuit){
+            var successful : Boolean
+
+            latestSolveTime = measureNanoTime {
+                successful = circuit.step(0.05)
+            }
+
+            Eln2.LOGGER.info("Tick time: $latestSolveTime success $successful")
+        }
+    }
+
+    fun build() {
+        circuit = Circuit()
+
+        cells.forEach{ cell ->
+            cell.clearForRebuild()
+        }
+
+        val log = ArrayList<String>()
+
+        cells.forEach { cell ->
+            cell.buildConnections()
+        }
+
+        Eln2.LOGGER.info("Built circuit! component count: ${circuit.components.count()}, graph cell count: ${cells.count()}")
+
+        log.forEach{
+            Eln2.LOGGER.info("  $it")
+        }
+    }
 
     fun getCellAt(pos: BlockPos): CellBase {
         return posCells[pos] ?: throw Exception("Could not find cell at $pos!")

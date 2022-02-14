@@ -1,9 +1,15 @@
 package org.eln2.mc.common.cell
 
 import net.minecraft.core.BlockPos
+import net.minecraft.core.Direction
 import net.minecraft.resources.ResourceLocation
+import org.eln2.libelectric.sim.electrical.mna.Circuit
+import org.eln2.libelectric.sim.electrical.mna.component.Component
+import org.eln2.libelectric.sim.electrical.mna.component.Port
 import org.eln2.mc.common.*
 import org.eln2.mc.common.blocks.CellTileEntity
+
+class ComponentInfo(val component: Component, val index : Int)
 
 abstract class CellBase(val pos : BlockPos) {
     lateinit var id : ResourceLocation
@@ -49,5 +55,13 @@ abstract class CellBase(val pos : BlockPos) {
      * Called when the graph and/or neighbouring cells are updated.
     */
     @In(Side.LogicalServer)
-    abstract fun update(connectionsChanged : Boolean, graphChanged : Boolean)
+    open fun update(connectionsChanged : Boolean, graphChanged : Boolean){}
+
+    open fun createDataPrint() : String{
+        return "N/A"
+    }
+
+    abstract fun clearForRebuild()
+    abstract fun componentForNeighbour(neighbour : CellBase) : ComponentInfo
+    abstract fun buildConnections()
 }
