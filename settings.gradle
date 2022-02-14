@@ -1,0 +1,5 @@
+sourceControl {
+    gitRepository("https://github.com/age-series/libelectric.git") {
+        producesModule "org.eln2:libelectric"
+    }
+}
