@@ -6,6 +6,7 @@
         "north": "eln2:block/resistor/front",
         "south": "eln2:block/resistor/back",
         "west": "eln2:block/resistor/left",
-        "east": "eln2:block/resistor/right"
+        "east": "eln2:block/resistor/right",
+        "particle": "minecraft:block/stone"
     }
 }
