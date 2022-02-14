@@ -14,7 +14,7 @@ displayURL="https://eln2.org/"
 # A file name (in the root of the mod JAR) containing a logo for display
 logoFile=""
 credits="The Age Series Team"
-authors="jrddunbr, Caeleron, Grissess, Baughn"
+authors="jrddunbr, Caeleron, Grissess, Baughn, empireu, DarthSidiousPalpatine, AlanFletes, bloxgate"
 
 description='''
 Electrical Age 2 - Electricity, in your base!
@@ -24,6 +24,8 @@ Also try the other Age Series mods!
 * Processing Age: Process all those raw materials into something useful!
 * Chemistry Age: Like alchemy, but with less magic!
 * Server Age: Real computing power for hardcore technical players!
+* Chat Age: Minecraft to Discord webhook chat bridge!
+* Security Age: Lock up your stuff!
 '''
 
 [[dependencies.eln2]]
