@@ -5,11 +5,15 @@ import com.mojang.blaze3d.vertex.PoseStack
 import net.minecraft.client.gui.GuiComponent
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.renderer.GameRenderer
+import net.minecraft.client.resources.language.I18n.get
 import net.minecraft.core.BlockPos
 import net.minecraft.network.FriendlyByteBuf
 import net.minecraft.network.chat.TextComponent
+import net.minecraft.network.chat.TranslatableComponent
 import net.minecraft.resources.ResourceLocation
+import net.minecraft.world.level.block.Block
 import org.eln2.mc.Eln2
+import org.eln2.mc.common.blocks.BlockRegistry
 import org.eln2.mc.common.cell.CellRegistry
 import org.eln2.mc.extensions.ByteBufferExtensions.readString
 import org.eln2.mc.extensions.ByteBufferExtensions.writeString
@@ -60,7 +64,7 @@ class PlotterScreen(private val cells : ArrayList<CellInfo>) : Screen(TextCompon
     }
 
     private fun renderHeader(poseStack: PoseStack){
-        drawCenteredString(poseStack, font, "Circuit Explorer",width / 2 , 1, 0xFFFFFF)
+        drawCenteredString(poseStack, font, get(TranslatableComponent("plotter.circuit_explorer").key),width / 2 , 1, 0xFFFFFF)
     }
 
     private val texSize = 32
@@ -123,7 +127,7 @@ class PlotterScreen(private val cells : ArrayList<CellInfo>) : Screen(TextCompon
             val yMin = (it.pos.y + posY) * scale
             val xMax = scale * texSize.toFloat() + xMin
             val yMax = scale * texSize.toFloat() + yMin
-            if(pMouseY > yMin && pMouseY < yMax && pMouseX > xMin && pMouseX < xMax){
+            if(pMouseY > yMin && pMouseY < yMax && pMouseX > xMin && pMouseX < xMax) {
                 toolTipCell = it
                 return@forEach
             }
@@ -131,13 +135,36 @@ class PlotterScreen(private val cells : ArrayList<CellInfo>) : Screen(TextCompon
 
         pPoseStack.popPose()
 
-        if(toolTipCell!=null)
-        {
+        if(toolTipCell!=null) {
             drawInfoToolTip(pPoseStack,
                 pMouseX, pMouseY, toolTipCell!!.info)
         }
 
-        GuiComponent.drawString(pPoseStack, font, "Cells: ${cells.count()} selected: ${toolTipCell?.type?.split('/')?.last() ?: "none"}", 5, height - 10, 0xFF0000)
+        val block: Block? = try {
+            BlockRegistry.BLOCK_REGISTRY.entries.first {
+                it.id.path == toolTipCell?.type?.split(':')?.get(1)
+            }.get()
+        } catch (e: Exception) {
+            // There's no nane, and we're just going to catch instead of doing logic to figure arrays..
+            // TODO: Actually write decent code here if we care?
+            null
+        }
+
+        val localizedName = if (block != null) {
+            get(block.descriptionId)
+        } else {
+            toolTipCell?.type
+        }
+
+
+
+        val textList = mutableListOf<String>()
+        textList.add("${get(TranslatableComponent("plotter.cell_count").key)}: ${cells.count()}")
+        if (localizedName != null) {
+            textList.add("${get(TranslatableComponent("plotter.highlighted").key)}: $localizedName")
+        }
+
+        GuiComponent.drawString(pPoseStack, font, textList.joinToString("    "), 5, height - 10, 0xFF0000)
         renderHeader(pPoseStack)
     }
 
