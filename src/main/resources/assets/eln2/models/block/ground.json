@@ -6,6 +6,7 @@
         "north": "eln2:block/ground/front",
         "south": "eln2:block/ground/back",
         "west": "eln2:block/ground/left",
-        "east": "eln2:block/ground/right"
+        "east": "eln2:block/ground/right",
+        "particle": "minecraft:block/stone"
     }
 }

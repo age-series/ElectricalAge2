@@ -6,6 +6,7 @@
         "north": "eln2:block/voltage_source/front",
         "south": "eln2:block/voltage_source/back",
         "west": "eln2:block/voltage_source/left",
-        "east": "eln2:block/voltage_source/right"
+        "east": "eln2:block/voltage_source/right",
+        "particle": "minecraft:block/stone"
     }
 }
