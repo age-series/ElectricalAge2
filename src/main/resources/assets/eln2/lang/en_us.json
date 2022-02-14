@@ -1,5 +1,12 @@
 {
-    "item.eln2.voltage_source": "Voltage Source",
-    "item.eln2.resistor" : "Resistor",
-    "item.eln2.wire" : "Wire"
+    "itemGroup.Electrical_Age": "Electrical Age",
+
+    "block.eln2.voltage_source": "Voltage Source",
+    "block.eln2.resistor": "Resistor",
+    "block.eln2.wire": "Wire",
+    "block.eln2.ground": "Ground",
+
+    "plotter.circuit_explorer": "Circuit Explorer",
+    "plotter.cell_count": "Cell Count",
+    "plotter.highlighted": "Highlighted"
 }

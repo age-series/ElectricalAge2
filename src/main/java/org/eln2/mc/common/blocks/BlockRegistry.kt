@@ -2,8 +2,7 @@
 
 package org.eln2.mc.common.blocks
 
-import net.minecraft.world.item.BlockItem
-import net.minecraft.world.item.Item
+import net.minecraft.world.item.*
 import net.minecraft.world.level.block.entity.BlockEntityType
 import net.minecraftforge.eventbus.api.IEventBus
 import net.minecraftforge.registries.DeferredRegister
@@ -16,9 +15,12 @@ import org.eln2.mc.common.blocks.cell.VoltageSourceCellBlock
 import org.eln2.mc.common.blocks.cell.WireCellBlock
 
 object BlockRegistry {
-    private val BLOCK_REGISTRY = DeferredRegister.create(ForgeRegistries.BLOCKS, Eln2.MODID)
-    private val BLOCK_ITEM_REGISTRY = DeferredRegister.create(ForgeRegistries.ITEMS, Eln2.MODID)
-    private val BLOCK_ENTITY_REGISTRY = DeferredRegister.create(ForgeRegistries.BLOCK_ENTITIES, Eln2.MODID)
+    @Suppress("MemberVisibilityCanBePrivate") // Used for block registration and fetching
+    val BLOCK_REGISTRY = DeferredRegister.create(ForgeRegistries.BLOCKS, Eln2.MODID)!! // Yeah, if this fails blow up the game
+    @Suppress("MemberVisibilityCanBePrivate") // Used for block registration and fetching
+    val BLOCK_ITEM_REGISTRY = DeferredRegister.create(ForgeRegistries.ITEMS, Eln2.MODID)!! // Yeah, if this fails blow up the game
+    @Suppress("MemberVisibilityCanBePrivate") // Used for block registration and fetching
+    val BLOCK_ENTITY_REGISTRY = DeferredRegister.create(ForgeRegistries.BLOCK_ENTITIES, Eln2.MODID)!! // Yeah, if this fails blow up the game
 
     fun setup(bus : IEventBus) {
         BLOCK_REGISTRY.register(bus)
@@ -37,15 +39,20 @@ object BlockRegistry {
         val item : RegistryObject<BlockItem>
     )
 
-    private fun registerCellBlock(name : String, supplier : () -> CellBlockBase) : CellBlockRegistryItem{
+    private fun registerCellBlock(name : String, tab: CreativeModeTab? = null, supplier : () -> CellBlockBase) : CellBlockRegistryItem{
         val block = BLOCK_REGISTRY.register(name) { supplier() }
-        val item = BLOCK_ITEM_REGISTRY.register(name) { BlockItem(block.get(), Item.Properties()) }
-
+        val item = BLOCK_ITEM_REGISTRY.register(name) { BlockItem(block.get(), Item.Properties().also {if (tab != null) it.tab(tab)}) }
         return CellBlockRegistryItem(name, block, item)
     }
 
-    val RESISTOR_CELL = registerCellBlock("resistor") { ResistorCellBlock() }
-    val WIRE_CELL = registerCellBlock("wire") { WireCellBlock() }
-    val VOLTAGE_SOURCE_CELL = registerCellBlock("voltage_source") { VoltageSourceCellBlock() }
-    val GROUND_CELL = registerCellBlock("ground") { GroundCellBlock() }
+    private val eln2Tab: CreativeModeTab = object: CreativeModeTab("Electrical_Age") {
+        override fun makeIcon(): ItemStack {
+            return ItemStack(VOLTAGE_SOURCE_CELL.item.get().asItem())
+        }
+    }
+
+    val RESISTOR_CELL = registerCellBlock("resistor", eln2Tab) { ResistorCellBlock() }
+    val WIRE_CELL = registerCellBlock("wire", eln2Tab) { WireCellBlock() }
+    val VOLTAGE_SOURCE_CELL = registerCellBlock("voltage_source", eln2Tab) { VoltageSourceCellBlock() }
+    val GROUND_CELL = registerCellBlock("ground", eln2Tab) { GroundCellBlock() }
 }
