@@ -50,16 +50,33 @@ abstract class CellBase(val pos : BlockPos) {
     }
 
     /**
-     * Called when the graph and/or neighbouring cells are updated.
+     * Called when the graph and/or neighbouring cells are updated. This method is called after completeDiskLoad and setPlaced
+     * @param connectionsChanged True if the neighbouring cells changed.
+     * @param graphChanged True if the graph that owns this cell has been updated.
     */
     @In(Side.LogicalServer)
     open fun update(connectionsChanged : Boolean, graphChanged : Boolean){}
 
+    /**
+     * This method returns the text that will be displayed in the Circuit Explorer.
+    */
     open fun createDataPrint() : String{
         return "N/A"
     }
 
+    /**
+     * This method is called before the Circuit is being rebuilt.
+    */
     abstract fun clearForRebuild()
+
+    /**
+     * This method is used to return the component and the pin for a remote cell to connect to.
+    */
     abstract fun componentForNeighbour(neighbour : CellBase) : ComponentInfo
+
+    /**
+     * This method is called after each cell's clearForRebuild method has been called.
+     * It must be used to create the circuit's connections.
+    */
     abstract fun buildConnections()
 }
