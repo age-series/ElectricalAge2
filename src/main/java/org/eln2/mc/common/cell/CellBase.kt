@@ -1,12 +1,10 @@
 package org.eln2.mc.common.cell
 
 import net.minecraft.core.BlockPos
-import net.minecraft.core.Direction
 import net.minecraft.resources.ResourceLocation
-import org.eln2.libelectric.sim.electrical.mna.Circuit
 import org.eln2.libelectric.sim.electrical.mna.component.Component
-import org.eln2.libelectric.sim.electrical.mna.component.Port
-import org.eln2.mc.common.*
+import org.eln2.mc.common.In
+import org.eln2.mc.common.Side
 import org.eln2.mc.common.blocks.CellTileEntity
 
 class ComponentInfo(val component: Component, val index : Int)
