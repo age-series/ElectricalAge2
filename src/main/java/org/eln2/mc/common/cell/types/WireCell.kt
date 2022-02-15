@@ -7,6 +7,16 @@ import org.eln2.mc.common.cell.ComponentInfo
 import org.eln2.mc.extensions.ComponentExtensions.connectToPinOf
 
 class WireCell(pos : BlockPos) : CellBase(pos) {
+    /*  R -> local resistors. Their first pins are interconnected.
+    *   C -> remote components. The second pin of the local resistors is used for them.
+    *
+    *       C
+    *       R
+    *   C R ┼ R C
+    *       R
+    *       C
+    */
+
     override fun clearForRebuild() {
         neighbourToResistorLookup.clear()
     }
@@ -36,6 +46,7 @@ class WireCell(pos : BlockPos) : CellBase(pos) {
 
     private val neighbourToResistorLookup = HashMap<CellBase, Resistor>()
 
+    //todo: bogus
     override fun createDataPrint(): String {
         val current = connections.sumOf { (componentForNeighbour(it).component as Resistor).current }
         return "I: $current"

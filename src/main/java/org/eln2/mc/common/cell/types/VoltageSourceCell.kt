@@ -8,6 +8,17 @@ import org.eln2.mc.common.cell.ComponentInfo
 import org.eln2.mc.extensions.ComponentExtensions.connectToPinOf
 
 class VoltageSourceCell(pos : BlockPos) : CellBase(pos) {
+
+    /*  R -> local resistors. Their first pin is connected to the voltage source.
+    *   C -> remote components. The second pin of the local resistors is used for them.
+    *
+    *       C
+    *       R
+    *   C R V R C
+    *       R
+    *       C
+    */
+
     private lateinit var source : VoltageSource
 
     override fun clearForRebuild() {
@@ -24,7 +35,7 @@ class VoltageSourceCell(pos : BlockPos) : CellBase(pos) {
             resistor.resistance = 0.001
             circuit.add(resistor)
             resistor
-        }, 1)
+        }, 1) // pin 1 will be connected to the remote cell
     }
 
     override fun buildConnections() {
@@ -33,9 +44,9 @@ class VoltageSourceCell(pos : BlockPos) : CellBase(pos) {
         source.ground(0)
 
         connections.forEach { remoteCell ->
-            val localResistor = componentForNeighbour(remoteCell).component
-            localResistor.connectToPinOf(1,  remoteCell.componentForNeighbour(this))
-            localResistor.connect(0, source, 1)
+            val localResistor = componentForNeighbour(remoteCell).component // get local resistor
+            localResistor.connectToPinOf(1,  remoteCell.componentForNeighbour(this)) // connect local resistor to remote component
+            localResistor.connect(0, source, 1) // connect local resistor to our voltage source
         }
     }
 
