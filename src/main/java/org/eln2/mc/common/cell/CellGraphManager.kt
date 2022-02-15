@@ -37,9 +37,11 @@ class CellGraphManager(val level : Level) : SavedData() {
 
     override fun save(tag: CompoundTag): CompoundTag {
         val graphListTag = ListTag()
+
         graphs.values.forEach { graph->
             graphListTag.add(graph.toNbt())
         }
+
         tag.put("Graphs", graphListTag)
         Eln2.LOGGER.info("Wrote ${graphs.count()} graphs to disk.")
         return tag
@@ -77,7 +79,6 @@ class CellGraphManager(val level : Level) : SavedData() {
         }
 
         fun getFor(level : ServerLevel) : CellGraphManager {
-            // this will return the instance or create a new one
             return level.dataStorage.computeIfAbsent({ load(it, level) }, { CellGraphManager(level) }, "CellManager")
         }
     }

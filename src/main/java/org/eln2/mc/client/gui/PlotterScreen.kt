@@ -17,7 +17,6 @@ import org.eln2.mc.common.cell.CellRegistry
 import org.eln2.mc.extensions.ByteBufferExtensions.readString
 import org.eln2.mc.extensions.ByteBufferExtensions.writeString
 import org.eln2.mc.extensions.PoseStackExtensions
-import org.eln2.mc.extensions.PoseStackExtensions.blitMultiple
 import kotlin.math.max
 import kotlin.system.measureNanoTime
 

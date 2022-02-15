@@ -1,14 +1,11 @@
 package org.eln2.mc.common.cell.types
 
 import net.minecraft.core.BlockPos
-import org.eln2.libelectric.sim.electrical.mna.Circuit
-import org.eln2.libelectric.sim.electrical.mna.component.Component
 import org.eln2.libelectric.sim.electrical.mna.component.Resistor
 import org.eln2.libelectric.sim.electrical.mna.component.VoltageSource
-import org.eln2.mc.Eln2
 import org.eln2.mc.common.cell.CellBase
 import org.eln2.mc.common.cell.ComponentInfo
-import org.eln2.mc.extensions.ComponentExtensions.connectTo
+import org.eln2.mc.extensions.ComponentExtensions.connectToPinOf
 
 class VoltageSourceCell(pos : BlockPos) : CellBase(pos) {
     private lateinit var source : VoltageSource
@@ -23,13 +20,10 @@ class VoltageSourceCell(pos : BlockPos) : CellBase(pos) {
         val circuit = graph.circuit
 
         return ComponentInfo(neighbourToResistorLookup.computeIfAbsent(neighbour) {
-            val r = Resistor()
-            r.resistance = 0.001
-            if(!circuit.components.contains(r)){
-                circuit.add(r)
-                // attention! o(1) lookup required todo!
-            }
-            r
+            val resistor = Resistor()
+            resistor.resistance = 0.001
+            circuit.add(resistor)
+            resistor
         }, 1)
     }
 
@@ -40,8 +34,7 @@ class VoltageSourceCell(pos : BlockPos) : CellBase(pos) {
 
         connections.forEach { remoteCell ->
             val localResistor = componentForNeighbour(remoteCell).component
-            val remoteComponentInfo = remoteCell.componentForNeighbour(this)
-            localResistor.connectTo(1,  remoteComponentInfo)
+            localResistor.connectToPinOf(1,  remoteCell.componentForNeighbour(this))
             localResistor.connect(0, source, 1)
         }
     }
