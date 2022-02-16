@@ -23,7 +23,7 @@ import kotlin.system.measureNanoTime
 class CellInfo(val type : String, val info : String, val pos : BlockPos){
     constructor(buffer : FriendlyByteBuf) : this(buffer.readString(), buffer.readString(), buffer.readBlockPos())
 
-    fun serialize(buffer : FriendlyByteBuf){
+    fun serialize(buffer : FriendlyByteBuf) {
         buffer.writeString(type)
         buffer.writeString(info)
         buffer.writeBlockPos(pos)
@@ -65,7 +65,7 @@ class PlotterScreen(private val cells : ArrayList<CellInfo>, val solveTime : Lon
     }
 
     private fun renderHeader(poseStack: PoseStack){
-        drawCenteredString(poseStack, font, "Solve time: $solveTime",width / 2 , 1, 0xFFFFFF)
+        drawCenteredString(poseStack, font, "${get(TranslatableComponent("plotter.solve_time").key)}: $solveTime",width / 2 , 1, 0xFFFFFF)
     }
 
     private val texSize = 32
@@ -145,13 +145,6 @@ class PlotterScreen(private val cells : ArrayList<CellInfo>, val solveTime : Lon
             }
         }
 
-        /*
-        if(drawList.isNotEmpty()){
-            drawNanoseconds = measureNanoTime {
-                pPoseStack.blitMultiple(drawList)
-            }
-        }*/
-
         pPoseStack.popPose()
 
         if(toolTipCell!=null) {
@@ -184,8 +177,6 @@ class PlotterScreen(private val cells : ArrayList<CellInfo>, val solveTime : Lon
 
         GuiComponent.drawString(pPoseStack, font, textList.joinToString("    "), 5, height - 10, 0xFF0000)
         renderHeader(pPoseStack)
-
-       //Eln2.LOGGER.info("Plotter draw nanoseconds: $drawNanoseconds, culls: $culled")
     }
 
     override fun keyPressed(pKeyCode: Int, pScanCode: Int, pModifiers: Int): Boolean {
@@ -195,15 +186,11 @@ class PlotterScreen(private val cells : ArrayList<CellInfo>, val solveTime : Lon
     }
 
     override fun mouseScrolled(pMouseX: Double, pMouseY: Double, pDelta: Double): Boolean {
-        val oldScale = scale
-
-        if(pDelta < 0){
+        if(pDelta < 0) {
             scale = max(0.2f, scale + pDelta.toFloat() / 20f)
-        }
-        else {
+        } else {
             scale += pDelta.toFloat() / 20f
         }
-
         return super.mouseScrolled(pMouseX, pMouseY, pDelta)
     }
 
