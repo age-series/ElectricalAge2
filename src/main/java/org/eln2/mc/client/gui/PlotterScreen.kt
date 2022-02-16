@@ -145,6 +145,13 @@ class PlotterScreen(private val cells : ArrayList<CellInfo>, val solveTime : Lon
             }
         }
 
+        /*
+        if(drawList.isNotEmpty()){
+            drawNanoseconds = measureNanoTime {
+                pPoseStack.blitMultiple(drawList)
+            }
+        }*/
+
         pPoseStack.popPose()
 
         if(toolTipCell!=null) {
@@ -177,6 +184,8 @@ class PlotterScreen(private val cells : ArrayList<CellInfo>, val solveTime : Lon
 
         GuiComponent.drawString(pPoseStack, font, textList.joinToString("    "), 5, height - 10, 0xFF0000)
         renderHeader(pPoseStack)
+
+       //Eln2.LOGGER.info("Plotter draw nanoseconds: $drawNanoseconds, culls: $culled")
     }
 
     override fun keyPressed(pKeyCode: Int, pScanCode: Int, pModifiers: Int): Boolean {
