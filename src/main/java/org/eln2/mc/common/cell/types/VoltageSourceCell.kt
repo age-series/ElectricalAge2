@@ -6,6 +6,8 @@ import org.ageseries.libage.sim.electrical.mna.component.VoltageSource
 import org.eln2.mc.common.cell.CellBase
 import org.eln2.mc.common.cell.ComponentInfo
 import org.eln2.mc.extensions.ComponentExtensions.connectToPinOf
+import org.eln2.mc.utility.UnitType
+import org.eln2.mc.utility.ValueText
 
 class VoltageSourceCell(pos : BlockPos) : CellBase(pos) {
 
@@ -53,6 +55,6 @@ class VoltageSourceCell(pos : BlockPos) : CellBase(pos) {
     private val neighbourToResistorLookup = HashMap<CellBase, Resistor>()
 
     override fun createDataPrint(): String {
-        return "I: ${source.current}, V: ${source.potential}"
+        return "${ValueText.valueText(source.potential, UnitType.VOLT)}, ${ValueText.valueText(source.current, UnitType.AMPERE)}"
     }
 }

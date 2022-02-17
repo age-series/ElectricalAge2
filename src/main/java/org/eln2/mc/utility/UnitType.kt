@@ -7,7 +7,7 @@ package org.eln2.mc.utility
  *
  * // https://www.britannica.com/science/International-System-of-Units
  */
-enum class UnitType(unit: String) {
+enum class UnitType(val unit: String) {
     METRE("m"),
     SECOND("s"),
     GRAM("g"),

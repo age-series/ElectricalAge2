@@ -5,6 +5,8 @@ import org.ageseries.libage.sim.electrical.mna.component.Resistor
 import org.eln2.mc.common.cell.CellBase
 import org.eln2.mc.common.cell.ComponentInfo
 import org.eln2.mc.extensions.ComponentExtensions.connectToPinOf
+import org.eln2.mc.utility.UnitType
+import org.eln2.mc.utility.ValueText.valueText
 
 class ResistorCell(pos : BlockPos) : CellBase(pos) {
     lateinit var resistor : Resistor
@@ -34,6 +36,6 @@ class ResistorCell(pos : BlockPos) : CellBase(pos) {
     }
 
     override fun createDataPrint(): String {
-        return "I: ${resistor.current} R: ${resistor.resistance}"
+        return "${valueText(resistor.current, UnitType.AMPERE)} ${valueText(resistor.resistance, UnitType.OHM)}"
     }
 }

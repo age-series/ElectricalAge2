@@ -155,7 +155,7 @@ class PlotterScreen(private val cells : ArrayList<CellInfo>, val solveTime : Lon
         pPoseStack.popPose()
 
         if(toolTipCell!=null) {
-            drawCenteredString(pPoseStack, font, toolTipCell!!.info, pMouseX, pMouseY, (0xC9365A7Fu).toInt())
+            drawCenteredString(pPoseStack, font, toolTipCell!!.info, pMouseX, pMouseY, (0xFFFFFFFF).toInt())
         }
 
         val block = try {

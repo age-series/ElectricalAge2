@@ -5,6 +5,8 @@ import org.ageseries.libage.sim.electrical.mna.component.Resistor
 import org.eln2.mc.common.cell.CellBase
 import org.eln2.mc.common.cell.ComponentInfo
 import org.eln2.mc.extensions.ComponentExtensions.connectToPinOf
+import org.eln2.mc.utility.UnitType
+import org.eln2.mc.utility.ValueText.valueText
 
 class WireCell(pos : BlockPos) : CellBase(pos) {
     /*  R -> local resistors. Their first pins are interconnected.
@@ -49,6 +51,6 @@ class WireCell(pos : BlockPos) : CellBase(pos) {
     //todo: bogus
     override fun createDataPrint(): String {
         val current = connections.sumOf { (componentForNeighbour(it).component as Resistor).current }
-        return "I: $current"
+        return valueText(current, UnitType.AMPERE)
     }
 }
