@@ -237,21 +237,20 @@ class CellTileEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Blo
     */
     @In(Side.LogicalServer)
     private fun areAllPartOfSameCircuit(tiles : List<CellTileEntity>) : Boolean {
-        if(tiles.count() == 1){
-            return true
-        }
+        if (tiles.count() != 1) {
+            val first = tiles[0]
+            var result = true
 
-        val first = tiles[0]
-        var result = true
-
-        tiles.drop(1).forEach {
-            if(first.cell.graph.id != it.cell.graph.id){
-                result = false
-                return@forEach
+            tiles.drop(1).forEach {
+                if(first.cell.graph.id != it.cell.graph.id){
+                    result = false
+                    return@forEach
+                }
             }
-        }
 
-        return result
+            return result
+        }
+        return true
     }
 
     /**
@@ -368,27 +367,25 @@ class CellTileEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Blo
     */
     @In(Side.LogicalServer)
     private fun getAdjacentCellTilesFast() : ArrayList<CellTileEntity>{
-        if(!adjacentUpdateRequired && neighbourCache != null){
-            return neighbourCache!!
-        }
+        return if (adjacentUpdateRequired || neighbourCache == null) {
+            adjacentUpdateRequired = false
 
-        adjacentUpdateRequired = false
+            val nodes = ArrayList<CellTileEntity>()
 
-        val nodes = ArrayList<CellTileEntity>()
-
-        fun getAndAdd(dir : Direction) {
-            val node = getAdjacentTile(dir)
-            if(node != null && node.canConnectFrom(this, dir)){
-                nodes.add(node)
+            fun getAndAdd(dir : Direction) {
+                val node = getAdjacentTile(dir)
+                if(node != null && node.canConnectFrom(this, dir)){
+                    nodes.add(node)
+                }
             }
-        }
 
-        getAndAdd(Direction.NORTH)
-        getAndAdd(Direction.SOUTH)
-        getAndAdd(Direction.EAST)
-        getAndAdd(Direction.WEST)
+            getAndAdd(Direction.NORTH)
+            getAndAdd(Direction.SOUTH)
+            getAndAdd(Direction.EAST)
+            getAndAdd(Direction.WEST)
 
-        return nodes
+            nodes
+        } else neighbourCache!!
     }
 
     /**
@@ -419,11 +416,11 @@ class CellTileEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Blo
     }
 
     override fun saveAdditional(pTag: CompoundTag) {
-        if(!cell.hasGraph()){
+        if (cell.hasGraph()) {
+            pTag.putString("GraphID", cell.graph.id.toString())
+        } else {
             Eln2.LOGGER.info("save additional: graph null")
-            return
         }
-        pTag.putString("GraphID", cell.graph.id.toString())
     }
 
     // remark: when the load method is called, the level is null.
@@ -437,61 +434,50 @@ class CellTileEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Blo
     override fun load(pTag: CompoundTag) {
         super.load(pTag)
 
-        if(!pTag.contains("GraphID")) {
-            return
+        if (pTag.contains("GraphID")) {
+            loadGraphId = UUID.fromString(pTag.getString("GraphID"))!!
+            Eln2.LOGGER.info("tile load $pos")
+            // warning! level is not available at this stage!
+            // we override setLevel in order to load the rest of the data.
         }
-
-        loadGraphId = UUID.fromString(pTag.getString("GraphID"))!!
-        Eln2.LOGGER.info("tile load $pos")
-        // warning! level is not available at this stage!
-        // we override setLevel in order to load the rest of the data.
     }
 
     override fun onChunkUnloaded() {
         super.onChunkUnloaded()
 
-        if(level!!.isClientSide) {
-            return
+        if (!level!!.isClientSide) {
+            cell.tileUnloaded()
+
+            // GC reference tracking
+            cell.tile = null
         }
-
-        cell.tileUnloaded()
-
-        // GC reference tracking
-        cell.tile = null
     }
 
     override fun setLevel(pLevel: Level) {
         super.setLevel(pLevel)
 
-        if(level!!.isClientSide){
-            // we only load for the server.
-            return
-        }
+        if (!level!!.isClientSide) {
+            manager = CellGraphManager.getFor(serverLevel)
 
-        // level is now not null
+            if (this::loadGraphId.isInitialized && manager.containsGraphWithId(loadGraphId)) {
+                // fetch graph with ID
+                val graph = manager.getGraphWithId(loadGraphId)
 
-        manager = CellGraphManager.getFor(serverLevel)
+                // fetch cell instance
+                cell = graph.getCellAt(pos)
+                cell.tile = this
+                cell.tileLoaded()
 
-        if(!this::loadGraphId.isInitialized || !manager.containsGraphWithId(loadGraphId)) {
-            return
-        }
+                // fetch provider
+                val provider = CellRegistry.registry.getValue(cell.id)!!
 
-        // fetch graph with ID
-        val graph = manager.getGraphWithId(loadGraphId)
+                val absolute = blockState.getValue(HorizontalDirectionalBlock.FACING)
+                val placeDir = PlacementRotation(absolute)
 
-        // fetch cell instance
-        cell = graph.getCellAt(pos)
-        cell.tile = this
-        cell.tileLoaded()
-
-        // fetch provider
-        val provider = CellRegistry.registry.getValue(cell.id)!!
-
-        val absolute = blockState.getValue(HorizontalDirectionalBlock.FACING)
-        val placeDir = PlacementRotation(absolute)
-
-        connectPredicate = {
-            connectionPredicate(placeDir, absolute, provider)
+                connectPredicate = {
+                    connectionPredicate(placeDir, absolute, provider)
+                }
+            }
         }
     }
 }

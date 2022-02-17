@@ -25,7 +25,6 @@ class CellGraphManager(val level : Level) : SavedData() {
 
     fun addGraph(graph : CellGraph) {
         graphs[graph.id] = graph
-        //_logger.info("Added graph ${graph.id}!")
         setDirty()
     }
 
