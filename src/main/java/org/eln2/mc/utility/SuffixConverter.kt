@@ -1,25 +1,46 @@
 package org.eln2.mc.utility
 
 import java.math.BigDecimal
+import kotlin.math.floor
 import kotlin.math.ln
+import kotlin.math.log10
 
 object SuffixConverter {
-    // Fixme
-    fun convert(value : Long, decimalPlaces : Int, suffixes: Array<String>, unitSize : Int) : String
-    {
-        if (decimalPlaces < 0) throw Exception("decimal places must be larger than -1")
-        if (value < 0) return "-" + convert(-value, decimalPlaces, suffixes, unitSize);
-        if (value == 0L) { return "0.${"0".repeat(decimalPlaces)} ${suffixes[0]}" }
+    private val prefixes = mapOf(
+        -24 to "y",
+        -21 to "z",
+        -18 to "a",
+        -15 to "f",
+        -12 to "p",
+        -9 to "n",
+        -6 to "μ",
+        -3 to "m",
+        0 to "",
+        3 to "k",
+        6 to "M",
+        9 to "G",
+        12 to "T",
+        15 to "P",
+        18 to "E",
+        21 to "Z",
+        24 to "Y"
+    )
 
-        var magnitude = (ln(value.toDouble()) / ln(unitSize.toDouble())).toInt()
+    fun convert(value: Double, unit: String, precision: Int): String {
+        var mag = floor(log10(value)).toInt()
 
-        var adjustedSize = (value / (1L shl (magnitude * 10))).toBigDecimal()
-
-        if (adjustedSize.setScale(decimalPlaces).toLong() >= 1000) {
-            magnitude += 1
-            adjustedSize /= BigDecimal(1024)
+        while (mag % 3 != 0) {
+            mag--
         }
 
-        return "${adjustedSize.setScale(decimalPlaces)} ${suffixes[magnitude]}"
+        if (mag < -24) {
+            mag = -24
+        } else if (mag > 24) {
+            mag = 24
+        }
+
+        val converted = value / Math.pow(10.0, mag.toDouble())
+        return "%.${precision}f ${prefixes[mag]}$unit".format(converted)
     }
+
 }

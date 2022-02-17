@@ -1,4 +1,4 @@
-package org.eln2.mc.common.blocks
+package org.eln2.mc.common.blocks.cell
 
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
@@ -20,9 +20,10 @@ import net.minecraft.world.level.material.FluidState
 import net.minecraft.world.level.material.Material
 import org.eln2.mc.common.In
 import org.eln2.mc.common.Side
+import org.eln2.mc.common.blocks.CellBlockEntity
 import org.eln2.mc.common.cell.CellRegistry
 
-abstract class CellBlockBase : HorizontalDirectionalBlock(Properties.of(Material.STONE)), EntityBlock {
+abstract class AbstractCellBlock : HorizontalDirectionalBlock(Properties.of(Material.STONE)), EntityBlock {
     init {
         @Suppress("LeakingThis")
         registerDefaultState(getStateDefinition().any().setValue(FACING, Direction.NORTH))
@@ -44,7 +45,7 @@ abstract class CellBlockBase : HorizontalDirectionalBlock(Properties.of(Material
         entity : LivingEntity?,
         itemStack : ItemStack
     ) {
-        val cellEntity = level.getBlockEntity(pos)!! as CellTileEntity
+        val cellEntity = level.getBlockEntity(pos)!! as CellBlockEntity
         cellEntity.setPlacedBy(level, pos, blockState, entity, itemStack, CellRegistry.registry.getValue(getCellProvider())?: throw Exception("Unable to get cell provider"))
     }
 
@@ -70,12 +71,12 @@ abstract class CellBlockBase : HorizontalDirectionalBlock(Properties.of(Material
         if(level.isClientSide){
             return
         }
-        val cellEntity = level.getBlockEntity(pos)!! as CellTileEntity
+        val cellEntity = level.getBlockEntity(pos)!! as CellBlockEntity
         cellEntity.setDestroyed()
     }
 
     override fun newBlockEntity(pPos: BlockPos, pState: BlockState): BlockEntity? {
-        return CellTileEntity(pPos, pState)
+        return CellBlockEntity(pPos, pState)
     }
 
     @In(Side.LogicalServer)
@@ -83,7 +84,7 @@ abstract class CellBlockBase : HorizontalDirectionalBlock(Properties.of(Material
         if(world?.isClientSide?: throw Exception("World was null")) {
             return
         }
-        val cellEntity = world.getBlockEntity(pos?: throw Exception("Position was null")) as CellTileEntity
+        val cellEntity = world.getBlockEntity(pos?: throw Exception("Position was null")) as CellBlockEntity
         cellEntity.neighbourUpdated(neighbor?: throw Exception("Neighbor location is null"))
     }
 

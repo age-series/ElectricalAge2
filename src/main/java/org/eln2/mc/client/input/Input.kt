@@ -12,14 +12,14 @@ import net.minecraftforge.client.settings.KeyConflictContext
 import net.minecraftforge.eventbus.api.SubscribeEvent
 import net.minecraftforge.fml.common.Mod
 import org.eln2.mc.common.Networking
-import org.eln2.mc.common.blocks.CellBlockBase
+import org.eln2.mc.common.blocks.cell.AbstractCellBlock
 import org.eln2.mc.common.packets.clientToServer.CircuitExplorerOpenPacket
 import org.lwjgl.glfw.GLFW
 
 @Mod.EventBusSubscriber(bus = Mod.EventBusSubscriber.Bus.FORGE, value = [Dist.CLIENT])
 object Input {
     private val OPEN_CIRCUIT_PLOTTER = KeyMapping(
-        "Open circuit plotter",
+        "Open Circuit Explorer",
         KeyConflictContext.IN_GAME,
         InputConstants.Type.KEYSYM,
         InputConstants.KEY_P,
@@ -43,7 +43,7 @@ object Input {
             return
 
         val blockHit = pickResult as BlockHitResult
-        if(player.level.getBlockState(blockHit.blockPos).block !is CellBlockBase)
+        if(player.level.getBlockState(blockHit.blockPos).block !is AbstractCellBlock)
             return
 
         Networking.sendToServer(CircuitExplorerOpenPacket())

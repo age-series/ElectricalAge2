@@ -12,8 +12,8 @@ import java.util.*
 import kotlin.system.measureNanoTime
 
 class CellGraph(val id : UUID, val manager : CellGraphManager) {
-    val cells = ArrayList<CellBase>()
-    private val posCells = HashMap<BlockPos, CellBase>()
+    val cells = ArrayList<AbstractCell>()
+    private val posCells = HashMap<BlockPos, AbstractCell>()
 
     lateinit var circuit : Circuit
     val hasCircuit get() = this::circuit.isInitialized
@@ -35,28 +35,33 @@ class CellGraph(val id : UUID, val manager : CellGraphManager) {
     fun build() {
         circuit = Circuit()
 
-        cells.forEach{ cell ->
-            cell.clearForRebuild()
+        val clearNanos = measureNanoTime {
+            cells.forEach{ cell ->
+                cell.clearForRebuild()
+            }
         }
 
-        cells.forEach { cell ->
-            cell.buildConnections()
+        val buildNanos = measureNanoTime {
+            cells.forEach { cell ->
+                cell.buildConnections()
+            }
         }
 
-        Eln2.LOGGER.info("Built circuit! component count: ${circuit.components.count()}, graph cell count: ${cells.count()}")
+
+        Eln2.LOGGER.info("Built circuit! component count: ${circuit.components.count()}, graph cell count: ${cells.count()}. Clear ns: $clearNanos, build ns: $buildNanos, total ns: ${clearNanos + buildNanos}")
     }
 
-    fun getCellAt(pos: BlockPos): CellBase {
+    fun getCellAt(pos: BlockPos): AbstractCell {
         return posCells[pos] ?: throw Exception("Could not find cell at $pos!")
     }
 
-    fun removeCell(cell : CellBase) {
+    fun removeCell(cell : AbstractCell) {
         cells.remove(cell)
         posCells.remove(cell.pos)
         manager.setDirty()
     }
 
-    fun addCell(cell : CellBase) {
+    fun addCell(cell : AbstractCell) {
         cells.add(cell)
         posCells[cell.pos] = cell
         manager.setDirty()
@@ -109,7 +114,7 @@ class CellGraph(val id : UUID, val manager : CellGraphManager) {
                 return result
 
             // used to assign the connections after all cells have been loaded
-            val cellConnections = HashMap<CellBase, ArrayList<BlockPos>>()
+            val cellConnections = HashMap<AbstractCell, ArrayList<BlockPos>>()
 
             cellListTag.forEach{ cellNbt ->
                 val cellCompound = cellNbt as CompoundTag

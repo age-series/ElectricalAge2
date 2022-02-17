@@ -3,11 +3,13 @@ package org.eln2.mc.common.cell.types
 import net.minecraft.core.BlockPos
 import org.eln2.libelectric.sim.electrical.mna.component.Resistor
 import org.eln2.libelectric.sim.electrical.mna.component.VoltageSource
-import org.eln2.mc.common.cell.CellBase
+import org.eln2.mc.common.cell.AbstractCell
 import org.eln2.mc.common.cell.ComponentInfo
 import org.eln2.mc.extensions.ComponentExtensions.connectToPinOf
+import org.eln2.mc.extensions.DataLabelBuilderExtensions.of
+import org.eln2.mc.utility.DataLabelBuilder
 
-class VoltageSourceCell(pos : BlockPos) : CellBase(pos) {
+class VoltageSourceCell(pos : BlockPos) : AbstractCell(pos) {
 
     /*  R -> local resistors. Their first pin is connected to the voltage source.
     *   C -> remote components. The second pin of the local resistors is used for them.
@@ -23,11 +25,11 @@ class VoltageSourceCell(pos : BlockPos) : CellBase(pos) {
 
     override fun clearForRebuild() {
         source = VoltageSource()
-        source.potential = 100.0
+        source.potential = 5.0
         neighbourToResistorLookup.clear()
     }
 
-    override fun componentForNeighbour(neighbour: CellBase): ComponentInfo {
+    override fun componentForNeighbour(neighbour: AbstractCell): ComponentInfo {
         val circuit = graph.circuit
 
         return ComponentInfo(neighbourToResistorLookup.computeIfAbsent(neighbour) {
@@ -50,9 +52,9 @@ class VoltageSourceCell(pos : BlockPos) : CellBase(pos) {
         }
     }
 
-    private val neighbourToResistorLookup = HashMap<CellBase, Resistor>()
+    private val neighbourToResistorLookup = HashMap<AbstractCell, Resistor>()
 
-    override fun createDataPrint(): String {
-        return "I: ${source.current}, V: ${source.potential}"
+    override fun createDataPrint(): DataLabelBuilder {
+        return DataLabelBuilder().of(source)
     }
 }

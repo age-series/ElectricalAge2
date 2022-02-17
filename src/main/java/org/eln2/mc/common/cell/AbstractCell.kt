@@ -5,15 +5,18 @@ import net.minecraft.resources.ResourceLocation
 import org.eln2.libelectric.sim.electrical.mna.component.Component
 import org.eln2.mc.common.In
 import org.eln2.mc.common.Side
-import org.eln2.mc.common.blocks.CellTileEntity
+import org.eln2.mc.common.blocks.CellBlockEntity
+import org.eln2.mc.utility.DataLabelBuilder
+import org.eln2.mc.utility.McColor
+import org.eln2.mc.utility.SuffixConverter
 
 class ComponentInfo(val component: Component, val index : Int)
 
-abstract class CellBase(val pos : BlockPos) {
+abstract class AbstractCell(val pos : BlockPos) {
     lateinit var id : ResourceLocation
     lateinit var graph: CellGraph
-    lateinit var connections : ArrayList<CellBase>
-    var tile : CellTileEntity? = null
+    lateinit var connections : ArrayList<AbstractCell>
+    var tile : CellBlockEntity? = null
 
     /**
      * Called when the tile entity is being unloaded.
@@ -60,8 +63,8 @@ abstract class CellBase(val pos : BlockPos) {
     /**
      * This method returns the text that will be displayed in the Circuit Explorer.
     */
-    open fun createDataPrint() : String{
-        return "N/A"
+    open fun createDataPrint() : DataLabelBuilder{
+        return DataLabelBuilder()
     }
 
     /**
@@ -71,8 +74,10 @@ abstract class CellBase(val pos : BlockPos) {
 
     /**
      * This method is used to return the component and the pin for a remote cell to connect to.
+     * @param neighbour The cell which will use the returned component information.
+     * @return A component and the pin neighbour needs to connect to.
     */
-    abstract fun componentForNeighbour(neighbour : CellBase) : ComponentInfo
+    abstract fun componentForNeighbour(neighbour : AbstractCell) : ComponentInfo
 
     /**
      * This method is called after each cell's clearForRebuild method has been called.

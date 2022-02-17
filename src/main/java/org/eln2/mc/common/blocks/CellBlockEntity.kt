@@ -18,13 +18,13 @@ import org.eln2.mc.common.cell.*
 import java.util.*
 import kotlin.system.measureNanoTime
 
-class CellTileEntity(var pos : BlockPos, var state: BlockState): BlockEntity(BlockRegistry.CELL_BLOCK_ENTITY.get(), pos, state) {
+class CellBlockEntity(var pos : BlockPos, var state: BlockState): BlockEntity(BlockRegistry.CELL_BLOCK_ENTITY.get(), pos, state) {
     private lateinit var manager : CellGraphManager
-    lateinit var cell : CellBase
+    lateinit var cell : AbstractCell
 
     private val serverLevel get() = level as ServerLevel
     private var adjacentUpdateRequired = true
-    private var neighbourCache : ArrayList<CellTileEntity>? = null
+    private var neighbourCache : ArrayList<CellBlockEntity>? = null
     private lateinit var connectPredicate : ((dir : Direction) -> Boolean)
 
     /**
@@ -63,11 +63,6 @@ class CellTileEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Blo
         cell.id = cellProvider.registryName!!
 
         val placeDir = PlacementRotation (state.getValue(HorizontalDirectionalBlock.FACING))
-
-        Eln2.LOGGER.info("north <-> ${placeDir.getRelativeFromAbsolute(Direction.NORTH)}")
-        Eln2.LOGGER.info("south <-> ${placeDir.getRelativeFromAbsolute(Direction.SOUTH)}")
-        Eln2.LOGGER.info("east  <-> ${placeDir.getRelativeFromAbsolute(Direction.EAST)}")
-        Eln2.LOGGER.info("west  <-> ${placeDir.getRelativeFromAbsolute(Direction.WEST)}")
 
         connectPredicate = {
             connectionPredicate(placeDir, it, cellProvider)
@@ -114,11 +109,11 @@ class CellTileEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Blo
             return
         }
 
-        fun isVisited(c : CellBase) : Boolean{
+        fun isVisited(c : AbstractCell) : Boolean{
             return c.graph != cell.graph
         }
 
-        val queue = LinkedList<CellBase>()
+        val queue = LinkedList<AbstractCell>()
         val nanoTime = measureNanoTime {
 
             adjacentTiles.forEach{
@@ -224,7 +219,7 @@ class CellTileEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Blo
     */
     // TODO: Do we want this still?
     @In(Side.LogicalServer)
-    private fun setCellConnectionsToAdjacentButExclude(exclude : CellBase){
+    private fun setCellConnectionsToAdjacentButExclude(exclude : AbstractCell){
         val adjacent = getAdjacentCellsFast()
         adjacent.remove(exclude)
         cell.connections = adjacent
@@ -236,7 +231,7 @@ class CellTileEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Blo
      * @return True if the tiles are part of the same circuit. Otherwise, false.
     */
     @In(Side.LogicalServer)
-    private fun areAllPartOfSameCircuit(tiles : List<CellTileEntity>) : Boolean {
+    private fun areAllPartOfSameCircuit(tiles : List<CellBlockEntity>) : Boolean {
         if(tiles.count() == 1){
             return true
         }
@@ -259,7 +254,7 @@ class CellTileEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Blo
      * @param adjacent The adjacent entity whose circuit we will add our cell to.
     */
     @In(Side.LogicalServer)
-    private fun addUsTo(adjacent: CellTileEntity) {
+    private fun addUsTo(adjacent: CellBlockEntity) {
         val remoteGraph = adjacent.cell.graph
 
         // add ourselves to it
@@ -275,7 +270,7 @@ class CellTileEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Blo
      * @param adjacent The adjacent tiles to us.
     */
     @In(Side.LogicalServer)
-    private fun concatenateCircuitAndAddUs(adjacent : ArrayList<CellTileEntity>){
+    private fun concatenateCircuitAndAddUs(adjacent : ArrayList<CellBlockEntity>){
         // create a new circuit that contains all cells
 
         val newCircuit = CellGraph(UUID.randomUUID(), manager)
@@ -348,10 +343,10 @@ class CellTileEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Blo
      * @return A new array, containing the adjacent cells.
     */
     @In(Side.LogicalServer)
-    private fun getAdjacentCellsFast() : ArrayList<CellBase> {
+    private fun getAdjacentCellsFast() : ArrayList<AbstractCell> {
         val adjacent = getAdjacentCellTilesFast()
 
-        val result = ArrayList<CellBase>(adjacent.count())
+        val result = ArrayList<AbstractCell>(adjacent.count())
 
         adjacent.forEach {
             result.add(it.cell)
@@ -367,14 +362,14 @@ class CellTileEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Blo
      * @see adjacentUpdateRequired
     */
     @In(Side.LogicalServer)
-    private fun getAdjacentCellTilesFast() : ArrayList<CellTileEntity>{
+    private fun getAdjacentCellTilesFast() : ArrayList<CellBlockEntity>{
         if(!adjacentUpdateRequired && neighbourCache != null){
             return neighbourCache!!
         }
 
         adjacentUpdateRequired = false
 
-        val nodes = ArrayList<CellTileEntity>()
+        val nodes = ArrayList<CellBlockEntity>()
 
         fun getAndAdd(dir : Direction) {
             val node = getAdjacentTile(dir)
@@ -397,12 +392,12 @@ class CellTileEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Blo
      * @return The tile if found, or null if there is no tile at that position.
     */
     @In(Side.LogicalServer)
-    private fun getAdjacentTile(dir : Direction) : CellTileEntity?{
+    private fun getAdjacentTile(dir : Direction) : CellBlockEntity?{
         val level = getLevel()!!
         val remotePos = pos.relative(dir)
         val remoteEnt = level.getBlockEntity(remotePos)
 
-        return remoteEnt as CellTileEntity?
+        return remoteEnt as CellBlockEntity?
     }
 
     /**
@@ -413,7 +408,7 @@ class CellTileEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Blo
     */
     @Suppress("UNUSED_PARAMETER") // Will very likely be needed later and helps to know the name of the args.
     @In(Side.LogicalServer)
-    private fun canConnectFrom(entity : CellTileEntity, dir : Direction) : Boolean {
+    private fun canConnectFrom(entity : CellBlockEntity, dir : Direction) : Boolean {
         return connectPredicate(dir.opposite)
 
     }

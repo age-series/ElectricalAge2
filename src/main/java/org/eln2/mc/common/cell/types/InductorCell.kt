@@ -1,20 +1,21 @@
 package org.eln2.mc.common.cell.types
 
 import net.minecraft.core.BlockPos
-import org.eln2.libelectric.sim.electrical.mna.component.Resistor
+import org.eln2.libelectric.sim.electrical.mna.component.Inductor
 import org.eln2.mc.common.cell.AbstractCell
 import org.eln2.mc.common.cell.ComponentInfo
 import org.eln2.mc.extensions.ComponentExtensions.connectToPinOf
 import org.eln2.mc.extensions.DataLabelBuilderExtensions.of
 import org.eln2.mc.utility.DataLabelBuilder
+import org.eln2.mc.utility.McColor
+import org.eln2.mc.utility.McColors
 
-class ResistorCell(pos : BlockPos) : AbstractCell(pos) {
-    lateinit var resistor : Resistor
+class InductorCell(pos : BlockPos) : AbstractCell(pos) {
+    lateinit var inductor : Inductor
     var added = false
 
     override fun clearForRebuild() {
-        resistor = Resistor()
-        resistor.resistance = 100.0
+        inductor = Inductor()
         added = false
     }
 
@@ -22,11 +23,13 @@ class ResistorCell(pos : BlockPos) : AbstractCell(pos) {
         val circuit = graph.circuit
 
         if(!added) {
-            circuit.add(resistor)
+            circuit.add(inductor)
             added = true
         }
 
-        return ComponentInfo(resistor, connections.indexOf(neighbour))
+        inductor.inductance = 0.1
+
+        return ComponentInfo(inductor, connections.indexOf(neighbour))
     }
 
     override fun buildConnections() {
@@ -37,6 +40,6 @@ class ResistorCell(pos : BlockPos) : AbstractCell(pos) {
     }
 
     override fun createDataPrint(): DataLabelBuilder {
-        return DataLabelBuilder().of(resistor)
+        return DataLabelBuilder().of(inductor)
     }
 }

@@ -12,9 +12,9 @@ import java.util.function.Supplier
 
 class CircuitExplorerContextPacket() {
     lateinit var cells : ArrayList<CellInfo>
+
     var nanoTime : Long = 0L
-        get() = field
-        private set(value : Long) { field = value }
+        private set
 
     constructor(buffer : FriendlyByteBuf) : this(){
         val count = buffer.readInt()

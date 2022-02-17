@@ -19,12 +19,4 @@ object CommonEvents {
             }
         }
     }
-
-    @SubscribeEvent
-    fun onChat(event : ServerChatEvent){
-        Eln2.LOGGER.info("Chat: ${event.message}")
-        if(event.message == "build"){
-            CellGraphManager.getFor(event.player.level as ServerLevel).graphs.values.forEach{ it.build() }
-        }
-    }
 }

@@ -2,7 +2,6 @@ package org.eln2.mc.client.gui
 
 import com.mojang.blaze3d.systems.RenderSystem
 import com.mojang.blaze3d.vertex.PoseStack
-import net.minecraft.client.gui.GuiComponent
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.renderer.GameRenderer
 import net.minecraft.client.resources.language.I18n.get
@@ -11,21 +10,27 @@ import net.minecraft.network.FriendlyByteBuf
 import net.minecraft.network.chat.TextComponent
 import net.minecraft.network.chat.TranslatableComponent
 import net.minecraft.resources.ResourceLocation
+import net.minecraft.world.level.block.Block
 import org.eln2.mc.Eln2
 import org.eln2.mc.common.blocks.BlockRegistry
 import org.eln2.mc.common.cell.CellRegistry
+import org.eln2.mc.extensions.ByteBufferExtensions.readDataLabelBuilder
 import org.eln2.mc.extensions.ByteBufferExtensions.readString
+import org.eln2.mc.extensions.ByteBufferExtensions.writeDataLabelBuilder
 import org.eln2.mc.extensions.ByteBufferExtensions.writeString
-import org.eln2.mc.extensions.PoseStackExtensions
+import org.eln2.mc.utility.DataLabelBuilder
+import org.eln2.mc.utility.McColor
+import org.eln2.mc.utility.SuffixConverter
 import kotlin.math.max
-import kotlin.system.measureNanoTime
+import kotlin.math.min
 
-class CellInfo(val type : String, val info : String, val pos : BlockPos){
-    constructor(buffer : FriendlyByteBuf) : this(buffer.readString(), buffer.readString(), buffer.readBlockPos())
+class CellInfo(val type : String, val label : DataLabelBuilder, val pos : BlockPos){
+    constructor(buffer : FriendlyByteBuf) :
+        this(buffer.readString(), buffer.readDataLabelBuilder(), buffer.readBlockPos())
 
     fun serialize(buffer : FriendlyByteBuf){
         buffer.writeString(type)
-        buffer.writeString(info)
+        buffer.writeDataLabelBuilder(label)
         buffer.writeBlockPos(pos)
     }
 }
@@ -36,43 +41,29 @@ class PlotterScreen(private val cells : ArrayList<CellInfo>, val solveTime : Lon
     private var posY = 0.0
 
     override fun init() {
-        prepare()
+        prepareCells()
     }
 
-    private val blueprintTex = ResourceLocation(Eln2.MODID, "textures/gui/blueprint_tile.png")
+    private fun renderGridBackground(poseStack: PoseStack){
+        fill(poseStack, 0, 0, width, height, McColor(43u, 43u, 43u).value)
 
-    private fun renderBlueprintBackground(poseStack: PoseStack) {
-        RenderSystem.setShader { GameRenderer.getPositionTexShader() }
-        RenderSystem.setShaderTexture(0, blueprintTex)
-        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f)
+        val size = (texSize * scale).toInt()
 
-        val texSize = 144
-        val targetSize = 144 / 4
+        val color = McColor(60u, 60u, 60u).value
 
-        poseStack.pushPose()
-        val scale = targetSize / texSize.toFloat()
-        val multiplier = texSize / targetSize
+        val cornerX = ((posX * scale) % size).toInt()
+        val cornerY = ((posY * scale) % size).toInt()
 
-        poseStack.scale(scale, scale, scale)
-        for(x in 0..width * multiplier step targetSize){
-            for(y in 0..height * multiplier step targetSize){
-                blit(poseStack, x, y, 0f, 0f, texSize, texSize, texSize, texSize)
-            }
-        }
-
-
-        poseStack.popPose()
+        for(x in cornerX - size..width step size) vLine(poseStack, x, 0, height, color)
+        for(y in cornerY - size..width step size) hLine(poseStack, 0, width, y, color)
     }
 
-    private fun renderHeader(poseStack: PoseStack){
-        drawCenteredString(poseStack, font, "Solve time: $solveTime",width / 2 , 1, 0xFFFFFF)
-    }
-
+    // the size of the cell icon textures
     private val texSize = 32
 
     private val cellInfoCollection = ArrayList<CellInfo>()
 
-    private fun prepare() {
+    private fun prepareCells() {
         val minX = cells.minOf { it.pos.x }
         val minY = cells.minOf { it.pos.z }
         val offX = if(minX < 0) kotlin.math.abs(minX) else -minX
@@ -86,15 +77,31 @@ class PlotterScreen(private val cells : ArrayList<CellInfo>, val solveTime : Lon
             val x = baseX * texSize + width / 100
             val y = baseY * texSize + width / 100
 
-            cellInfoCollection.add(CellInfo(cellInfo.type, cellInfo.info, BlockPos(x, y, 0)))
+            cellInfoCollection.add(CellInfo(cellInfo.type, cellInfo.label, BlockPos(x, y, 0)))
+        }
+
+        // perf: less texture switches
+        cellInfoCollection.sortBy { it.type }
+    }
+
+    private fun blockFor(id : String) : Block{
+        return try {
+            BlockRegistry.BLOCK_REGISTRY.entries.first {
+                it.id.path == id.split(':')[1]
+            }.get()
+        } catch (e: Exception) {
+            throw Exception("Fatal error! Mismatched block ID and cell ID!")
         }
     }
 
-    override fun render(pPoseStack: PoseStack, pMouseX: Int, pMouseY: Int, pPartialTick: Float) {
-        val drawList = ArrayList<PoseStackExtensions.Union4i>()
-        renderBlueprintBackground(pPoseStack)
+    private val highlightAnimationSpeed = 1.2f // pixels per unit of time
+    private var previousCell : CellInfo? = null
+    private var highlightAnimationProgress = 0f
+    private val highlightAnimationFirstColor = McColor(255u, 150u, 40u, 200u).value
+    private val highlightAnimationSecondColor = McColor(50u, 100u, 140u, 50u).value
 
-        RenderSystem.setShader { GameRenderer.getPositionTexShader() }
+    override fun render(pPoseStack: PoseStack, pMouseX: Int, pMouseY: Int, pPartialTick: Float) {
+        renderGridBackground(pPoseStack)
 
         pPoseStack.pushPose()
 
@@ -104,9 +111,6 @@ class PlotterScreen(private val cells : ArrayList<CellInfo>, val solveTime : Lon
         var toolTipCell : CellInfo? = null
         var latestTypeTex = ""
 
-        var drawNanoseconds = 0L
-        var culled = 0
-
         cellInfoCollection.forEach {
             val xMin = (it.pos.x + posX) * scale
             val yMin = (it.pos.y + posY) * scale
@@ -115,7 +119,6 @@ class PlotterScreen(private val cells : ArrayList<CellInfo>, val solveTime : Lon
 
             // perf: culling
             if(xMax < 0 || yMax < 0 || xMin > width || yMin > height){
-                ++culled
                 return@forEach
             }
 
@@ -129,74 +132,105 @@ class PlotterScreen(private val cells : ArrayList<CellInfo>, val solveTime : Lon
 
                 latestTypeTex = it.type
 
-                RenderSystem.setShaderTexture(0, texLocation)
+                RenderSystem.setShader { GameRenderer.getPositionTexShader() }
                 RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f)
+                RenderSystem.setShaderTexture(0, texLocation)
             }
 
-            drawNanoseconds += measureNanoTime {
-                blit(pPoseStack, it.pos.x, it.pos.y, 0f, 0f, texSize, texSize, texSize, texSize)
-            }
-
-            drawList.add(PoseStackExtensions.Union4i(it.pos.x, it.pos.y, texSize, texSize))
+            blit(pPoseStack, it.pos.x, it.pos.y, blitOffset, 0f, 0f, texSize, texSize, texSize, texSize)
 
             // check if the mouse is hovering over the cell
             if(pMouseY > yMin && pMouseY < yMax && pMouseX > xMin && pMouseX < xMax) {
                 toolTipCell = it
+
+                if(previousCell != toolTipCell) {
+                    highlightAnimationProgress = 0f
+                }
+
+                previousCell = toolTipCell
+
+                highlightAnimationProgress = min(32f, pPartialTick * highlightAnimationSpeed + highlightAnimationProgress)
+                val animationHeight = (it.pos.y + highlightAnimationProgress).toInt()
+
+                fillGradient(
+                    pPoseStack,
+                    it.pos.x,
+                    it.pos.y,
+                    it.pos.x + texSize,
+                    animationHeight,
+                    highlightAnimationFirstColor, highlightAnimationSecondColor)
             }
         }
-
-        /*
-        if(drawList.isNotEmpty()){
-            drawNanoseconds = measureNanoTime {
-                pPoseStack.blitMultiple(drawList)
-            }
-        }*/
 
         pPoseStack.popPose()
 
         if(toolTipCell!=null) {
-            drawCenteredString(pPoseStack, font, toolTipCell!!.info, pMouseX, pMouseY, (0xC9365A7Fu).toInt())
+            drawInfoCard(pPoseStack, pMouseX, pMouseY, toolTipCell!!)
         }
 
-        val block = try {
-            BlockRegistry.BLOCK_REGISTRY.entries.first {
-                it.id.path == toolTipCell?.type?.split(':')?.get(1)
-            }.get()
-        } catch (e: Exception) {
-            // There's no name, and we're just going to catch instead of doing logic to figure arrays..
-            // TODO: Actually write decent code here if we care?
-            null
+        // finally, render the header and footer on top of everything
+        renderHeader(pPoseStack)
+        renderFooter(pPoseStack, toolTipCell)
+    }
+
+    private fun drawInfoCard(poseStack: PoseStack, mouseX : Int, mouseY : Int, cell : CellInfo){
+        val data = cell.label
+
+        val marginX = 2
+        val marginY = 2
+
+        val width = data.entries.maxOf { font.width("${it.label}: ${it.value}") } + marginX * 2
+        val height = data.entries.count() * font.lineHeight + marginY * 2
+
+        // generate background
+        fill(poseStack, mouseX, mouseY, mouseX + width, mouseY + height, McColor(70u, 72u, 74u).value)
+
+        data.entries.forEachIndexed { index, entry ->
+            val vertical = index * font.lineHeight
+            drawString(poseStack, font, "${entry.label}: ${entry.value}", mouseX + marginX, mouseY + vertical + marginY, entry.color.value)
         }
 
-        val localizedName = if (block != null) {
-            get(block.descriptionId)
-        } else {
-            toolTipCell?.type
-        }
+        // draw the outline
+        val outlineColor = McColor(86u, 86u, 86u).value
 
-        val textList = mutableListOf<String>()
+        hLine(poseStack, mouseX, mouseX + width, mouseY, outlineColor)
+        hLine(poseStack, mouseX, mouseX + width, mouseY + height, outlineColor)
+        vLine(poseStack, mouseX, mouseY, mouseY + height, outlineColor)
+        vLine(poseStack, mouseX + width, mouseY, mouseY + height, outlineColor)
+    }
 
-        textList.add("${get(TranslatableComponent("plotter.cell_count").key)}: ${cells.count()}")
+    private fun renderHeader(poseStack: PoseStack){
+        val h = 20
+        fill(poseStack, 0, 0, width, h, McColor(60u, 63u, 65u, 150u).value)
+        drawString(poseStack, font, "Solve time: ${SuffixConverter.convert(
+            solveTime.toDouble() / 1000000000.0,
+            "s",
+            2,
+        )}",2 , 6, McColor(255u, 255u, 200u, 200u).value)
+    }
+
+    private fun renderFooter(poseStack: PoseStack, toolTipCell : CellInfo?){
+        val localizedName =
+            if (toolTipCell != null) get(blockFor(toolTipCell.type).descriptionId)
+            else toolTipCell?.type
+
+        val sb = StringBuilder()
+
+        sb.append("${get(TranslatableComponent("plotter.cell_count").key)}: ${cells.count()}")
+
+        sb.append("     ")
 
         if (localizedName != null) {
-            textList.add("${get(TranslatableComponent("plotter.highlighted").key)}: $localizedName")
+            sb.append("${get(TranslatableComponent("plotter.highlighted").key)}: $localizedName")
         }
 
-        GuiComponent.drawString(pPoseStack, font, textList.joinToString("    "), 5, height - 10, 0xFF0000)
-        renderHeader(pPoseStack)
-
-       //Eln2.LOGGER.info("Plotter draw nanoseconds: $drawNanoseconds, culls: $culled")
+        val h = 20
+        fill(poseStack, 0, height - h, width, height, McColor(60u, 63u, 65u, 100u).value)
+        drawString(poseStack, font, sb.toString(),2 , height - h + 6, McColor(255u, 255u, 200u, 100u).value)
     }
 
-    override fun keyPressed(pKeyCode: Int, pScanCode: Int, pModifiers: Int): Boolean {
-        Eln2.LOGGER.info("keycode: $blueprintTex scan: $pScanCode mod: $pModifiers")
-
-        return super.keyPressed(pKeyCode, pScanCode, pModifiers)
-    }
-
+    // zoom
     override fun mouseScrolled(pMouseX: Double, pMouseY: Double, pDelta: Double): Boolean {
-        val oldScale = scale
-
         if(pDelta < 0){
             scale = max(0.2f, scale + pDelta.toFloat() / 20f)
         }
@@ -207,6 +241,7 @@ class PlotterScreen(private val cells : ArrayList<CellInfo>, val solveTime : Lon
         return super.mouseScrolled(pMouseX, pMouseY, pDelta)
     }
 
+    // pan
     override fun mouseDragged(pMouseX: Double, pMouseY: Double, pButton: Int, pDragX: Double, pDragY: Double): Boolean {
         posX += pDragX.toFloat() / scale
         posY += pDragY.toFloat() / scale

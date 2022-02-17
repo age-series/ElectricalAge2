@@ -9,10 +9,7 @@ import net.minecraftforge.registries.DeferredRegister
 import net.minecraftforge.registries.ForgeRegistries
 import net.minecraftforge.registries.RegistryObject
 import org.eln2.mc.Eln2
-import org.eln2.mc.common.blocks.cell.GroundCellBlock
-import org.eln2.mc.common.blocks.cell.ResistorCellBlock
-import org.eln2.mc.common.blocks.cell.VoltageSourceCellBlock
-import org.eln2.mc.common.blocks.cell.WireCellBlock
+import org.eln2.mc.common.blocks.cell.*
 
 object BlockRegistry {
     @Suppress("MemberVisibilityCanBePrivate") // Used for block registration and fetching
@@ -28,18 +25,18 @@ object BlockRegistry {
         BLOCK_ENTITY_REGISTRY.register(bus)
     }
 
-    val CELL_BLOCK_ENTITY: RegistryObject<BlockEntityType<CellTileEntity>> = BLOCK_ENTITY_REGISTRY.register("cell"){
+    val CELL_BLOCK_ENTITY: RegistryObject<BlockEntityType<CellBlockEntity>> = BLOCK_ENTITY_REGISTRY.register("cell"){
         @Suppress("NULLABILITY_MISMATCH_BASED_ON_JAVA_ANNOTATIONS") // Thanks, Minecraft for the high quality code.
-        BlockEntityType.Builder.of(::CellTileEntity).build(null)
+        BlockEntityType.Builder.of(::CellBlockEntity).build(null)
     }
 
     class CellBlockRegistryItem(
         val name : String,
-        val block : RegistryObject<CellBlockBase>,
+        val block : RegistryObject<AbstractCellBlock>,
         val item : RegistryObject<BlockItem>
     )
 
-    private fun registerCellBlock(name : String, tab: CreativeModeTab? = null, supplier : () -> CellBlockBase) : CellBlockRegistryItem{
+    private fun registerCellBlock(name : String, tab: CreativeModeTab? = null, supplier : () -> AbstractCellBlock) : CellBlockRegistryItem{
         val block = BLOCK_REGISTRY.register(name) { supplier() }
         val item = BLOCK_ITEM_REGISTRY.register(name) { BlockItem(block.get(), Item.Properties().also {if (tab != null) it.tab(tab)}) }
         return CellBlockRegistryItem(name, block, item)
@@ -55,4 +52,6 @@ object BlockRegistry {
     val WIRE_CELL = registerCellBlock("wire", eln2Tab) { WireCellBlock() }
     val VOLTAGE_SOURCE_CELL = registerCellBlock("voltage_source", eln2Tab) { VoltageSourceCellBlock() }
     val GROUND_CELL = registerCellBlock("ground", eln2Tab) { GroundCellBlock() }
+    val CAPACITOR_CELL = registerCellBlock("capacitor", eln2Tab) { CapacitorCellBlock() }
+    val INDUCTOR_CELL = registerCellBlock("inductor", eln2Tab) { InductorCellBlock() }
 }
