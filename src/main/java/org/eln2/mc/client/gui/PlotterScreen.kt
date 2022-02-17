@@ -18,8 +18,10 @@ import org.eln2.mc.extensions.ByteBufferExtensions.readDataLabelBuilder
 import org.eln2.mc.extensions.ByteBufferExtensions.readString
 import org.eln2.mc.extensions.ByteBufferExtensions.writeDataLabelBuilder
 import org.eln2.mc.extensions.ByteBufferExtensions.writeString
+import org.eln2.mc.extensions.MatrixStackExtensions.rect4
 import org.eln2.mc.utility.DataLabelBuilder
 import org.eln2.mc.utility.McColor
+import org.eln2.mc.utility.McColorValues
 import org.eln2.mc.utility.SuffixConverter
 import kotlin.math.max
 import kotlin.math.min
@@ -148,18 +150,14 @@ class PlotterScreen(private val cells : ArrayList<CellInfo>, val solveTime : Lon
                 }
 
                 previousCell = toolTipCell
-
-                highlightAnimationProgress = min(32f, pPartialTick * highlightAnimationSpeed + highlightAnimationProgress)
-                val animationHeight = (it.pos.y + highlightAnimationProgress).toInt()
-
-                fillGradient(
-                    pPoseStack,
-                    it.pos.x,
-                    it.pos.y,
-                    it.pos.x + texSize,
-                    animationHeight,
-                    highlightAnimationFirstColor, highlightAnimationSecondColor)
             }
+        }
+
+        if(toolTipCell != null){
+            // draw the outline of the cell
+
+            val pos = toolTipCell!!.pos
+            pPoseStack.rect4(pos.x, pos.y, texSize, texSize, McColorValues.white)
         }
 
         pPoseStack.popPose()
@@ -190,13 +188,7 @@ class PlotterScreen(private val cells : ArrayList<CellInfo>, val solveTime : Lon
             drawString(poseStack, font, "${entry.label}: ${entry.value}", mouseX + marginX, mouseY + vertical + marginY, entry.color.value)
         }
 
-        // draw the outline
-        val outlineColor = McColor(86u, 86u, 86u).value
-
-        hLine(poseStack, mouseX, mouseX + width, mouseY, outlineColor)
-        hLine(poseStack, mouseX, mouseX + width, mouseY + height, outlineColor)
-        vLine(poseStack, mouseX, mouseY, mouseY + height, outlineColor)
-        vLine(poseStack, mouseX + width, mouseY, mouseY + height, outlineColor)
+        poseStack.rect4(mouseX, mouseY, width, height, McColor(86u, 86u, 86u).value)
     }
 
     private fun renderHeader(poseStack: PoseStack){
@@ -207,6 +199,8 @@ class PlotterScreen(private val cells : ArrayList<CellInfo>, val solveTime : Lon
             "s",
             2,
         )}",2 , 6, McColor(255u, 255u, 200u, 200u).value)
+
+        poseStack.rect4(0, 0, width - 1, h, McColor(95u, 95u, 95u, 150u).value)
     }
 
     private fun renderFooter(poseStack: PoseStack, toolTipCell : CellInfo?){
@@ -226,6 +220,7 @@ class PlotterScreen(private val cells : ArrayList<CellInfo>, val solveTime : Lon
 
         val h = 20
         fill(poseStack, 0, height - h, width, height, McColor(60u, 63u, 65u, 100u).value)
+        poseStack.rect4(0, height - h, width - 1, height, McColor(95u, 95u, 95u, 150u).value)
         drawString(poseStack, font, sb.toString(),2 , height - h + 6, McColor(255u, 255u, 200u, 100u).value)
     }
 
