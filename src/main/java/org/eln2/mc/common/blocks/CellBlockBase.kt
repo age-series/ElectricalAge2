@@ -67,11 +67,10 @@ abstract class CellBlockBase : HorizontalDirectionalBlock(Properties.of(Material
     }
 
     private fun destroy(level: Level, pos: BlockPos){
-        if(level.isClientSide){
-            return
+        if (!level.isClientSide) {
+            val cellEntity = level.getBlockEntity(pos)!! as CellTileEntity
+            cellEntity.setDestroyed()
         }
-        val cellEntity = level.getBlockEntity(pos)!! as CellTileEntity
-        cellEntity.setDestroyed()
     }
 
     override fun newBlockEntity(pPos: BlockPos, pState: BlockState): BlockEntity? {
@@ -80,11 +79,10 @@ abstract class CellBlockBase : HorizontalDirectionalBlock(Properties.of(Material
 
     @In(Side.LogicalServer)
     override fun onNeighborChange(blockState: BlockState?, world: LevelReader?, pos: BlockPos?, neighbor: BlockPos?) {
-        if(world?.isClientSide?: throw Exception("World was null")) {
-            return
+        if (!(world?.isClientSide?: throw Exception("World was null"))) {
+            val cellEntity = world.getBlockEntity(pos?: throw Exception("Position was null")) as CellTileEntity
+            cellEntity.neighbourUpdated(neighbor?: throw Exception("Neighbor location is null"))
         }
-        val cellEntity = world.getBlockEntity(pos?: throw Exception("Position was null")) as CellTileEntity
-        cellEntity.neighbourUpdated(neighbor?: throw Exception("Neighbor location is null"))
     }
 
     // override this:
