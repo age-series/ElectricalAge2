@@ -109,7 +109,7 @@ repositories {
 }
 
 dependencies {
-    minecraft 'net.minecraftforge:forge:1.18.1-39.0.76'
+    minecraft 'net.minecraftforge:forge:1.18.1-39.0.79'
     implementation 'thedarkcolour:kotlinforforge:3.1.0'
     library('com.github.age-series:libage:main-SNAPSHOT')
     library("org.apache.commons:commons-math3:3.6.1")
