@@ -110,7 +110,7 @@ repositories {
 dependencies {
     minecraft 'net.minecraftforge:forge:1.18.1-39.0.76'
     implementation 'thedarkcolour:kotlinforforge:3.1.0'
-    library(files("libs/libelectric-0.1.0.jar"))
+    library(files("libs/libage-0.9.0.jar"))
     library("org.apache.commons:commons-math3:3.6.1")
 
     // Real mod deobf dependency examples - these get remapped to your current mappings
