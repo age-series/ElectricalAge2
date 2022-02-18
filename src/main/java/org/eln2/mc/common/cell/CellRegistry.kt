@@ -13,10 +13,7 @@ import org.eln2.mc.Eln2
 import org.eln2.mc.Eln2.LOGGER
 import org.eln2.mc.common.cell.providers.FourPinCellProvider
 import org.eln2.mc.common.cell.providers.TwoPinCellProvider
-import org.eln2.mc.common.cell.types.GroundCell
-import org.eln2.mc.common.cell.types.ResistorCell
-import org.eln2.mc.common.cell.types.VoltageSourceCell
-import org.eln2.mc.common.cell.types.WireCell
+import org.eln2.mc.common.cell.types.*
 
 @Mod.EventBusSubscriber(bus = Mod.EventBusSubscriber.Bus.MOD)
 object CellRegistry {
@@ -28,6 +25,8 @@ object CellRegistry {
     val WIRE_CELL = register("wire", FourPinCellProvider({ WireCell(it) }, 'W'))
     val VOLTAGE_SOURCE_CELL = register("voltage_source", FourPinCellProvider({ VoltageSourceCell(it) }, 'V'))
     val GROUND_CELL = register("ground", FourPinCellProvider({ GroundCell(it)}, 'G'))
+    val CAPACITOR_CELL = register("capacitor", TwoPinCellProvider({ CapacitorCell(it) }, 'C'))
+    val INDUCTOR_CELL = register("inductor", TwoPinCellProvider({ InductorCell(it)}, 'I'))
 
     fun setup(bus : IEventBus) {
         CELLS.register(bus)
