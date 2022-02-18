@@ -5,11 +5,8 @@ import org.eln2.libelectric.sim.electrical.mna.component.Capacitor
 import org.eln2.mc.common.cell.AbstractCell
 import org.eln2.mc.common.cell.ComponentInfo
 import org.eln2.mc.extensions.ComponentExtensions.connectToPinOf
-import org.eln2.mc.extensions.DataLabelBuilderExtensions.of
-import org.eln2.mc.utility.DataLabelBuilder
-import org.eln2.mc.utility.McColor
-import org.eln2.mc.utility.McColorValues
-import org.eln2.mc.utility.McColors
+import org.eln2.mc.extensions.DataBuilderExtensions.of
+import org.eln2.mc.utility.DataBuilder
 
 class CapacitorCell(pos : BlockPos) : AbstractCell(pos) {
     lateinit var capacitor : Capacitor
@@ -40,7 +37,7 @@ class CapacitorCell(pos : BlockPos) : AbstractCell(pos) {
         }
     }
 
-    override fun createDataPrint(): DataLabelBuilder {
-        return DataLabelBuilder().of(capacitor)
+    override fun createDataBuilder(): DataBuilder {
+        return DataBuilder().of(capacitor)
     }
 }

@@ -13,14 +13,22 @@ class McColor(val r : UByte, val g : UByte, val b : UByte, val a : UByte) {
 
     val value =  (b.toUInt() or (g.toUInt() shl 8) or (r.toUInt() shl 16) or (a.toUInt() shl 24)).toInt()
 
-    fun serialize(buffer : FriendlyByteBuf) : FriendlyByteBuf{
+    fun serialize(buffer : FriendlyByteBuf) : FriendlyByteBuf {
         buffer.writeInt(value)
         return buffer
+    }
+
+    override fun toString(): String {
+        return Integer.toHexString(value)
     }
 
     companion object{
         fun deserialize(buffer : FriendlyByteBuf) : McColor{
             return McColor(buffer.readInt())
+        }
+
+        fun fromString(hex : String) : McColor {
+            return McColor(java.lang.Long.parseLong(hex, 16).toInt())
         }
     }
 }
@@ -33,6 +41,8 @@ object McColors {
     val black = McColor(0u,0u,0u)
     val cyan = McColor(0u,255u,255u)
     val purple = McColor(172u,79u,198u)
+    val yellow = McColor(255u, 255u, 0u)
+    val lightPink = McColor(255u,182u,193u)
 }
 
 object McColorValues {
@@ -43,4 +53,6 @@ object McColorValues {
     val black = McColors.black.value
     val cyan = McColors.cyan.value
     val purple = McColors.purple.value
+    val yellow = McColors.yellow.value
+    val lightPink = McColors.lightPink.value
 }

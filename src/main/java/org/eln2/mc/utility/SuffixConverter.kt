@@ -4,6 +4,7 @@ import java.math.BigDecimal
 import kotlin.math.floor
 import kotlin.math.ln
 import kotlin.math.log10
+import kotlin.math.pow
 
 object SuffixConverter {
     private val prefixes = mapOf(
@@ -39,7 +40,7 @@ object SuffixConverter {
             mag = 24
         }
 
-        val converted = value / Math.pow(10.0, mag.toDouble())
+        val converted = value / 10.0.pow(mag.toDouble())
         return "%.${precision}f ${prefixes[mag]}$unit".format(converted)
     }
 

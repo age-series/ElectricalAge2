@@ -18,15 +18,14 @@ import org.eln2.mc.extensions.ByteBufferExtensions.readDataLabelBuilder
 import org.eln2.mc.extensions.ByteBufferExtensions.readString
 import org.eln2.mc.extensions.ByteBufferExtensions.writeDataLabelBuilder
 import org.eln2.mc.extensions.ByteBufferExtensions.writeString
+import org.eln2.mc.extensions.ColoredStringFormatterExtensions.contentOf
+import org.eln2.mc.extensions.ColoredStringFormatterExtensions.getColorsOrDefault
+import org.eln2.mc.utility.ColoredStringFormatter
 import org.eln2.mc.extensions.MatrixStackExtensions.rect4
-import org.eln2.mc.utility.DataLabelBuilder
-import org.eln2.mc.utility.McColor
-import org.eln2.mc.utility.McColorValues
-import org.eln2.mc.utility.SuffixConverter
+import org.eln2.mc.utility.*
 import kotlin.math.max
-import kotlin.math.min
 
-class CellInfo(val type : String, val label : DataLabelBuilder, val pos : BlockPos){
+class CellInfo(val type : String, val label : DataBuilder, val pos : BlockPos){
     constructor(buffer : FriendlyByteBuf) :
         this(buffer.readString(), buffer.readDataLabelBuilder(), buffer.readBlockPos())
 
@@ -96,12 +95,6 @@ class PlotterScreen(private val cells : ArrayList<CellInfo>, val solveTime : Lon
         }
     }
 
-    private val highlightAnimationSpeed = 1.2f // pixels per unit of time
-    private var previousCell : CellInfo? = null
-    private var highlightAnimationProgress = 0f
-    private val highlightAnimationFirstColor = McColor(255u, 150u, 40u, 200u).value
-    private val highlightAnimationSecondColor = McColor(50u, 100u, 140u, 50u).value
-
     override fun render(pPoseStack: PoseStack, pMouseX: Int, pMouseY: Int, pPartialTick: Float) {
         renderGridBackground(pPoseStack)
 
@@ -144,12 +137,6 @@ class PlotterScreen(private val cells : ArrayList<CellInfo>, val solveTime : Lon
             // check if the mouse is hovering over the cell
             if(pMouseY > yMin && pMouseY < yMax && pMouseX > xMin && pMouseX < xMax) {
                 toolTipCell = it
-
-                if(previousCell != toolTipCell) {
-                    highlightAnimationProgress = 0f
-                }
-
-                previousCell = toolTipCell
             }
         }
 
@@ -157,7 +144,7 @@ class PlotterScreen(private val cells : ArrayList<CellInfo>, val solveTime : Lon
             // draw the outline of the cell
 
             val pos = toolTipCell!!.pos
-            pPoseStack.rect4(pos.x, pos.y, texSize, texSize, McColorValues.white)
+            pPoseStack.rect4(pos.x, pos.y, texSize - 1, texSize - 1, McColorValues.white)
         }
 
         pPoseStack.popPose()
@@ -177,7 +164,10 @@ class PlotterScreen(private val cells : ArrayList<CellInfo>, val solveTime : Lon
         val marginX = 2
         val marginY = 2
 
-        val width = data.entries.maxOf { font.width("${it.label}: ${it.value}") } + marginX * 2
+        val width = data.entries.maxOf {
+            font.width("${ColoredStringFormatter.contentOf(it.label)}: ${ColoredStringFormatter.contentOf(it.value)}")
+        } + marginX * 2
+
         val height = data.entries.count() * font.lineHeight + marginY * 2
 
         // generate background
@@ -185,7 +175,16 @@ class PlotterScreen(private val cells : ArrayList<CellInfo>, val solveTime : Lon
 
         data.entries.forEachIndexed { index, entry ->
             val vertical = index * font.lineHeight
-            drawString(poseStack, font, "${entry.label}: ${entry.value}", mouseX + marginX, mouseY + vertical + marginY, entry.color.value)
+
+            val labelData = ColoredStringFormatter.getColorsOrDefault(entry.label)
+            val valueData = ColoredStringFormatter.getColorsOrDefault(entry.value,
+                if(labelData.color != McColors.white) labelData.color else McColor(160u, 150u, 150u))
+
+            // draw the label
+            drawString(poseStack, font, "${labelData.string}: ", mouseX + marginX, mouseY + vertical + marginY, labelData.color.value)
+
+            // draw the value
+            drawString(poseStack, font, valueData.string, mouseX + marginX + font.width("${labelData.string}: "), mouseY + vertical + marginY, valueData.color.value)
         }
 
         poseStack.rect4(mouseX, mouseY, width, height, McColor(86u, 86u, 86u).value)

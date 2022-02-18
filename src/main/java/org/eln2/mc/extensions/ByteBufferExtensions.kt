@@ -2,7 +2,8 @@ package org.eln2.mc.extensions
 
 import net.minecraft.network.FriendlyByteBuf
 import org.eln2.mc.Eln2
-import org.eln2.mc.utility.DataLabelBuilder
+import org.eln2.mc.extensions.ByteBufferExtensions.writeDataEntry
+import org.eln2.mc.utility.DataBuilder
 import org.eln2.mc.utility.McColor
 
 object ByteBufferExtensions {
@@ -22,29 +23,15 @@ object ByteBufferExtensions {
         return color.serialize(this)
     }
 
-    fun FriendlyByteBuf.readDataLabelBuilder() : DataLabelBuilder {
-        val count = this.readInt()
-
-        Eln2.LOGGER.info("Builder size: $count")
-
-        val builder = DataLabelBuilder()
-
-        if(count == 0){
-            return builder
-        }
-
-        for (i in 0 until count){
-            val label = this.readString()
-            val value = this.readString()
-            val color = this.readColor()
-            Eln2.LOGGER.info("lbl: $label, value: $value, color: $color")
-            builder.entry(DataLabelBuilder.Entry(label, value, color))
-        }
-
-        return builder
+    fun FriendlyByteBuf.writeDataEntry(entry : DataBuilder.Entry) : FriendlyByteBuf{
+        return entry.serialize(this)
     }
 
-    fun FriendlyByteBuf.writeDataLabelBuilder(builder: DataLabelBuilder) : FriendlyByteBuf{
+    fun FriendlyByteBuf.readDataEntry() : DataBuilder.Entry{
+        return DataBuilder.Entry(this)
+    }
+
+    fun FriendlyByteBuf.writeDataLabelBuilder(builder: DataBuilder) : FriendlyByteBuf{
         this.writeInt(builder.entries.count())
 
         if(builder.entries.isEmpty()){
@@ -52,12 +39,29 @@ object ByteBufferExtensions {
         }
 
         builder.entries.forEach{entry ->
-            this.writeString(entry.label)
-            this.writeString(entry.value)
-            this.writeColor(entry.color)
+            writeDataEntry(entry)
         }
 
         return this
     }
+
+    fun FriendlyByteBuf.readDataLabelBuilder() : DataBuilder {
+        val count = this.readInt()
+
+        Eln2.LOGGER.info("Builder size: $count")
+
+        val builder = DataBuilder()
+
+        if(count == 0){
+            return builder
+        }
+
+        for (i in 0 until count){
+            builder.entry(this.readDataEntry())
+        }
+
+        return builder
+    }
+
 
 }

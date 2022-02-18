@@ -5,7 +5,6 @@ import net.minecraft.server.level.ServerPlayer
 import net.minecraft.world.phys.BlockHitResult
 import net.minecraft.world.phys.HitResult
 import net.minecraftforge.network.NetworkEvent
-import org.eln2.mc.Eln2
 import org.eln2.mc.client.gui.CellInfo
 import org.eln2.mc.common.Networking
 import org.eln2.mc.common.blocks.CellBlockEntity
@@ -41,7 +40,7 @@ class CircuitExplorerOpenPacket() {
                 return
             }
 
-            val cells = ArrayList(tile.cell.graph.cells.map { CellInfo(it.id.toString(), it.createDataPrint(), it.pos) })
+            val cells = ArrayList(tile.cell.graph.cells.map { CellInfo(it.id.toString(), it.createDataBuilder(), it.pos) })
 
             Networking.sendTo(CircuitExplorerContextPacket(cells, tile.cell.graph.latestSolveTime), player)
         }

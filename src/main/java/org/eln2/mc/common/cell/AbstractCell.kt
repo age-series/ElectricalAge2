@@ -6,9 +6,7 @@ import org.eln2.libelectric.sim.electrical.mna.component.Component
 import org.eln2.mc.common.In
 import org.eln2.mc.common.Side
 import org.eln2.mc.common.blocks.CellBlockEntity
-import org.eln2.mc.utility.DataLabelBuilder
-import org.eln2.mc.utility.McColor
-import org.eln2.mc.utility.SuffixConverter
+import org.eln2.mc.utility.DataBuilder
 
 class ComponentInfo(val component: Component, val index : Int)
 
@@ -63,8 +61,8 @@ abstract class AbstractCell(val pos : BlockPos) {
     /**
      * This method returns the text that will be displayed in the Circuit Explorer.
     */
-    open fun createDataPrint() : DataLabelBuilder{
-        return DataLabelBuilder()
+    open fun createDataBuilder() : DataBuilder{
+        return DataBuilder()
     }
 
     /**

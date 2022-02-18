@@ -5,8 +5,14 @@ import org.eln2.libelectric.sim.electrical.mna.component.Resistor
 import org.eln2.mc.common.cell.AbstractCell
 import org.eln2.mc.common.cell.ComponentInfo
 import org.eln2.mc.extensions.ComponentExtensions.connectToPinOf
-import org.eln2.mc.utility.DataLabelBuilder
+import org.eln2.mc.extensions.DataBuilderExtensions.enumerateOn
+import org.eln2.mc.extensions.DataBuilderExtensions.siEntry
+import org.eln2.mc.extensions.DataBuilderExtensions.withElectricalValueColor
+import org.eln2.mc.extensions.DataBuilderExtensions.withLabelColor
+import org.eln2.mc.extensions.DataBuilderExtensions.withValueColor
+import org.eln2.mc.utility.DataBuilder
 import org.eln2.mc.utility.McColors
+import org.eln2.mc.utility.SuffixConverter
 
 class WireCell(pos : BlockPos) : AbstractCell(pos) {
     /*  R -> local resistors. Their first pins are interconnected.
@@ -48,14 +54,11 @@ class WireCell(pos : BlockPos) : AbstractCell(pos) {
 
     private val neighbourToResistorLookup = HashMap<AbstractCell, Resistor>()
 
-    //todo: bogus
-    override fun createDataPrint(): DataLabelBuilder {
-        val builder = DataLabelBuilder()
-
-        connections.forEachIndexed { index, remoteCell ->
-            builder.siEntry("Connection ${index}: ", "A", neighbourToResistorLookup[remoteCell]!!.current, McColors.red)
+    override fun createDataBuilder(): DataBuilder {
+        return DataBuilder().enumerateOn(connections) { connection, builder, i ->
+            builder.siEntry("Connection $i", "A", neighbourToResistorLookup[connection]!!.current)
+                .withLabelColor(McColors.red)
+                .withElectricalValueColor()
         }
-
-        return builder
     }
 }

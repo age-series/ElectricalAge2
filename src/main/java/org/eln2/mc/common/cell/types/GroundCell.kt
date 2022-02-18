@@ -5,7 +5,11 @@ import org.eln2.libelectric.sim.electrical.mna.component.Resistor
 import org.eln2.mc.common.cell.AbstractCell
 import org.eln2.mc.common.cell.ComponentInfo
 import org.eln2.mc.extensions.ComponentExtensions.connectToPinOf
-import org.eln2.mc.utility.DataLabelBuilder
+import org.eln2.mc.extensions.DataBuilderExtensions.amps
+import org.eln2.mc.extensions.DataBuilderExtensions.withElectricalValueColor
+import org.eln2.mc.extensions.DataBuilderExtensions.withLabelColor
+import org.eln2.mc.extensions.DataBuilderExtensions.withValueColor
+import org.eln2.mc.utility.DataBuilder
 import org.eln2.mc.utility.McColors
 
 class GroundCell(pos : BlockPos) : AbstractCell(pos) {
@@ -47,9 +51,11 @@ class GroundCell(pos : BlockPos) : AbstractCell(pos) {
 
     private val neighbourToResistorLookup = HashMap<AbstractCell, Resistor>()
 
-    // todo: bogus
-    override fun createDataPrint(): DataLabelBuilder {
+    override fun createDataBuilder(): DataBuilder {
         val current = connections.sumOf { (componentForNeighbour(it).component as Resistor).current }
-        return DataLabelBuilder().amps(current, McColors.red)
+        return DataBuilder()
+            .amps(current)
+                .withLabelColor(McColors.red)
+                .withElectricalValueColor()
     }
 }

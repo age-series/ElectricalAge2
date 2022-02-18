@@ -6,8 +6,8 @@ import org.eln2.libelectric.sim.electrical.mna.component.VoltageSource
 import org.eln2.mc.common.cell.AbstractCell
 import org.eln2.mc.common.cell.ComponentInfo
 import org.eln2.mc.extensions.ComponentExtensions.connectToPinOf
-import org.eln2.mc.extensions.DataLabelBuilderExtensions.of
-import org.eln2.mc.utility.DataLabelBuilder
+import org.eln2.mc.extensions.DataBuilderExtensions.of
+import org.eln2.mc.utility.DataBuilder
 
 class VoltageSourceCell(pos : BlockPos) : AbstractCell(pos) {
 
@@ -54,7 +54,7 @@ class VoltageSourceCell(pos : BlockPos) : AbstractCell(pos) {
 
     private val neighbourToResistorLookup = HashMap<AbstractCell, Resistor>()
 
-    override fun createDataPrint(): DataLabelBuilder {
-        return DataLabelBuilder().of(source)
+    override fun createDataBuilder(): DataBuilder {
+        return DataBuilder().of(source)
     }
 }

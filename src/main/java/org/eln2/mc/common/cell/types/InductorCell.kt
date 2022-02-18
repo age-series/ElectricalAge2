@@ -5,10 +5,8 @@ import org.eln2.libelectric.sim.electrical.mna.component.Inductor
 import org.eln2.mc.common.cell.AbstractCell
 import org.eln2.mc.common.cell.ComponentInfo
 import org.eln2.mc.extensions.ComponentExtensions.connectToPinOf
-import org.eln2.mc.extensions.DataLabelBuilderExtensions.of
-import org.eln2.mc.utility.DataLabelBuilder
-import org.eln2.mc.utility.McColor
-import org.eln2.mc.utility.McColors
+import org.eln2.mc.extensions.DataBuilderExtensions.of
+import org.eln2.mc.utility.DataBuilder
 
 class InductorCell(pos : BlockPos) : AbstractCell(pos) {
     lateinit var inductor : Inductor
@@ -39,7 +37,7 @@ class InductorCell(pos : BlockPos) : AbstractCell(pos) {
         }
     }
 
-    override fun createDataPrint(): DataLabelBuilder {
-        return DataLabelBuilder().of(inductor)
+    override fun createDataBuilder(): DataBuilder {
+        return DataBuilder().of(inductor)
     }
 }
