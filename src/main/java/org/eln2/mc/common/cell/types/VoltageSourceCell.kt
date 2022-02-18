@@ -25,7 +25,7 @@ class VoltageSourceCell(pos : BlockPos) : CellBase(pos) {
 
     override fun clearForRebuild() {
         source = VoltageSource()
-        source.potential = 100.0
+        source.potential = 5.0
         neighbourToResistorLookup.clear()
     }
 

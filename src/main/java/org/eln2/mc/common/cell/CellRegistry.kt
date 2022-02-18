@@ -27,6 +27,7 @@ object CellRegistry {
     val GROUND_CELL = register("ground", FourPinCellProvider({ GroundCell(it)}, 'G'))
     val CAPACITOR_CELL = register("capacitor", TwoPinCellProvider({ CapacitorCell(it) }, 'C'))
     val INDUCTOR_CELL = register("inductor", TwoPinCellProvider({ InductorCell(it)}, 'I'))
+    val DIODE_CELL = register("diode", TwoPinCellProvider({ DiodeCell(it)}, 'D'))
 
     fun setup(bus : IEventBus) {
         CELLS.register(bus)

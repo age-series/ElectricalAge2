@@ -22,9 +22,20 @@ object CommonEvents {
 
     @SubscribeEvent
     fun onChat(event : ServerChatEvent){
-        Eln2.LOGGER.info("Chat: ${event.message}")
-        if(event.message == "build"){
-            CellGraphManager.getFor(event.player.level as ServerLevel).graphs.values.forEach{ it.build() }
+        when (event.message) {
+            "build" -> {
+                CellGraphManager.getFor(event.player.level as ServerLevel).graphs.values.forEach{ it.build() }
+            }
+            "circuits" -> {
+                CellGraphManager.getFor(event.player.level as ServerLevel).graphs.values.forEach {
+                    Eln2.LOGGER.info("Circuit:")
+                    Eln2.LOGGER.info(
+                        it.circuit.components.map{
+                                comp ->  "\n    ${comp.detail()}${comp.pins.map { pin -> pin.node?.index}}"
+                        }
+                    )
+                }
+            }
         }
     }
 }

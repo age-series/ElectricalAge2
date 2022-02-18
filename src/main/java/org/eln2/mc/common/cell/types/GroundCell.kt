@@ -39,7 +39,6 @@ class GroundCell(pos : BlockPos) : CellBase(pos) {
         connections.forEach{ adjacentCell ->
             val resistor = componentForNeighbour(adjacentCell).component
             resistor.ground(0) // ground one pin of our resistor
-
             // then connect the other pin to them
             resistor.connectToPinOf(1, adjacentCell.componentForNeighbour(this))
         }
@@ -47,9 +46,8 @@ class GroundCell(pos : BlockPos) : CellBase(pos) {
 
     private val neighbourToResistorLookup = HashMap<CellBase, Resistor>()
 
-    // todo: bogus
     override fun createDataPrint(): String {
-        val current = connections.sumOf { (componentForNeighbour(it).component as Resistor).current }
-        return ValueText.valueText(current, UnitType.AMPERE)
+        val currents = connections.map { (componentForNeighbour(it).component as Resistor).current }
+        return currents.joinToString(", ") { ValueText.valueText(it, UnitType.AMPERE) }
     }
 }
