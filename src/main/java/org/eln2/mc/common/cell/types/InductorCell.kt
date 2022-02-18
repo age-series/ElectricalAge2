@@ -14,19 +14,16 @@ class InductorCell(pos : BlockPos) : CellBase(pos) {
 
     override fun clearForRebuild() {
         inductor = Inductor()
+        inductor.inductance = 0.1
         added = false
     }
 
     override fun componentForNeighbour(neighbour: CellBase): ComponentInfo {
         val circuit = graph.circuit
-
         if(!added) {
             circuit.add(inductor)
             added = true
         }
-
-        inductor.inductance = 0.1
-
         return ComponentInfo(inductor, connections.indexOf(neighbour))
     }
 
@@ -38,7 +35,6 @@ class InductorCell(pos : BlockPos) : CellBase(pos) {
     }
 
     override fun createDataPrint(): String {
-        val current = connections.sumOf { (componentForNeighbour(it).component as Inductor).current }
-        return ValueText.valueText(current, UnitType.AMPERE)
+        return ValueText.valueText(inductor.current, UnitType.AMPERE)
     }
 }

@@ -1,30 +1,29 @@
 package org.eln2.mc.common.cell.types
 
 import net.minecraft.core.BlockPos
-import org.ageseries.libage.sim.electrical.mna.component.Capacitor
+import org.ageseries.libage.sim.electrical.mna.component.IdealDiode
 import org.eln2.mc.common.cell.CellBase
 import org.eln2.mc.common.cell.ComponentInfo
 import org.eln2.mc.extensions.ComponentExtensions.connectToPinOf
 import org.eln2.mc.utility.UnitType
 import org.eln2.mc.utility.ValueText
 
-class CapacitorCell(pos : BlockPos) : CellBase(pos) {
-    lateinit var capacitor : Capacitor
+class DiodeCell(pos : BlockPos): CellBase(pos) {
+    lateinit var diode : IdealDiode
     var added = false
 
     override fun clearForRebuild() {
-        capacitor = Capacitor()
-        capacitor.capacitance = 1.0E-6
+        diode = IdealDiode()
         added = false
     }
 
     override fun componentForNeighbour(neighbour: CellBase): ComponentInfo {
         val circuit = graph.circuit
         if(!added) {
-            circuit.add(capacitor)
+            circuit.add(diode)
             added = true
         }
-        return ComponentInfo(capacitor, connections.indexOf(neighbour))
+        return ComponentInfo(diode, connections.indexOf(neighbour))
     }
 
     override fun buildConnections() {
@@ -35,6 +34,6 @@ class CapacitorCell(pos : BlockPos) : CellBase(pos) {
     }
 
     override fun createDataPrint(): String {
-        return ValueText.valueText(capacitor.current, UnitType.AMPERE)
+        return ValueText.valueText(diode.current, UnitType.AMPERE)
     }
 }

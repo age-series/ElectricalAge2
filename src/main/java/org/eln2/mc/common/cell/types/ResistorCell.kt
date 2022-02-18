@@ -14,17 +14,16 @@ class ResistorCell(pos : BlockPos) : CellBase(pos) {
 
     override fun clearForRebuild() {
         resistor = Resistor()
+        resistor.resistance = 100.0
         added = false
     }
 
     override fun componentForNeighbour(neighbour: CellBase): ComponentInfo {
         val circuit = graph.circuit
-
         if(!added) {
             circuit.add(resistor)
             added = true
         }
-
         return ComponentInfo(resistor, connections.indexOf(neighbour))
     }
 

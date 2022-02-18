@@ -6,7 +6,9 @@ import org.eln2.mc.common.cell.CellBase
 import org.eln2.mc.common.cell.ComponentInfo
 import org.eln2.mc.extensions.ComponentExtensions.connectToPinOf
 import org.eln2.mc.utility.UnitType
+import org.eln2.mc.utility.ValueText
 import org.eln2.mc.utility.ValueText.valueText
+import kotlin.math.abs
 
 class WireCell(pos : BlockPos) : CellBase(pos) {
     /*  R -> local resistors. Their first pins are interconnected.
@@ -30,11 +32,9 @@ class WireCell(pos : BlockPos) : CellBase(pos) {
             val resistor = Resistor()
             resistor.resistance = 0.001
             circuit.add(resistor)
-
             if(neighbourToResistorLookup.isNotEmpty()){
                 neighbourToResistorLookup.values.first().connect(0, resistor, 0)
             }
-
             resistor
         }, 1)
     }
@@ -48,9 +48,17 @@ class WireCell(pos : BlockPos) : CellBase(pos) {
 
     private val neighbourToResistorLookup = HashMap<CellBase, Resistor>()
 
-    //todo: bogus
+    /**
+     * The most meaningful current is the branch currents at the central points.
+     */
     override fun createDataPrint(): String {
-        val current = connections.sumOf { (componentForNeighbour(it).component as Resistor).current }
-        return valueText(current, UnitType.AMPERE)
+        return if (connections.size == 2) {
+            // Straight through wire. Just give absolute value I guess since directionality is ~ meaningless for wires.
+            valueText(abs((componentForNeighbour(connections[0]).component as Resistor).current), UnitType.AMPERE)
+        } else {
+            // Branch currents. Print them all.
+            val currents = connections.map { (componentForNeighbour(it).component as Resistor).current }
+            currents.joinToString(", ") { ValueText.valueText(it, UnitType.AMPERE) }
+        }
     }
 }

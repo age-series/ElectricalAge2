@@ -28,7 +28,7 @@ class CellGraph(val id : UUID, val manager : CellGraphManager) {
                 successful = circuit.step(0.05)
             }
 
-            Eln2.LOGGER.info("Tick time: $latestSolveTime success $successful")
+            // Eln2.LOGGER.info("Tick time: $latestSolveTime success $successful")
         }
     }
 
