@@ -11,9 +11,7 @@ import net.minecraft.world.level.block.HorizontalDirectionalBlock
 import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.state.BlockState
 import org.eln2.mc.Eln2
-import org.eln2.mc.common.In
 import org.eln2.mc.common.PlacementRotation
-import org.eln2.mc.common.Side
 import org.eln2.mc.common.cell.*
 import java.util.*
 import kotlin.system.measureNanoTime
@@ -33,7 +31,6 @@ class CellBlockEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Bl
      * @see adjacentUpdateRequired
     */
     @Suppress("UNUSED_PARAMETER") // Will very likely be needed later and helps to know the name of the args.
-    @In(Side.LogicalServer)
     fun neighbourUpdated(pos : BlockPos) {
         adjacentUpdateRequired = true
     }
@@ -45,7 +42,6 @@ class CellBlockEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Bl
      * with ourselves.
     */
     @Suppress("UNUSED_PARAMETER") // Will very likely be needed later and helps to know the name of the args.
-    @In(Side.LogicalServer)
     fun setPlacedBy(
         level : Level,
         position : BlockPos,
@@ -91,7 +87,6 @@ class CellBlockEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Bl
      * Called by the block when it is broken.
      * For now, we are only doing processing for the server.
     */
-    @In(Side.LogicalServer)
     fun setDestroyed() {
         cell.destroy()
 
@@ -161,7 +156,6 @@ class CellBlockEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Bl
      * Else, we will delete their circuits and copy them over to the new one, that also includes us (we join the circuits together)
      * If there are no adjacent, compatible cells, we create a new circuit with only ourselves
     */
-    @In(Side.LogicalServer)
     fun registerIntoCircuit() {
         val adjacent = getAdjacentCellTilesFast()
 
@@ -214,23 +208,10 @@ class CellBlockEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Bl
     }
 
     /**
-     * Will set our cell's connections to the neighbours but exclude the provided cell.
-     * @param exclude The cell to exclude.
-    */
-    // TODO: Do we want this still?
-    @In(Side.LogicalServer)
-    private fun setCellConnectionsToAdjacentButExclude(exclude : AbstractCell){
-        val adjacent = getAdjacentCellsFast()
-        adjacent.remove(exclude)
-        cell.connections = adjacent
-    }
-
-    /**
      * Will check if the tiles provided all share the same circuit.
      * @param tiles The tiles to check.
      * @return True if the tiles are part of the same circuit. Otherwise, false.
     */
-    @In(Side.LogicalServer)
     private fun areAllPartOfSameCircuit(tiles : List<CellBlockEntity>) : Boolean {
         if(tiles.count() == 1){
             return true
@@ -253,7 +234,6 @@ class CellBlockEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Bl
      * Called when we are not joining different graphs together. It will add us to adjacent entity's graph.
      * @param adjacent The adjacent entity whose circuit we will add our cell to.
     */
-    @In(Side.LogicalServer)
     private fun addUsTo(adjacent: CellBlockEntity) {
         val remoteGraph = adjacent.cell.graph
 
@@ -269,7 +249,6 @@ class CellBlockEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Bl
      * Called when we are placed adjacently to 2 or more cells that are port of different graphs.
      * @param adjacent The adjacent tiles to us.
     */
-    @In(Side.LogicalServer)
     private fun concatenateCircuitAndAddUs(adjacent : ArrayList<CellBlockEntity>){
         // create a new circuit that contains all cells
 
@@ -315,34 +294,12 @@ class CellBlockEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Bl
     }
 
     /**
-     * Will get the direction of adjacent cells to us. Warning! this does not use a caching mechanism, it will query the world.
-     * @return The directions where adjacent cells are located.
-    */
-    // TODO: Do we want this still?
-    @In(Side.LogicalServer)
-    fun getAdjacentSides() : LinkedList<Direction>  {
-        val result = LinkedList<Direction>()
-
-        fun getAndAdd(dir : Direction){
-            if(getAdjacentTile(dir) != null && connectPredicate(dir)) result.add(dir)
-        }
-
-        getAndAdd(Direction.NORTH)
-        getAndAdd(Direction.SOUTH)
-        getAndAdd(Direction.EAST)
-        getAndAdd(Direction.WEST)
-
-        return result
-    }
-
-    /**
      * Will prepare a list of adjacent cells using the connection predicate. This uses a caching mechanism
      * @see getAdjacentCellsFast
      * @see neighbourCache
      * in order to prevent querying the world when not necessary.
      * @return A new array, containing the adjacent cells.
     */
-    @In(Side.LogicalServer)
     private fun getAdjacentCellsFast() : ArrayList<AbstractCell> {
         val adjacent = getAdjacentCellTilesFast()
 
@@ -361,7 +318,6 @@ class CellBlockEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Bl
      * @see neighbourCache
      * @see adjacentUpdateRequired
     */
-    @In(Side.LogicalServer)
     private fun getAdjacentCellTilesFast() : ArrayList<CellBlockEntity>{
         if(!adjacentUpdateRequired && neighbourCache != null){
             return neighbourCache!!
@@ -391,7 +347,6 @@ class CellBlockEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Bl
      * @param dir The direction to search in.
      * @return The tile if found, or null if there is no tile at that position.
     */
-    @In(Side.LogicalServer)
     private fun getAdjacentTile(dir : Direction) : CellBlockEntity?{
         val level = getLevel()!!
         val remotePos = pos.relative(dir)
@@ -407,7 +362,6 @@ class CellBlockEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Bl
      * @return True if the connection is accepted.
     */
     @Suppress("UNUSED_PARAMETER") // Will very likely be needed later and helps to know the name of the args.
-    @In(Side.LogicalServer)
     private fun canConnectFrom(entity : CellBlockEntity, dir : Direction) : Boolean {
         return connectPredicate(dir.opposite)
 

@@ -3,6 +3,14 @@ package org.eln2.mc.utility
 import net.minecraft.network.FriendlyByteBuf
 
 class McColor(val r : UByte, val g : UByte, val b : UByte, val a : UByte) {
+    constructor(r : Int, g : Int, b : Int, a : Int) : this(
+        if (r < 256 && r > -1) r.toUByte() else throw Exception("R is not within bounds."),
+        if (g < 256 && g > -1) g.toUByte() else throw Exception("G is not within bounds."),
+        if (b < 256 && b > -1) b.toUByte() else throw Exception("B is not within bounds."),
+        if (a < 256 && a > -1) a.toUByte() else throw Exception("A is not within bounds."))
+
+    constructor(r : Int, g : Int, b : Int) : this(r, g, b, 255)
+
     constructor(r : UByte, g : UByte, b : UByte) : this(r, g, b,255u)
     constructor(binary : Int) : this(
         (binary shr 16 and 0xFF).toUByte(),

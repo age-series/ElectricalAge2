@@ -18,8 +18,6 @@ import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.level.block.state.StateDefinition
 import net.minecraft.world.level.material.FluidState
 import net.minecraft.world.level.material.Material
-import org.eln2.mc.common.In
-import org.eln2.mc.common.Side
 import org.eln2.mc.common.blocks.CellBlockEntity
 import org.eln2.mc.common.cell.CellRegistry
 
@@ -79,7 +77,6 @@ abstract class AbstractCellBlock : HorizontalDirectionalBlock(Properties.of(Mate
         return CellBlockEntity(pPos, pState)
     }
 
-    @In(Side.LogicalServer)
     override fun onNeighborChange(blockState: BlockState?, world: LevelReader?, pos: BlockPos?, neighbor: BlockPos?) {
         if(world?.isClientSide?: throw Exception("World was null")) {
             return

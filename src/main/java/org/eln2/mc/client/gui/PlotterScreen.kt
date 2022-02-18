@@ -2,6 +2,7 @@ package org.eln2.mc.client.gui
 
 import com.mojang.blaze3d.systems.RenderSystem
 import com.mojang.blaze3d.vertex.PoseStack
+import net.minecraft.client.gui.GuiComponent
 import net.minecraft.client.gui.screens.Screen
 import net.minecraft.client.renderer.GameRenderer
 import net.minecraft.client.resources.language.I18n.get
@@ -20,6 +21,8 @@ import org.eln2.mc.extensions.ByteBufferExtensions.writeDataLabelBuilder
 import org.eln2.mc.extensions.ByteBufferExtensions.writeString
 import org.eln2.mc.extensions.ColoredStringFormatterExtensions.contentOf
 import org.eln2.mc.extensions.ColoredStringFormatterExtensions.getColorsOrDefault
+import org.eln2.mc.extensions.DataBuilderExtensions.withLabelColor
+import org.eln2.mc.extensions.DataBuilderExtensions.withValueColor
 import org.eln2.mc.utility.ColoredStringFormatter
 import org.eln2.mc.extensions.MatrixStackExtensions.rect4
 import org.eln2.mc.utility.*
@@ -164,11 +167,13 @@ class PlotterScreen(private val cells : ArrayList<CellInfo>, val solveTime : Lon
         val marginX = 2
         val marginY = 2
 
-        val width = data.entries.maxOf {
-            font.width("${ColoredStringFormatter.contentOf(it.label)}: ${ColoredStringFormatter.contentOf(it.value)}")
-        } + marginX * 2
+        val width = max(
+            font.width("Type: ${cell.type}"),
+            data.entries.maxOf {
+                font.width("${ColoredStringFormatter.contentOf(it.label)}: ${ColoredStringFormatter.contentOf(it.value)}")
+            }) + 5  + marginX * 2
 
-        val height = data.entries.count() * font.lineHeight + marginY * 2
+        val height = data.entries.count() * font.lineHeight + marginY * 2 + 3 * font.lineHeight
 
         // generate background
         fill(poseStack, mouseX, mouseY, mouseX + width, mouseY + height, McColor(70u, 72u, 74u).value)
@@ -187,7 +192,25 @@ class PlotterScreen(private val cells : ArrayList<CellInfo>, val solveTime : Lon
             drawString(poseStack, font, valueData.string, mouseX + marginX + font.width("${labelData.string}: "), mouseY + vertical + marginY, valueData.color.value)
         }
 
-        poseStack.rect4(mouseX, mouseY, width, height, McColor(86u, 86u, 86u).value)
+        // draw separator
+        val outlineColor = McColor(86u, 86u, 86u).value
+
+        // display the type of the cell
+
+        drawString(
+            poseStack,
+            font,
+            "Type: ${cell.type}",
+            mouseX + marginX + 2,
+            mouseY + height - marginY - font.lineHeight * 2,
+            McColor(255u, 0u ,0u, 200u).value)
+
+        // separator
+
+        hLine(poseStack, mouseX, mouseX + width, mouseY + height - font.lineHeight - font.lineHeight / 2, outlineColor)
+
+        // draw bounding box
+        poseStack.rect4(mouseX, mouseY, width, height, outlineColor)
     }
 
     private fun renderHeader(poseStack: PoseStack){

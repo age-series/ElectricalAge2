@@ -6,12 +6,9 @@ import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.saveddata.SavedData
 import org.eln2.mc.Eln2
-import org.eln2.mc.common.In
-import org.eln2.mc.common.Side
 import java.lang.IndexOutOfBoundsException
 import java.util.*
 
-@In(Side.LogicalServer)
 class CellGraphManager(val level : Level) : SavedData() {
     val graphs = HashMap<UUID, CellGraph>()
 
