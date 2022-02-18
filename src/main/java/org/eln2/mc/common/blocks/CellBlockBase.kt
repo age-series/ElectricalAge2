@@ -22,7 +22,7 @@ import org.eln2.mc.common.In
 import org.eln2.mc.common.Side
 import org.eln2.mc.common.cell.CellRegistry
 
-abstract class CellBlockBase : HorizontalDirectionalBlock(Properties.of(Material.STONE)), EntityBlock {
+abstract class CellBlockBase : HorizontalDirectionalBlock(Properties.of(Material.STONE).noOcclusion()), EntityBlock {
     init {
         @Suppress("LeakingThis")
         registerDefaultState(getStateDefinition().any().setValue(FACING, Direction.NORTH))
