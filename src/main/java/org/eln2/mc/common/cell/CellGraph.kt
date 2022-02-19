@@ -45,7 +45,7 @@ class CellGraph(val id : UUID, val manager : CellGraphManager) {
     }
 
     fun getCellAt(pos: BlockPos): CellBase {
-        return posCells[pos] ?: throw Exception("Could not find cell at $pos!")
+        return posCells[pos] ?: error("Could not find cell at $pos!")
     }
 
     fun removeCell(cell : CellBase) {

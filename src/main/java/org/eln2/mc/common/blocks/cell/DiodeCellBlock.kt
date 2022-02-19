@@ -56,7 +56,7 @@ class DiodeCellBlock: CellBlockBase() {
                     Direction.EAST -> shape.align(Direction.NORTH, Direction.EAST)
                     Direction.WEST -> shape.align(Direction.NORTH, Direction.WEST)
 
-                    else -> throw Exception("Unhandled dir: $facing")
+                    else -> error("Unhandled dir: $facing")
                 }
             }
         }

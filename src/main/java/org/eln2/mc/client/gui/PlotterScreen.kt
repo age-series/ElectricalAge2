@@ -74,7 +74,7 @@ class PlotterScreen(private val cells : List<CellInfo>, val solveTime : Long) : 
                 it.id.path == id.split(':')[1]
             }.get()
         } catch (e: Exception) {
-            throw Exception("Fatal error! Mismatched block ID and cell ID!")
+            error("Fatal error! Mismatched block ID and cell ID!")
         }
     }
 

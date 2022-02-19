@@ -25,7 +25,7 @@ class PlacementRotation(val placementDirection : Direction) {
             placementDirection.opposite -> RelativeRotationDirection.Back
             placementDirection.clockWise -> RelativeRotationDirection.Right
             placementDirection.counterClockWise -> RelativeRotationDirection.Left
-            else -> throw Exception("Direction not implemented: $direction")
+            else -> error("Direction not implemented: $direction")
         }
     }
 }
