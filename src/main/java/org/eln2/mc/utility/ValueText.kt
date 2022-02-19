@@ -6,10 +6,10 @@ object ValueText {
     fun valueText(value: Double, baseUnit: UnitType): String {
         val valueAbs = abs(value)
         return when {
-            valueAbs < 0.0001 ->
+            valueAbs < 0.0000001 ->
                 "0"
             valueAbs < 0.000999 ->
-                String.format("%1.2fµ", value * 10000)
+                String.format("%1.2fµ", value * 1000000)
             valueAbs < 0.00999 ->
                 String.format("%1.2fm", value * 1000)
             valueAbs < 0.0999 ->

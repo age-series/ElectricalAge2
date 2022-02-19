@@ -8,6 +8,8 @@ import org.eln2.mc.common.cell.ComponentInfo
 import org.eln2.mc.extensions.ComponentExtensions.connectToPinOf
 import org.eln2.mc.utility.UnitType
 import org.eln2.mc.utility.ValueText
+import org.eln2.mc.utility.ValueText.valueText
+import kotlin.reflect.jvm.internal.ReflectProperties.Val
 
 class VoltageSourceCell(pos : BlockPos) : CellBase(pos) {
 
@@ -55,6 +57,26 @@ class VoltageSourceCell(pos : BlockPos) : CellBase(pos) {
     private val neighbourToResistorLookup = HashMap<CellBase, Resistor>()
 
     override fun createDataPrint(): String {
-        return "${ValueText.valueText(source.potential, UnitType.VOLT)}, ${ValueText.valueText(source.current, UnitType.AMPERE)}"
+        return "${valueText(source.potential, UnitType.VOLT)}, ${valueText(source.current, UnitType.AMPERE)}"
+    }
+
+    override fun getHudMap(): Map<String, String> {
+        val voltage: String = valueText(source.potential, UnitType.VOLT)
+        var current: String = valueText(0.0, UnitType.AMPERE)
+        var power: String = valueText(0.0, UnitType.WATT)
+        val map = mutableMapOf<String, String>()
+
+        try {
+            current = valueText(source.current, UnitType.AMPERE)
+            power = valueText(source.potential * source.current, UnitType.WATT)
+        } catch (_: Exception) {
+            // No results from simulator
+        }
+
+        map["waila.eln2.voltage"] = voltage
+        map["waila.eln2.current"] = current
+        map["waila.eln2.power"] = power
+
+        return map
     }
 }

@@ -7,6 +7,7 @@ import org.eln2.mc.common.cell.ComponentInfo
 import org.eln2.mc.extensions.ComponentExtensions.connectToPinOf
 import org.eln2.mc.utility.UnitType
 import org.eln2.mc.utility.ValueText
+import org.eln2.mc.utility.ValueText.valueText
 
 class CapacitorCell(pos : BlockPos) : CellBase(pos) {
     lateinit var capacitor : Capacitor
@@ -35,6 +36,29 @@ class CapacitorCell(pos : BlockPos) : CellBase(pos) {
     }
 
     override fun createDataPrint(): String {
-        return ValueText.valueText(capacitor.current, UnitType.AMPERE)
+        return valueText(capacitor.current, UnitType.AMPERE)
+    }
+
+    override fun getHudMap(): Map<String, String> {
+        var voltage: String = valueText(0.0, UnitType.VOLT)
+        var current: String = valueText(0.0, UnitType.AMPERE)
+        val capacitance: String = valueText(capacitor.capacitance, UnitType.FARAD)
+        var joules: String = valueText(0.0, UnitType.JOULE)
+        val map = mutableMapOf<String, String>()
+
+        try {
+            current = valueText(capacitor.current, UnitType.AMPERE)
+            joules = valueText(capacitor.energy, UnitType.JOULE)
+            voltage = capacitor.pins.joinToString(", ") { valueText(it.node?.potential ?: 0.0, UnitType.VOLT) }
+        } catch (_: Exception) {
+            // No results from simulator
+        }
+
+        map["waila.eln2.voltage"] = voltage
+        map["waila.eln2.current"] = current
+        map["waila.eln2.capacitance"] = capacitance
+        map["waila.eln2.energy"] = joules
+
+        return map
     }
 }

@@ -11,5 +11,14 @@
 
     "plotter.circuit_explorer": "Circuit Explorer",
     "plotter.cell_count": "Cell Count",
-    "plotter.highlighted": "Highlighted"
+    "plotter.highlighted": "Highlighted",
+
+    "waila.eln2.voltage": "Voltage",
+    "waila.eln2.current": "Current",
+    "waila.eln2.resistance": "Resistance",
+    "waila.eln2.capacitance": "Capacitance",
+    "waila.eln2.inductance": "Inductance",
+    "waila.eln2.energy": "Energy",
+    "waila.eln2.power": "Power",
+    "waila.eln2.mode": "Mode"
 }

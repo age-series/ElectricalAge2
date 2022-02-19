@@ -61,4 +61,33 @@ class WireCell(pos : BlockPos) : CellBase(pos) {
             currents.joinToString(", ") { ValueText.valueText(it, UnitType.AMPERE) }
         }
     }
+
+    override fun getHudMap(): Map<String, String> {
+        var voltage: String = valueText(0.0, UnitType.VOLT)
+        var current: String = valueText(0.0, UnitType.AMPERE)
+        val resistance: String = valueText(0.001, UnitType.OHM)
+        val map = mutableMapOf<String, String>()
+
+        try {
+            val currentString = if (connections.size == 2) {
+                // Straight through wire. Just give absolute value I guess since directionality is ~ meaningless for wires.
+                valueText(abs((componentForNeighbour(connections[0]).component as Resistor).current), UnitType.AMPERE)
+            } else {
+                // Branch currents. Print them all.
+                val currents = connections.map { (componentForNeighbour(it).component as Resistor).current }
+                currents.joinToString(", ") { ValueText.valueText(it, UnitType.AMPERE) }
+            }
+            if (currentString.isNotEmpty())
+                current = currentString
+            voltage = valueText((componentForNeighbour(connections[0]).component as Resistor).pins[0].node?.potential ?: 0.0, UnitType.VOLT)
+        } catch (_: Exception) {
+            // No results from simulator
+        }
+
+        map["waila.eln2.voltage"] = voltage
+        map["waila.eln2.current"] = current
+        map["waila.eln2.resistance"] = resistance
+
+        return map
+    }
 }
