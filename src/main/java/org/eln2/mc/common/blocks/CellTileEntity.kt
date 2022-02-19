@@ -1,5 +1,6 @@
 package org.eln2.mc.common.blocks
 
+import mcp.mobius.waila.api.IServerDataProvider
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
 import net.minecraft.nbt.CompoundTag
@@ -479,5 +480,9 @@ class CellTileEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Blo
                 }
             }
         }
+    }
+
+    fun getHudMap(): Map<String, String> {
+        return cell.getHudMap()
     }
 }

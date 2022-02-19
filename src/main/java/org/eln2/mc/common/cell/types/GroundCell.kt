@@ -7,6 +7,7 @@ import org.eln2.mc.common.cell.ComponentInfo
 import org.eln2.mc.extensions.ComponentExtensions.connectToPinOf
 import org.eln2.mc.utility.UnitType
 import org.eln2.mc.utility.ValueText
+import org.eln2.mc.utility.ValueText.valueText
 
 class GroundCell(pos : BlockPos) : CellBase(pos) {
 
@@ -48,6 +49,26 @@ class GroundCell(pos : BlockPos) : CellBase(pos) {
 
     override fun createDataPrint(): String {
         val currents = connections.map { (componentForNeighbour(it).component as Resistor).current }
-        return currents.joinToString(", ") { ValueText.valueText(it, UnitType.AMPERE) }
+        return currents.joinToString(", ") { valueText(it, UnitType.AMPERE) }
+    }
+
+    override fun getHudMap(): Map<String, String> {
+        val voltage: String = valueText(0.0, UnitType.VOLT)
+        var current: String = valueText(0.0, UnitType.AMPERE)
+        val map = mutableMapOf<String, String>()
+
+        try {
+            val currents = connections.map { (componentForNeighbour(it).component as Resistor).current }
+            val currentString = currents.joinToString(", ") { valueText(it, UnitType.AMPERE) }
+            if (currentString.isNotEmpty())
+                current = currentString
+        } catch (_: Exception) {
+            // don't care, sim is in a bad/unready state
+        }
+
+        map["waila.eln2.voltage"] = voltage
+        map["waila.eln2.current"] = current
+
+        return map
     }
 }

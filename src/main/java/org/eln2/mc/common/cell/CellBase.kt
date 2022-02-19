@@ -64,6 +64,8 @@ abstract class CellBase(val pos : BlockPos) {
         return "N/A"
     }
 
+    abstract fun getHudMap(): Map<String, String>
+
     /**
      * This method is called before the Circuit is being rebuilt.
     */

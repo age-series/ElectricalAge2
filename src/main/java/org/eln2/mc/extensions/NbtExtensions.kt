@@ -20,4 +20,36 @@ object NbtExtensions {
 
         return BlockPos(x, y, z)
     }
+
+    fun CompoundTag.getStringList(key: String): List<String> {
+        val tag = this.getCompound(key)
+        return tag.allKeys.map {tag.getString(it)}
+    }
+
+    fun CompoundTag.setStringList(key: String, list: List<String>) {
+        val tag = CompoundTag()
+        list.forEachIndexed { index, it ->
+            tag.putString("$index", it)
+        }
+        this.put(key, tag)
+    }
+
+    fun CompoundTag.getStringMap(key: String): Map<String, String> {
+        val tag = this.getCompound(key)
+        val map = mutableMapOf<String, String>()
+        tag.allKeys.forEach {
+                tagKey ->
+            val tagValue = tag.getString(tagKey)
+            map[tagKey] = tagValue
+        }
+        return map
+    }
+
+    fun CompoundTag.setStringMap(key: String, map: Map<String, String>) {
+        val tag = CompoundTag()
+        map.forEach { (k, v) ->
+            tag.putString(k, v)
+        }
+        this.put(key, tag)
+    }
 }

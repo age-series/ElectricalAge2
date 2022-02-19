@@ -99,6 +99,7 @@ sourceSets.main.resources { srcDir 'src/generated/resources' }
 repositories {
     mavenCentral()
     maven { url 'https://jitpack.io' }
+    maven { url "https://maven.bai.lol" }
     // Put repositories for dependencies here
     // ForgeGradle automatically adds the Forge maven and Maven Central for you
 
@@ -111,6 +112,8 @@ repositories {
 dependencies {
     minecraft 'net.minecraftforge:forge:1.18.1-39.0.79'
     implementation 'thedarkcolour:kotlinforforge:3.1.0'
+    compileOnly fg.deobf("mcp.mobius.waila:wthit-api:forge-4.5.1")
+    runtimeOnly fg.deobf("mcp.mobius.waila:wthit:forge-4.5.1")
     library('com.github.age-series:libage:main-SNAPSHOT')
     library("org.apache.commons:commons-math3:3.6.1")
 

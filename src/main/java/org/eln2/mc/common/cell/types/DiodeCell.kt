@@ -7,6 +7,7 @@ import org.eln2.mc.common.cell.ComponentInfo
 import org.eln2.mc.extensions.ComponentExtensions.connectToPinOf
 import org.eln2.mc.utility.UnitType
 import org.eln2.mc.utility.ValueText
+import org.eln2.mc.utility.ValueText.valueText
 
 class DiodeCell(pos : BlockPos): CellBase(pos) {
     lateinit var diode : IdealDiode
@@ -34,6 +35,29 @@ class DiodeCell(pos : BlockPos): CellBase(pos) {
     }
 
     override fun createDataPrint(): String {
-        return ValueText.valueText(diode.current, UnitType.AMPERE)
+        return valueText(diode.current, UnitType.AMPERE)
+    }
+
+    override fun getHudMap(): Map<String, String> {
+        var voltage: String = valueText(0.0, UnitType.VOLT)
+        var current: String = valueText(0.0, UnitType.AMPERE)
+        var mode: String? = null
+        val map = mutableMapOf<String, String>()
+
+        try {
+            // TODO: This feature (mode) should be exposed in libage as an enum. It also needs to be translated on the client.
+            mode = if (diode.resistance == diode.minimumResistance) "Forward Bias Mode (conducting)" else "Reverse Bias Mode (blocking)"
+            current = valueText(diode.current, UnitType.AMPERE)
+            voltage = diode.pins.joinToString(", ") { valueText(it.node?.potential ?: 0.0, UnitType.VOLT) }
+
+        } catch (_: Exception) {
+            // No results from simulator
+        }
+
+        map["waila.eln2.voltage"] = voltage
+        map["waila.eln2.current"] = current
+        if (mode != null)map["waila.eln2.mode"] = mode
+
+        return map
     }
 }

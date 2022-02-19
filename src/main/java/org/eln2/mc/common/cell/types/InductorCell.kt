@@ -7,6 +7,7 @@ import org.eln2.mc.common.cell.ComponentInfo
 import org.eln2.mc.extensions.ComponentExtensions.connectToPinOf
 import org.eln2.mc.utility.UnitType
 import org.eln2.mc.utility.ValueText
+import org.eln2.mc.utility.ValueText.valueText
 
 class InductorCell(pos : BlockPos) : CellBase(pos) {
     lateinit var inductor : Inductor
@@ -35,6 +36,34 @@ class InductorCell(pos : BlockPos) : CellBase(pos) {
     }
 
     override fun createDataPrint(): String {
-        return ValueText.valueText(inductor.current, UnitType.AMPERE)
+        return valueText(inductor.current, UnitType.AMPERE)
+    }
+
+    override fun getHudMap(): Map<String, String> {
+        var voltage: String = valueText(0.0, UnitType.VOLT)
+        var current: String = valueText(0.0, UnitType.AMPERE)
+        val inductance: String = valueText(inductor.inductance, UnitType.HENRY)
+        var joules: String = valueText(0.0, UnitType.JOULE)
+        val map = mutableMapOf<String, String>()
+
+        try {
+            current = valueText(inductor.current, UnitType.AMPERE)
+            joules = valueText(inductor.energy, UnitType.JOULE)
+            voltage = inductor.pins.joinToString(", ") {
+                valueText(
+                    it.node?.potential ?: 0.0,
+                    UnitType.VOLT
+                )
+            }
+        } catch (_: Exception) {
+            // No results from simulator
+        }
+
+        map["waila.eln2.voltage"] = voltage
+        map["waila.eln2.current"] = current
+        map["waila.eln2.inductance"] = inductance
+        map["waila.eln2.energy"] = joules
+
+        return map
     }
 }
