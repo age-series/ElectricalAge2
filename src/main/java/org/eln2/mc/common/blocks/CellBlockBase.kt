@@ -29,7 +29,7 @@ abstract class CellBlockBase : HorizontalDirectionalBlock(Properties.of(Material
     }
 
     override fun getStateForPlacement(pContext: BlockPlaceContext): BlockState? {
-        return super.defaultBlockState().setValue(FACING, pContext.horizontalDirection.opposite)
+        return super.defaultBlockState().setValue(FACING, pContext.horizontalDirection.opposite.counterClockWise)
     }
 
     override fun createBlockStateDefinition(pBuilder: StateDefinition.Builder<Block, BlockState>) {
