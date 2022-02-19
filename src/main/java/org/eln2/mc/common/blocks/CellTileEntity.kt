@@ -12,9 +12,7 @@ import net.minecraft.world.level.block.HorizontalDirectionalBlock
 import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.state.BlockState
 import org.eln2.mc.Eln2
-import org.eln2.mc.common.In
 import org.eln2.mc.common.PlacementRotation
-import org.eln2.mc.common.Side
 import org.eln2.mc.common.cell.*
 import java.util.*
 import kotlin.system.measureNanoTime
@@ -34,7 +32,6 @@ class CellTileEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Blo
      * @see adjacentUpdateRequired
     */
     @Suppress("UNUSED_PARAMETER") // Will very likely be needed later and helps to know the name of the args.
-    @In(Side.LogicalServer)
     fun neighbourUpdated(pos : BlockPos) {
         adjacentUpdateRequired = true
     }
@@ -46,7 +43,6 @@ class CellTileEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Blo
      * with ourselves.
     */
     @Suppress("UNUSED_PARAMETER") // Will very likely be needed later and helps to know the name of the args.
-    @In(Side.LogicalServer)
     fun setPlacedBy(
         level : Level,
         position : BlockPos,
@@ -97,7 +93,6 @@ class CellTileEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Blo
      * Called by the block when it is broken.
      * For now, we are only doing processing for the server.
     */
-    @In(Side.LogicalServer)
     fun setDestroyed() {
         cell.destroy()
 
@@ -167,7 +162,6 @@ class CellTileEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Blo
      * Else, we will delete their circuits and copy them over to the new one, that also includes us (we join the circuits together)
      * If there are no adjacent, compatible cells, we create a new circuit with only ourselves
     */
-    @In(Side.LogicalServer)
     fun registerIntoCircuit() {
         val adjacent = getAdjacentCellTilesFast()
 
@@ -224,7 +218,6 @@ class CellTileEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Blo
      * @param exclude The cell to exclude.
     */
     // TODO: Do we want this still?
-    @In(Side.LogicalServer)
     private fun setCellConnectionsToAdjacentButExclude(exclude : CellBase){
         val adjacent = getAdjacentCellsFast()
         adjacent.remove(exclude)
@@ -236,7 +229,6 @@ class CellTileEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Blo
      * @param tiles The tiles to check.
      * @return True if the tiles are part of the same circuit. Otherwise, false.
     */
-    @In(Side.LogicalServer)
     private fun areAllPartOfSameCircuit(tiles : List<CellTileEntity>) : Boolean {
         if (tiles.count() != 1) {
             val first = tiles[0]
@@ -258,7 +250,6 @@ class CellTileEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Blo
      * Called when we are not joining different graphs together. It will add us to adjacent entity's graph.
      * @param adjacent The adjacent entity whose circuit we will add our cell to.
     */
-    @In(Side.LogicalServer)
     private fun addUsTo(adjacent: CellTileEntity) {
         val remoteGraph = adjacent.cell.graph
 
@@ -274,7 +265,6 @@ class CellTileEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Blo
      * Called when we are placed adjacently to 2 or more cells that are port of different graphs.
      * @param adjacent The adjacent tiles to us.
     */
-    @In(Side.LogicalServer)
     private fun concatenateCircuitAndAddUs(adjacent : ArrayList<CellTileEntity>){
         // create a new circuit that contains all cells
 
@@ -324,7 +314,6 @@ class CellTileEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Blo
      * @return The directions where adjacent cells are located.
     */
     // TODO: Do we want this still?
-    @In(Side.LogicalServer)
     fun getAdjacentSides() : LinkedList<Direction>  {
         val result = LinkedList<Direction>()
 
@@ -347,7 +336,6 @@ class CellTileEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Blo
      * in order to prevent querying the world when not necessary.
      * @return A new array, containing the adjacent cells.
     */
-    @In(Side.LogicalServer)
     private fun getAdjacentCellsFast() : ArrayList<CellBase> {
         val adjacent = getAdjacentCellTilesFast()
 
@@ -366,7 +354,6 @@ class CellTileEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Blo
      * @see neighbourCache
      * @see adjacentUpdateRequired
     */
-    @In(Side.LogicalServer)
     private fun getAdjacentCellTilesFast() : ArrayList<CellTileEntity>{
         return if (adjacentUpdateRequired || neighbourCache == null) {
             adjacentUpdateRequired = false
@@ -394,7 +381,6 @@ class CellTileEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Blo
      * @param dir The direction to search in.
      * @return The tile if found, or null if there is no tile at that position.
     */
-    @In(Side.LogicalServer)
     private fun getAdjacentTile(dir : Direction) : CellTileEntity?{
         val level = getLevel()!!
         val remotePos = pos.relative(dir)
@@ -410,7 +396,6 @@ class CellTileEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Blo
      * @return True if the connection is accepted.
     */
     @Suppress("UNUSED_PARAMETER") // Will very likely be needed later and helps to know the name of the args.
-    @In(Side.LogicalServer)
     private fun canConnectFrom(entity : CellTileEntity, dir : Direction) : Boolean {
         return connectPredicate(dir.opposite)
 

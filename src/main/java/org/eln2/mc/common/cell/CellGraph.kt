@@ -17,18 +17,16 @@ class CellGraph(val id : UUID, val manager : CellGraphManager) {
 
     lateinit var circuit : Circuit
     val hasCircuit get() = this::circuit.isInitialized
+    var successful = false
+        private set
 
     var latestSolveTime = 0L
 
     fun serverTick(){
         if(hasCircuit){
-            var successful : Boolean
-
             latestSolveTime = measureNanoTime {
                 successful = circuit.step(0.05)
             }
-
-            // Eln2.LOGGER.info("Tick time: $latestSolveTime success $successful")
         }
     }
 

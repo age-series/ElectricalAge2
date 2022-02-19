@@ -18,8 +18,6 @@ import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.level.block.state.StateDefinition
 import net.minecraft.world.level.material.FluidState
 import net.minecraft.world.level.material.Material
-import org.eln2.mc.common.In
-import org.eln2.mc.common.Side
 import org.eln2.mc.common.cell.CellRegistry
 
 abstract class CellBlockBase : HorizontalDirectionalBlock(Properties.of(Material.STONE).noOcclusion()), EntityBlock {
@@ -77,7 +75,6 @@ abstract class CellBlockBase : HorizontalDirectionalBlock(Properties.of(Material
         return CellTileEntity(pPos, pState)
     }
 
-    @In(Side.LogicalServer)
     override fun onNeighborChange(blockState: BlockState?, world: LevelReader?, pos: BlockPos?, neighbor: BlockPos?) {
         if (!(world?.isClientSide?: throw Exception("World was null"))) {
             val cellEntity = world.getBlockEntity(pos?: throw Exception("Position was null")) as CellTileEntity
