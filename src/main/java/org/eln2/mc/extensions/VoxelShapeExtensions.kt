@@ -15,7 +15,7 @@ object VoxelShapeExtensions {
             Direction.NORTH -> 2
             Direction.EAST -> 3
 
-            else -> throw Exception("Out of bounds!")
+            else -> error("Out of bounds!")
         }
     }
 

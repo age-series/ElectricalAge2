@@ -43,12 +43,12 @@ abstract class CellBlockBase : HorizontalDirectionalBlock(Properties.of(Material
         itemStack : ItemStack
     ) {
         val cellEntity = level.getBlockEntity(pos)!! as CellTileEntity
-        cellEntity.setPlacedBy(level, pos, blockState, entity, itemStack, CellRegistry.registry.getValue(getCellProvider())?: throw Exception("Unable to get cell provider"))
+        cellEntity.setPlacedBy(level, pos, blockState, entity, itemStack, CellRegistry.registry.getValue(getCellProvider())?: error("Unable to get cell provider"))
     }
 
 
     override fun onBlockExploded(blState: BlockState?, lvl: Level?, pos: BlockPos?, exp: Explosion?) {
-        destroy(lvl?: throw Exception("Level was null"), pos?: throw Exception("Position was null"))
+        destroy(lvl?: error("Level was null"), pos?: error("Position was null"))
         super.onBlockExploded(blState, lvl, pos, exp)
     }
 
@@ -60,7 +60,7 @@ abstract class CellBlockBase : HorizontalDirectionalBlock(Properties.of(Material
         wh: Boolean,
         flState: FluidState?
     ): Boolean {
-        destroy(lvl?: throw Exception("Level was null"), pos?: throw Exception("Position was null"))
+        destroy(lvl?: error("Level was null"), pos?: error("Position was null"))
         return super.onDestroyedByPlayer(blState, lvl, pos, pl, wh, flState)
     }
 
@@ -76,9 +76,9 @@ abstract class CellBlockBase : HorizontalDirectionalBlock(Properties.of(Material
     }
 
     override fun onNeighborChange(blockState: BlockState?, world: LevelReader?, pos: BlockPos?, neighbor: BlockPos?) {
-        if (!(world?.isClientSide?: throw Exception("World was null"))) {
-            val cellEntity = world.getBlockEntity(pos?: throw Exception("Position was null")) as CellTileEntity
-            cellEntity.neighbourUpdated(neighbor?: throw Exception("Neighbor location is null"))
+        if (!(world?.isClientSide?: error("World was null"))) {
+            val cellEntity = world.getBlockEntity(pos?: error("Position was null")) as CellTileEntity
+            cellEntity.neighbourUpdated(neighbor?: error("Neighbor location is null"))
         }
     }
 
