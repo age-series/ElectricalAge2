@@ -84,9 +84,9 @@ class WireCell(pos : BlockPos) : CellBase(pos) {
             // No results from simulator
         }
 
-        map["waila.eln2.voltage"] = voltage
-        map["waila.eln2.current"] = current
-        map["waila.eln2.resistance"] = resistance
+        map["voltage"] = voltage
+        map["current"] = current
+        map["resistance"] = resistance
 
         return map
     }

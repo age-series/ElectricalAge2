@@ -59,10 +59,10 @@ class InductorCell(pos : BlockPos) : CellBase(pos) {
             // No results from simulator
         }
 
-        map["waila.eln2.voltage"] = voltage
-        map["waila.eln2.current"] = current
-        map["waila.eln2.inductance"] = inductance
-        map["waila.eln2.energy"] = joules
+        map["voltage"] = voltage
+        map["current"] = current
+        map["inductance"] = inductance
+        map["energy"] = joules
 
         return map
     }

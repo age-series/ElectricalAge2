@@ -1,4 +1,4 @@
-package org.eln2.mc.common.packets.serverToClient
+package org.eln2.mc.common.network.serverToClient
 
 import net.minecraft.client.Minecraft
 import net.minecraft.network.FriendlyByteBuf
@@ -6,15 +6,14 @@ import net.minecraftforge.api.distmarker.Dist
 import net.minecraftforge.fml.loading.FMLEnvironment
 import net.minecraftforge.network.NetworkEvent
 import org.eln2.mc.Eln2
-import org.eln2.mc.client.gui.CellInfo
+import org.eln2.mc.common.network.CellInfo
 import org.eln2.mc.client.gui.PlotterScreen
 import java.util.function.Supplier
 
 class CircuitExplorerContextPacket() {
-    lateinit var cells : ArrayList<CellInfo>
+    lateinit var cells : List<CellInfo>
     var nanoTime : Long = 0L
-        get() = field
-        private set(value : Long) { field = value }
+        private set
 
     constructor(buffer : FriendlyByteBuf) : this(){
         val count = buffer.readInt()
@@ -28,7 +27,7 @@ class CircuitExplorerContextPacket() {
         nanoTime = buffer.readLong()
     }
 
-    constructor(cells : ArrayList<CellInfo>, nanoTime : Long) : this(){
+    constructor(cells : List<CellInfo>, nanoTime : Long) : this(){
         this.cells = cells
         this.nanoTime = nanoTime
     }

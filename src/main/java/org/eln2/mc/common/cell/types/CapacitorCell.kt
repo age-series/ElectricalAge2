@@ -54,10 +54,10 @@ class CapacitorCell(pos : BlockPos) : CellBase(pos) {
             // No results from simulator
         }
 
-        map["waila.eln2.voltage"] = voltage
-        map["waila.eln2.current"] = current
-        map["waila.eln2.capacitance"] = capacitance
-        map["waila.eln2.energy"] = joules
+        map["voltage"] = voltage
+        map["current"] = current
+        map["capacitance"] = capacitance
+        map["energy"] = joules
 
         return map
     }

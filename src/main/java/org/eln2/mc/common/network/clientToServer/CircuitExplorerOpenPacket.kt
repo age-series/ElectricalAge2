@@ -1,4 +1,4 @@
-package org.eln2.mc.common.packets.clientToServer
+package org.eln2.mc.common.network.clientToServer
 
 import net.minecraft.network.FriendlyByteBuf
 import net.minecraft.server.level.ServerPlayer
@@ -6,10 +6,10 @@ import net.minecraft.world.phys.BlockHitResult
 import net.minecraft.world.phys.HitResult
 import net.minecraftforge.network.NetworkEvent
 import org.eln2.mc.Eln2
-import org.eln2.mc.client.gui.CellInfo
-import org.eln2.mc.common.Networking
+import org.eln2.mc.common.network.CellInfo
+import org.eln2.mc.common.network.Networking
 import org.eln2.mc.common.blocks.CellTileEntity
-import org.eln2.mc.common.packets.serverToClient.CircuitExplorerContextPacket
+import org.eln2.mc.common.network.serverToClient.CircuitExplorerContextPacket
 import java.util.function.Supplier
 
 class CircuitExplorerOpenPacket() {
@@ -43,8 +43,10 @@ class CircuitExplorerOpenPacket() {
                 return
             }
 
-            val cells = ArrayList(tile.cell.graph.cells.map { CellInfo(it.id.toString(), it.createDataPrint(), it.pos) })
-            Networking.sendTo(CircuitExplorerContextPacket(cells, tile.cell.graph.latestSolveTime), player)
+
+
+            val cells = tile.cell.graph.cells.map { CellInfo(it.id.toString(), it.getHudMap(), it.pos) }
+            Networking.sendTo(CircuitExplorerContextPacket(cells.toList(), tile.cell.graph.latestSolveTime), player)
         }
     }
 }

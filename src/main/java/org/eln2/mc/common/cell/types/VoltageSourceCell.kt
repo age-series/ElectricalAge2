@@ -73,9 +73,9 @@ class VoltageSourceCell(pos : BlockPos) : CellBase(pos) {
             // No results from simulator
         }
 
-        map["waila.eln2.voltage"] = voltage
-        map["waila.eln2.current"] = current
-        map["waila.eln2.power"] = power
+        map["voltage"] = voltage
+        map["current"] = current
+        map["power"] = power
 
         return map
     }

@@ -38,7 +38,7 @@ class Eln2WailaPlugin: IWailaPlugin {
                 cell: CellTileEntity?
             ) {
                 if (sendData == null || player == null || world == null || cell == null) return
-                sendData.setStringMap("body", cell.getHudMap())
+                sendData.setStringMap("body", cell.getHudMap().mapKeys { "waila.eln2.${it.key}" })
             }
         }
 
