@@ -1,0 +1,19 @@
+{
+    "variants": {
+        "facing=east": {
+            "model": "eln2:block/inductor",
+            "y": 90
+        },
+        "facing=north": {
+            "model": "eln2:block/inductor"
+        },
+        "facing=south": {
+            "model": "eln2:block/inductor",
+            "y": 180
+        },
+        "facing=west": {
+            "model": "eln2:block/inductor",
+            "y": 270
+        }
+    }
+}
