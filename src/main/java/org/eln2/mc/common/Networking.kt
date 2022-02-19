@@ -37,7 +37,6 @@ object Networking {
      * Sends a message from the server to the client.
      * @param player The player to send the message to.
     */
-    @In(Side.LogicalServer)
     fun sendTo(message: Any?, player: ServerPlayer) {
         channel.sendTo(message, player.connection.getConnection(), NetworkDirection.PLAY_TO_CLIENT)
     }
@@ -45,7 +44,6 @@ object Networking {
     /**
      * Sends the message from the client to the server.
     */
-    @In(Side.PhysicalClient)
     fun sendToServer(message: Any?) {
         channel.sendToServer(message)
     }

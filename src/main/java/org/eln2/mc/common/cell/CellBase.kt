@@ -3,8 +3,6 @@ package org.eln2.mc.common.cell
 import net.minecraft.core.BlockPos
 import net.minecraft.resources.ResourceLocation
 import org.ageseries.libage.sim.electrical.mna.component.Component
-import org.eln2.mc.common.In
-import org.eln2.mc.common.Side
 import org.eln2.mc.common.blocks.CellTileEntity
 
 class ComponentInfo(val component: Component, val index : Int)
@@ -32,19 +30,16 @@ abstract class CellBase(val pos : BlockPos) {
     /**
      * Called when the graph manager completed loading this cell from the disk.
     */
-    @In(Side.LogicalServer)
     open fun completeDiskLoad(){}
 
     /**
      *   Called when the tile entity placing is complete.
     */
-    @In(Side.LogicalServer)
     open fun setPlaced(){}
 
     /**
      * Called when the tile entity is destroyed.
     */
-    @In(Side.LogicalServer)
     open fun destroy() {
         graph.removeCell(this)
     }
@@ -54,7 +49,6 @@ abstract class CellBase(val pos : BlockPos) {
      * @param connectionsChanged True if the neighbouring cells changed.
      * @param graphChanged True if the graph that owns this cell has been updated.
     */
-    @In(Side.LogicalServer)
     open fun update(connectionsChanged : Boolean, graphChanged : Boolean){}
 
     /**
