@@ -1,0 +1,12 @@
+{
+    "parent": "minecraft:block/cube",
+    "textures": {
+        "up": "eln2:block/inductor_placeholder",
+        "down": "eln2:block/inductor_placeholder",
+        "north": "eln2:block/inductor_placeholder",
+        "south": "eln2:block/inductor_placeholder",
+        "west": "eln2:block/inductor_placeholder",
+        "east": "eln2:block/inductor_placeholder",
+        "particle": "minecraft:block/stone"
+    }
+}
