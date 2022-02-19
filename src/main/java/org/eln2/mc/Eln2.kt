@@ -3,7 +3,7 @@ package org.eln2.mc
 import net.minecraftforge.fml.common.Mod
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
-import org.eln2.mc.common.Networking
+import org.eln2.mc.common.network.Networking
 import org.eln2.mc.common.blocks.BlockRegistry
 import org.eln2.mc.common.cell.CellRegistry
 import org.eln2.mc.common.items.ItemRegistry

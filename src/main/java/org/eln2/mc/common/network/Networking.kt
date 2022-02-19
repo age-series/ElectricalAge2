@@ -1,14 +1,14 @@
 @file:Suppress("INACCESSIBLE_TYPE")
 
-package org.eln2.mc.common
+package org.eln2.mc.common.network
 
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.level.ServerPlayer
 import net.minecraftforge.network.NetworkDirection
 import net.minecraftforge.network.NetworkRegistry
 import org.eln2.mc.Eln2
-import org.eln2.mc.common.packets.clientToServer.CircuitExplorerOpenPacket
-import org.eln2.mc.common.packets.serverToClient.CircuitExplorerContextPacket
+import org.eln2.mc.common.network.clientToServer.CircuitExplorerOpenPacket
+import org.eln2.mc.common.network.serverToClient.CircuitExplorerContextPacket
 
 typealias CEOPacket = CircuitExplorerOpenPacket
 typealias CECPacket = CircuitExplorerContextPacket
@@ -23,9 +23,9 @@ object Networking {
     private const val channelName = "main"
     private val channel = NetworkRegistry.newSimpleChannel(
         ResourceLocation(Eln2.MODID, channelName),
-        { protocolVersion},
-        {it == protocolVersion},
-        {it == protocolVersion})
+        { protocolVersion },
+        {it == protocolVersion },
+        {it == protocolVersion })
 
 
     fun setup(){

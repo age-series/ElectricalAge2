@@ -54,9 +54,9 @@ class DiodeCell(pos : BlockPos): CellBase(pos) {
             // No results from simulator
         }
 
-        map["waila.eln2.voltage"] = voltage
-        map["waila.eln2.current"] = current
-        if (mode != null)map["waila.eln2.mode"] = mode
+        map["voltage"] = voltage
+        map["current"] = current
+        if (mode != null)map["mode"] = mode
 
         return map
     }

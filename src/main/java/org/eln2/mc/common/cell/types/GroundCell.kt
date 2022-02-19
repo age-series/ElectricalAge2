@@ -66,8 +66,8 @@ class GroundCell(pos : BlockPos) : CellBase(pos) {
             // don't care, sim is in a bad/unready state
         }
 
-        map["waila.eln2.voltage"] = voltage
-        map["waila.eln2.current"] = current
+        map["voltage"] = voltage
+        map["current"] = current
 
         return map
     }

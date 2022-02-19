@@ -9,9 +9,20 @@
     "block.eln2.inductor": "Inductor",
     "block.eln2.diode": "Diode",
 
-    "plotter.circuit_explorer": "Circuit Explorer",
-    "plotter.cell_count": "Cell Count",
-    "plotter.highlighted": "Highlighted",
+    "plotter.eln2.circuit_explorer": "Circuit Explorer",
+    "plotter.eln2.cell_count": "Cell Count",
+    "plotter.eln2.highlighted": "Highlighted",
+    "plotter.eln2.solve_time": "Solve Time",
+    "plotter.eln2.type": "Type",
+
+    "plotter.eln2.voltage": "Voltage",
+    "plotter.eln2.current": "Current",
+    "plotter.eln2.resistance": "Resistance",
+    "plotter.eln2.capacitance": "Capacitance",
+    "plotter.eln2.inductance": "Inductance",
+    "plotter.eln2.energy": "Energy",
+    "plotter.eln2.power": "Power",
+    "plotter.eln2.mode": "Mode",
 
     "waila.eln2.voltage": "Voltage",
     "waila.eln2.current": "Current",
