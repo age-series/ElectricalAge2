@@ -46,14 +46,40 @@
 			}
 		},
 		{
-			"name": "Inductor",
+			"name": "Inductor_base",
 			"from": [4, 3, 8],
+			"to": [8, 4, 12],
+			"faces": {
+				"north": {"uv": [8, 4, 10, 4.5], "texture": "#0"},
+				"east": {"uv": [10, 4, 12, 4.5], "texture": "#0"},
+				"south": {"uv": [8, 4, 10, 4.5], "texture": "#0"},
+				"west": {"uv": [10, 4, 12, 4.5], "texture": "#0"},
+				"up": {"uv": [10, 1, 12, 3], "texture": "#0"},
+				"down": {"uv": [10, 1, 12, 3], "texture": "#0"}
+			}
+		},
+		{
+			"name": "Inductor_coil",
+			"from": [4.25, 4, 8.25],
+			"to": [7.75, 5.5, 11.75],
+			"faces": {
+				"north": {"uv": [8, 3.25, 10, 4], "texture": "#0"},
+				"east": {"uv": [10, 3.25, 12, 4], "texture": "#0"},
+				"south": {"uv": [8, 3.25, 10, 4], "texture": "#0"},
+				"west": {"uv": [10, 3.25, 12, 4], "texture": "#0"},
+				"up": {"uv": [10, 1, 12, 3], "texture": "#0"},
+				"down": {"uv": [10, 1, 12, 3], "texture": "#0"}
+			}
+		},
+		{
+			"name": "Inductor_core",
+			"from": [4, 5.5, 8],
 			"to": [8, 6, 12],
 			"faces": {
-				"north": {"uv": [8, 3, 10, 4.5], "texture": "#0"},
-				"east": {"uv": [10, 3, 12, 4.5], "texture": "#0"},
-				"south": {"uv": [8, 3, 10, 4.5], "texture": "#0"},
-				"west": {"uv": [10, 3, 12, 4.5], "texture": "#0"},
+				"north": {"uv": [8, 3, 10, 3.25], "texture": "#0"},
+				"east": {"uv": [10, 3, 12, 3.25], "texture": "#0"},
+				"south": {"uv": [8, 3, 10, 3.25], "texture": "#0"},
+				"west": {"uv": [10, 3, 12, 3.25], "texture": "#0"},
 				"up": {"uv": [10, 1, 12, 3], "texture": "#0"},
 				"down": {"uv": [10, 1, 12, 3], "texture": "#0"}
 			}
@@ -100,7 +126,7 @@
 		{
 			"name": "Diode",
 			"from": [4, 3, 4.5],
-			"to": [9, 5, 6.5],
+			"to": [9, 4.5, 6.5],
 			"rotation": {"angle": 0, "axis": "y", "origin": [6.5, 4, 5.5]},
 			"faces": {
 				"north": {"uv": [12.5, 0, 10, 1], "texture": "#0"},
@@ -217,11 +243,13 @@
 		5,
 		6,
 		7,
+		8,
+		9,
 		{
 			"name": "ic",
 			"origin": [0, 0, 0],
 			"color": 0,
-			"children": [8, 9, 10, 11, 12, 13, 14]
+			"children": [10, 11, 12, 13, 14, 15, 16]
 		}
 	]
 }
