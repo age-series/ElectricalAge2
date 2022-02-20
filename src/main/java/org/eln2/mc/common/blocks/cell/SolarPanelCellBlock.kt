@@ -13,9 +13,9 @@ import org.eln2.mc.common.blocks.CellBlockBase
 import org.eln2.mc.common.cell.CellRegistry
 import org.eln2.mc.extensions.VoxelShapeExtensions.align
 
-class SolarLightCellBlock: CellBlockBase() {
+class SolarPanelCellBlock: CellBlockBase() {
     override fun getCellProvider(): ResourceLocation {
-        return CellRegistry.SOLAR_LIGHT_CELL.id
+        return CellRegistry.SOLAR_PANEL_CELL.id
     }
 
     override fun getCollisionShape(
@@ -38,10 +38,8 @@ class SolarLightCellBlock: CellBlockBase() {
     }
 
     companion object {
-        private val lightPillar = box(7.0, 0.0, 7.0, 9.0, 8.0, 9.0)
-        private val lightHead = box(5.0, 8.0, 5.0, 11.0, 11.0, 11.0)
-
-        private val shape = Shapes.joinUnoptimized(lightPillar, lightHead, BooleanOp.OR)
+        private val solar_panel = box(0.0, 0.0, 0.0, 16.0, 2.0, 16.0)
+        private val shape = solar_panel
 
         private val cache = HashMap<BlockState, VoxelShape>()
 
@@ -59,3 +57,4 @@ class SolarLightCellBlock: CellBlockBase() {
         }
     }
 }
+
