@@ -3,12 +3,14 @@
 package org.eln2.mc.common.blocks
 
 import net.minecraft.world.item.*
+import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.entity.BlockEntityType
 import net.minecraftforge.eventbus.api.IEventBus
 import net.minecraftforge.registries.DeferredRegister
 import net.minecraftforge.registries.ForgeRegistries
 import net.minecraftforge.registries.RegistryObject
 import org.eln2.mc.Eln2
+import org.eln2.mc.common.blocks.block.DcDcConverterBlock
 import org.eln2.mc.common.blocks.cell.*
 
 object BlockRegistry {
@@ -36,10 +38,22 @@ object BlockRegistry {
         val item : RegistryObject<BlockItem>
     )
 
+    data class BlockRegistryItem(
+        val name: String,
+        val block: RegistryObject<Block>,
+        val item: RegistryObject<BlockItem>
+    )
+
     private fun registerCellBlock(name : String, tab: CreativeModeTab? = null, supplier : () -> CellBlockBase) : CellBlockRegistryItem{
         val block = BLOCK_REGISTRY.register(name) { supplier() }
         val item = BLOCK_ITEM_REGISTRY.register(name) { BlockItem(block.get(), Item.Properties().also {if (tab != null) it.tab(tab)}) }
         return CellBlockRegistryItem(name, block, item)
+    }
+
+    private fun registerBasicBlock(name: String, tab: CreativeModeTab? = null, supplier: () -> Block): BlockRegistryItem {
+        val block = BLOCK_REGISTRY.register(name) {supplier()}
+        val item = BLOCK_ITEM_REGISTRY.register(name) {BlockItem(block.get(), Item.Properties().also {if(tab != null) it.tab(tab)})}
+        return BlockRegistryItem(name, block, item)
     }
 
     private val eln2Tab: CreativeModeTab = object: CreativeModeTab("Electrical_Age") {
@@ -55,4 +69,5 @@ object BlockRegistry {
     val CAPACITOR_CELL = registerCellBlock("capacitor", eln2Tab) { CapacitorCellBlock() }
     val INDUCTOR_CELL = registerCellBlock("inductor", eln2Tab) { InductorCellBlock() }
     val DIODE_CELL = registerCellBlock("diode", eln2Tab) { DiodeCellBlock() }
+    val DC_DC_CONVERTER_BLOCK = registerBasicBlock("dcdc_converter") { DcDcConverterBlock() }
 }
