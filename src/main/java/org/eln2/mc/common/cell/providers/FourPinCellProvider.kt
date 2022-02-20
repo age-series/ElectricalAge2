@@ -5,7 +5,7 @@ import org.eln2.mc.common.RelativeRotationDirection
 import org.eln2.mc.common.cell.CellBase
 import org.eln2.mc.common.cell.CellProvider
 
-class FourPinCellProvider(val factory : ((pos : BlockPos) -> CellBase), override val symbol : Char) : CellProvider() {
+class FourPinCellProvider(val factory : ((pos : BlockPos) -> CellBase), override val symbol : Char = 'U') : CellProvider() {
     init {
         connectableDirections.addAll(listOf(
             RelativeRotationDirection.Front,
