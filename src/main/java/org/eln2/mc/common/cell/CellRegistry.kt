@@ -32,6 +32,7 @@ object CellRegistry {
     val `12V_BATTERY_CELL` = register("12v_battery", TwoPinCellProvider { `12VBatteryCell`(it) })
     val LIGHT_CELL = register("light", FourPinCellProvider { LightCell(it) })
     val SOLAR_LIGHT_CELL = register("solar_light", NoPinCellProvider { SolarLightCell(it) })
+    val SOLAR_PANEL_CELL = register("solar_panel", TwoPinCellProvider {SolarPanelCell(it)})
 
     fun setup(bus : IEventBus) {
         CELLS.register(bus)
