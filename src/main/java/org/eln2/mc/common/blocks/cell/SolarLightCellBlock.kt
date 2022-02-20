@@ -39,7 +39,7 @@ class SolarLightCellBlock: CellBlockBase() {
 
     companion object {
         private val lightPillar = box(7.0, 0.0, 7.0, 9.0, 8.0, 9.0)
-        private val lightHead = box(6.0, 8.0, 6.0, 10.0, 11.0, 10.0)
+        private val lightHead = box(5.0, 8.0, 5.0, 11.0, 11.0, 11.0)
 
         private val shape = Shapes.joinUnoptimized(lightPillar, lightHead, BooleanOp.OR)
 
