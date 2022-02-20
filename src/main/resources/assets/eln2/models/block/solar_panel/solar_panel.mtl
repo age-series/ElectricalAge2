@@ -1,0 +1,6 @@
+# Made in Blockbench 3.8.3
+newmtl m_1
+map_Kd eln2:block/solar_panel/solar_panel
+newmtl m_2
+map_Kd eln2:block/solar_panel/frame
+newmtl none
