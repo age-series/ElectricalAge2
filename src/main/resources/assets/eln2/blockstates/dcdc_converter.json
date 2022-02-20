@@ -1,18 +1,18 @@
 {
     "variants": {
         "facing=east": {
-            "model": "eln2:dcdc_converter",
+            "model": "eln2:block/dcdc_converter",
             "y": 90
         },
         "facing=north": {
-            "model": "eln2:dcdc_converter"
+            "model": "eln2:block/dcdc_converter"
         },
         "facing=south": {
-            "model": "eln2:dcdc_converter",
+            "model": "eln2:block/dcdc_converter",
             "y": 180
         },
         "facing=west": {
-            "model": "eln2:dcdc_converter",
+            "model": "eln2:block/dcdc_converter",
             "y": 270
         }
     }
