@@ -10,6 +10,7 @@
     "block.eln2.diode": "Diode",
     "block.eln2.12v_battery": "12V Battery",
     "block.eln2.light": "Light",
+    "block.eln2.solar_light": "Solar Light",
 
     "plotter.eln2.circuit_explorer": "Circuit Explorer",
     "plotter.eln2.cell_count": "Cell Count",

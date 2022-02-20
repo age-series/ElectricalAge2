@@ -72,4 +72,5 @@ object BlockRegistry {
     val DC_DC_CONVERTER_BLOCK = registerBasicBlock("dcdc_converter") { DcDcConverterBlock() }
     val `12V_BATTERY_CELL` = registerCellBlock("12v_battery", eln2Tab) { `12vBatteryCellBlock`()}
     val LIGHT_CELL = registerCellBlock("light", eln2Tab) {LightCellBlock()}
+    val SOLAR_LIGHT_CELL = registerCellBlock("solar_light", eln2Tab) {SolarLightCellBlock()}
 }

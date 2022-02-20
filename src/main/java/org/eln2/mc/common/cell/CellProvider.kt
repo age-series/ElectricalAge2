@@ -5,7 +5,6 @@ import net.minecraftforge.registries.ForgeRegistryEntry
 import org.eln2.mc.common.RelativeRotationDirection
 
 abstract class CellProvider : ForgeRegistryEntry<CellProvider>() {
-    abstract val symbol : Char
     val connectableDirections = HashSet<RelativeRotationDirection>()
 
     /**
