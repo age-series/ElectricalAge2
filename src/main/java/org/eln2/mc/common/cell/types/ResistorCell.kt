@@ -35,10 +35,6 @@ class ResistorCell(pos : BlockPos) : CellBase(pos) {
         }
     }
 
-    override fun createDataPrint(): String {
-        return "${valueText(resistor.current, UnitType.AMPERE)} ${valueText(resistor.resistance, UnitType.OHM)}"
-    }
-
     override fun getHudMap(): Map<String, String> {
         var voltage: String = valueText(0.0, UnitType.VOLT)
         var current: String = valueText(0.0, UnitType.AMPERE)

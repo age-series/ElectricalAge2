@@ -48,20 +48,9 @@ class WireCell(pos : BlockPos) : CellBase(pos) {
 
     private val neighbourToResistorLookup = HashMap<CellBase, Resistor>()
 
-    /**
+    /*
      * The most meaningful current is the branch currents at the central points.
      */
-    override fun createDataPrint(): String {
-        return if (connections.size == 2) {
-            // Straight through wire. Just give absolute value I guess since directionality is ~ meaningless for wires.
-            valueText(abs((componentForNeighbour(connections[0]).component as Resistor).current), UnitType.AMPERE)
-        } else {
-            // Branch currents. Print them all.
-            val currents = connections.map { (componentForNeighbour(it).component as Resistor).current }
-            currents.joinToString(", ") { ValueText.valueText(it, UnitType.AMPERE) }
-        }
-    }
-
     override fun getHudMap(): Map<String, String> {
         var voltage: String = valueText(0.0, UnitType.VOLT)
         var current: String = valueText(0.0, UnitType.AMPERE)

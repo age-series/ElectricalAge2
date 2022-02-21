@@ -52,12 +52,9 @@ abstract class CellBase(val pos : BlockPos) {
     open fun update(connectionsChanged : Boolean, graphChanged : Boolean){}
 
     /**
-     * This method returns the text that will be displayed in the Circuit Explorer.
-    */
-    open fun createDataPrint() : String{
-        return "N/A"
-    }
-
+     * Called to get a map of key value pairs of circuit properties for the WAILA clone and the plotter.
+     * @return Map of circuit property (eg, "voltage") and value (eg, "5.0V")
+     */
     abstract fun getHudMap(): Map<String, String>
 
     /**

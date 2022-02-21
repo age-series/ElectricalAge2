@@ -47,11 +47,6 @@ class GroundCell(pos : BlockPos) : CellBase(pos) {
 
     private val neighbourToResistorLookup = HashMap<CellBase, Resistor>()
 
-    override fun createDataPrint(): String {
-        val currents = connections.map { (componentForNeighbour(it).component as Resistor).current }
-        return currents.joinToString(", ") { valueText(it, UnitType.AMPERE) }
-    }
-
     override fun getHudMap(): Map<String, String> {
         val voltage: String = valueText(0.0, UnitType.VOLT)
         var current: String = valueText(0.0, UnitType.AMPERE)

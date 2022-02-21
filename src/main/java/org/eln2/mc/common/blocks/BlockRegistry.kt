@@ -70,4 +70,5 @@ object BlockRegistry {
     val INDUCTOR_CELL = registerCellBlock("inductor", eln2Tab) { InductorCellBlock() }
     val DIODE_CELL = registerCellBlock("diode", eln2Tab) { DiodeCellBlock() }
     val DC_DC_CONVERTER_BLOCK = registerBasicBlock("dcdc_converter") { DcDcConverterBlock() }
+    val `12V_BATTERY_CELL` = registerCellBlock("12v_battery", eln2Tab) { `12vBatteryCellBlock`()}
 }
