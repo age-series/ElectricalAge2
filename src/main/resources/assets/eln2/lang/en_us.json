@@ -13,6 +13,8 @@
     "block.eln2.solar_light": "Solar Light",
     "block.eln2.solar_panel": "Solar Panel",
 
+    "item.eln2.voltmeter": "Voltmeter",
+
     "plotter.eln2.circuit_explorer": "Circuit Explorer",
     "plotter.eln2.cell_count": "Cell Count",
     "plotter.eln2.highlighted": "Highlighted",
