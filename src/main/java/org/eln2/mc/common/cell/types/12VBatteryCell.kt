@@ -8,28 +8,25 @@ import org.eln2.mc.common.cell.ComponentInfo
 import org.eln2.mc.extensions.ComponentExtensions.connectToPinOf
 import org.eln2.mc.utility.UnitType
 import org.eln2.mc.utility.ValueText
-import org.eln2.mc.utility.ValueText.valueText
-import kotlin.reflect.jvm.internal.ReflectProperties.Val
 
-class VoltageSourceCell(pos : BlockPos) : CellBase(pos) {
+class `12VBatteryCell`(pos : BlockPos) : CellBase(pos) {
 
-    /*  R -> local resistors. Their first pin is connected to the voltage source.
-    *   C -> remote components. The second pin of the local resistors is used for them.
+    /*
+    *   V -> local voltage source.
+    *   C -> remote components.
     *
-    *       C
-    *       R
-    *   C R V R C
-    *       R
-    *       C
+    *   C V C
     */
 
     private lateinit var source : VoltageSource
 
     override fun clearForRebuild() {
         source = VoltageSource()
-        source.potential = 5.0
+        source.potential = 12.5
         neighbourToResistorLookup.clear()
     }
+
+    // TODO: Battery needs a + and - terminal. Currently, it's just implicitly grounded because I can't get that to work.
 
     override fun componentForNeighbour(neighbour: CellBase): ComponentInfo {
         val circuit = graph.circuit
@@ -57,14 +54,14 @@ class VoltageSourceCell(pos : BlockPos) : CellBase(pos) {
     private val neighbourToResistorLookup = HashMap<CellBase, Resistor>()
 
     override fun getHudMap(): Map<String, String> {
-        val voltage: String = valueText(source.potential, UnitType.VOLT)
-        var current: String = valueText(0.0, UnitType.AMPERE)
-        var power: String = valueText(0.0, UnitType.WATT)
+        val voltage: String = ValueText.valueText(source.potential, UnitType.VOLT)
+        var current: String = ValueText.valueText(0.0, UnitType.AMPERE)
+        var power: String = ValueText.valueText(0.0, UnitType.WATT)
         val map = mutableMapOf<String, String>()
 
         try {
-            current = valueText(source.current, UnitType.AMPERE)
-            power = valueText(source.potential * source.current, UnitType.WATT)
+            current = ValueText.valueText(source.current, UnitType.AMPERE)
+            power = ValueText.valueText(source.potential * source.current, UnitType.WATT)
         } catch (_: Exception) {
             // No results from simulator
         }

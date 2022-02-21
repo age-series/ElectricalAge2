@@ -35,10 +35,6 @@ class InductorCell(pos : BlockPos) : CellBase(pos) {
         }
     }
 
-    override fun createDataPrint(): String {
-        return valueText(inductor.current, UnitType.AMPERE)
-    }
-
     override fun getHudMap(): Map<String, String> {
         var voltage: String = valueText(0.0, UnitType.VOLT)
         var current: String = valueText(0.0, UnitType.AMPERE)

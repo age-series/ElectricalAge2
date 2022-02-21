@@ -1,0 +1,19 @@
+{
+    "variants": {
+        "facing=east": {
+            "model": "eln2:block/12v_battery",
+            "y": 90
+        },
+        "facing=north": {
+            "model": "eln2:block/12v_battery"
+        },
+        "facing=south": {
+            "model": "eln2:block/12v_battery",
+            "y": 180
+        },
+        "facing=west": {
+            "model": "eln2:block/12v_battery",
+            "y": 270
+        }
+    }
+}

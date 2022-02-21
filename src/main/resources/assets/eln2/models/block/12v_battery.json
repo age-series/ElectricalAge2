@@ -1,6 +1,6 @@
 {
     "loader": "forge:obj",
-    "model": "eln2:models/block/diode/diode.obj",
+    "model": "eln2:models/block/12v_battery/12v_battery.obj",
     "flip-v": true,
     "textures": {
         "particle": "minecraft:block/stone"

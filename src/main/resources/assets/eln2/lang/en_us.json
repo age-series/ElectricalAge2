@@ -8,6 +8,7 @@
     "block.eln2.capacitor": "Capacitor",
     "block.eln2.inductor": "Inductor",
     "block.eln2.diode": "Diode",
+    "block.eln2.12v_battery": "12V Battery",
 
     "plotter.eln2.circuit_explorer": "Circuit Explorer",
     "plotter.eln2.cell_count": "Cell Count",
