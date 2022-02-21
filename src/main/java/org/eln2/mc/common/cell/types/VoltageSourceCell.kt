@@ -7,9 +7,7 @@ import org.eln2.mc.common.cell.CellBase
 import org.eln2.mc.common.cell.ComponentInfo
 import org.eln2.mc.extensions.ComponentExtensions.connectToPinOf
 import org.eln2.mc.utility.UnitType
-import org.eln2.mc.utility.ValueText
 import org.eln2.mc.utility.ValueText.valueText
-import kotlin.reflect.jvm.internal.ReflectProperties.Val
 
 class VoltageSourceCell(pos : BlockPos) : CellBase(pos) {
 
@@ -23,7 +21,7 @@ class VoltageSourceCell(pos : BlockPos) : CellBase(pos) {
     *       C
     */
 
-    private lateinit var source : VoltageSource
+    lateinit var source: VoltageSource private set
 
     override fun clearForRebuild() {
         source = VoltageSource()
