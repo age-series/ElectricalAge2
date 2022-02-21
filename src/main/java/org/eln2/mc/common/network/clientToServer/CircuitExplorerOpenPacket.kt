@@ -45,8 +45,8 @@ class CircuitExplorerOpenPacket() {
 
 
 
-            val cells = tile.cell.graph.cells.map { CellInfo(it.id.toString(), it.getHudMap(), it.pos) }
-            Networking.sendTo(CircuitExplorerContextPacket(cells.toList(), tile.cell.graph.latestSolveTime), player)
+            val cells = tile.cell!!.graph.cells.map { CellInfo(it.id.toString(), it.getHudMap(), it.pos) }
+            Networking.sendTo(CircuitExplorerContextPacket(cells.toList(), tile.cell!!.graph.latestSolveTime), player)
         }
     }
 }

@@ -7,7 +7,7 @@ import org.eln2.mc.common.cell.CellBase
 
 object ServerLevelExtensions {
     fun ServerLevel.getCellAt(pos : BlockPos) : CellBase {
-        return (this.getBlockEntity(pos) as CellTileEntity).cell
+        return (this.getBlockEntity(pos) as CellTileEntity).cell!!
     }
 
     fun ServerLevel.getCellEntityAt(pos : BlockPos) : CellTileEntity {

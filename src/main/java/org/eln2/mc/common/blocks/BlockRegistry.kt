@@ -12,6 +12,7 @@ import net.minecraftforge.registries.RegistryObject
 import org.eln2.mc.Eln2
 import org.eln2.mc.common.blocks.block.DcDcConverterBlock
 import org.eln2.mc.common.blocks.cell.*
+import org.eln2.mc.common.eln2Tab
 
 object BlockRegistry {
     @Suppress("MemberVisibilityCanBePrivate") // Used for block registration and fetching
@@ -54,12 +55,6 @@ object BlockRegistry {
         val block = BLOCK_REGISTRY.register(name) {supplier()}
         val item = BLOCK_ITEM_REGISTRY.register(name) {BlockItem(block.get(), Item.Properties().also {if(tab != null) it.tab(tab)})}
         return BlockRegistryItem(name, block, item)
-    }
-
-    private val eln2Tab: CreativeModeTab = object: CreativeModeTab("Electrical_Age") {
-        override fun makeIcon(): ItemStack {
-            return ItemStack(VOLTAGE_SOURCE_CELL.item.get().asItem())
-        }
     }
 
     val RESISTOR_CELL = registerCellBlock("resistor", eln2Tab) { ResistorCellBlock() }
