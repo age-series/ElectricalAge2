@@ -2,7 +2,6 @@ package org.eln2.mc.client.screens
 
 import com.mojang.blaze3d.systems.RenderSystem
 import com.mojang.blaze3d.vertex.PoseStack
-import net.minecraft.client.gui.GuiComponent
 import net.minecraft.client.gui.components.Button
 import net.minecraft.client.gui.components.EditBox
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen
@@ -11,20 +10,19 @@ import net.minecraft.network.chat.TextComponent
 import net.minecraft.network.chat.TranslatableComponent
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.world.entity.player.Inventory
-import net.minecraftforge.client.event.ContainerScreenEvent.DrawBackground
-import net.minecraftforge.client.event.ContainerScreenEvent.DrawForeground
+import net.minecraftforge.client.event.ContainerScreenEvent
 import net.minecraftforge.common.MinecraftForge
-import org.eln2.mc.Eln2.MODID
-import org.eln2.mc.common.containers.VoltageSourceCellContainer
+import org.eln2.mc.Eln2
+import org.eln2.mc.common.containers.ResistorCellContainer
 import org.eln2.mc.common.network.Networking
-import org.eln2.mc.common.network.clientToServer.VoltageSourceUpdatePacket
+import org.eln2.mc.common.network.clientToServer.ResistorUpdatePacket
 import java.awt.Color
 
-class VoltageSourceCellScreen(private val container: VoltageSourceCellContainer, inv: Inventory, name: Component) :
-    AbstractContainerScreen<VoltageSourceCellContainer>(container, inv, name) {
+class ResistorCellScreen(private val container: ResistorCellContainer, inv: Inventory, name: Component) :
+    AbstractContainerScreen<ResistorCellContainer>(container, inv, name) {
 
-    private val guiTexture: ResourceLocation = ResourceLocation(MODID, "textures/gui/voltage_source_gui.png")
-    private val textureWidth = 320
+    private val guiTexture: ResourceLocation = ResourceLocation(Eln2.MODID, "textures/gui/resistor_gui.png")
+    private val textureWidth = 256
     private val textureHeight = 128
     private val guiWidth = 256
     private val guiHeight = 128
@@ -45,18 +43,18 @@ class VoltageSourceCellScreen(private val container: VoltageSourceCellContainer,
     lateinit var textbox: EditBox
     lateinit var saveButton: Button
 
-    private var voltage = 0.0
+    private var resistance = 0.0
 
     override fun init() {
         relX = (this.width - guiWidth) / 2
         relY = (this.height - guiHeight) / 2
         textbox = EditBox(this.font, relX + textboxX, relY + textboxY, textboxW, textboxH, TextComponent("unused"))
-        textbox.value = voltage.toString()
+        textbox.value = resistance.toString()
         saveButton = Button(relX + buttonX, relY + buttonY, buttonW, buttonH, TranslatableComponent("gui.eln2.save")) {
             try {
-                val voltage = textbox.value.toDouble()
-                this.container.voltage = voltage
-                Networking.sendToServer(VoltageSourceUpdatePacket(voltage, container.pos))
+                val resistance = textbox.value.toDouble()
+                this.container.resistance = resistance
+                Networking.sendToServer(ResistorUpdatePacket(resistance, container.pos))
                 this.onClose()
             } catch (ex: NumberFormatException) {
                 textbox.setTextColor(Color.RED.rgb)
@@ -69,7 +67,7 @@ class VoltageSourceCellScreen(private val container: VoltageSourceCellContainer,
 
     override fun renderBg(pPoseStack: PoseStack, pPartialTick: Float, pMouseX: Int, pMouseY: Int) {
         RenderSystem.setShaderTexture(0, guiTexture)
-        GuiComponent.blit(
+        blit(
             pPoseStack,
             relX,
             relY,
@@ -86,11 +84,11 @@ class VoltageSourceCellScreen(private val container: VoltageSourceCellContainer,
     override fun render(pPoseStack: PoseStack, pMouseX: Int, pMouseY: Int, pPartialTick: Float) {
         this.renderBackground(pPoseStack)
         this.renderBg(pPoseStack, pPartialTick, pMouseX, pMouseY)
-        MinecraftForge.EVENT_BUS.post(DrawBackground(this, pPoseStack, pMouseX, pMouseY))
+        MinecraftForge.EVENT_BUS.post(ContainerScreenEvent.DrawBackground(this, pPoseStack, pMouseX, pMouseY))
 
-        if (container.voltage != voltage) {
-            voltage = container.voltage
-            textbox.value = voltage.toString()
+        if (container.resistance != resistance) {
+            resistance = container.resistance
+            textbox.value = resistance.toString()
         }
 
         //Render foreground
@@ -109,9 +107,8 @@ class VoltageSourceCellScreen(private val container: VoltageSourceCellContainer,
         posestack.popPose()
         RenderSystem.applyModelViewMatrix()
         RenderSystem.enableDepthTest()
-        MinecraftForge.EVENT_BUS.post(DrawForeground(this, pPoseStack, pMouseX, pMouseY))
+        MinecraftForge.EVENT_BUS.post(ContainerScreenEvent.DrawForeground(this, pPoseStack, pMouseX, pMouseY))
 
         this.renderTooltip(pPoseStack, pMouseX, pMouseY)
     }
-
 }

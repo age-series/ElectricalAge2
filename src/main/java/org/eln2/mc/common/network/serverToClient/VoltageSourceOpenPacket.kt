@@ -33,7 +33,6 @@ class VoltageSourceOpenPacket(val voltage: Double, val pos: BlockPos) {
             val openContainer = mc.player?.containerMenu
 
             if (openContainer is VoltageSourceCellContainer) {
-                println("Updating the container $openContainer")
                 openContainer.receiveChanges(packet.voltage, packet.pos)
             }
         }
