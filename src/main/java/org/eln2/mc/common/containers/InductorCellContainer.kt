@@ -5,19 +5,19 @@ import net.minecraft.world.entity.player.Inventory
 import net.minecraft.world.entity.player.Player
 import org.eln2.mc.common.blocks.CellTileEntity
 import org.eln2.mc.common.cell.types.InductorCell
-import org.eln2.mc.common.containers.ContainerRegistry.RESISTOR_CELL_CONTAINER
+import org.eln2.mc.common.containers.ContainerRegistry.INDUCTOR_CELL_CONTAINER
 import org.eln2.mc.common.network.Networking
 import org.eln2.mc.common.network.serverToClient.SingleDoubleElementGuiOpenPacket
 
 class InductorCellContainer(id: Int, plyInv: Inventory, ply: Player) :
-    SingleValueCellContainer<InductorCell, Double>(id, plyInv, ply, RESISTOR_CELL_CONTAINER.get()) {
+    SingleValueCellContainer<InductorCell, Double>(id, plyInv, ply, INDUCTOR_CELL_CONTAINER.container.get()) {
 
     override var value: Double = 0.0
 
     constructor(id: Int, plyInv: Inventory, ply: Player, te: CellTileEntity) : this(id, plyInv, ply) {
         this.te = te
 
-        this.value = (te.cell as InductorCell).inductor.inductance
+        this.value = (te.cell as InductorCell).getGuiValue()
         this.pos = te.pos
     }
 
