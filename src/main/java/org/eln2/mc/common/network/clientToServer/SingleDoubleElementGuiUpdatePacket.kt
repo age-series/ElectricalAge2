@@ -8,6 +8,11 @@ import org.eln2.mc.common.blocks.CellTileEntity
 import org.eln2.mc.common.cell.ISingleElementGuiCell
 import java.util.function.Supplier
 
+/**
+ * SingleDoubleElementGuiUpdatePacket represents an update to an [ISingleElementGuiCell]
+ * where its stored value is a [Double]
+ * @see [org.eln2.mc.common.network.serverToClient.SingleDoubleElementGuiOpenPacket]
+ */
 class SingleDoubleElementGuiUpdatePacket(val value: Double, val pos: BlockPos) {
 
     companion object {
@@ -28,12 +33,12 @@ class SingleDoubleElementGuiUpdatePacket(val value: Double, val pos: BlockPos) {
             }
         }
 
-        @Suppress("UNCHECKED_CAST")
         private fun handleServer(sender: ServerPlayer, packet: SingleDoubleElementGuiUpdatePacket) {
             val te = sender.level.getBlockEntity(packet.pos)
 
             if (te is CellTileEntity) {
                 if (te.cell is ISingleElementGuiCell<*>) {
+                    @Suppress("UNCHECKED_CAST")
                     (te.cell as? ISingleElementGuiCell<Double>)?.setGuiValue(packet.value)
                         ?: error("Attempted to set double value from GUI for non-double-holding TE")
                 }

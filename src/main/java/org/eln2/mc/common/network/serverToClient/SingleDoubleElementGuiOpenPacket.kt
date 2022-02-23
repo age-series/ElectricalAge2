@@ -10,6 +10,11 @@ import org.eln2.mc.common.cell.ISingleElementGuiCell
 import org.eln2.mc.common.containers.SingleValueCellContainer
 import java.util.function.Supplier
 
+/**
+ * SingleDoubleElementGuiOpenPacket is sent when the GUI of a [ISingleElementGuiCell] with a Double value
+ * is opened by a client. This populates the client container with values from the Block Entity
+ * @see [org.eln2.mc.common.network.clientToServer.SingleDoubleElementGuiUpdatePacket]
+ */
 class SingleDoubleElementGuiOpenPacket(val value: Double, val pos: BlockPos) {
 
     companion object {
@@ -32,11 +37,11 @@ class SingleDoubleElementGuiOpenPacket(val value: Double, val pos: BlockPos) {
             }
         }
 
-        @Suppress("UNCHECKED_CAST")
         private fun handleClient(packet: SingleDoubleElementGuiOpenPacket, mc: Minecraft) {
             val openContainer = mc.player?.containerMenu
 
             if (openContainer is SingleValueCellContainer<*, *>) {
+                @Suppress("UNCHECKED_CAST")
                 (openContainer as? SingleValueCellContainer<ISingleElementGuiCell<Double>, Double>)?.setSyncedValue(
                     packet.value,
                     packet.pos
