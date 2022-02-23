@@ -17,7 +17,7 @@ import net.minecraftforge.common.MinecraftForge
 import org.eln2.mc.Eln2.MODID
 import org.eln2.mc.common.containers.VoltageSourceCellContainer
 import org.eln2.mc.common.network.Networking
-import org.eln2.mc.common.network.clientToServer.VoltageSourceUpdatePacket
+import org.eln2.mc.common.network.clientToServer.SingleDoubleElementGuiUpdatePacket
 import java.awt.Color
 
 class VoltageSourceCellScreen(private val container: VoltageSourceCellContainer, inv: Inventory, name: Component) :
@@ -55,8 +55,8 @@ class VoltageSourceCellScreen(private val container: VoltageSourceCellContainer,
         saveButton = Button(relX + buttonX, relY + buttonY, buttonW, buttonH, TranslatableComponent("gui.eln2.save")) {
             try {
                 val voltage = textbox.value.toDouble()
-                this.container.voltage = voltage
-                Networking.sendToServer(VoltageSourceUpdatePacket(voltage, container.pos))
+                this.container.value = voltage
+                Networking.sendToServer(SingleDoubleElementGuiUpdatePacket(voltage, container.pos))
                 this.onClose()
             } catch (ex: NumberFormatException) {
                 textbox.setTextColor(Color.RED.rgb)
@@ -88,8 +88,8 @@ class VoltageSourceCellScreen(private val container: VoltageSourceCellContainer,
         this.renderBg(pPoseStack, pPartialTick, pMouseX, pMouseY)
         MinecraftForge.EVENT_BUS.post(DrawBackground(this, pPoseStack, pMouseX, pMouseY))
 
-        if (container.voltage != voltage) {
-            voltage = container.voltage
+        if (container.value != voltage) {
+            voltage = container.value
             textbox.value = voltage.toString()
         }
 

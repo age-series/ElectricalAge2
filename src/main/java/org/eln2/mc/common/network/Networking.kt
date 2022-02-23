@@ -8,11 +8,9 @@ import net.minecraftforge.network.NetworkDirection
 import net.minecraftforge.network.NetworkRegistry
 import org.eln2.mc.Eln2
 import org.eln2.mc.common.network.clientToServer.CircuitExplorerOpenPacket
-import org.eln2.mc.common.network.clientToServer.ResistorUpdatePacket
-import org.eln2.mc.common.network.clientToServer.VoltageSourceUpdatePacket
+import org.eln2.mc.common.network.clientToServer.SingleDoubleElementGuiUpdatePacket
 import org.eln2.mc.common.network.serverToClient.CircuitExplorerContextPacket
-import org.eln2.mc.common.network.serverToClient.ResistorOpenPacket
-import org.eln2.mc.common.network.serverToClient.VoltageSourceOpenPacket
+import org.eln2.mc.common.network.serverToClient.SingleDoubleElementGuiOpenPacket
 
 typealias CEOPacket = CircuitExplorerOpenPacket
 typealias CECPacket = CircuitExplorerContextPacket
@@ -20,10 +18,8 @@ typealias CECPacket = CircuitExplorerContextPacket
 enum class PacketType(val id: Int) {
     CIRCUIT_EXPLORER_OPEN_PACKET(0),
     CIRCUIT_EXPLORER_CONTEXT_PACKET(1),
-    VOLTAGE_SOURCE_UPDATE_PACKET(2),
-    VOLTAGE_SOURCE_OPEN_PACKET(3),
-    RESISTOR_OPEN_PACKET(4),
-    RESISTOR_UPDATE_PACKET(5),
+    SINGLE_DOUBLE_ELEMENT_GUI_UPDATE_PACKET(2),
+    SINGLE_DOUBLE_ELEMENT_GUI_OPEN_PACKET(3),
 }
 
 object Networking {
@@ -53,32 +49,18 @@ object Networking {
             CECPacket::handle
         )
         channel.registerMessage(
-            PacketType.VOLTAGE_SOURCE_UPDATE_PACKET.id,
-            VoltageSourceUpdatePacket::class.java,
-            VoltageSourceUpdatePacket::encode,
-            ::VoltageSourceUpdatePacket,
-            VoltageSourceUpdatePacket::handle
+            PacketType.SINGLE_DOUBLE_ELEMENT_GUI_UPDATE_PACKET.id,
+            SingleDoubleElementGuiUpdatePacket::class.java,
+            SingleDoubleElementGuiUpdatePacket::encode,
+            SingleDoubleElementGuiUpdatePacket::decode,
+            SingleDoubleElementGuiUpdatePacket::handle
         )
         channel.registerMessage(
-            PacketType.VOLTAGE_SOURCE_OPEN_PACKET.id,
-            VoltageSourceOpenPacket::class.java,
-            VoltageSourceOpenPacket::encode,
-            ::VoltageSourceOpenPacket,
-            VoltageSourceOpenPacket::handle
-        )
-        channel.registerMessage(
-            PacketType.RESISTOR_OPEN_PACKET.id,
-            ResistorOpenPacket::class.java,
-            ResistorOpenPacket::encode,
-            ResistorOpenPacket::decode,
-            ResistorOpenPacket::handle
-        )
-        channel.registerMessage(
-            PacketType.RESISTOR_UPDATE_PACKET.id,
-            ResistorUpdatePacket::class.java,
-            ResistorUpdatePacket::encode,
-            ResistorUpdatePacket::decode,
-            ResistorUpdatePacket::handle
+            PacketType.SINGLE_DOUBLE_ELEMENT_GUI_OPEN_PACKET.id,
+            SingleDoubleElementGuiOpenPacket::class.java,
+            SingleDoubleElementGuiOpenPacket::encode,
+            SingleDoubleElementGuiOpenPacket::decode,
+            SingleDoubleElementGuiOpenPacket::handle
         )
         Eln2.LOGGER.info("Network packets registered")
     }

@@ -4,13 +4,13 @@ import net.minecraft.core.BlockPos
 import org.ageseries.libage.sim.electrical.mna.component.Resistor
 import org.eln2.mc.common.cell.CellBase
 import org.eln2.mc.common.cell.ComponentInfo
+import org.eln2.mc.common.cell.ISingleElementGuiCell
 import org.eln2.mc.extensions.ComponentExtensions.connectToPinOf
 import org.eln2.mc.utility.UnitType
-import org.eln2.mc.utility.ValueText
 import org.eln2.mc.utility.ValueText.valueText
 
-class ResistorCell(pos : BlockPos) : CellBase(pos) {
-    lateinit var resistor : Resistor
+class ResistorCell(pos: BlockPos) : CellBase(pos), ISingleElementGuiCell<Double> {
+    lateinit var resistor: Resistor
     var added = false
 
     override fun clearForRebuild() {
@@ -56,5 +56,13 @@ class ResistorCell(pos : BlockPos) : CellBase(pos) {
         map["power"] = power
 
         return map
+    }
+
+    override fun getGuiValue(): Double {
+        return resistor.resistance
+    }
+
+    override fun setGuiValue(value: Double) {
+        resistor.resistance = value
     }
 }
