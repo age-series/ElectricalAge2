@@ -22,7 +22,7 @@ class VoltageSourceCell(pos: BlockPos) : CellBase(pos), ISingleElementGuiCell<Do
     *       C
     */
 
-    lateinit var source: VoltageSource private set
+    private lateinit var source: VoltageSource
 
     override fun clearForRebuild() {
         source = VoltageSource()
