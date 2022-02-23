@@ -1,6 +1,5 @@
 package org.eln2.mc.common.containers
 
-import net.minecraft.core.BlockPos
 import net.minecraft.server.level.ServerPlayer
 import net.minecraft.world.entity.player.Inventory
 import net.minecraft.world.entity.player.Player
@@ -20,13 +19,6 @@ class CapacitorCellContainer(id: Int, plyInv: Inventory, ply: Player) :
 
         this.value = (te.cell as CapacitorCell).capacitor.capacitance
         this.pos = te.pos
-    }
-
-    override fun setSyncedValue(value: Double, pos: BlockPos): Boolean {
-        this.pos = pos
-        this.value = value
-
-        return true
     }
 
     override fun sendDataToClient(ply: ServerPlayer) {

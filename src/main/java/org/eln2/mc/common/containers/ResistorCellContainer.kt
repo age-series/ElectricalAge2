@@ -1,6 +1,5 @@
 package org.eln2.mc.common.containers
 
-import net.minecraft.core.BlockPos
 import net.minecraft.server.level.ServerPlayer
 import net.minecraft.world.entity.player.Inventory
 import net.minecraft.world.entity.player.Player
@@ -29,17 +28,5 @@ class ResistorCellContainer(id: Int, plyInv: Inventory, ply: Player) :
     override fun sendDataToClient(ply: ServerPlayer) {
         Networking.sendTo(SingleDoubleElementGuiOpenPacket(value, pos), ply)
     }
-
-    override fun getSyncedValue(): Double {
-        return value
-    }
-
-    override fun setSyncedValue(value: Double, pos: BlockPos): Boolean {
-        this.value = value
-        this.pos = pos
-
-        return true
-    }
-
 
 }
