@@ -9,7 +9,6 @@ import org.eln2.mc.common.containers.ContainerRegistry.VOLTAGE_SOURCE_CELL_CONTA
 import org.eln2.mc.common.network.Networking
 import org.eln2.mc.common.network.serverToClient.SingleDoubleElementGuiOpenPacket
 
-@Suppress("UNCHECKED_CAST")
 class VoltageSourceCellContainer(id: Int, plyInv: Inventory, ply: Player) :
     SingleValueCellContainer<VoltageSourceCell, Double>(id, plyInv, ply, VOLTAGE_SOURCE_CELL_CONTAINER.get()) {
     override fun stillValid(pPlayer: Player): Boolean {
