@@ -18,8 +18,6 @@ class VoltageSourceCellContainer(id: Int, plyInv: Inventory, ply: Player) :
     }
 
     override var value: Double = 0.0
-    override var pos: BlockPos = BlockPos.ZERO
-    override var te: CellTileEntity? = null
 
     constructor(id: Int, plyInv: Inventory, ply: Player, te: CellTileEntity) : this(id, plyInv, ply) {
         this.te = te

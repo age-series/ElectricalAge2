@@ -19,8 +19,8 @@ abstract class SingleValueCellContainer<C : ISingleElementGuiCell<N>, N : Number
     AbstractContainerMenu(type, id) {
 
     abstract var value: N
-    abstract var pos: BlockPos
-    abstract var te: CellTileEntity?
+    var pos: BlockPos = BlockPos.ZERO
+    var te: CellTileEntity? = null
 
     abstract fun getSyncedValue(): N
     abstract fun setSyncedValue(value: N, pos: BlockPos): Boolean
