@@ -58,6 +58,11 @@ object ContainerRegistry {
         }
 
 
+    /**
+     * Register the client-side equivalents of the GUI containers.
+     * This must be done on the client during FMLClientSetupEvent
+     * Note: This is done in a different registry than [CONTAINER_REGISTRY]
+     */
     @SubscribeEvent
     fun clientSetup(event: FMLClientSetupEvent) {
         event.enqueueWork {
