@@ -20,7 +20,7 @@ class VoltageSourceCellContainer(id: Int, plyInv: Inventory, ply: Player) :
     constructor(id: Int, plyInv: Inventory, ply: Player, te: CellTileEntity) : this(id, plyInv, ply) {
         this.te = te
 
-        value = (te.cell as VoltageSourceCell).source.potential
+        value = (te.cell as VoltageSourceCell).getGuiValue()
         pos = te.pos
     }
 
