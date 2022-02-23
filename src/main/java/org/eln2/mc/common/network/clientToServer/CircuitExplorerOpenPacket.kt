@@ -6,9 +6,9 @@ import net.minecraft.world.phys.BlockHitResult
 import net.minecraft.world.phys.HitResult
 import net.minecraftforge.network.NetworkEvent
 import org.eln2.mc.Eln2
+import org.eln2.mc.common.cell.CellTileEntity
 import org.eln2.mc.common.network.CellInfo
 import org.eln2.mc.common.network.Networking
-import org.eln2.mc.common.blocks.CellTileEntity
 import org.eln2.mc.common.network.serverToClient.CircuitExplorerContextPacket
 import java.util.function.Supplier
 

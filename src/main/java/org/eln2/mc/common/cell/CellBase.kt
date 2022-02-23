@@ -2,10 +2,6 @@ package org.eln2.mc.common.cell
 
 import net.minecraft.core.BlockPos
 import net.minecraft.resources.ResourceLocation
-import org.ageseries.libage.sim.electrical.mna.component.Component
-import org.eln2.mc.common.blocks.CellTileEntity
-
-class ComponentInfo(val component: Component, val index : Int)
 
 abstract class CellBase(val pos : BlockPos) {
     lateinit var id : ResourceLocation
@@ -65,7 +61,7 @@ abstract class CellBase(val pos : BlockPos) {
     /**
      * This method is used to return the component and the pin for a remote cell to connect to.
     */
-    abstract fun componentForNeighbour(neighbour : CellBase) : ComponentInfo
+    abstract fun componentForNeighbour(neighbour : CellBase) : ElectricalComponentConnection
 
     /**
      * This method is called after each cell's clearForRebuild method has been called.

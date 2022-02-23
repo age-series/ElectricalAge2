@@ -8,6 +8,7 @@ import org.ageseries.libage.sim.electrical.mna.Circuit
 import org.eln2.mc.Eln2
 import org.eln2.mc.extensions.NbtExtensions.getBlockPos
 import org.eln2.mc.extensions.NbtExtensions.putBlockPos
+import org.eln2.mc.registry.CellRegistry
 import java.util.*
 import kotlin.system.measureNanoTime
 

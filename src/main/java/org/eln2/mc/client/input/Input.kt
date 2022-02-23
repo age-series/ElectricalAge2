@@ -12,7 +12,7 @@ import net.minecraftforge.client.settings.KeyConflictContext
 import net.minecraftforge.eventbus.api.SubscribeEvent
 import net.minecraftforge.fml.common.Mod
 import org.eln2.mc.common.network.Networking
-import org.eln2.mc.common.blocks.CellBlockBase
+import org.eln2.mc.common.cell.CellBlockBase
 import org.eln2.mc.common.network.clientToServer.CircuitExplorerOpenPacket
 import org.lwjgl.glfw.GLFW
 

@@ -11,8 +11,8 @@ import net.minecraft.network.chat.TranslatableComponent
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.world.level.block.Block
 import org.eln2.mc.Eln2
-import org.eln2.mc.common.blocks.BlockRegistry
-import org.eln2.mc.common.cell.CellRegistry
+import org.eln2.mc.registry.BlockRegistry
+import org.eln2.mc.registry.CellRegistry
 import org.eln2.mc.common.network.CellInfo
 import org.eln2.mc.extensions.MatrixStackExtensions.rect4
 import org.eln2.mc.utility.*

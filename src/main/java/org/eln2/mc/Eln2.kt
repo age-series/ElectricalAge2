@@ -6,9 +6,9 @@ import org.apache.logging.log4j.Logger
 import org.eln2.mc.common.Configuration
 import org.eln2.mc.common.ElectricalAgeConfiguration
 import org.eln2.mc.common.network.Networking
-import org.eln2.mc.common.blocks.BlockRegistry
-import org.eln2.mc.common.cell.CellRegistry
-import org.eln2.mc.common.items.ItemRegistry
+import org.eln2.mc.registry.BlockRegistry
+import org.eln2.mc.registry.CellRegistry
+import org.eln2.mc.registry.ItemRegistry
 import org.eln2.mc.common.network.ModStatistics
 import thedarkcolour.kotlinforforge.forge.MOD_BUS
 

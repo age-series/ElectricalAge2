@@ -8,7 +8,7 @@
     "block.eln2.capacitor": "Capacitor",
     "block.eln2.inductor": "Inductor",
     "block.eln2.diode": "Diode",
-    "block.eln2.12v_battery": "12V Battery",
+    "block.eln2.battery": "Battery",
     "block.eln2.light": "Light",
     "block.eln2.solar_light": "Solar Light",
     "block.eln2.solar_panel": "Solar Panel",

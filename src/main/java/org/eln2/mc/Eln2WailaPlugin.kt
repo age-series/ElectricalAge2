@@ -7,7 +7,7 @@ import net.minecraft.network.chat.TextComponent
 import net.minecraft.network.chat.TranslatableComponent
 import net.minecraft.server.level.ServerPlayer
 import net.minecraft.world.level.Level
-import org.eln2.mc.common.blocks.CellTileEntity
+import org.eln2.mc.common.cell.CellTileEntity
 import org.eln2.mc.extensions.NbtExtensions.getStringMap
 import org.eln2.mc.extensions.NbtExtensions.setStringMap
 
