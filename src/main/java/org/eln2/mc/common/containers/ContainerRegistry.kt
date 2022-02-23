@@ -1,6 +1,10 @@
 package org.eln2.mc.common.containers
 
 import net.minecraft.client.gui.screens.MenuScreens
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen
+import net.minecraft.network.chat.Component
+import net.minecraft.world.entity.player.Inventory
+import net.minecraft.world.inventory.AbstractContainerMenu
 import net.minecraft.world.inventory.MenuType
 import net.minecraftforge.eventbus.api.IEventBus
 import net.minecraftforge.eventbus.api.SubscribeEvent
@@ -21,42 +25,50 @@ object ContainerRegistry {
         ForgeRegistries.CONTAINERS,
         Eln2.MODID
     )
+    private val CLIENTSIDE_GUI_QUEUE = mutableListOf<ContainerRegistryItem<*>>()
 
     fun setup(bus: IEventBus) = CONTAINER_REGISTRY.register(bus)
 
+    data class ContainerRegistryItem<T: AbstractContainerMenu>(
+        val name: String,
+        val screenConstructor: (T, Inventory, Component) -> AbstractContainerScreen<T>,
+        val container: RegistryObject<MenuType<T>>
+    )
 
-    @JvmStatic
-    val VOLTAGE_SOURCE_CELL_CONTAINER: RegistryObject<MenuType<VoltageSourceCellContainer>> =
-        CONTAINER_REGISTRY.register(BlockRegistry.VOLTAGE_SOURCE_CELL.name) {
-            MenuType { id, inv ->
-                VoltageSourceCellContainer(id, inv, inv.player)
-            }
+    /**
+     * registerGuiContainer will handle both the server-side and client-side registration of our GUIs
+     * It places a container in the container registry and registers a MenuScreen during ClientSetup
+     */
+    private fun <T : AbstractContainerMenu> registerGuiContainer(name: String, screenConstructor: (T, Inventory, Component) -> AbstractContainerScreen<T>, supplier: () -> MenuType<T>): ContainerRegistryItem<T> {
+        val container = CONTAINER_REGISTRY.register(name) { supplier() }
+        val registryItem = ContainerRegistryItem(name, screenConstructor, container)
+        CLIENTSIDE_GUI_QUEUE.add(registryItem)
+        return registryItem
+    }
+
+    val VOLTAGE_SOURCE_CELL_CONTAINER = registerGuiContainer(BlockRegistry.VOLTAGE_SOURCE_CELL.name, ::VoltageSourceCellScreen) {
+        MenuType {id, inv ->
+            VoltageSourceCellContainer(id, inv, inv.player)
         }
+    }
 
-    @JvmStatic
-    val RESISTOR_CELL_CONTAINER: RegistryObject<MenuType<ResistorCellContainer>> =
-        CONTAINER_REGISTRY.register(BlockRegistry.RESISTOR_CELL.name) {
-            MenuType { id, inv ->
-                ResistorCellContainer(id, inv, inv.player)
-            }
+    val RESISTOR_CELL_CONTAINER = registerGuiContainer(BlockRegistry.RESISTOR_CELL.name, ::ResistorCellScreen) {
+        MenuType { id, inv ->
+            ResistorCellContainer(id, inv, inv.player)
         }
+    }
 
-    @JvmStatic
-    val CAPACITOR_CELL_CONTAINER: RegistryObject<MenuType<CapacitorCellContainer>> =
-        CONTAINER_REGISTRY.register(BlockRegistry.CAPACITOR_CELL.name) {
-            MenuType { id, inv ->
-                CapacitorCellContainer(id, inv, inv.player)
-            }
+    val CAPACITOR_CELL_CONTAINER = registerGuiContainer(BlockRegistry.CAPACITOR_CELL.name, ::CapacitorCellScreen) {
+        MenuType { id, inv ->
+            CapacitorCellContainer(id, inv, inv.player)
         }
+    }
 
-    @JvmStatic
-    val INDUCTOR_CELL_CONTAINER: RegistryObject<MenuType<InductorCellContainer>> =
-        CONTAINER_REGISTRY.register(BlockRegistry.INDUCTOR_CELL.name) {
-            MenuType { id, inv ->
-                InductorCellContainer(id, inv, inv.player)
-            }
+    val INDUCTOR_CELL_CONTAINER = registerGuiContainer(BlockRegistry.INDUCTOR_CELL.name, ::InductorCellScreen) {
+        MenuType { id, inv ->
+            InductorCellContainer(id, inv, inv.player)
         }
-
+    }
 
     /**
      * Register the client-side equivalents of the GUI containers.
@@ -66,10 +78,10 @@ object ContainerRegistry {
     @SubscribeEvent
     fun clientSetup(event: FMLClientSetupEvent) {
         event.enqueueWork {
-            MenuScreens.register(VOLTAGE_SOURCE_CELL_CONTAINER.get(), ::VoltageSourceCellScreen)
-            MenuScreens.register(RESISTOR_CELL_CONTAINER.get(), ::ResistorCellScreen)
-            MenuScreens.register(CAPACITOR_CELL_CONTAINER.get(), ::CapacitorCellScreen)
-            MenuScreens.register(INDUCTOR_CELL_CONTAINER.get(), ::InductorCellScreen)
+            CLIENTSIDE_GUI_QUEUE.forEach { gui ->
+                @Suppress("UNCHECKED_CAST")
+                MenuScreens.register(gui.container.get(), (gui as ContainerRegistryItem<AbstractContainerMenu>).screenConstructor)
+            }
         }
     }
 }
