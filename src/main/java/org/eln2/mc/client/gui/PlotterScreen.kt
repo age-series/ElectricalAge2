@@ -102,9 +102,9 @@ class PlotterScreen(private val cells : List<CellInfo>, val solveTime : Long) : 
 
             if(it.type != latestTypeTex){
                 val texLocation = when(it.type){
-                    CellRegistry.GROUND_CELL.id!!.toString() -> ResourceLocation(Eln2.MODID, "textures/overlay/plotter/ground.png")
-                    CellRegistry.RESISTOR_CELL.id!!.toString() -> ResourceLocation(Eln2.MODID, "textures/overlay/plotter/resistor.png")
-                    CellRegistry.VOLTAGE_SOURCE_CELL.id!!.toString() -> ResourceLocation(Eln2.MODID, "textures/overlay/plotter/voltage_source.png")
+                    CellRegistry.GROUND_CELL.name -> ResourceLocation(Eln2.MODID, "textures/overlay/plotter/ground.png")
+                    CellRegistry.RESISTOR_CELL.name -> ResourceLocation(Eln2.MODID, "textures/overlay/plotter/resistor.png")
+                    CellRegistry.VOLTAGE_SOURCE_CELL.name -> ResourceLocation(Eln2.MODID, "textures/overlay/plotter/voltage_source.png")
                     else -> ResourceLocation(Eln2.MODID, "textures/overlay/plotter/wire.png")
                 }
 
@@ -224,7 +224,7 @@ class PlotterScreen(private val cells : List<CellInfo>, val solveTime : Long) : 
     private fun renderFooter(poseStack: PoseStack, toolTipCell : CellInfo?){
         val localizedName =
             if (toolTipCell != null) get(blockFor(toolTipCell.type).descriptionId)
-            else toolTipCell?.type
+            else "Unknown Component"
 
         val sb = StringBuilder()
 

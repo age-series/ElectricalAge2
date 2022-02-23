@@ -6,6 +6,6 @@ import org.eln2.mc.registry.CellRegistry
 
 class CapacitorCellBlock: CellBlockBase() {
     override fun getCellProvider(): ResourceLocation {
-        return CellRegistry.CAPACITOR_CELL.id
+        return CellRegistry.CAPACITOR_CELL.cellId()
     }
 }

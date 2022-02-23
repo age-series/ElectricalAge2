@@ -6,6 +6,6 @@ import org.eln2.mc.registry.CellRegistry
 
 class GroundCellBlock : CellBlockBase() {
     override fun getCellProvider(): ResourceLocation {
-        return CellRegistry.GROUND_CELL.id
+        return CellRegistry.GROUND_CELL.cellId()
     }
 }

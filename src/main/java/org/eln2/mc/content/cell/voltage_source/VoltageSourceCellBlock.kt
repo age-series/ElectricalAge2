@@ -6,6 +6,6 @@ import org.eln2.mc.registry.CellRegistry
 
 class VoltageSourceCellBlock : CellBlockBase() {
     override fun getCellProvider(): ResourceLocation {
-        return CellRegistry.VOLTAGE_SOURCE_CELL.id
+        return CellRegistry.VOLTAGE_SOURCE_CELL.cellId()
     }
 }

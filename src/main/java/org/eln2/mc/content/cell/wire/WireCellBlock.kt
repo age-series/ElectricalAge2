@@ -6,6 +6,6 @@ import org.eln2.mc.registry.CellRegistry
 
 class WireCellBlock : CellBlockBase() {
     override fun getCellProvider(): ResourceLocation {
-        return CellRegistry.WIRE_CELL.id
+        return CellRegistry.WIRE_CELL.cellId()
     }
 }

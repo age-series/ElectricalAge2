@@ -15,7 +15,7 @@ import org.eln2.mc.extensions.VoxelShapeExtensions.align
 
 class LightCellBlock: CellBlockBase() {
     override fun getCellProvider(): ResourceLocation {
-        return CellRegistry.LIGHT_CELL.id
+        return CellRegistry.LIGHT_CELL.cellId()
     }
 
     override fun getCollisionShape(

@@ -6,6 +6,6 @@ import org.eln2.mc.registry.CellRegistry
 
 class ResistorCellBlock : CellBlockBase() {
     override fun getCellProvider(): ResourceLocation {
-        return CellRegistry.RESISTOR_CELL.id
+        return CellRegistry.RESISTOR_CELL.cellId()
     }
 }

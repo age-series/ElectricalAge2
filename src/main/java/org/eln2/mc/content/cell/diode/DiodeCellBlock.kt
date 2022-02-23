@@ -15,7 +15,7 @@ import org.eln2.mc.extensions.VoxelShapeExtensions.align
 
 class DiodeCellBlock: CellBlockBase() {
     override fun getCellProvider(): ResourceLocation {
-        return CellRegistry.DIODE_CELL.id
+        return CellRegistry.DIODE_CELL.cellId()
     }
 
     override fun getCollisionShape(
