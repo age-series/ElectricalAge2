@@ -23,25 +23,26 @@ import java.awt.Color
 class VoltageSourceCellScreen(private val container: VoltageSourceCellContainer, inv: Inventory, name: Component) :
     AbstractContainerScreen<VoltageSourceCellContainer>(container, inv, name) {
 
-    private val guiTexture: ResourceLocation = ResourceLocation(MODID, "textures/gui/voltage_source_gui.png")
-    private val textureWidth = 320
-    private val textureHeight = 128
-    private val guiWidth = 256
-    private val guiHeight = 128
+    companion object {
+        private val guiTexture: ResourceLocation = ResourceLocation(MODID, "textures/gui/voltage_source_gui.png")
+        private const val textureWidth = 320
+        private const val textureHeight = 128
+        private const val guiWidth = 256
+        private const val guiHeight = 128
+
+        private const val textboxW = 192
+        private const val textboxH = 16
+        private const val textboxX = 32
+        private const val textboxY = 48
+
+        private const val buttonW = 60
+        private const val buttonH = 18
+        private const val buttonX = 96
+        private const val buttonY = 128 - (buttonW / 2)
+    }
 
     private var relX: Int = 0
     private var relY: Int = 0
-
-    private val textboxW = 192
-    private val textboxH = 16
-    private val textboxX = 32
-    private val textboxY = 48
-
-    private val buttonW = 60
-    private val buttonH = 18
-    private val buttonX = 96
-    private val buttonY = 128 - (buttonW / 2)
-
     lateinit var textbox: EditBox
     lateinit var saveButton: Button
 
