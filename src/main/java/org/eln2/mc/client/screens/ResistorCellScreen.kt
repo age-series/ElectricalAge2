@@ -15,7 +15,7 @@ import net.minecraftforge.common.MinecraftForge
 import org.eln2.mc.Eln2
 import org.eln2.mc.common.containers.ResistorCellContainer
 import org.eln2.mc.common.network.Networking
-import org.eln2.mc.common.network.clientToServer.ResistorUpdatePacket
+import org.eln2.mc.common.network.clientToServer.SingleDoubleElementGuiUpdatePacket
 import java.awt.Color
 
 class ResistorCellScreen(private val container: ResistorCellContainer, inv: Inventory, name: Component) :
@@ -53,8 +53,8 @@ class ResistorCellScreen(private val container: ResistorCellContainer, inv: Inve
         saveButton = Button(relX + buttonX, relY + buttonY, buttonW, buttonH, TranslatableComponent("gui.eln2.save")) {
             try {
                 val resistance = textbox.value.toDouble()
-                this.container.resistance = resistance
-                Networking.sendToServer(ResistorUpdatePacket(resistance, container.pos))
+                this.container.value = resistance
+                Networking.sendToServer(SingleDoubleElementGuiUpdatePacket(resistance, container.pos))
                 this.onClose()
             } catch (ex: NumberFormatException) {
                 textbox.setTextColor(Color.RED.rgb)
@@ -86,8 +86,8 @@ class ResistorCellScreen(private val container: ResistorCellContainer, inv: Inve
         this.renderBg(pPoseStack, pPartialTick, pMouseX, pMouseY)
         MinecraftForge.EVENT_BUS.post(ContainerScreenEvent.DrawBackground(this, pPoseStack, pMouseX, pMouseY))
 
-        if (container.resistance != resistance) {
-            resistance = container.resistance
+        if (container.value != resistance) {
+            resistance = container.value
             textbox.value = resistance.toString()
         }
 
