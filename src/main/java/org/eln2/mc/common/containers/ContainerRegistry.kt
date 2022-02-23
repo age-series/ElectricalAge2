@@ -9,6 +9,7 @@ import net.minecraftforge.registries.DeferredRegister
 import net.minecraftforge.registries.ForgeRegistries
 import net.minecraftforge.registries.RegistryObject
 import org.eln2.mc.Eln2
+import org.eln2.mc.client.screens.CapacitorCellScreen
 import org.eln2.mc.client.screens.ResistorCellScreen
 import org.eln2.mc.client.screens.VoltageSourceCellScreen
 import org.eln2.mc.common.blocks.BlockRegistry
@@ -39,12 +40,21 @@ object ContainerRegistry {
             }
         }
 
+    @JvmStatic
+    val CAPACITOR_CELL_CONTAINER: RegistryObject<MenuType<CapacitorCellContainer>> =
+        CONTAINER_REGISTRY.register(BlockRegistry.CAPACITOR_CELL.name) {
+            MenuType { id, inv ->
+                CapacitorCellContainer(id, inv, inv.player)
+            }
+        }
+
 
     @SubscribeEvent
     fun clientSetup(event: FMLClientSetupEvent) {
         event.enqueueWork {
             MenuScreens.register(VOLTAGE_SOURCE_CELL_CONTAINER.get(), ::VoltageSourceCellScreen)
             MenuScreens.register(RESISTOR_CELL_CONTAINER.get(), ::ResistorCellScreen)
+            MenuScreens.register(CAPACITOR_CELL_CONTAINER.get(), ::CapacitorCellScreen)
         }
     }
 }
