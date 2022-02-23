@@ -12,9 +12,6 @@ import org.eln2.mc.common.network.clientToServer.SingleDoubleElementGuiUpdatePac
 import org.eln2.mc.common.network.serverToClient.CircuitExplorerContextPacket
 import org.eln2.mc.common.network.serverToClient.SingleDoubleElementGuiOpenPacket
 
-typealias CEOPacket = CircuitExplorerOpenPacket
-typealias CECPacket = CircuitExplorerContextPacket
-
 enum class PacketType(val id: Int) {
     CIRCUIT_EXPLORER_OPEN_PACKET(0),
     CIRCUIT_EXPLORER_CONTEXT_PACKET(1),
@@ -36,17 +33,17 @@ object Networking {
         Eln2.LOGGER.info("Registering network packets")
         channel.registerMessage(
             PacketType.CIRCUIT_EXPLORER_OPEN_PACKET.id,
-            CEOPacket::class.java,
-            CEOPacket::encode,
-            ::CEOPacket,
-            CEOPacket::handle
+            CircuitExplorerOpenPacket::class.java,
+            CircuitExplorerOpenPacket::encode,
+            ::CircuitExplorerOpenPacket,
+            CircuitExplorerOpenPacket::handle
         )
         channel.registerMessage(
             PacketType.CIRCUIT_EXPLORER_CONTEXT_PACKET.id,
-            CECPacket::class.java,
-            CECPacket::encode,
-            ::CECPacket,
-            CECPacket::handle
+            CircuitExplorerContextPacket::class.java,
+            CircuitExplorerContextPacket::encode,
+            ::CircuitExplorerContextPacket,
+            CircuitExplorerContextPacket::handle
         )
         channel.registerMessage(
             PacketType.SINGLE_DOUBLE_ELEMENT_GUI_UPDATE_PACKET.id,
