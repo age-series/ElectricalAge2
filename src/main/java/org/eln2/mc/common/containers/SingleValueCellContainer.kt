@@ -22,8 +22,16 @@ abstract class SingleValueCellContainer<C : ISingleElementGuiCell<N>, N : Number
     var pos: BlockPos = BlockPos.ZERO
     var te: CellTileEntity? = null
 
-    abstract fun getSyncedValue(): N
-    abstract fun setSyncedValue(value: N, pos: BlockPos): Boolean
+    open fun getSyncedValue(): N {
+        return this.value
+    }
+
+    open fun setSyncedValue(value: N, pos: BlockPos): Boolean {
+        this.value = value
+        this.pos = pos
+
+        return true
+    }
 
     abstract fun sendDataToClient(ply: ServerPlayer)
 
