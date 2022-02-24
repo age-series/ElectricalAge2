@@ -11,7 +11,7 @@ import org.eln2.mc.common.network.serverToClient.SingleDoubleElementGuiOpenPacke
 
 @Suppress("UNCHECKED_CAST")
 class ResistorCellContainer(id: Int, plyInv: Inventory, ply: Player) :
-    SingleValueCellContainer<ResistorCell, Double>(id, plyInv, ply, RESISTOR_CELL_CONTAINER.container.get()) {
+    SingleValueCellContainer<ResistorCell, Double>(id, plyInv, ply, RESISTOR_CELL_CONTAINER.get()) {
     override fun stillValid(pPlayer: Player): Boolean {
         return true
     }

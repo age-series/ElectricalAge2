@@ -10,7 +10,7 @@ import org.eln2.mc.common.network.Networking
 import org.eln2.mc.common.network.serverToClient.SingleDoubleElementGuiOpenPacket
 
 class InductorCellContainer(id: Int, plyInv: Inventory, ply: Player) :
-    SingleValueCellContainer<InductorCell, Double>(id, plyInv, ply, INDUCTOR_CELL_CONTAINER.container.get()) {
+    SingleValueCellContainer<InductorCell, Double>(id, plyInv, ply, INDUCTOR_CELL_CONTAINER.get()) {
 
     override var value: Double = 0.0
 

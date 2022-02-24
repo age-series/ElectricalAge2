@@ -10,7 +10,7 @@ import org.eln2.mc.common.network.Networking
 import org.eln2.mc.common.network.serverToClient.SingleDoubleElementGuiOpenPacket
 
 class CapacitorCellContainer(id: Int, plyInv: Inventory, ply: Player) :
-    SingleValueCellContainer<CapacitorCell, Double>(id, plyInv, ply, CAPACITOR_CELL_CONTAINER.container.get()) {
+    SingleValueCellContainer<CapacitorCell, Double>(id, plyInv, ply, CAPACITOR_CELL_CONTAINER.get()) {
 
     override var value: Double = 0.0
 
