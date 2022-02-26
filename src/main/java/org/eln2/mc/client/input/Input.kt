@@ -11,8 +11,10 @@ import net.minecraftforge.client.event.InputEvent
 import net.minecraftforge.client.settings.KeyConflictContext
 import net.minecraftforge.eventbus.api.SubscribeEvent
 import net.minecraftforge.fml.common.Mod
-import org.eln2.mc.common.network.Networking
+import org.eln2.mc.client.gui.library.*
+import org.eln2.mc.client.gui.library.nodeGraph.NodeGraphWindow
 import org.eln2.mc.common.blocks.CellBlockBase
+import org.eln2.mc.common.network.Networking
 import org.eln2.mc.common.network.clientToServer.CircuitExplorerOpenPacket
 import org.lwjgl.glfw.GLFW
 
@@ -31,8 +33,24 @@ object Input {
 
     @SubscribeEvent
     fun inputEvent(event: InputEvent.KeyInputEvent){
-        if(OPEN_CIRCUIT_PLOTTER.isDown && event.action == GLFW.GLFW_PRESS)
-            handleOpenCircuitPlotter()
+        if(OPEN_CIRCUIT_PLOTTER.isDown && event.action == GLFW.GLFW_PRESS){
+            //handleOpenCircuitPlotter()
+
+            val mc = Minecraft.getInstance()
+
+            if(mc.screen is Viewport){
+                return
+            }
+
+            val viewport = Viewport()
+            viewport.addWindow(NodeGraphWindow(Rect4I(10, 10, 100, 100), viewport))
+            viewport.addWindow(NodeGraphWindow(Rect4I(10, 10, 100, 100), viewport))
+            viewport.addWindow(NodeGraphWindow(Rect4I(10, 10, 100, 100), viewport))
+            viewport.addWindow(NodeGraphWindow(Rect4I(10, 10, 100, 100), viewport))
+            viewport.addWindow(NodeGraphWindow(Rect4I(10, 10, 100, 100), viewport))
+
+            mc.setScreen(viewport)
+        }
     }
 
     private fun handleOpenCircuitPlotter(){

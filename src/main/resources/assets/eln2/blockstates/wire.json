@@ -1,19 +1,19 @@
 {
-    "variants": {
-        "facing=east": {
-            "model": "eln2:block/wire",
-            "y": 90
-        },
-        "facing=north": {
-            "model": "eln2:block/wire"
-        },
-        "facing=south": {
-            "model": "eln2:block/wire",
-            "y": 180
-        },
-        "facing=west": {
-            "model": "eln2:block/wire",
-            "y": 270
+    "multipart": [
+        {
+            "apply": { "model": "eln2:/block/wire/no_connections" }
+        }, {
+            "when": { "north": true },
+            "apply": { "model": "eln2:/block/wire/wire_connection", "uvlock": true }
+        }, {
+            "when": { "east": true },
+            "apply": { "model": "eln2:/block/wire/wire_connection", "y": 90, "uvlock": true }
+        }, {
+            "when": { "south": true },
+            "apply": { "model": "eln2:/block/wire/wire_connection", "y": 180, "uvlock": true }
+        }, {
+            "when": { "west": true },
+            "apply": { "model": "eln2:/block/wire/wire_connection", "y": 270, "uvlock": true }
         }
-    }
+    ]
 }

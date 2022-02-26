@@ -16,14 +16,40 @@ import net.minecraft.world.level.block.HorizontalDirectionalBlock
 import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.level.block.state.StateDefinition
+import net.minecraft.world.level.block.state.properties.BlockStateProperties
+import net.minecraft.world.level.block.state.properties.BooleanProperty
+import net.minecraft.world.level.block.state.properties.Property
 import net.minecraft.world.level.material.FluidState
 import net.minecraft.world.level.material.Material
 import org.eln2.mc.common.cell.CellRegistry
 
 abstract class CellBlockBase : HorizontalDirectionalBlock(Properties.of(Material.STONE).noOcclusion()), EntityBlock {
+    companion object{
+        val north = BlockStateProperties.NORTH
+        val east = BlockStateProperties.EAST
+        val south = BlockStateProperties.SOUTH
+        val west = BlockStateProperties.WEST
+
+        val directionToProperty = mapOf<Direction, Property<Boolean>>(
+            Direction.NORTH to north,
+            Direction.EAST to east,
+            Direction.SOUTH to south,
+            Direction.WEST to west
+        )
+    }
+
     init {
         @Suppress("LeakingThis")
-        registerDefaultState(getStateDefinition().any().setValue(FACING, Direction.NORTH))
+        registerDefaultState(getBlockState())
+    }
+
+    open fun getBlockState() : BlockState{
+        return getStateDefinition().any()
+            .setValue(FACING, Direction.NORTH)
+            .setValue(north, false)
+            .setValue(east, false)
+            .setValue(south, false)
+            .setValue(west, false)
     }
 
     override fun getStateForPlacement(pContext: BlockPlaceContext): BlockState? {
@@ -32,7 +58,12 @@ abstract class CellBlockBase : HorizontalDirectionalBlock(Properties.of(Material
 
     override fun createBlockStateDefinition(pBuilder: StateDefinition.Builder<Block, BlockState>) {
         super.createBlockStateDefinition(pBuilder)
-        pBuilder.add(FACING)
+        pBuilder
+            .add(FACING)
+            .add(north)
+            .add(east)
+            .add(south)
+            .add(west)
     }
 
     override fun setPlacedBy(
@@ -42,6 +73,11 @@ abstract class CellBlockBase : HorizontalDirectionalBlock(Properties.of(Material
         entity : LivingEntity?,
         itemStack : ItemStack
     ) {
+        if(entity == null){
+            LOGGER.error("Placer was null")
+            return
+        }
+
         val cellEntity = level.getBlockEntity(pos)!! as CellTileEntity
         cellEntity.setPlacedBy(level, pos, blockState, entity, itemStack, CellRegistry.registry.getValue(getCellProvider())?: error("Unable to get cell provider"))
     }

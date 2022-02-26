@@ -29,6 +29,7 @@ class PlotterScreen(private val cells : List<CellInfo>, val solveTime : Long) : 
     }
 
     private fun renderGridBackground(poseStack: PoseStack){
+        blitOffset
         fill(poseStack, 0, 0, width, height, McColor(43u, 43u, 43u).value)
 
         val size = (texSize * scale).toInt()

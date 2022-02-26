@@ -4,6 +4,7 @@ import mcp.mobius.waila.api.IServerDataProvider
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
 import net.minecraft.nbt.CompoundTag
+import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.item.ItemStack
@@ -14,6 +15,7 @@ import net.minecraft.world.level.block.state.BlockState
 import org.eln2.mc.Eln2
 import org.eln2.mc.common.PlacementRotation
 import org.eln2.mc.common.cell.*
+import org.eln2.mc.extensions.LevelExtensions.getAdjacentTile
 import java.util.*
 import kotlin.system.measureNanoTime
 
@@ -51,6 +53,13 @@ class CellTileEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Blo
         itemStack : ItemStack,
         cellProvider: CellProvider
     ) {
+
+        val placeDir = PlacementRotation (state.getValue(HorizontalDirectionalBlock.FACING))
+
+        connectPredicate = {
+            connectionPredicate(placeDir, it, cellProvider)
+        }
+
         if(level.isClientSide){
             return
         }
@@ -58,17 +67,6 @@ class CellTileEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Blo
         cell = cellProvider.create(position)
         cell.tile = this
         cell.id = cellProvider.registryName!!
-
-        val placeDir = PlacementRotation (state.getValue(HorizontalDirectionalBlock.FACING))
-
-        Eln2.LOGGER.info("north <-> ${placeDir.getRelativeFromAbsolute(Direction.NORTH)}")
-        Eln2.LOGGER.info("south <-> ${placeDir.getRelativeFromAbsolute(Direction.SOUTH)}")
-        Eln2.LOGGER.info("east  <-> ${placeDir.getRelativeFromAbsolute(Direction.EAST)}")
-        Eln2.LOGGER.info("west  <-> ${placeDir.getRelativeFromAbsolute(Direction.WEST)}")
-
-        connectPredicate = {
-            connectionPredicate(placeDir, it, cellProvider)
-        }
 
         manager = CellGraphManager.getFor(level as ServerLevel)
 
@@ -313,12 +311,11 @@ class CellTileEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Blo
      * Will get the direction of adjacent cells to us. Warning! this does not use a caching mechanism, it will query the world.
      * @return The directions where adjacent cells are located.
     */
-    // TODO: Do we want this still?
     fun getAdjacentSides() : LinkedList<Direction>  {
         val result = LinkedList<Direction>()
 
         fun getAndAdd(dir : Direction){
-            if(getAdjacentTile(dir) != null && connectPredicate(dir)) result.add(dir)
+            if(level!!.getAdjacentTile(dir, pos) != null && connectPredicate(dir)) result.add(dir)
         }
 
         getAndAdd(Direction.NORTH)
@@ -361,7 +358,7 @@ class CellTileEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Blo
             val nodes = ArrayList<CellTileEntity>()
 
             fun getAndAdd(dir : Direction) {
-                val node = getAdjacentTile(dir)
+                val node = level!!.getAdjacentTile(dir, pos)
                 if(node != null && node.canConnectFrom(this, dir)){
                     nodes.add(node)
                 }
@@ -374,19 +371,6 @@ class CellTileEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Blo
 
             nodes
         } else neighbourCache!!
-    }
-
-    /**
-     * Queries the world for the tile present in the specified direction.
-     * @param dir The direction to search in.
-     * @return The tile if found, or null if there is no tile at that position.
-    */
-    private fun getAdjacentTile(dir : Direction) : CellTileEntity?{
-        val level = getLevel()!!
-        val remotePos = pos.relative(dir)
-        val remoteEnt = level.getBlockEntity(remotePos)
-
-        return remoteEnt as CellTileEntity?
     }
 
     /**

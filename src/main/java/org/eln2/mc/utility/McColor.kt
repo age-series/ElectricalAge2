@@ -30,6 +30,11 @@ class McColor(val r : UByte, val g : UByte, val b : UByte, val a : UByte) {
         return Integer.toHexString(value)
     }
 
+    val rNorm = r.toFloat() / 255f
+    val gNorm = g.toFloat() / 255f
+    val bNorm = b.toFloat() / 255f
+    val aNorm = a.toFloat() / 255f
+
     companion object{
         fun deserialize(buffer : FriendlyByteBuf) : McColor{
             return McColor(buffer.readInt())

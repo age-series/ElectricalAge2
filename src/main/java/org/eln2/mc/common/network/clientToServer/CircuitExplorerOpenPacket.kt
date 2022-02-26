@@ -25,6 +25,8 @@ class CircuitExplorerOpenPacket() {
             context.enqueueWork {
                 handleServer(context.sender!!)
             }
+
+            context.packetHandled = true
         }
 
         private fun handleServer(player : ServerPlayer){
