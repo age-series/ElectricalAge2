@@ -39,5 +39,7 @@
     "waila.eln2.power": "Power",
     "waila.eln2.mode": "Mode",
 
-    "gui.eln2.save": "Save"
+    "gui.eln2.save": "Save",
+
+    "misc.eln2.acknowledge_analytics": "By default, Electrical Age 2 reports analytics to the mod author(s). If you wish to opt-out, please edit your config file. This message will not show again for 1 month."
 }
