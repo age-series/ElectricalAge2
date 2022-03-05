@@ -35,6 +35,7 @@ class SingleDoubleElementGuiOpenPacket(val value: Double, val pos: BlockPos) {
                     handleClient(packet, Minecraft.getInstance())
                 }
             }
+            ctx.packetHandled = true
         }
 
         private fun handleClient(packet: SingleDoubleElementGuiOpenPacket, mc: Minecraft) {

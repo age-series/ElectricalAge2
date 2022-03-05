@@ -31,6 +31,7 @@ class SingleDoubleElementGuiUpdatePacket(val value: Double, val pos: BlockPos) {
             ctx.enqueueWork {
                 handleServer(ctx.sender!!, packet)
             }
+            ctx.packetHandled = true
         }
 
         private fun handleServer(sender: ServerPlayer, packet: SingleDoubleElementGuiUpdatePacket) {
