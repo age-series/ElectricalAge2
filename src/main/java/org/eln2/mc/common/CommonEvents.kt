@@ -58,9 +58,9 @@ object CommonEvents {
             if (Eln2.config.enableAnalytics)  {
                 val acknowledgementFile = FMLPaths.CONFIGDIR.get().resolve("ElectricalAge/acknowledgements.yml").toFile()
                 if (!acknowledgementFile.exists()) {
-                    acknowledgementFile.parentFile.mkdirs()
-                    acknowledgementFile.createNewFile()
                     try {
+                        acknowledgementFile.parentFile.mkdirs()
+                        acknowledgementFile.createNewFile()
                         acknowledgementFile.writeText(Yaml.default.encodeToString(AnalyticsAcknowledgementsData.serializer(), AnalyticsAcknowledgementsData(mutableMapOf())))
                     } catch (ex: Exception) {
                         when (ex) {
