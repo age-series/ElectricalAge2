@@ -21,7 +21,7 @@ import java.io.IOException
 @Mod.EventBusSubscriber
 object CommonEvents {
 
-    const val THIRTY_DAYS: Long = 2_592_000L
+    private const val THIRTY_DAYS_AS_MILLISECONDS: Long = 2_592_000_000L
 
     @SubscribeEvent
     fun onServerTick(event : TickEvent.ServerTickEvent){
@@ -78,9 +78,9 @@ object CommonEvents {
                 } catch (ex: IOException) {
                     AnalyticsAcknowledgementsData(mutableMapOf())
                 }
-                if (acknowledgements.entries.none { (k, _) -> k == uuid } || acknowledgements.entries[uuid]!! < (System.currentTimeMillis() / 1000L) - THIRTY_DAYS) {
+                if (acknowledgements.entries.none { (k, _) -> k == uuid } || acknowledgements.entries[uuid]!! < (System.currentTimeMillis()) - THIRTY_DAYS_AS_MILLISECONDS) {
                     event.entity.sendMessage(TranslatableComponent("misc.eln2.acknowledge_analytics").withStyle(ChatFormatting.RED), Util.NIL_UUID)
-                    acknowledgements.entries[uuid] = System.currentTimeMillis() / 1000L
+                    acknowledgements.entries[uuid] = System.currentTimeMillis()
                 }
 
                 try {
