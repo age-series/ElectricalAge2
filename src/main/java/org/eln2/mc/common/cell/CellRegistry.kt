@@ -1,26 +1,23 @@
 package org.eln2.mc.common.cell
 
 import net.minecraft.resources.ResourceLocation
-import net.minecraftforge.event.RegistryEvent
 import net.minecraftforge.eventbus.api.IEventBus
 import net.minecraftforge.eventbus.api.SubscribeEvent
 import net.minecraftforge.fml.common.Mod
-import net.minecraftforge.registries.DeferredRegister
-import net.minecraftforge.registries.IForgeRegistry
-import net.minecraftforge.registries.RegistryBuilder
-import net.minecraftforge.registries.RegistryObject
+import net.minecraftforge.registries.*
 import org.eln2.mc.Eln2
 import org.eln2.mc.Eln2.LOGGER
 import org.eln2.mc.common.cell.providers.FourPinCellProvider
 import org.eln2.mc.common.cell.providers.NoPinCellProvider
 import org.eln2.mc.common.cell.providers.TwoPinCellProvider
 import org.eln2.mc.common.cell.types.*
+import java.util.function.Supplier
 
 @Mod.EventBusSubscriber(bus = Mod.EventBusSubscriber.Bus.MOD)
 object CellRegistry {
     private val CELLS = DeferredRegister.create(CellProvider::class.java, Eln2.MODID)
-    private var REGISTRY : IForgeRegistry<CellProvider>? = null
-    val registry get() = REGISTRY!!
+    private var REGISTRY : Supplier<IForgeRegistry<CellProvider>?>? = null
+    val registry get() = REGISTRY!!.get()!!
 
     val RESISTOR_CELL = register("resistor", TwoPinCellProvider { ResistorCell(it) })
     val WIRE_CELL = register("wire", FourPinCellProvider { WireCell(it) })
@@ -40,11 +37,11 @@ object CellRegistry {
     }
 
     @SubscribeEvent
-    fun createRegistry(event : RegistryEvent.NewRegistry) {
+    fun createRegistry(event : NewRegistryEvent) {
         val reg = RegistryBuilder<CellProvider>()
         reg.setName(ResourceLocation(Eln2.MODID, "cells"))
         reg.type = CellProvider::class.java
-        REGISTRY = reg.create()
+        REGISTRY = event.create(reg)
         LOGGER.info("Created cell registry!")
     }
 
