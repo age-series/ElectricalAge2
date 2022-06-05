@@ -1,12 +1,8 @@
 {
-    "parent": "minecraft:block/cube",
+    "loader": "forge:obj",
+    "model": "eln2:models/block/cable/cable.obj",
+    "flip-v": true,
     "textures": {
-        "up": "eln2:block/wire/up",
-        "down": "eln2:block/wire/down",
-        "north": "eln2:block/wire/front",
-        "south": "eln2:block/wire/back",
-        "west": "eln2:block/wire/left",
-        "east": "eln2:block/wire/right",
         "particle": "minecraft:block/stone"
     }
 }
