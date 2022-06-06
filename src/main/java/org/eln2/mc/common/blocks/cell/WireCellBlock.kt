@@ -16,6 +16,10 @@ class WireCellBlock : CellBlockBase() {
     }
 
     override fun getCollisionShape(pState: BlockState, pLevel: BlockGetter, pPos: BlockPos, pContext: CollisionContext): VoxelShape {
-        return Block.box(0.0, 0.0, 0.0, 1.0, 0.025, 1.0)
+        return Block.box(0.0, 0.0, 0.0, 16.0, 1.0, 16.0)
+    }
+
+    override fun getShape(pState: BlockState, pLevel: BlockGetter, pPos: BlockPos, pContext: CollisionContext): VoxelShape {
+        return Block.box(0.0, 0.0, 0.0, 16.0, 2.0, 16.0)
     }
 }

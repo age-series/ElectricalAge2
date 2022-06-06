@@ -22,4 +22,6 @@ class FourPinCellProvider(val factory : ((pos : BlockPos) -> CellBase)) : CellPr
     override fun connectionPredicate(dir: RelativeRotationDirection): Boolean {
         return true
     }
+
+    
 }

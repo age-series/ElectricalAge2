@@ -79,4 +79,6 @@ class WireCell(pos : BlockPos) : CellBase(pos) {
 
         return map
     }
+
+
 }

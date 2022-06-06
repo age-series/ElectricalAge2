@@ -1,0 +1,6 @@
+{
+    "loader": "forge:obj",
+    "flip-v": true,
+    "model": "eln2:models/block/cable/cable.obj"
+
+}
