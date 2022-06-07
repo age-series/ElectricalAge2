@@ -1,19 +1,46 @@
 {
-    "variants": {
-        "facing=east": {
-            "model": "eln2:block/wire",
-            "y": 90
+
+    "multipart": [
+        {
+            "when": {
+                "connect_east": "true"
+            },
+            "apply": {
+                "model": "eln2:block/wire",
+                "y": 270
+
+            }
         },
-        "facing=north": {
-            "model": "eln2:block/wire"
+        {
+            "when": {
+                "connect_north": "true"
+            },
+            "apply": {
+                "model": "eln2:block/wire",
+                "y": 0
+
+            }
         },
-        "facing=south": {
-            "model": "eln2:block/wire",
-            "y": 180
+        {
+            "when": {
+                "connect_south": "true"
+            },
+            "apply": {
+                "model": "eln2:block/wire",
+                "y": 90
+
+            }
         },
-        "facing=west": {
-            "model": "eln2:block/wire",
-            "y": 270
+        {
+            "when": {
+                "connect_west": "true"
+            },
+            "apply": {
+                "model": "eln2:block/wire",
+                "y": 180
+
+            }
         }
-    }
+    ]
+
 }
