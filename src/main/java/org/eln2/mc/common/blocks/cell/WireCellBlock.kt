@@ -57,7 +57,7 @@ class WireCellBlock : CellBlockBase() {
 
         for (x in -1..1) {
             for (z in -1..1) {
-                if (x == 0 || z == 0) continue
+                if (x == 0 && z == 0) continue
                 neChang(pLevel, pPos, BlockPos(pPos.x + x, pPos.y, pPos.z + z))
             }
         }
@@ -102,7 +102,7 @@ class WireCellBlock : CellBlockBase() {
 
                 val direction = Direction.fromNormal(neighbor.subtract(pos))
 
-                println("Direction: $direction")
+                println("FUCKING FUCKER KURWA FUCkering Direction: $direction")
 
 
                 if(direction?.equals(Direction.EAST) == true) {

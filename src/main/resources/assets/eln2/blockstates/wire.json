@@ -7,7 +7,7 @@
             },
             "apply": {
                 "model": "eln2:block/wire",
-                "y": 270
+                "y": 90
 
             }
         },
@@ -27,7 +27,7 @@
             },
             "apply": {
                 "model": "eln2:block/wire",
-                "y": 90
+                "y": 180
 
             }
         },
@@ -37,7 +37,7 @@
             },
             "apply": {
                 "model": "eln2:block/wire",
-                "y": 180
+                "y": 270
 
             }
         }
