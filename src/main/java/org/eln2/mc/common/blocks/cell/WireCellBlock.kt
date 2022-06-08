@@ -20,16 +20,14 @@ import org.eln2.mc.common.cell.CellRegistry
 
 class WireCellBlock : CellBlockBase() {
 
-
-
-
+    lateinit var connect_east: BooleanProperty
+    lateinit var connect_west: BooleanProperty
+    lateinit var connect_north: BooleanProperty
+    lateinit var connect_south: BooleanProperty
 
 
     init {
-        val connect_east = BooleanProperty.create("connect_east")
-        val connect_north = BooleanProperty.create("connect_north")
-        val connect_south = BooleanProperty.create("connect_south")
-        val connect_west = BooleanProperty.create("connect_west")
+
         registerDefaultState(stateDefinition.any().setValue(connect_east, false).setValue(connect_north, false).setValue(connect_south, false).setValue(connect_west, false))
     }
 
@@ -47,63 +45,39 @@ class WireCellBlock : CellBlockBase() {
     }
 
     override fun onPlace(pState: BlockState, pLevel: Level, pPos: BlockPos, pOldState: BlockState, pIsMoving: Boolean) {
-
-
-
         super.onPlace(pState, pLevel, pPos, pOldState, pIsMoving)
 
-
         // get blocks around and call nechang
-
-        for (x in -1..1) {
-            for (z in -1..1) {
+        for (x in (-1 until 2)) {
+            for (z in (-1 until 2)) {
                 if (x == 0 && z == 0) continue
                 neChang(pLevel, pPos, BlockPos(pPos.x + x, pPos.y, pPos.z + z))
             }
         }
-
-
-
-
-
     }
 
     override fun createBlockStateDefinition(pBuilder: StateDefinition.Builder<Block, BlockState>) {
         super.createBlockStateDefinition(pBuilder)
-        val connect_east = BooleanProperty.create("connect_east")
-        val connect_north = BooleanProperty.create("connect_north")
-        val connect_south = BooleanProperty.create("connect_south")
-        val connect_west = BooleanProperty.create("connect_west")
+
+        connect_east = BooleanProperty.create("connect_east")
+        connect_north = BooleanProperty.create("connect_north")
+        connect_south = BooleanProperty.create("connect_south")
+        connect_west = BooleanProperty.create("connect_west")
+
         pBuilder.add(connect_east, connect_north, connect_south, connect_west)
     }
 
     fun neChang(level: Level, pos: BlockPos, neighbor: BlockPos) {
-        val connect_east = BooleanProperty.create("connect_east")
-        val connect_north = BooleanProperty.create("connect_north")
-        val connect_south = BooleanProperty.create("connect_south")
-        val connect_west = BooleanProperty.create("connect_west")
-
 
 
         val blockEntity = level.getBlockEntity(neighbor ?: error("Neighbor position was null"))
 
-        println("Neighbor block entity: $blockEntity")
         if(blockEntity != null) {
 
-
-            println("It exists")
             // check if the blockentity is from this mod
-
             if(blockEntity is CellTileEntity) {
-
-                println("It is a cell")
-
                 // get the direction of the neighbor from us
-
                 val direction = Direction.fromNormal(neighbor.subtract(pos))
-
-                println("FUCKING FUCKER KURWA FUCkering Direction: $direction")
-
 
                 if(direction?.equals(Direction.EAST) == true) {
 
@@ -122,17 +96,12 @@ class WireCellBlock : CellBlockBase() {
                     println("West")
                     level.setBlockAndUpdate(pos, level.getBlockState(pos).setValue(connect_west, true))
                 }
-
-
-
-
             } else {
                 // not a cell tile entity
 
                 val direction = Direction.fromNormal(neighbor.subtract(pos))
 
                 println("Direction: $direction")
-
 
                 if(direction?.equals(Direction.EAST) == true) {
 
@@ -151,16 +120,13 @@ class WireCellBlock : CellBlockBase() {
                     println("West")
                     level.setBlockAndUpdate(pos, level.getBlockState(pos).setValue(connect_west, false))
                 }
-
             }
-
         } else {
             // not a cell tile entity
 
             val direction = Direction.fromNormal(neighbor.subtract(pos))
 
             println("Direction: $direction")
-
 
             if(direction?.equals(Direction.EAST) == true) {
 
@@ -187,19 +153,11 @@ class WireCellBlock : CellBlockBase() {
 
         var level = world as Level
 
-        val connect_east = BooleanProperty.create("connect_east")
-        val connect_north = BooleanProperty.create("connect_north")
-        val connect_south = BooleanProperty.create("connect_south")
-        val connect_west = BooleanProperty.create("connect_west")
-
-
 
         if (world != null && pos != null) {
             if (!(world?.isClientSide?: error("World was null"))) {
-                if (neighbor != null) {
-                    if (level.getBlockState(neighbor).block == this) {
-                        neChang(level, pos, neighbor)
-                    }
+                if (neighbor != null && neighbor != pos) {
+                    neChang(level, pos, neighbor)
                 }
             }
         }
