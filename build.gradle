@@ -26,7 +26,7 @@ apply plugin: 'maven-publish'
 
 
 
-version = '1.0'
+version = '1.0.1'
 group = 'org.eln2.mc'
 archivesBaseName = 'eln2'
 
