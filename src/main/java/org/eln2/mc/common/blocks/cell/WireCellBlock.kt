@@ -48,8 +48,8 @@ class WireCellBlock : CellBlockBase() {
         super.onPlace(pState, pLevel, pPos, pOldState, pIsMoving)
 
         // get blocks around and call nechang
-        for (x in (-1 until 2)) {
-            for (z in (-1 until 2)) {
+        for (x in -1..1) {
+            for (z in -1..1) {
                 if (x == 0 && z == 0) continue
                 neChang(pLevel, pPos, BlockPos(pPos.x + x, pPos.y, pPos.z + z))
             }
@@ -68,10 +68,7 @@ class WireCellBlock : CellBlockBase() {
     }
 
     fun neChang(level: Level, pos: BlockPos, neighbor: BlockPos) {
-
-
         val blockEntity = level.getBlockEntity(neighbor ?: error("Neighbor position was null"))
-
         if(blockEntity != null) {
 
             // check if the blockentity is from this mod
@@ -98,7 +95,6 @@ class WireCellBlock : CellBlockBase() {
                 }
             } else {
                 // not a cell tile entity
-
                 val direction = Direction.fromNormal(neighbor.subtract(pos))
 
                 println("Direction: $direction")
@@ -152,7 +148,6 @@ class WireCellBlock : CellBlockBase() {
         println(world is Level)
 
         var level = world as Level
-
 
         if (world != null && pos != null) {
             if (!(world?.isClientSide?: error("World was null"))) {

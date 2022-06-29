@@ -24,7 +24,7 @@ import org.eln2.mc.common.blocks.CellBlockBase
 import org.eln2.mc.common.blocks.CellTileEntity
 import org.eln2.mc.common.cell.CellRegistry
 import org.eln2.mc.common.containers.VoltageSourceCellContainer
-import java.util.function.Function
+
 
 class VoltageSourceCellBlock : CellBlockBase() {
     override fun getCellProvider(): ResourceLocation {
@@ -63,6 +63,4 @@ class VoltageSourceCellBlock : CellBlockBase() {
 
         return InteractionResult.SUCCESS
     }
-
-
 }

@@ -40,6 +40,63 @@
                 "y": 270
 
             }
+        },
+        {
+
+            "when": {
+                "connect_east": "true",
+                "connect_south": "true"
+            },
+            "apply": {
+                "model": "eln2:block/wire_no_connection"
+            }
+
+        },
+        {
+
+            "when": {
+                "connect_south": "true",
+                "connect_west": "true"
+            },
+            "apply": {
+                "model": "eln2:block/wire_no_connection"
+            }
+
+        },
+        {
+
+            "when": {
+                "connect_west": "true",
+                "connect_north": "true"
+            },
+            "apply": {
+                "model": "eln2:block/wire_no_connection"
+            }
+
+        },
+        {
+
+            "when": {
+                "connect_north": "true",
+                "connect_east": "true"
+            },
+            "apply": {
+                "model": "eln2:block/wire_no_connection"
+            }
+
+        },
+        {
+
+            "when": {
+                "connect_north": "false",
+                "connect_west": "false",
+                "connect_south": "false",
+                "connect_east": "false"
+            },
+            "apply": {
+                "model": "eln2:block/wire_no_connection"
+            }
+
         }
     ]
 
