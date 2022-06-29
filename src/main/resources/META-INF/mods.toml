@@ -5,7 +5,7 @@ issueTrackerURL="https://github.com/age-series/ElectricalAge2/issues"
 
 [[mods]]
 modId="eln2"
-version="${file.jarVersion}"
+version="1.0.1"
 displayName="Electrical Age 2"
 # A URL to query for updates for this mod. See the JSON update specification https://mcforge.readthedocs.io/en/latest/gettingstarted/autoupdate/
 #updateJSONURL="https://change.me.example.invalid/updates.json" #optional
@@ -20,11 +20,13 @@ description='''
 Electrical Age 2 - Electricity, in your base!
 
 Also try the other Age Series mods!
+* Chat Age: Minecraft to Discord webhook chat bridge!
+
+These are some Age Series mods in development!
 * Computer Age: Go back to the 80's 8 bit microprocessor era with style!
 * Processing Age: Process all those raw materials into something useful!
 * Chemistry Age: Like alchemy, but with less magic!
 * Server Age: Real computing power for hardcore technical players!
-* Chat Age: Minecraft to Discord webhook chat bridge!
 * Security Age: Lock up your stuff!
 '''
 
