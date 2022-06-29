@@ -27,7 +27,6 @@ class WireCellBlock : CellBlockBase() {
 
 
     init {
-
         registerDefaultState(stateDefinition.any().setValue(connect_east, false).setValue(connect_north, false).setValue(connect_south, false).setValue(connect_west, false))
     }
 
@@ -77,43 +76,31 @@ class WireCellBlock : CellBlockBase() {
                 val direction = Direction.fromNormal(neighbor.subtract(pos))
 
                 if(direction?.equals(Direction.EAST) == true) {
-
-                    println("East")
                     level.setBlockAndUpdate(pos, level.getBlockState(pos).setValue(connect_east, true))
                 }
                 if(direction?.equals(Direction.NORTH) == true) {
-                    println("North")
                     level.setBlockAndUpdate(pos, level.getBlockState(pos).setValue(connect_north, true))
                 }
                 if(direction?.equals(Direction.SOUTH) == true) {
-                    println("South")
                     level.setBlockAndUpdate(pos, level.getBlockState(pos).setValue(connect_south, true))
                 }
                 if(direction?.equals(Direction.WEST) == true) {
-                    println("West")
                     level.setBlockAndUpdate(pos, level.getBlockState(pos).setValue(connect_west, true))
                 }
             } else {
                 // not a cell tile entity
                 val direction = Direction.fromNormal(neighbor.subtract(pos))
 
-                println("Direction: $direction")
-
                 if(direction?.equals(Direction.EAST) == true) {
-
-                    println("East")
                     level.setBlockAndUpdate(pos, level.getBlockState(pos).setValue(connect_east, false))
                 }
                 if(direction?.equals(Direction.NORTH) == true) {
-                    println("North")
                     level.setBlockAndUpdate(pos, level.getBlockState(pos).setValue(connect_north, false))
                 }
                 if(direction?.equals(Direction.SOUTH) == true) {
-                    println("South")
                     level.setBlockAndUpdate(pos, level.getBlockState(pos).setValue(connect_south, false))
                 }
                 if(direction?.equals(Direction.WEST) == true) {
-                    println("West")
                     level.setBlockAndUpdate(pos, level.getBlockState(pos).setValue(connect_west, false))
                 }
             }
@@ -122,30 +109,21 @@ class WireCellBlock : CellBlockBase() {
 
             val direction = Direction.fromNormal(neighbor.subtract(pos))
 
-            println("Direction: $direction")
-
             if(direction?.equals(Direction.EAST) == true) {
-
-                println("East")
                 level.setBlockAndUpdate(pos, level.getBlockState(pos).setValue(connect_east, false))
             }
             if(direction?.equals(Direction.NORTH) == true) {
-                println("North")
                 level.setBlockAndUpdate(pos, level.getBlockState(pos).setValue(connect_north, false))
             }
             if(direction?.equals(Direction.SOUTH) == true) {
-                println("South")
                 level.setBlockAndUpdate(pos, level.getBlockState(pos).setValue(connect_south, false))
             }
             if(direction?.equals(Direction.WEST) == true) {
-                println("West")
                 level.setBlockAndUpdate(pos, level.getBlockState(pos).setValue(connect_west, false))
             }
         }
     }
     override fun onNeighborChange(blockState: BlockState?, world: LevelReader?, pos: BlockPos?, neighbor: BlockPos?) {
-
-        println(world is Level)
 
         var level = world as Level
 
