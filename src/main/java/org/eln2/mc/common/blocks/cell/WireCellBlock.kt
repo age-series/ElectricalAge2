@@ -66,6 +66,8 @@ class WireCellBlock : CellBlockBase() {
         pBuilder.add(connect_east, connect_north, connect_south, connect_west)
     }
 
+
+
     fun neChang(level: Level, pos: BlockPos, neighbor: BlockPos) {
         val blockEntity = level.getBlockEntity(neighbor ?: error("Neighbor position was null"))
         if(blockEntity != null) {
