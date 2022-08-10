@@ -1,6 +1,5 @@
 package org.eln2.mc.common.blocks
 
-import mcp.mobius.waila.api.IServerDataProvider
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
 import net.minecraft.nbt.CompoundTag
@@ -56,7 +55,7 @@ class CellTileEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Blo
             return
         }
 
-        println("Cell is created at $position")
+        Eln2.LOGGER.debug("Cell is created at $position")
         cell = cellProvider.create(position)
         cell!!.tile = this
         cell!!.id = cellProvider.registryName!!
@@ -394,15 +393,15 @@ class CellTileEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Blo
     }
 
     /**
-     * Applies the connection predicate for that direction.
-     * @param entity The entity we are checking.
+     * Applies entity's connection predicate to the opposite of dir.
+     *
+     * Determines if *this* [CellTileEntity] can connect to [entity] by making a connection towards [dir]
+     * @param entity The entity we are connecting to.
      * @param dir The direction towards entity.
      * @return True if the connection is accepted.
     */
-    @Suppress("UNUSED_PARAMETER") // Will very likely be needed later and helps to know the name of the args.
     private fun canConnectFrom(entity : CellTileEntity, dir : Direction) : Boolean {
-        return connectPredicate(dir.opposite)
-
+        return entity.connectPredicate(dir.opposite)
     }
 
     override fun saveAdditional(pTag: CompoundTag) {

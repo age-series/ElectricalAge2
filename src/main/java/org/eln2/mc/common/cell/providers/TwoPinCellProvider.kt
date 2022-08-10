@@ -20,6 +20,6 @@ class TwoPinCellProvider(val factory : ((pos : BlockPos) -> CellBase)) : CellPro
 
     override fun connectionPredicate(dir: RelativeRotationDirection): Boolean {
         Eln2.LOGGER.info("DIR: $dir")
-        return true
+        return connectableDirections.contains(dir)
     }
 }
