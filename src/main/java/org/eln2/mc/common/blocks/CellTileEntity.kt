@@ -12,6 +12,7 @@ import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.state.BlockState
 import org.eln2.mc.Eln2
 import org.eln2.mc.common.PlacementRotation
+import org.eln2.mc.common.RelativeRotationDirection
 import org.eln2.mc.common.cell.*
 import java.util.*
 import kotlin.system.measureNanoTime
@@ -390,6 +391,15 @@ class CellTileEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Blo
         val remoteEnt = level.getBlockEntity(remotePos)
 
         return remoteEnt as CellTileEntity?
+    }
+
+    fun getFrontNeighbor() : CellTileEntity? {
+        val level = getLevel()!!
+        val frontDir = PlacementRotation(state.getValue(HorizontalDirectionalBlock.FACING))
+            .getAbsoluteFromRelative(RelativeRotationDirection.Front)
+        val remoteEnt = level.getBlockEntity(pos.relative(frontDir))
+
+        return remoteEnt as? CellTileEntity
     }
 
     /**

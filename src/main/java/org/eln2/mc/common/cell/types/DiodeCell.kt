@@ -6,7 +6,6 @@ import org.eln2.mc.common.cell.CellBase
 import org.eln2.mc.common.cell.ComponentInfo
 import org.eln2.mc.extensions.ComponentExtensions.connectToPinOf
 import org.eln2.mc.utility.UnitType
-import org.eln2.mc.utility.ValueText
 import org.eln2.mc.utility.ValueText.valueText
 
 class DiodeCell(pos : BlockPos): CellBase(pos) {
@@ -24,7 +23,13 @@ class DiodeCell(pos : BlockPos): CellBase(pos) {
             circuit.add(diode)
             added = true
         }
-        return ComponentInfo(diode, connections.indexOf(neighbour))
+        //We must ensure the negative side is the "front" of the diode
+        //According to libage, it's an arbitrary convention that negative is node 0 and positive is node 1
+        return if (neighbour.tile == this.tile?.getFrontNeighbor()) {
+            ComponentInfo(diode, 0)
+        } else {
+            ComponentInfo(diode, 1)
+        }
     }
 
     override fun buildConnections() {
