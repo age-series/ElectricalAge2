@@ -3,7 +3,7 @@
 	"texture_size": [32, 32],
 	"textures": {
         "3": "eln2:block/wire",
-		"particle": "components"
+		"particle": "eln2:block/wire"
 	},
 	"elements": [
         {
