@@ -1,18 +1,18 @@
 {
     "variants": {
         "facing=east": {
-            "model": "eln2:block/ground",
+            "model": "eln2:block/ground/ground_pin",
             "y": 90
         },
         "facing=north": {
-            "model": "eln2:block/ground"
+            "model": "eln2:block/ground/ground_pin"
         },
         "facing=south": {
-            "model": "eln2:block/ground",
+            "model": "eln2:block/ground/ground_pin",
             "y": 180
         },
         "facing=west": {
-            "model": "eln2:block/ground",
+            "model": "eln2:block/ground/ground_pin",
             "y": 270
         }
     }
