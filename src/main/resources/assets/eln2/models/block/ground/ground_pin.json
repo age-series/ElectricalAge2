@@ -5,7 +5,7 @@
 		"2": "eln2:block/ground/propermodel/cable_connector",
 		"3": "eln2:block/ground/propermodel/rod",
 		"4": "eln2:block/ground/propermodel/cable",
-		"particle": "rod/rod"
+		"particle": "eln2:block/ground/propermodel/rod"
 	},
 	"elements": [
 		{
