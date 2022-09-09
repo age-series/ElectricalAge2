@@ -2,10 +2,12 @@
 	"credit": "Made with Blockbench",
 	"texture_size": [32, 32],
 	"textures": {
+<<<<<<< HEAD
 		"2": "eln2:block/ground/propermodel/cable_connector",
 		"3": "eln2:block/ground/propermodel/rod",
 		"4": "eln2:block/ground/propermodel/cable",
 		"particle": "eln2:block/ground/propermodel/rod"
+=======
 	},
 	"elements": [
 		{
@@ -233,4 +235,8 @@
 			"origin": [0, 0, 0],
 			"children": [3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
 		}, 13, 14, 15, 16]
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> e31109d (Ground model try 1)
