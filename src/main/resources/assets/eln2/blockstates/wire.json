@@ -1,19 +1,212 @@
 {
-    "variants": {
-        "facing=east": {
-            "model": "eln2:block/wire",
-            "y": 90
+
+    "multipart": [
+        {
+            "when": {
+                "connect_east": "true",
+                "connect_west": "true",
+                "connect_north": "false",
+                "connect_south": "false"
+            },
+            "apply": {
+                "model": "eln2:block/wire/wire_straight",
+                "y": 90
+
+            }
         },
-        "facing=north": {
-            "model": "eln2:block/wire"
+        {
+            "when": {
+                "connect_east": "false",
+                "connect_west": "false",
+                "connect_north": "true",
+                "connect_south": "true"
+            },
+            "apply": {
+                "model": "eln2:block/wire/wire_straight",
+                "y": 0
+            }
         },
-        "facing=south": {
-            "model": "eln2:block/wire",
-            "y": 180
+        {
+            "when": {
+                "connect_east": "true",
+                "connect_west": "false",
+                "connect_north": "true",
+                "connect_south": "false"
+            },
+            "apply": {
+                "model": "eln2:block/wire/wire_corner",
+                "y": 90
+            }
         },
-        "facing=west": {
-            "model": "eln2:block/wire",
-            "y": 270
+        {
+            "when": {
+                "connect_east": "false",
+                "connect_west": "true",
+                "connect_north": "false",
+                "connect_south": "true"
+            },
+            "apply": {
+                "model": "eln2:block/wire/wire_corner",
+                "y": -90
+
+            }
+        },
+        {
+            "when": {
+                "connect_east": "false",
+                "connect_west": "true",
+                "connect_north": "true",
+                "connect_south": "false"
+            },
+            "apply": {
+                "model": "eln2:block/wire/wire_corner",
+                "y": 0
+
+            }
+        },
+        {
+            "when": {
+                "connect_east": "true",
+                "connect_west": "false",
+                "connect_north": "false",
+                "connect_south": "true"
+            },
+            "apply": {
+                "model": "eln2:block/wire/wire_corner",
+                "y": 180
+
+            }
+        },
+        {
+            "when": {
+                "connect_east": "true",
+                "connect_west": "true",
+                "connect_north": "true",
+                "connect_south": "true"
+            },
+            "apply": {
+                "model": "eln2:block/wire/wire_crossing_full"
+
+
+            }
+        },
+        {
+            "when": {
+                "connect_east": "false",
+                "connect_west": "true",
+                "connect_north": "true",
+                "connect_south": "true"
+            },
+            "apply": {
+                "model": "eln2:block/wire/wire_crossing",
+                "y": -90
+
+
+            }
+        },
+        {
+            "when": {
+                "connect_east": "true",
+                "connect_west": "false",
+                "connect_north": "true",
+                "connect_south": "true"
+            },
+            "apply": {
+                "model": "eln2:block/wire/wire_crossing",
+                "y": 90
+
+            }
+        },
+        {
+            "when": {
+                "connect_east": "true",
+                "connect_west": "true",
+                "connect_north": "false",
+                "connect_south": "true"
+            },
+            "apply": {
+                "model": "eln2:block/wire/wire_crossing",
+                "y": 180
+
+            }
+        },
+        {
+            "when": {
+                "connect_east": "true",
+                "connect_west": "true",
+                "connect_north": "true",
+                "connect_south": "false"
+            },
+            "apply": {
+                "model": "eln2:block/wire/wire_crossing"
+
+
+            }
+        },
+        {
+            "when": {
+                "connect_east": "false",
+                "connect_west": "false",
+                "connect_north": "false",
+                "connect_south": "false"
+            },
+            "apply": {
+                "model": "eln2:block/wire/wire_crossing_empty"
+
+
+            }
+        },
+        {
+            "when": {
+                "connect_east": "true",
+                "connect_west": "false",
+                "connect_north": "false",
+                "connect_south": "false"
+            },
+            "apply": {
+                "model": "eln2:block/wire/wire_crossing_singlewire",
+                "y": 90
+
+            }
+        },
+        {
+            "when": {
+                "connect_east": "false",
+                "connect_west": "true",
+                "connect_north": "false",
+                "connect_south": "false"
+            },
+            "apply": {
+                "model": "eln2:block/wire/wire_crossing_singlewire",
+                "y": -90
+
+
+            }
+        },
+        {
+            "when": {
+                "connect_east": "false",
+                "connect_west": "false",
+                "connect_north": "true",
+                "connect_south": "false"
+            },
+            "apply": {
+                "model": "eln2:block/wire/wire_crossing_singlewire",
+                "y": 0
+            }
+        },
+        {
+            "when": {
+                "connect_east": "false",
+                "connect_west": "false",
+                "connect_north": "false",
+                "connect_south": "true"
+            },
+            "apply": {
+                "model": "eln2:block/wire/wire_crossing_singlewire",
+                "y": 180
+            }
         }
-    }
+    ]
+
 }

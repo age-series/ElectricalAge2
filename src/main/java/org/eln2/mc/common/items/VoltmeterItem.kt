@@ -15,9 +15,22 @@ class VoltmeterItem(tab: CreativeModeTab?): Item(Item.Properties().also {if(tab 
             val clicked = context.level.getBlockEntity(context.clickedPos)
             if (clicked is CellTileEntity) {
                 val voltage = clicked.getHudMap()["voltage"]
+                val power = clicked.getHudMap()["power"]
+                val current = clicked.getHudMap()["current"]
+
+                var text = ""
+
                 if (voltage != null) {
-                    context.player?.sendMessage(TextComponent(voltage), Util.NIL_UUID)
+                    text += "Voltage: "+voltage+"  "
                 }
+                if (power != null) {
+                    text += "Power: "+power+"  "
+                }
+                if (current != null) {
+                    text += "Current: "+current+"  "
+                }
+
+                context.player?.sendMessage(TextComponent(text), Util.NIL_UUID)
                 return InteractionResult.SUCCESS
             }
             return InteractionResult.PASS

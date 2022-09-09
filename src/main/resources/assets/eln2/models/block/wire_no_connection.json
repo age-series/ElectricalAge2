@@ -1,0 +1,5 @@
+{
+    "loader": "forge:obj",
+    "model": "eln2:models/block/cable_no_connection/cable_no_connection.obj",
+    "flip-v": true
+}
