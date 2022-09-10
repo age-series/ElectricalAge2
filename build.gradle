@@ -13,6 +13,7 @@ buildscript {
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
         classpath "org.jetbrains.kotlin:kotlin-serialization:$kotlin_version"
         classpath "gradle.plugin.com.github.johnrengelman:shadow:7.1.1"
+        classpath group: 'com.modrinth.minotaur', name: 'Minotaur', version: '2.+'
     }
 }
 apply plugin: 'net.minecraftforge.gradle'
@@ -22,6 +23,7 @@ apply plugin: 'kotlinx-serialization'
 apply plugin: "com.github.johnrengelman.shadow"
 apply from: 'https://raw.githubusercontent.com/thedarkcolour/KotlinForForge/site/thedarkcolour/kotlinforforge/gradle/kff-3.3.2.gradle'
 apply plugin: 'eclipse'
+apply plugin: 'com.modrinth.minotaur'
 apply plugin: 'maven-publish'
 
 
@@ -35,7 +37,7 @@ java.toolchain.languageVersion = JavaLanguageVersion.of(17)
 
 println('Java: ' + System.getProperty('java.version') + ' JVM: ' + System.getProperty('java.vm.version') + '(' + System.getProperty('java.vendor') + ') Arch: ' + System.getProperty('os.arch'))
 minecraft {
-    mappings channel: 'parchment', version: "2022.05.22-1.18.2"
+    mappings channel: 'parchment', version: "2022.05.22-$mcVersion"
 
     accessTransformer = file('src/main/resources/META-INF/accesstransformer.cfg')
 
@@ -113,7 +115,7 @@ repositories {
 }
 
 dependencies {
-    minecraft 'net.minecraftforge:forge:1.18.2-40.1.25'
+    minecraft "net.minecraftforge:forge:$mcVersion-40.1.25"
     compileOnly fg.deobf("mcp.mobius.waila:wthit-api:forge-4.7.2")
     runtimeOnly fg.deobf("mcp.mobius.waila:wthit:forge-4.7.2")
     library('com.github.age-series:libage:main-SNAPSHOT')
@@ -195,3 +197,16 @@ compileTestKotlin {
 }
 // However if you are in a multi-project build, dev time needs unobfed jar files, so you can delay the obfuscation until publishing by doing
 // publish.dependsOn('reobfJar')
+modrinth {
+    token = System.getenv("MODRINTH_TOKEN")
+    projectId = "iTyN4Kv7"
+    versionNumber = "$project.version"
+    versionName = "eln2-$project.version"
+    versionType = "alpha"
+    uploadFile = shadowJar
+    gameVersions = [ "$mcVersion" ]
+    changelog = file('changes.md').text
+    dependencies {
+        required.project("ordsPcFz")
+    }
+}
