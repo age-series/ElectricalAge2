@@ -40,9 +40,7 @@ abstract class CellBase(val pos : BlockPos) {
     /**
      * Called when the tile entity is destroyed.
     */
-    open fun destroy() {
-        graph.removeCell(this)
-    }
+    open fun destroy(){}
 
     /**
      * Called when the graph and/or neighbouring cells are updated. This method is called after completeDiskLoad and setPlaced

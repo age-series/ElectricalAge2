@@ -20,7 +20,7 @@ object CellEntityNetworkManager {
         entity.graphManager = graphManager
 
         // Handle updating/creating graphs using the new cell.
-        registerCell(entity, cell, graphManager)
+        registerCell(cell)
 
         // Notify the cell of the new placement.
         cell.setPlaced()
@@ -31,7 +31,64 @@ object CellEntityNetworkManager {
         return cell
     }
 
-    private fun registerCell(entity : CellBlockEntity, cell : CellBase, manager : CellGraphManager){
+    fun destroy(entity : CellBlockEntity){
+        val cell = entity.cell!!
+
+        removeCell(cell)
+
+        cell.destroy()
+    }
+
+    private fun removeCell(cell : CellBase){
+        val entity = cell.tile!!
+        val manager = entity.graphManager
+        val neighborCells = entity.getNeighborCells()
+
+        val graph = cell.graph
+
+        // This is common logic for all cases.
+        neighborCells.forEach { neighbor ->
+            neighbor.connections.remove(cell)
+        }
+
+        /*
+        * Cases:
+        *   1. We don't have any neighbors. We can destroy the circuit.
+        *   2. We have a single neighbor. We can remove ourselves from the circuit.
+        *   3. We have multiple neighbors, and we are not a cut vertex. We can remove ourselves from the circuit.
+        *   4. We have multiple neighbors, and we are a cut vertex. We need to remove ourselves, find the new disjoint graphs,
+        *        and rebuild the circuits.
+        * */
+
+        if(neighborCells.isEmpty()){
+            // Case 1. Destroy this circuit.
+
+            // Make sure we don't make any logic errors somewhere else.
+            assert(graph.cells.size == 1)
+
+            graph.destroy()
+        }
+        else if(neighborCells.size == 1){
+            // Case 2.
+
+            // Remove the cell from the circuit.
+            graph.removeCell(cell)
+
+            val neighbor = neighborCells[0]
+
+            neighbor.update(connectionsChanged = true, graphChanged = false)
+        }
+        else{
+            // Case 3 and 4. Implement a more sophisticated algorithm, if necessary.
+
+            graph.destroy()
+            rebuildTopologies(neighborCells, cell, manager)
+        }
+    }
+
+    private fun registerCell(cell : CellBase){
+        val entity = cell.tile!!
+        val manager = entity.graphManager
         val neighborCells = entity.getNeighborCells()
 
         /*
@@ -122,5 +179,75 @@ object CellEntityNetworkManager {
         }
 
         return true
+    }
+
+    private fun rebuildTopologies(neighbors: ArrayList<CellBase>, removedCell : CellBase, manager: CellGraphManager){
+        /*
+        * For now, we use this simple algorithm.:
+        *   We enqueue all neighbors for visitation. We perform searches through their graphs,
+        *   excluding the cell we are removing.
+        *
+        *   If at any point we encounter an unprocessed neighbor, we remove that neighbor from the neighbor
+        *   queue.
+        *
+        *   After a queue element has been processed, we build a new circuit with the cells we found.
+        * */
+
+        val neighborQueue = ArrayDeque<CellBase>()
+        neighborQueue.addAll(neighbors)
+
+        val bfsVisited = HashSet<CellBase>()
+        val bfsQueue = ArrayDeque<CellBase>()
+
+        while (neighborQueue.size > 0){
+            val neighbor = neighborQueue.removeFirst()
+
+            // Create new circuit for all cells connected to this one.
+            val graph = manager.createGraph()
+
+            // Start BFS at the neighbor.
+            bfsQueue.add(neighbor)
+
+            while (bfsQueue.size > 0){
+                val cell = bfsQueue.removeFirst()
+
+                if(!bfsVisited.add(cell)){
+                    continue
+                }
+
+                // Remove it from the neighbor queue, if it exists.
+                // todo: can we add an exit condition here?
+                // Hypothesis: If at any point, the neighbor queue becomes empty, we can stop traversal, and use the cells
+                // in the old circuit, minus the one we are removing. This helps performance if there are close
+                // cycles around the cell we are removing.
+                neighborQueue.remove(cell)
+
+                graph.addCell(cell)
+
+                // Enqueue neighbors (excluding the cell we are removing) for processing
+                cell.connections.forEach { connectedCell ->
+                    // This must be handled above.
+                    assert(connectedCell != removedCell)
+
+                    bfsQueue.add(connectedCell)
+                }
+            }
+
+            assert(bfsQueue.isEmpty())
+
+            // Refit cells
+            graph.cells.forEach { cell ->
+                val isNeighbor = neighbors.contains(cell)
+
+                cell.update(connectionsChanged = isNeighbor, graphChanged = true)
+            }
+
+            // Finally, build the solver.
+
+            graph.build()
+
+            // We don't need to keep the cells, we have already traversed all the connected ones.
+            bfsVisited.clear()
+        }
     }
 }

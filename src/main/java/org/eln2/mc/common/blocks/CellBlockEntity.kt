@@ -64,7 +64,15 @@ class CellBlockEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Bl
     }
 
     fun setDestroyed() {
-        throw NotImplementedError()
+        if(cell == null){
+            // This means we are on the client.
+            // Otherwise, something is going on here.
+
+            assert(level!!.isClientSide)
+            return
+        }
+
+        CellEntityNetworkManager.destroy(this)
     }
 
     private fun canConnectFrom(dir : Direction) : Boolean {
