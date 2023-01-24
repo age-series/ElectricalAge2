@@ -20,30 +20,29 @@ import kotlin.collections.ArrayList
 import kotlin.system.measureNanoTime
 
 class CellBlockEntity(var pos : BlockPos, var state: BlockState): BlockEntity(BlockRegistry.CELL_BLOCK_ENTITY.get(), pos, state) {
+    // Initialized when placed or loading
+
     lateinit var graphManager : CellGraphManager
-    private lateinit var cellProvider : CellProvider
+    lateinit var cellProvider : CellProvider
+
+    // Used for loading
+    private lateinit var savedGraphID : UUID
 
     // Cell is not available on the client.
     var cell : CellBase? = null
 
     private val serverLevel get() = level as ServerLevel
 
-    fun getPlacementRotation() : PlacementRotation{
+    private fun getPlacementRotation() : PlacementRotation{
         return PlacementRotation (state.getValue(HorizontalDirectionalBlock.FACING))
     }
 
-    fun getLocalDirection(globalDirection : Direction) : RelativeRotationDirection{
+    private fun getLocalDirection(globalDirection : Direction) : RelativeRotationDirection{
         val placementRotation = getPlacementRotation()
 
         return placementRotation.getRelativeFromAbsolute(globalDirection)
     }
 
-    /**
-     * Called by the block when it is placed.
-     * For now, we are only processing this for the server.
-     * It will add our cell to an existing circuit, or join multiple existing circuits, or create a new one
-     * with ourselves.
-    */
     @Suppress("UNUSED_PARAMETER") // Will very likely be needed later and helps to know the name of the args.
     fun setPlacedBy(
         level : Level,
@@ -53,253 +52,25 @@ class CellBlockEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Bl
         itemStack : ItemStack,
         cellProvider: CellProvider
     ) {
-        // circuits are not built on the client
+        this.cellProvider = cellProvider
 
         if(level.isClientSide){
             return
         }
 
-        cell = cellProvider.create(position)
-        cell!!.tile = this
-        cell!!.id = cellProvider.registryName!!
-
-        val placeDir = PlacementRotation (state.getValue(HorizontalDirectionalBlock.FACING))
-
-        Eln2.LOGGER.info("north <-> ${placeDir.getRelativeFromAbsolute(Direction.NORTH)}")
-        Eln2.LOGGER.info("south <-> ${placeDir.getRelativeFromAbsolute(Direction.SOUTH)}")
-        Eln2.LOGGER.info("east  <-> ${placeDir.getRelativeFromAbsolute(Direction.EAST)}")
-        Eln2.LOGGER.info("west  <-> ${placeDir.getRelativeFromAbsolute(Direction.WEST)}")
-
-        graphManager = CellGraphManager.getFor(level as ServerLevel)
-
-        registerIntoCircuit()
-        cell!!.setPlaced()
+        cell = CellEntityNetworkManager.place(this)
 
         setChanged()
-
-        cell!!.graph.build()
     }
 
-    private fun connectionPredicate(place : PlacementRotation, dir : Direction, provider: CellProvider) : Boolean{
-        val relative = place.getRelativeFromAbsolute(dir)
-
-        if(!provider.connectableDirections.contains(relative)){
-            return false
-        }
-
-        return provider.connectionPredicate(relative)
-    }
-
-    /**
-     * Called by the block when it is broken.
-     * For now, we are only doing processing for the server.
-    */
     fun setDestroyed() {
-        if (cell == null)
-            return
-        cell!!.destroy()
-
-        val adjacentTiles = HashSet(getAdjacentCellTilesFast())
-
-        if(adjacentTiles.isEmpty()){
-           // we are alone
-            cell!!.graph.destroy()
-            return
-        }
-
-        if(adjacentTiles.count() == 1){
-            adjacentTiles.first().cell!!.connections.remove(cell)
-            adjacentTiles.first().cell!!.update(connectionsChanged = true, graphChanged = false)
-            return
-        }
-
-        fun isVisited(c : CellBase) : Boolean{
-            return c.graph != cell!!.graph
-        }
-
-        val queue = LinkedList<CellBase>()
-        val nanoTime = measureNanoTime {
-
-            adjacentTiles.forEach{
-                it.cell!!.connections.remove(cell)
-            }
-
-            adjacentTiles.forEach { neighbour ->
-                if(isVisited(neighbour.cell!!)){
-                    return@forEach
-                }
-
-                val results = CellGraph(UUID.randomUUID(), graphManager)
-
-                queue.add(neighbour.cell!!)
-
-                while(queue.isNotEmpty()){
-                    val element = queue.remove()
-
-                    if(isVisited(element)) {
-                        continue
-                    }
-
-                    element.graph = results
-                    element.update(connectionsChanged = adjacentTiles.contains(element.tile), graphChanged = true)
-                    results.addCell(element)
-
-                    element.connections.forEach{ child ->
-                        queue.add(child)
-                    }
-                }
-
-                graphManager.addGraph(results)
-                results.build()
-            }
-        }
-
-        Eln2.LOGGER.info("Remove nanoseconds: $nanoTime")
-
-        cell!!.graph.destroy()
+        throw NotImplementedError()
     }
 
-    /**
-     * Called when the entity was placed into the world.
-     * we search all adjacent tile entities. If they have the same circuit, we will add our cell to their circuit.
-     * Else, we will delete their circuits and copy them over to the new one, that also includes us (we join the circuits together)
-     * If there are no adjacent, compatible cells, we create a new circuit with only ourselves
-    */
-    fun registerIntoCircuit() {
-        val adjacent = getAdjacentCellTilesFast()
+    private fun canConnectFrom(dir : Direction) : Boolean {
+        val localDirection = getLocalDirection(dir)
 
-        if (adjacent.isNotEmpty()) {
-            // there are compatible adjacent cells.
-            val firstRemote = adjacent[0]
-
-            if(adjacent.count() == 1) {
-                // we do not need to join multiple circuits. We can just add ourselves to that circuit.
-                addUsTo(firstRemote)
-                firstRemote.cell!!.connections.add(cell!!)
-                firstRemote.cell!!.update(connectionsChanged = true, graphChanged = false)
-                cell!!.connections = ArrayList(adjacent.map { it.cell })
-                cell!!.update(connectionsChanged = true, graphChanged = true)
-                return
-            }
-
-            // perf: if adjacent tiles are from the same circuit, we do not actually need to create a new circuit.
-            // we can just add ourselves to their circuit.
-            val areAllIdentical = areAllPartOfSameCircuit(adjacent)
-
-            if(!areAllIdentical){
-                concatenateCircuitAndAddUs(adjacent)
-            } else {
-                // all adjacent tiles are of the same circuit. we can join their circuit.
-                addUsTo(firstRemote)
-
-                adjacent.forEach {
-                    it.cell!!.connections.add(cell!!)
-                    it.cell!!.update(connectionsChanged = true, graphChanged = false)
-                }
-
-                cell!!.connections = ArrayList(adjacent.map { it.cell })
-                cell!!.update(connectionsChanged = true, graphChanged = true)
-            }
-
-            return
-        }
-
-        // we are not adjacent to any components.
-        // we will build a circuit containing ourselves
-
-        val graph = CellGraph(UUID.randomUUID(), graphManager)
-        graph.addCell(cell!!)
-        cell!!.graph = graph
-        graphManager.addGraph(graph)
-        cell!!.connections = ArrayList()
-        cell!!.update(connectionsChanged = true, graphChanged = true)
-        setChanged()
-    }
-
-
-    /**
-     * Will check if the tiles provided all share the same circuit.
-     * @param tiles The tiles to check.
-     * @return True if the tiles are part of the same circuit. Otherwise, false.
-    */
-    private fun areAllPartOfSameCircuit(tiles : List<CellBlockEntity>) : Boolean {
-        if (tiles.count() != 1) {
-            val first = tiles[0]
-            var result = true
-
-            tiles.drop(1).forEach {
-                if(first.cell!!.graph.id != it.cell!!.graph.id){
-                    result = false
-                    return@forEach
-                }
-            }
-
-            return result
-        }
-        return true
-    }
-
-    /**
-     * Called when we are not joining different graphs together. It will add us to adjacent entity's graph.
-     * @param adjacent The adjacent entity whose circuit we will add our cell to.
-    */
-    private fun addUsTo(adjacent: CellBlockEntity) {
-        val remoteGraph = adjacent.cell!!.graph
-
-        // add ourselves to it
-        remoteGraph.addCell(cell!!)
-
-        cell!!.graph = remoteGraph
-
-        setChanged()
-    }
-
-    /**
-     * Called when we are placed adjacently to 2 or more cells that are port of different graphs.
-     * @param adjacent The adjacent tiles to us.
-    */
-    private fun concatenateCircuitAndAddUs(adjacent : ArrayList<CellBlockEntity>){
-        // create a new circuit that contains all cells
-
-        val newCircuit = CellGraph(UUID.randomUUID(), graphManager)
-
-        val visitedGraphs = HashSet<CellGraph>()
-
-        val adjacentFast = HashSet(adjacent.map { it.cell })
-
-        adjacent.forEach{
-            it.cell!!.connections.add(cell!!)
-        }
-
-        adjacent.forEach {
-            // join cells from all circuits
-            val oldCircuit = it.cell!!.graph
-
-            if(visitedGraphs.contains(oldCircuit)){
-                // it shares a circuit with a tile we processed earlier
-                return@forEach
-            }
-
-            visitedGraphs.add(oldCircuit)
-
-            // copy all cells to new circuit
-            oldCircuit.copyTo(newCircuit)
-            oldCircuit.destroy()
-        }
-
-        newCircuit.addCell(cell!!)
-
-        // so that connectionsChanged becomes true
-        adjacentFast.add(cell)
-        cell!!.connections = getAdjacentCellsFast()
-        cell!!.graph = newCircuit
-
-        newCircuit.cells.forEach{ targetCell ->
-            targetCell.graph = newCircuit
-            targetCell.update(connectionsChanged = adjacentFast.contains(targetCell), graphChanged = true)
-        }
-
-        graphManager.addGraph(newCircuit)
+        return cellProvider.canConnectFrom(localDirection)
     }
 
     private fun getCandidateNeighborEntities() : ArrayList<CellBlockEntity>{
@@ -333,21 +104,21 @@ class CellBlockEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Bl
         return results;
     }
 
-    private fun canConnectFrom(dir : Direction) : Boolean {
-        val localDirection = getLocalDirection(dir)
-
-        return cellProvider.canConnectFrom(localDirection)
-    }
+    //#region Saving and Loading
 
     override fun saveAdditional(pTag: CompoundTag) {
+        if(level!!.isClientSide){
+            // No saving is done on the client
+
+            return
+        }
+
         if (cell!!.hasGraph()) {
             pTag.putString("GraphID", cell!!.graph.id.toString())
         } else {
             Eln2.LOGGER.info("Save additional: graph null")
         }
     }
-
-    private lateinit var savedGraphID : UUID
 
     override fun load(pTag: CompoundTag) {
         super.load(pTag)
@@ -399,12 +170,19 @@ class CellBlockEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Bl
         }
     }
 
+    //#endregion
+
     fun getHudMap(): Map<String, String> {
         return if (cell == null) {
             Eln2.LOGGER.warn("You're trying to reference cell in getHudMap from the client side, where cell is always null!")
             mapOf()
         } else {
-            cell!!.getHudMap()
-        }
+            // fixme: debug data
+
+            val result = cell!!.getHudMap().toMutableMap()
+            result["Graph"] = cell?.graph?.id?.toString() ?: "GRAPH NULL"
+
+            result
+          }
     }
 }

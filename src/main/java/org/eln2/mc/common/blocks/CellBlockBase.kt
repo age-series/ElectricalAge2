@@ -75,13 +75,6 @@ abstract class CellBlockBase : HorizontalDirectionalBlock(Properties.of(Material
         return CellBlockEntity(pPos, pState)
     }
 
-    override fun onNeighborChange(blockState: BlockState?, world: LevelReader?, pos: BlockPos?, neighbor: BlockPos?) {
-        if (!(world?.isClientSide?: error("World was null"))) {
-            val cellEntity = world.getBlockEntity(pos?: error("Position was null")) as CellBlockEntity
-            cellEntity.neighbourUpdated(neighbor?: error("Neighbor location is null"))
-        }
-    }
-
     // override this:
     abstract fun getCellProvider() : ResourceLocation
 }

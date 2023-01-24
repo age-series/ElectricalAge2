@@ -1,15 +1,11 @@
 package org.eln2.mc.common.cell
 
 import net.minecraft.server.level.ServerLevel
-import net.minecraft.world.level.Level
 import org.eln2.mc.common.blocks.CellBlockEntity
-import java.util.*
-import kotlin.collections.ArrayList
 
-class CellEntityNetworkManager(val level : Level) {
-    fun place(description: CellEntityDescription) : CellBase{
-        val entity = description.entity
-        val provider = description.provider
+object CellEntityNetworkManager {
+    fun place(entity : CellBlockEntity) : CellBase{
+        val provider = entity.cellProvider
 
         // Create the cell based on the provider.
         val cell = provider.create(entity.pos)
@@ -19,7 +15,7 @@ class CellEntityNetworkManager(val level : Level) {
 
         //val direction = PlacementRotation (entity.state.getValue(HorizontalDirectionalBlock.FACING))
 
-        val graphManager = CellGraphManager.getFor(level as ServerLevel)
+        val graphManager = CellGraphManager.getFor(entity.level as ServerLevel)
 
         entity.graphManager = graphManager
 
@@ -29,10 +25,10 @@ class CellEntityNetworkManager(val level : Level) {
         // Notify the cell of the new placement.
         cell.setPlaced()
 
-        setChanged()
-
         // Finally, build the solver.
         cell.graph.build()
+
+        return cell
     }
 
     private fun registerCell(entity : CellBlockEntity, cell : CellBase, manager : CellGraphManager){
