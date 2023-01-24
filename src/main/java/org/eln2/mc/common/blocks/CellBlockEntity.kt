@@ -17,7 +17,6 @@ import org.eln2.mc.common.cell.*
 import org.eln2.mc.extensions.BlockEntityExtensions.getNeighborEntity
 import java.util.*
 import kotlin.collections.ArrayList
-import kotlin.system.measureNanoTime
 
 class CellBlockEntity(var pos : BlockPos, var state: BlockState): BlockEntity(BlockRegistry.CELL_BLOCK_ENTITY.get(), pos, state) {
     // Initialized when placed or loading
@@ -58,7 +57,7 @@ class CellBlockEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Bl
             return
         }
 
-        cell = CellEntityNetworkManager.place(this)
+        cell = CellEntityWorldManager.place(this)
 
         setChanged()
     }
@@ -72,7 +71,7 @@ class CellBlockEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Bl
             return
         }
 
-        CellEntityNetworkManager.destroy(this)
+        CellEntityWorldManager.destroy(this)
     }
 
     private fun canConnectFrom(dir : Direction) : Boolean {
@@ -144,7 +143,7 @@ class CellBlockEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Bl
         super.onChunkUnloaded()
 
         if (!level!!.isClientSide) {
-            cell!!.tileUnloaded()
+            cell!!.entityUnloaded()
 
             // GC reference tracking
             cell!!.tile = null
@@ -162,19 +161,19 @@ class CellBlockEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Bl
 
         graphManager = CellGraphManager.getFor(serverLevel)
 
-        if (this::savedGraphID.isInitialized && graphManager.containsGraphWithId(savedGraphID)) {
+        if (this::savedGraphID.isInitialized && graphManager.contains(savedGraphID)) {
             // fetch graph with ID
             val graph = graphManager.getGraphWithId(savedGraphID)
 
             // fetch cell instance
             println("Loading cell at location $pos")
 
-            cell = graph.getCellAt(pos)
+            cell = graph.getCell(pos)
 
             cellProvider = CellRegistry.getProvider(cell!!.id)
 
             cell!!.tile = this
-            cell!!.tileLoaded()
+            cell!!.entityLoaded()
         }
     }
 

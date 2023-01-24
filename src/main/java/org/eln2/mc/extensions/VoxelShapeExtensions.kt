@@ -4,9 +4,6 @@ import net.minecraft.core.Direction
 import net.minecraft.world.phys.shapes.Shapes
 import net.minecraft.world.phys.shapes.VoxelShape
 
-
-
-
 object VoxelShapeExtensions {
     private fun indexOfDirection(dir : Direction) : Int{
         return when(dir){

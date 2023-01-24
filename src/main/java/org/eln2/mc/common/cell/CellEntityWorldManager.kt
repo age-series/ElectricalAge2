@@ -3,7 +3,7 @@ package org.eln2.mc.common.cell
 import net.minecraft.server.level.ServerLevel
 import org.eln2.mc.common.blocks.CellBlockEntity
 
-object CellEntityNetworkManager {
+object CellEntityWorldManager {
     fun place(entity : CellBlockEntity) : CellBase{
         val provider = entity.cellProvider
 

@@ -27,7 +27,7 @@ object CommonEvents {
     fun onServerTick(event : TickEvent.ServerTickEvent){
         if(event.phase == TickEvent.Phase.END){
             ServerLifecycleHooks.getCurrentServer().allLevels.forEach{
-                CellGraphManager.getFor(it).tickAll()
+                CellGraphManager.getFor(it).update()
             }
         }
     }
