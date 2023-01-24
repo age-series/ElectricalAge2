@@ -11,19 +11,20 @@ abstract class CellBase(val pos : BlockPos) {
     lateinit var id : ResourceLocation
     lateinit var graph: CellGraph
     lateinit var connections : ArrayList<CellBase>
-    var tile : CellBlockEntity? = null
+
+    var entity : CellBlockEntity? = null
 
     /**
      * Called when the tile entity is being unloaded.
      * After this method is called, the field will become null.
     */
-    open fun entityUnloaded(){}
+    open fun onEntityUnloaded(){}
 
     /**
      * Called when the tile entity is being loaded.
      * The field is assigned before this is called.
     */
-    open fun entityLoaded(){}
+    open fun onEntityLoaded(){}
 
     fun hasGraph() : Boolean {
         return this::graph.isInitialized
@@ -32,17 +33,17 @@ abstract class CellBase(val pos : BlockPos) {
     /**
      * Called when the graph manager completed loading this cell from the disk.
     */
-    open fun completeDiskLoad(){}
+    open fun onLoadedFromDisk(){}
 
     /**
-     *   Called when the tile entity placing is complete.
+     *   Called when the block entity placing is complete.
     */
-    open fun setPlaced(){}
+    open fun onPlaced(){}
 
     /**
      * Called when the tile entity is destroyed.
     */
-    open fun destroy(){}
+    open fun onDestroyed(){}
 
     /**
      * Called when the graph and/or neighbouring cells are updated. This method is called after completeDiskLoad and setPlaced
@@ -60,15 +61,15 @@ abstract class CellBase(val pos : BlockPos) {
     /**
      * This method is called before the Circuit is being rebuilt.
     */
-    abstract fun clearForRebuild()
+    abstract fun clear()
 
     /**
      * This method is used to return the component and the pin for a remote cell to connect to.
     */
-    abstract fun componentForNeighbour(neighbour : CellBase) : ComponentInfo
+    abstract fun getOfferedComponent(neighbour : CellBase) : ComponentInfo
 
     /**
-     * This method is called after each cell's clearForRebuild method has been called.
+     * This method is called after each cell's clear method has been called.
      * It must be used to create the circuit's connections.
     */
     abstract fun buildConnections()

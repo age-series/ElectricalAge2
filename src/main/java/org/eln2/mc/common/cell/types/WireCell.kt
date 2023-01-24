@@ -21,11 +21,11 @@ class WireCell(pos : BlockPos) : CellBase(pos) {
     *       C
     */
 
-    override fun clearForRebuild() {
+    override fun clear() {
         neighbourToResistorLookup.clear()
     }
 
-    override fun componentForNeighbour(neighbour: CellBase): ComponentInfo {
+    override fun getOfferedComponent(neighbour: CellBase): ComponentInfo {
         val circuit = graph.circuit
 
         return ComponentInfo(neighbourToResistorLookup.computeIfAbsent(neighbour) {
@@ -41,8 +41,8 @@ class WireCell(pos : BlockPos) : CellBase(pos) {
 
     override fun buildConnections() {
         connections.forEach{ adjacentCell ->
-            val resistor = componentForNeighbour(adjacentCell).component
-            resistor.connectToPinOf(1, adjacentCell.componentForNeighbour(this))
+            val resistor = getOfferedComponent(adjacentCell).component
+            resistor.connectToPinOf(1, adjacentCell.getOfferedComponent(this))
         }
     }
 
@@ -60,15 +60,15 @@ class WireCell(pos : BlockPos) : CellBase(pos) {
         try {
             val currentString = if (connections.size == 2) {
                 // Straight through wire. Just give absolute value I guess since directionality is ~ meaningless for wires.
-                valueText(abs((componentForNeighbour(connections[0]).component as Resistor).current), UnitType.AMPERE)
+                valueText(abs((getOfferedComponent(connections[0]).component as Resistor).current), UnitType.AMPERE)
             } else {
                 // Branch currents. Print them all.
-                val currents = connections.map { (componentForNeighbour(it).component as Resistor).current }
+                val currents = connections.map { (getOfferedComponent(it).component as Resistor).current }
                 currents.joinToString(", ") { ValueText.valueText(it, UnitType.AMPERE) }
             }
             if (currentString.isNotEmpty())
                 current = currentString
-            voltage = valueText((componentForNeighbour(connections[0]).component as Resistor).pins[0].node?.potential ?: 0.0, UnitType.VOLT)
+            voltage = valueText((getOfferedComponent(connections[0]).component as Resistor).pins[0].node?.potential ?: 0.0, UnitType.VOLT)
         } catch (_: Exception) {
             // No results from simulator
         }

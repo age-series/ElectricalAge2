@@ -13,13 +13,13 @@ class CapacitorCell(pos: BlockPos) : CellBase(pos), ISingleElementGuiCell<Double
     lateinit var capacitor: Capacitor
     var added = false
 
-    override fun clearForRebuild() {
+    override fun clear() {
         capacitor = Capacitor()
         capacitor.capacitance = 1.0E-6
         added = false
     }
 
-    override fun componentForNeighbour(neighbour: CellBase): ComponentInfo {
+    override fun getOfferedComponent(neighbour: CellBase): ComponentInfo {
         val circuit = graph.circuit
         if(!added) {
             circuit.add(capacitor)
@@ -30,8 +30,8 @@ class CapacitorCell(pos: BlockPos) : CellBase(pos), ISingleElementGuiCell<Double
 
     override fun buildConnections() {
         connections.forEach{remoteCell ->
-            val localInfo = componentForNeighbour(remoteCell)
-            localInfo.component.connectToPinOf(localInfo.index, remoteCell.componentForNeighbour(this))
+            val localInfo = getOfferedComponent(remoteCell)
+            localInfo.component.connectToPinOf(localInfo.index, remoteCell.getOfferedComponent(this))
         }
     }
 

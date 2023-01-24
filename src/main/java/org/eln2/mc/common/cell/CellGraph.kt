@@ -37,7 +37,7 @@ class CellGraph(val id : UUID, val manager : CellGraphManager) {
         circuit = Circuit()
 
         cells.forEach{ cell ->
-            cell.clearForRebuild()
+            cell.clear()
         }
 
         cells.forEach { cell ->
@@ -146,7 +146,7 @@ class CellGraph(val id : UUID, val manager : CellGraphManager) {
                 cell.graph = result
                 cell.connections = connections
                 cell.update(connectionsChanged = true, graphChanged = true)
-                cell.completeDiskLoad()
+                cell.onLoadedFromDisk()
             }
 
             return result

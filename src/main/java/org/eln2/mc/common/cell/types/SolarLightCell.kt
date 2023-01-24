@@ -6,9 +6,9 @@ import org.eln2.mc.common.cell.ComponentInfo
 
 class SolarLightCell(pos : BlockPos) : CellBase(pos) {
 
-    override fun clearForRebuild() {}
+    override fun clear() {}
 
-    override fun componentForNeighbour(neighbour: CellBase): ComponentInfo { error("Lol, this doesn't do anything here") }
+    override fun getOfferedComponent(neighbour: CellBase): ComponentInfo { error("Lol, this doesn't do anything here") }
 
     override fun buildConnections() {}
 

@@ -13,13 +13,13 @@ class InductorCell(pos: BlockPos) : CellBase(pos), ISingleElementGuiCell<Double>
     lateinit var inductor: Inductor
     var added = false
 
-    override fun clearForRebuild() {
+    override fun clear() {
         inductor = Inductor()
         inductor.inductance = 0.1
         added = false
     }
 
-    override fun componentForNeighbour(neighbour: CellBase): ComponentInfo {
+    override fun getOfferedComponent(neighbour: CellBase): ComponentInfo {
         val circuit = graph.circuit
         if(!added) {
             circuit.add(inductor)
@@ -30,8 +30,8 @@ class InductorCell(pos: BlockPos) : CellBase(pos), ISingleElementGuiCell<Double>
 
     override fun buildConnections() {
         connections.forEach{remoteCell ->
-            val localInfo = componentForNeighbour(remoteCell)
-            localInfo.component.connectToPinOf(localInfo.index, remoteCell.componentForNeighbour(this))
+            val localInfo = getOfferedComponent(remoteCell)
+            localInfo.component.connectToPinOf(localInfo.index, remoteCell.getOfferedComponent(this))
         }
     }
 

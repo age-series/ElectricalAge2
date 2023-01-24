@@ -11,7 +11,7 @@ abstract class CellProvider : ForgeRegistryEntry<CellProvider>() {
      * Used to create a new instance of the cell. Called when the cell block is placed
      * or when the cell manager is loading cells from the disk.
      * @return Unique instance of the cell. If the cell is being created by the block, the setPlaced method will be called.
-     * @see CellBase.setPlaced
+     * @see CellBase.onPlaced
     */
     abstract fun create(pos : BlockPos) : CellBase
 

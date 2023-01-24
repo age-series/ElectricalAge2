@@ -24,13 +24,13 @@ class VoltageSourceCell(pos: BlockPos) : CellBase(pos), ISingleElementGuiCell<Do
 
     private lateinit var source: VoltageSource
 
-    override fun clearForRebuild() {
+    override fun clear() {
         source = VoltageSource()
         source.potential = 5.0
         neighbourToResistorLookup.clear()
     }
 
-    override fun componentForNeighbour(neighbour: CellBase): ComponentInfo {
+    override fun getOfferedComponent(neighbour: CellBase): ComponentInfo {
         val circuit = graph.circuit
 
         return ComponentInfo(neighbourToResistorLookup.computeIfAbsent(neighbour) {
@@ -47,8 +47,8 @@ class VoltageSourceCell(pos: BlockPos) : CellBase(pos), ISingleElementGuiCell<Do
         source.ground(0)
 
         connections.forEach { remoteCell ->
-            val localResistor = componentForNeighbour(remoteCell).component // get local resistor
-            localResistor.connectToPinOf(1,  remoteCell.componentForNeighbour(this)) // connect local resistor to remote component
+            val localResistor = getOfferedComponent(remoteCell).component // get local resistor
+            localResistor.connectToPinOf(1,  remoteCell.getOfferedComponent(this)) // connect local resistor to remote component
             localResistor.connect(0, source, 1) // connect local resistor to our voltage source
         }
     }
