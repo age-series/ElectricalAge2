@@ -3,7 +3,7 @@ package org.eln2.mc.common.cell
 import net.minecraft.core.BlockPos
 import net.minecraft.resources.ResourceLocation
 import org.ageseries.libage.sim.electrical.mna.component.Component
-import org.eln2.mc.common.blocks.CellTileEntity
+import org.eln2.mc.common.blocks.CellBlockEntity
 
 class ComponentInfo(val component: Component, val index : Int)
 
@@ -11,7 +11,7 @@ abstract class CellBase(val pos : BlockPos) {
     lateinit var id : ResourceLocation
     lateinit var graph: CellGraph
     lateinit var connections : ArrayList<CellBase>
-    var tile : CellTileEntity? = null
+    var tile : CellBlockEntity? = null
 
     /**
      * Called when the tile entity is being unloaded.

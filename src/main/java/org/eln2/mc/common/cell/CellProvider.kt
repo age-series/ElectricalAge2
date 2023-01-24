@@ -20,4 +20,12 @@ abstract class CellProvider : ForgeRegistryEntry<CellProvider>() {
      * @return True if the connection is accepted. Otherwise, false.
     */
     abstract fun connectionPredicate(dir : RelativeRotationDirection) : Boolean
+
+    fun canConnectFrom(direction : RelativeRotationDirection) : Boolean {
+        if(!connectableDirections.contains(direction)){
+            return false;
+        }
+
+        return connectionPredicate(direction);
+    }
 }

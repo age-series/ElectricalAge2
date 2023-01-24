@@ -3,7 +3,7 @@ package org.eln2.mc.common.containers
 import net.minecraft.server.level.ServerPlayer
 import net.minecraft.world.entity.player.Inventory
 import net.minecraft.world.entity.player.Player
-import org.eln2.mc.common.blocks.CellTileEntity
+import org.eln2.mc.common.blocks.CellBlockEntity
 import org.eln2.mc.common.cell.types.VoltageSourceCell
 import org.eln2.mc.common.containers.ContainerRegistry.VOLTAGE_SOURCE_CELL_CONTAINER
 import org.eln2.mc.common.network.Networking
@@ -17,7 +17,7 @@ class VoltageSourceCellContainer(id: Int, plyInv: Inventory, ply: Player) :
 
     override var value: Double = 0.0
 
-    constructor(id: Int, plyInv: Inventory, ply: Player, te: CellTileEntity) : this(id, plyInv, ply) {
+    constructor(id: Int, plyInv: Inventory, ply: Player, te: CellBlockEntity) : this(id, plyInv, ply) {
         this.te = te
 
         value = (te.cell as VoltageSourceCell).getGuiValue()

@@ -28,9 +28,9 @@ object BlockRegistry {
         BLOCK_ENTITY_REGISTRY.register(bus)
     }
 
-    val CELL_BLOCK_ENTITY: RegistryObject<BlockEntityType<CellTileEntity>> = BLOCK_ENTITY_REGISTRY.register("cell"){
+    val CELL_BLOCK_ENTITY: RegistryObject<BlockEntityType<CellBlockEntity>> = BLOCK_ENTITY_REGISTRY.register("cell"){
         @Suppress("NULLABILITY_MISMATCH_BASED_ON_JAVA_ANNOTATIONS") // Thanks, Minecraft for the high quality code.
-        BlockEntityType.Builder.of(::CellTileEntity).build(null)
+        BlockEntityType.Builder.of(::CellBlockEntity).build(null)
     }
 
     class CellBlockRegistryItem(

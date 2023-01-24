@@ -42,7 +42,7 @@ abstract class CellBlockBase : HorizontalDirectionalBlock(Properties.of(Material
         entity : LivingEntity?,
         itemStack : ItemStack
     ) {
-        val cellEntity = level.getBlockEntity(pos)!! as CellTileEntity
+        val cellEntity = level.getBlockEntity(pos)!! as CellBlockEntity
         cellEntity.setPlacedBy(level, pos, blockState, entity, itemStack, CellRegistry.registry.getValue(getCellProvider())?: error("Unable to get cell provider"))
     }
 
@@ -66,18 +66,18 @@ abstract class CellBlockBase : HorizontalDirectionalBlock(Properties.of(Material
 
     private fun destroy(level: Level, pos: BlockPos){
         if (!level.isClientSide) {
-            val cellEntity = level.getBlockEntity(pos)!! as CellTileEntity
+            val cellEntity = level.getBlockEntity(pos)!! as CellBlockEntity
             cellEntity.setDestroyed()
         }
     }
 
     override fun newBlockEntity(pPos: BlockPos, pState: BlockState): BlockEntity? {
-        return CellTileEntity(pPos, pState)
+        return CellBlockEntity(pPos, pState)
     }
 
     override fun onNeighborChange(blockState: BlockState?, world: LevelReader?, pos: BlockPos?, neighbor: BlockPos?) {
         if (!(world?.isClientSide?: error("World was null"))) {
-            val cellEntity = world.getBlockEntity(pos?: error("Position was null")) as CellTileEntity
+            val cellEntity = world.getBlockEntity(pos?: error("Position was null")) as CellBlockEntity
             cellEntity.neighbourUpdated(neighbor?: error("Neighbor location is null"))
         }
     }

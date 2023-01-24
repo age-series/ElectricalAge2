@@ -8,7 +8,7 @@ import net.minecraftforge.network.NetworkEvent
 import org.eln2.mc.Eln2
 import org.eln2.mc.common.network.CellInfo
 import org.eln2.mc.common.network.Networking
-import org.eln2.mc.common.blocks.CellTileEntity
+import org.eln2.mc.common.blocks.CellBlockEntity
 import org.eln2.mc.common.network.serverToClient.CircuitExplorerContextPacket
 import java.util.function.Supplier
 
@@ -36,9 +36,9 @@ class CircuitExplorerOpenPacket() {
             }
 
             val blockHit = pickResult as BlockHitResult
-            val tile = player.level.getBlockEntity(blockHit.blockPos) as CellTileEntity?
+            val tile = player.level.getBlockEntity(blockHit.blockPos) as CellBlockEntity?
 
-            if(tile !is CellTileEntity){
+            if(tile !is CellBlockEntity){
                 Eln2.LOGGER.info("it is not the tile, it is ${player.level.getBlockEntity(blockHit.blockPos)}")
                 return
             }

@@ -4,7 +4,7 @@ import net.minecraft.core.BlockPos
 import net.minecraft.network.FriendlyByteBuf
 import net.minecraft.server.level.ServerPlayer
 import net.minecraftforge.network.NetworkEvent
-import org.eln2.mc.common.blocks.CellTileEntity
+import org.eln2.mc.common.blocks.CellBlockEntity
 import org.eln2.mc.common.cell.ISingleElementGuiCell
 import java.util.function.Supplier
 
@@ -37,7 +37,7 @@ class SingleDoubleElementGuiUpdatePacket(val value: Double, val pos: BlockPos) {
         private fun handleServer(sender: ServerPlayer, packet: SingleDoubleElementGuiUpdatePacket) {
             val te = sender.level.getBlockEntity(packet.pos)
 
-            if (te is CellTileEntity) {
+            if (te is CellBlockEntity) {
                 if (te.cell is ISingleElementGuiCell<*>) {
                     @Suppress("UNCHECKED_CAST")
                     (te.cell as? ISingleElementGuiCell<Double>)?.setGuiValue(packet.value)

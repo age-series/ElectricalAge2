@@ -56,6 +56,7 @@ class CellGraph(val id : UUID, val manager : CellGraphManager) {
 
     fun addCell(cell : CellBase) {
         cells.add(cell)
+        cell.graph = this
         posCells[cell.pos] = cell
         manager.setDirty()
     }
@@ -65,7 +66,7 @@ class CellGraph(val id : UUID, val manager : CellGraphManager) {
         manager.setDirty()
     }
 
-    fun destroyAndRemove() {
+    fun destroy() {
         manager.removeGraph(this)
         manager.setDirty()
     }

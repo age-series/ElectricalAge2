@@ -1,6 +1,5 @@
 package org.eln2.mc.common.blocks.cell
 
-import com.google.common.collect.ImmutableMap
 import net.minecraft.core.BlockPos
 import net.minecraft.network.chat.Component
 import net.minecraft.network.chat.TranslatableComponent
@@ -17,7 +16,7 @@ import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.BlockHitResult
 import net.minecraftforge.network.NetworkHooks
 import org.eln2.mc.common.blocks.CellBlockBase
-import org.eln2.mc.common.blocks.CellTileEntity
+import org.eln2.mc.common.blocks.CellBlockEntity
 import org.eln2.mc.common.cell.CellRegistry
 import org.eln2.mc.common.containers.VoltageSourceCellContainer
 
@@ -37,7 +36,7 @@ class VoltageSourceCellBlock : CellBlockBase() {
     ): InteractionResult {
         if (!pLevel.isClientSide) {
             val te = pLevel.getBlockEntity(pPos)
-            if (te is CellTileEntity) {
+            if (te is CellBlockEntity) {
                 val containerProvider = object : MenuProvider {
                     override fun getDisplayName(): Component {
                         return TranslatableComponent("block.eln2.voltage_source")

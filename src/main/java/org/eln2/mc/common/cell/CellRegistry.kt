@@ -48,4 +48,8 @@ object CellRegistry {
     private fun register(id : String, provider: CellProvider) : RegistryObject<CellProvider> {
         return CELLS.register(id) { provider }
     }
+
+    fun getProvider(id : ResourceLocation) : CellProvider{
+        return registry.getValue(id) ?: error("Could not get cell provider with id $id")
+    }
 }
