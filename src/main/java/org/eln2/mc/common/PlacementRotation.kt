@@ -7,6 +7,8 @@ enum class RelativeRotationDirection {
     Back,
     Left,
     Right,
+    Up,
+    Down
 }
 
 class PlacementRotation(val placementDirection : Direction) {
@@ -16,6 +18,8 @@ class PlacementRotation(val placementDirection : Direction) {
             RelativeRotationDirection.Back -> placementDirection.opposite
             RelativeRotationDirection.Right -> placementDirection.clockWise
             RelativeRotationDirection.Left -> placementDirection.counterClockWise
+            RelativeRotationDirection.Up -> Direction.UP
+            RelativeRotationDirection.Down -> Direction.DOWN
         }
     }
 
@@ -25,6 +29,8 @@ class PlacementRotation(val placementDirection : Direction) {
             placementDirection.opposite -> RelativeRotationDirection.Back
             placementDirection.clockWise -> RelativeRotationDirection.Right
             placementDirection.counterClockWise -> RelativeRotationDirection.Left
+            Direction.UP -> RelativeRotationDirection.Up
+            Direction.DOWN -> RelativeRotationDirection.Down
             else -> error("Direction not implemented: $direction")
         }
     }
