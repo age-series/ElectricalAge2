@@ -7,15 +7,13 @@ import net.minecraft.world.level.BlockGetter
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.LevelReader
 import net.minecraft.world.level.block.Block
-import net.minecraft.world.level.block.HorizontalDirectionalBlock
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.level.block.state.StateDefinition
-import net.minecraft.world.level.block.state.properties.DirectionProperty
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.phys.shapes.CollisionContext
 import net.minecraft.world.phys.shapes.VoxelShape
 import org.eln2.mc.common.blocks.CellBlockBase
-import org.eln2.mc.common.blocks.CellTileEntity
+import org.eln2.mc.common.blocks.CellBlockEntity
 import org.eln2.mc.common.cell.CellRegistry
 
 class WireCellBlock : CellBlockBase() {
@@ -73,7 +71,7 @@ class WireCellBlock : CellBlockBase() {
         if(blockEntity != null) {
 
             // check if the blockentity is from this mod
-            if(blockEntity is CellTileEntity) {
+            if(blockEntity is CellBlockEntity) {
                 // get the direction of the neighbor from us
                 val direction = Direction.fromNormal(neighbor.subtract(pos))
 

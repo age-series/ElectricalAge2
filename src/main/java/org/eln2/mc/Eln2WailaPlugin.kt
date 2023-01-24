@@ -7,7 +7,7 @@ import net.minecraft.network.chat.TextComponent
 import net.minecraft.network.chat.TranslatableComponent
 import net.minecraft.server.level.ServerPlayer
 import net.minecraft.world.level.Level
-import org.eln2.mc.common.blocks.CellTileEntity
+import org.eln2.mc.common.blocks.CellBlockEntity
 import org.eln2.mc.extensions.NbtExtensions.getStringMap
 import org.eln2.mc.extensions.NbtExtensions.setStringMap
 
@@ -28,21 +28,21 @@ class Eln2WailaPlugin: IWailaPlugin {
             }
         }
 
-        registrar.addComponent(clientProvider, TooltipPosition.BODY, CellTileEntity::class.java)
+        registrar.addComponent(clientProvider, TooltipPosition.BODY, CellBlockEntity::class.java)
 
-        val serverProvider: IServerDataProvider<CellTileEntity> = object: IServerDataProvider<CellTileEntity> {
+        val serverProvider: IServerDataProvider<CellBlockEntity> = object: IServerDataProvider<CellBlockEntity> {
             override fun appendServerData(
                 sendData: CompoundTag?,
                 player: ServerPlayer?,
                 world: Level?,
-                cell: CellTileEntity?
+                cell: CellBlockEntity?
             ) {
                 if (sendData == null || player == null || world == null || cell == null) return
                 sendData.setStringMap("body", cell.getHudMap().mapKeys { "waila.eln2.${it.key}" })
             }
         }
 
-        registrar.addBlockData(serverProvider, CellTileEntity::class.java)
+        registrar.addBlockData(serverProvider, CellBlockEntity::class.java)
 
     }
 }

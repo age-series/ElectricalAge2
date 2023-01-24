@@ -6,14 +6,14 @@ import net.minecraft.world.InteractionResult
 import net.minecraft.world.item.CreativeModeTab
 import net.minecraft.world.item.Item
 import net.minecraft.world.item.context.UseOnContext
-import org.eln2.mc.common.blocks.CellTileEntity
+import org.eln2.mc.common.blocks.CellBlockEntity
 
 class VoltmeterItem(tab: CreativeModeTab?): Item(Item.Properties().also {if(tab != null) it.tab(tab)}) {
     override fun useOn(context: UseOnContext): InteractionResult {
         // If you try to dereference Cell on the client... lol it explodes violently.
         if (!context.level.isClientSide) {
             val clicked = context.level.getBlockEntity(context.clickedPos)
-            if (clicked is CellTileEntity) {
+            if (clicked is CellBlockEntity) {
                 val voltage = clicked.getHudMap()["voltage"]
                 val power = clicked.getHudMap()["power"]
                 val current = clicked.getHudMap()["current"]

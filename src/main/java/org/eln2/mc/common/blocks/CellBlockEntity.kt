@@ -1,6 +1,5 @@
 package org.eln2.mc.common.blocks
 
-import mcp.mobius.waila.api.IServerDataProvider
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
 import net.minecraft.nbt.CompoundTag
@@ -13,28 +12,30 @@ import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.state.BlockState
 import org.eln2.mc.Eln2
 import org.eln2.mc.common.PlacementRotation
+import org.eln2.mc.common.RelativeRotationDirection
 import org.eln2.mc.common.cell.*
+import org.eln2.mc.extensions.BlockEntityExtensions.getNeighborEntity
 import java.util.*
+import kotlin.collections.ArrayList
 import kotlin.system.measureNanoTime
 
-class CellTileEntity(var pos : BlockPos, var state: BlockState): BlockEntity(BlockRegistry.CELL_BLOCK_ENTITY.get(), pos, state) {
-    private lateinit var manager : CellGraphManager
+class CellBlockEntity(var pos : BlockPos, var state: BlockState): BlockEntity(BlockRegistry.CELL_BLOCK_ENTITY.get(), pos, state) {
+    lateinit var graphManager : CellGraphManager
+    private lateinit var cellProvider : CellProvider
+
     // Cell is not available on the client.
     var cell : CellBase? = null
 
     private val serverLevel get() = level as ServerLevel
-    private var adjacentUpdateRequired = true
-    private var neighbourCache : ArrayList<CellTileEntity>? = null
-    private lateinit var connectPredicate : ((dir : Direction) -> Boolean)
 
-    /**
-     * Called by the block when one of our neighbours is updated.
-     * We use this to invalidate the adjacency cache. Next time we use it, we will query the world for the changes.
-     * @see adjacentUpdateRequired
-    */
-    @Suppress("UNUSED_PARAMETER") // Will very likely be needed later and helps to know the name of the args.
-    fun neighbourUpdated(pos : BlockPos) {
-        adjacentUpdateRequired = true
+    fun getPlacementRotation() : PlacementRotation{
+        return PlacementRotation (state.getValue(HorizontalDirectionalBlock.FACING))
+    }
+
+    fun getLocalDirection(globalDirection : Direction) : RelativeRotationDirection{
+        val placementRotation = getPlacementRotation()
+
+        return placementRotation.getRelativeFromAbsolute(globalDirection)
     }
 
     /**
@@ -52,11 +53,12 @@ class CellTileEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Blo
         itemStack : ItemStack,
         cellProvider: CellProvider
     ) {
+        // circuits are not built on the client
+
         if(level.isClientSide){
             return
         }
 
-        println("Cell is created at $position")
         cell = cellProvider.create(position)
         cell!!.tile = this
         cell!!.id = cellProvider.registryName!!
@@ -68,11 +70,7 @@ class CellTileEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Blo
         Eln2.LOGGER.info("east  <-> ${placeDir.getRelativeFromAbsolute(Direction.EAST)}")
         Eln2.LOGGER.info("west  <-> ${placeDir.getRelativeFromAbsolute(Direction.WEST)}")
 
-        connectPredicate = {
-            connectionPredicate(placeDir, it, cellProvider)
-        }
-
-        manager = CellGraphManager.getFor(level as ServerLevel)
+        graphManager = CellGraphManager.getFor(level as ServerLevel)
 
         registerIntoCircuit()
         cell!!.setPlaced()
@@ -84,6 +82,7 @@ class CellTileEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Blo
 
     private fun connectionPredicate(place : PlacementRotation, dir : Direction, provider: CellProvider) : Boolean{
         val relative = place.getRelativeFromAbsolute(dir)
+
         if(!provider.connectableDirections.contains(relative)){
             return false
         }
@@ -104,7 +103,7 @@ class CellTileEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Blo
 
         if(adjacentTiles.isEmpty()){
            // we are alone
-            cell!!.graph.destroyAndRemove()
+            cell!!.graph.destroy()
             return
         }
 
@@ -130,7 +129,7 @@ class CellTileEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Blo
                     return@forEach
                 }
 
-                val results = CellGraph(UUID.randomUUID(), manager)
+                val results = CellGraph(UUID.randomUUID(), graphManager)
 
                 queue.add(neighbour.cell!!)
 
@@ -150,14 +149,14 @@ class CellTileEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Blo
                     }
                 }
 
-                manager.addGraph(results)
+                graphManager.addGraph(results)
                 results.build()
             }
         }
 
         Eln2.LOGGER.info("Remove nanoseconds: $nanoTime")
 
-        cell!!.graph.destroyAndRemove()
+        cell!!.graph.destroy()
     }
 
     /**
@@ -208,32 +207,22 @@ class CellTileEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Blo
         // we are not adjacent to any components.
         // we will build a circuit containing ourselves
 
-        val graph = CellGraph(UUID.randomUUID(), manager)
+        val graph = CellGraph(UUID.randomUUID(), graphManager)
         graph.addCell(cell!!)
         cell!!.graph = graph
-        manager.addGraph(graph)
+        graphManager.addGraph(graph)
         cell!!.connections = ArrayList()
         cell!!.update(connectionsChanged = true, graphChanged = true)
         setChanged()
     }
 
-    /**
-     * Will set our cell's connections to the neighbours but exclude the provided cell.
-     * @param exclude The cell to exclude.
-    */
-    // TODO: Do we want this still?
-    private fun setCellConnectionsToAdjacentButExclude(exclude : CellBase){
-        val adjacent = getAdjacentCellsFast()
-        adjacent.remove(exclude)
-        cell!!.connections = adjacent
-    }
 
     /**
      * Will check if the tiles provided all share the same circuit.
      * @param tiles The tiles to check.
      * @return True if the tiles are part of the same circuit. Otherwise, false.
     */
-    private fun areAllPartOfSameCircuit(tiles : List<CellTileEntity>) : Boolean {
+    private fun areAllPartOfSameCircuit(tiles : List<CellBlockEntity>) : Boolean {
         if (tiles.count() != 1) {
             val first = tiles[0]
             var result = true
@@ -254,7 +243,7 @@ class CellTileEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Blo
      * Called when we are not joining different graphs together. It will add us to adjacent entity's graph.
      * @param adjacent The adjacent entity whose circuit we will add our cell to.
     */
-    private fun addUsTo(adjacent: CellTileEntity) {
+    private fun addUsTo(adjacent: CellBlockEntity) {
         val remoteGraph = adjacent.cell!!.graph
 
         // add ourselves to it
@@ -269,10 +258,10 @@ class CellTileEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Blo
      * Called when we are placed adjacently to 2 or more cells that are port of different graphs.
      * @param adjacent The adjacent tiles to us.
     */
-    private fun concatenateCircuitAndAddUs(adjacent : ArrayList<CellTileEntity>){
+    private fun concatenateCircuitAndAddUs(adjacent : ArrayList<CellBlockEntity>){
         // create a new circuit that contains all cells
 
-        val newCircuit = CellGraph(UUID.randomUUID(), manager)
+        val newCircuit = CellGraph(UUID.randomUUID(), graphManager)
 
         val visitedGraphs = HashSet<CellGraph>()
 
@@ -295,7 +284,7 @@ class CellTileEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Blo
 
             // copy all cells to new circuit
             oldCircuit.copyTo(newCircuit)
-            oldCircuit.destroyAndRemove()
+            oldCircuit.destroy()
         }
 
         newCircuit.addCell(cell!!)
@@ -310,125 +299,65 @@ class CellTileEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Blo
             targetCell.update(connectionsChanged = adjacentFast.contains(targetCell), graphChanged = true)
         }
 
-        manager.addGraph(newCircuit)
+        graphManager.addGraph(newCircuit)
     }
 
-    /**
-     * Will get the direction of adjacent cells to us. Warning! this does not use a caching mechanism, it will query the world.
-     * @return The directions where adjacent cells are located.
-    */
-    // TODO: Do we want this still?
-    fun getAdjacentSides() : LinkedList<Direction>  {
-        val result = LinkedList<Direction>()
+    private fun getCandidateNeighborEntities() : ArrayList<CellBlockEntity>{
+        val results = ArrayList<CellBlockEntity>()
 
-        fun getAndAdd(dir : Direction){
-            if(getAdjacentTile(dir) != null && connectPredicate(dir)) result.add(dir)
+        Direction.values().forEach { direction ->
+            val entity = this.getNeighborEntity<CellBlockEntity>(direction)
+
+            if(entity != null && entity.canConnectFrom(direction.opposite)){
+                results.add(entity)
+            }
         }
 
-        getAndAdd(Direction.NORTH)
-        getAndAdd(Direction.SOUTH)
-        getAndAdd(Direction.EAST)
-        getAndAdd(Direction.WEST)
-
-        return result
+        return results
     }
 
-    /**
-     * Will prepare a list of adjacent cells using the connection predicate. This uses a caching mechanism
-     * @see getAdjacentCellsFast
-     * @see neighbourCache
-     * in order to prevent querying the world when not necessary.
-     * @return A new array, containing the adjacent cells.
-    */
-    private fun getAdjacentCellsFast() : ArrayList<CellBase> {
-        val adjacent = getAdjacentCellTilesFast()
+    fun getNeighborCells() : ArrayList<CellBase>{
+        val results = ArrayList<CellBase>();
 
-        val result = ArrayList<CellBase>(adjacent.count())
+        getCandidateNeighborEntities().forEach { entity ->
+            if(entity.cell == null){
+                // The method may be called when the entity is being placed, and the circuits are being built.
+                // The cell will be null. We ignore it here.
 
-        adjacent.forEach {
-            result.add(it.cell!!)
-        }
-
-        return result
-    }
-
-    /**
-     * Will return the adjacent tile cache or query the world, apply the connection predicate, update the cache, and return it.
-     * @return The list of adjacent tiles.
-     * @see neighbourCache
-     * @see adjacentUpdateRequired
-    */
-    private fun getAdjacentCellTilesFast() : ArrayList<CellTileEntity>{
-        return if (adjacentUpdateRequired || neighbourCache == null) {
-            adjacentUpdateRequired = false
-
-            val nodes = ArrayList<CellTileEntity>()
-
-            fun getAndAdd(dir : Direction) {
-                val node = getAdjacentTile(dir)
-                if(node != null && node.canConnectFrom(this, dir)){
-                    nodes.add(node)
-                }
+                return@forEach
             }
 
-            getAndAdd(Direction.NORTH)
-            getAndAdd(Direction.SOUTH)
-            getAndAdd(Direction.EAST)
-            getAndAdd(Direction.WEST)
+            results.add(entity.cell!!)
+        }
 
-            nodes
-        } else neighbourCache!!
+        return results;
     }
 
-    /**
-     * Queries the world for the tile present in the specified direction.
-     * @param dir The direction to search in.
-     * @return The tile if found, or null if there is no tile at that position.
-    */
-    private fun getAdjacentTile(dir : Direction) : CellTileEntity?{
-        val level = getLevel()!!
-        val remotePos = pos.relative(dir)
-        val remoteEnt = level.getBlockEntity(remotePos)
+    private fun canConnectFrom(dir : Direction) : Boolean {
+        val localDirection = getLocalDirection(dir)
 
-        return remoteEnt as CellTileEntity?
-    }
-
-    /**
-     * Applies the connection predicate for that direction.
-     * @param entity The entity we are checking.
-     * @param dir The direction towards entity.
-     * @return True if the connection is accepted.
-    */
-    @Suppress("UNUSED_PARAMETER") // Will very likely be needed later and helps to know the name of the args.
-    private fun canConnectFrom(entity : CellTileEntity, dir : Direction) : Boolean {
-        return connectPredicate(dir.opposite)
-
+        return cellProvider.canConnectFrom(localDirection)
     }
 
     override fun saveAdditional(pTag: CompoundTag) {
         if (cell!!.hasGraph()) {
             pTag.putString("GraphID", cell!!.graph.id.toString())
         } else {
-            Eln2.LOGGER.info("save additional: graph null")
+            Eln2.LOGGER.info("Save additional: graph null")
         }
     }
 
-    // remark: when the load method is called, the level is null.
-    // we need the level in order to get the cell manager.
-    // thus, we store the graph ID in this variable.
-    // the level becomes available when setLevel is called,
-    // so we load all our data there.
-    private lateinit var loadGraphId : UUID
+    private lateinit var savedGraphID : UUID
 
-    // attention: the level is null here
     override fun load(pTag: CompoundTag) {
         super.load(pTag)
 
         if (pTag.contains("GraphID")) {
-            loadGraphId = UUID.fromString(pTag.getString("GraphID"))!!
-            Eln2.LOGGER.info("tile load $pos")
-            // warning! level is not available at this stage!
-            // we override setLevel in order to load the rest of the data.
+            savedGraphID = UUID.fromString(pTag.getString("GraphID"))!!
+            Eln2.LOGGER.info("Deserialized cell entity at $pos")
+        }
+        else{
+            Eln2.LOGGER.warn("Cell entity at $pos does not have serialized data.")
         }
     }
 
@@ -446,29 +375,27 @@ class CellTileEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Blo
     override fun setLevel(pLevel: Level) {
         super.setLevel(pLevel)
 
-        if (!level!!.isClientSide) {
-            manager = CellGraphManager.getFor(serverLevel)
+        if (level!!.isClientSide) {
+            return
+        }
 
-            if (this::loadGraphId.isInitialized && manager.containsGraphWithId(loadGraphId)) {
-                // fetch graph with ID
-                val graph = manager.getGraphWithId(loadGraphId)
+        // here, we can get our manager. We have the level at this point.
 
-                // fetch cell instance
-                println("Loading cell at location $pos")
-                cell = graph.getCellAt(pos)
-                cell!!.tile = this
-                cell!!.tileLoaded()
+        graphManager = CellGraphManager.getFor(serverLevel)
 
-                // fetch provider
-                val provider = CellRegistry.registry.getValue(cell!!.id)!!
+        if (this::savedGraphID.isInitialized && graphManager.containsGraphWithId(savedGraphID)) {
+            // fetch graph with ID
+            val graph = graphManager.getGraphWithId(savedGraphID)
 
-                val absolute = blockState.getValue(HorizontalDirectionalBlock.FACING)
-                val placeDir = PlacementRotation(absolute)
+            // fetch cell instance
+            println("Loading cell at location $pos")
 
-                connectPredicate = {
-                    connectionPredicate(placeDir, absolute, provider)
-                }
-            }
+            cell = graph.getCellAt(pos)
+
+            cellProvider = CellRegistry.getProvider(cell!!.id)
+
+            cell!!.tile = this
+            cell!!.tileLoaded()
         }
     }
 

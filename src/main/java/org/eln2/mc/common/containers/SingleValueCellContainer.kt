@@ -7,7 +7,7 @@ import net.minecraft.world.entity.player.Player
 import net.minecraft.world.inventory.AbstractContainerMenu
 import net.minecraft.world.inventory.ContainerListener
 import net.minecraft.world.inventory.MenuType
-import org.eln2.mc.common.blocks.CellTileEntity
+import org.eln2.mc.common.blocks.CellBlockEntity
 import org.eln2.mc.common.cell.ISingleElementGuiCell
 
 abstract class SingleValueCellContainer<C : ISingleElementGuiCell<N>, N : Number>(
@@ -20,7 +20,7 @@ abstract class SingleValueCellContainer<C : ISingleElementGuiCell<N>, N : Number
 
     abstract var value: N
     var pos: BlockPos = BlockPos.ZERO
-    var te: CellTileEntity? = null
+    var te: CellBlockEntity? = null
 
     open fun getSyncedValue(): N {
         return this.value

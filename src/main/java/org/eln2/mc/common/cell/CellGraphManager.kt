@@ -25,6 +25,13 @@ class CellGraphManager(val level : Level) : SavedData() {
         setDirty()
     }
 
+    fun createGraph() : CellGraph{
+        val graph = CellGraph(UUID.randomUUID(), this)
+        addGraph(graph)
+
+        return graph
+    }
+
     fun removeGraph(graph : CellGraph) {
         graphs.remove(graph.id)
         Eln2.LOGGER.info("Removed graph ${graph.id}!")
