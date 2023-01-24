@@ -20,7 +20,7 @@ class SolarPanelCell(pos : BlockPos) : CellBase(pos) {
 
     private lateinit var source : VoltageSource
 
-    override fun clearForRebuild() {
+    override fun clear() {
         source = VoltageSource()
         source.potential = 12.5
         neighbourToResistorLookup.clear()
@@ -28,7 +28,7 @@ class SolarPanelCell(pos : BlockPos) : CellBase(pos) {
 
     // TODO: Battery needs a + and - terminal. Currently, it's just implicitly grounded because I can't get that to work.
 
-    override fun componentForNeighbour(neighbour: CellBase): ComponentInfo {
+    override fun getOfferedComponent(neighbour: CellBase): ComponentInfo {
         val circuit = graph.circuit
 
         return ComponentInfo(neighbourToResistorLookup.computeIfAbsent(neighbour) {
@@ -45,8 +45,8 @@ class SolarPanelCell(pos : BlockPos) : CellBase(pos) {
         source.ground(0)
 
         connections.forEach { remoteCell ->
-            val localResistor = componentForNeighbour(remoteCell).component // get local resistor
-            localResistor.connectToPinOf(1,  remoteCell.componentForNeighbour(this)) // connect local resistor to remote component
+            val localResistor = getOfferedComponent(remoteCell).component // get local resistor
+            localResistor.connectToPinOf(1,  remoteCell.getOfferedComponent(this)) // connect local resistor to remote component
             localResistor.connect(0, source, 1) // connect local resistor to our voltage source
         }
     }

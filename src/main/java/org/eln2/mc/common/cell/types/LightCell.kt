@@ -20,11 +20,11 @@ class LightCell(pos : BlockPos): CellBase(pos) {
     *       C
     */
 
-    override fun clearForRebuild() {
+    override fun clear() {
         neighbourToResistorLookup.clear()
     }
 
-    override fun componentForNeighbour(neighbour: CellBase): ComponentInfo {
+    override fun getOfferedComponent(neighbour: CellBase): ComponentInfo {
         val circuit = graph.circuit
 
         return ComponentInfo(neighbourToResistorLookup.computeIfAbsent(neighbour) {
@@ -37,10 +37,10 @@ class LightCell(pos : BlockPos): CellBase(pos) {
 
     override fun buildConnections() {
         connections.forEach{ adjacentCell ->
-            val resistor = componentForNeighbour(adjacentCell).component
+            val resistor = getOfferedComponent(adjacentCell).component
             resistor.ground(0) // ground one pin of our resistor
             // then connect the other pin to them
-            resistor.connectToPinOf(1, adjacentCell.componentForNeighbour(this))
+            resistor.connectToPinOf(1, adjacentCell.getOfferedComponent(this))
         }
     }
 
@@ -52,7 +52,7 @@ class LightCell(pos : BlockPos): CellBase(pos) {
         val map = mutableMapOf<String, String>()
 
         try {
-            val currents = connections.map { (componentForNeighbour(it).component as Resistor).current }
+            val currents = connections.map { (getOfferedComponent(it).component as Resistor).current }
             val currentString = currents.joinToString(", ") { ValueText.valueText(it, UnitType.AMPERE) }
             if (currentString.isNotEmpty())
                 current = currentString

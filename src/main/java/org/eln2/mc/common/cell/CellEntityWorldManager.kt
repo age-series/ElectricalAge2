@@ -10,7 +10,7 @@ object CellEntityWorldManager {
         // Create the cell based on the provider.
         val cell = provider.create(entity.pos)
 
-        cell.tile = entity
+        cell.entity = entity
         cell.id = provider.registryName!!
 
         //val direction = PlacementRotation (entity.state.getValue(HorizontalDirectionalBlock.FACING))
@@ -23,7 +23,7 @@ object CellEntityWorldManager {
         registerCell(cell)
 
         // Notify the cell of the new placement.
-        cell.setPlaced()
+        cell.onPlaced()
 
         // Finally, build the solver.
         cell.graph.build()
@@ -36,11 +36,11 @@ object CellEntityWorldManager {
 
         removeCell(cell)
 
-        cell.destroy()
+        cell.onDestroyed()
     }
 
     private fun removeCell(cell : CellBase){
-        val entity = cell.tile!!
+        val entity = cell.entity!!
         val manager = entity.graphManager
         val neighborCells = entity.getNeighborCells()
 
@@ -87,7 +87,7 @@ object CellEntityWorldManager {
     }
 
     private fun registerCell(cell : CellBase){
-        val entity = cell.tile!!
+        val entity = cell.entity!!
         val manager = entity.graphManager
         val neighborCells = entity.getNeighborCells()
 

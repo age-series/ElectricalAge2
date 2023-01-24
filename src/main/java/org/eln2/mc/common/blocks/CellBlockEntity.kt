@@ -143,10 +143,10 @@ class CellBlockEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Bl
         super.onChunkUnloaded()
 
         if (!level!!.isClientSide) {
-            cell!!.entityUnloaded()
+            cell!!.onEntityUnloaded()
 
             // GC reference tracking
-            cell!!.tile = null
+            cell!!.entity = null
         }
     }
 
@@ -172,8 +172,8 @@ class CellBlockEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Bl
 
             cellProvider = CellRegistry.getProvider(cell!!.id)
 
-            cell!!.tile = this
-            cell!!.entityLoaded()
+            cell!!.entity = this
+            cell!!.onEntityLoaded()
         }
     }
 
