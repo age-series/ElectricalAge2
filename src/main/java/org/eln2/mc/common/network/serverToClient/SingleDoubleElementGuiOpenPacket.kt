@@ -16,7 +16,6 @@ import java.util.function.Supplier
  * @see [org.eln2.mc.common.network.clientToServer.SingleDoubleElementGuiUpdatePacket]
  */
 class SingleDoubleElementGuiOpenPacket(val value: Double, val pos: BlockPos) {
-
     companion object {
         fun encode(packet: SingleDoubleElementGuiOpenPacket, buffer: FriendlyByteBuf) {
             buffer.writeDouble(packet.value)

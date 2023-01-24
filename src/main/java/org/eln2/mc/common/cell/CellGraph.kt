@@ -13,16 +13,19 @@ import kotlin.system.measureNanoTime
 
 class CellGraph(val id : UUID, val manager : CellGraphManager) {
     val cells = ArrayList<CellBase>()
+
     private val posCells = HashMap<BlockPos, CellBase>()
 
     lateinit var circuit : Circuit
-    val hasCircuit get() = this::circuit.isInitialized
+
+    private val hasCircuit get() = this::circuit.isInitialized
+
     var successful = false
         private set
 
     var latestSolveTime = 0L
 
-    fun serverTick(){
+    fun update(){
         if(hasCircuit){
             latestSolveTime = measureNanoTime {
                 successful = circuit.step(0.05)
@@ -44,7 +47,7 @@ class CellGraph(val id : UUID, val manager : CellGraphManager) {
         Eln2.LOGGER.info("Built circuit! component count: ${circuit.components.count()}, graph cell count: ${cells.count()}")
     }
 
-    fun getCellAt(pos: BlockPos): CellBase {
+    fun getCell(pos: BlockPos): CellBase {
         return posCells[pos] ?: error("Could not find cell at $pos!")
     }
 
@@ -137,7 +140,7 @@ class CellGraph(val id : UUID, val manager : CellGraphManager) {
             cellConnections.forEach{
                 val cell = it.component1()
                 val connectionPositions = it.component2()
-                val connections = ArrayList(connectionPositions.map { pos -> result.getCellAt(pos) })
+                val connections = ArrayList(connectionPositions.map { pos -> result.getCell(pos) })
 
                 // now set graph and connection
                 cell.graph = result

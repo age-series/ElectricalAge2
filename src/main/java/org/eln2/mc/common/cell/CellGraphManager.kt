@@ -12,11 +12,11 @@ import java.util.*
 class CellGraphManager(val level : Level) : SavedData() {
     val graphs = HashMap<UUID, CellGraph>()
 
-    fun tickAll(){
-        graphs.values.forEach{ it.serverTick() }
+    fun update(){
+        graphs.values.forEach{ it.update() }
     }
 
-    fun containsGraphWithId(id : UUID) : Boolean{
+    fun contains(id : UUID) : Boolean{
         return graphs.containsKey(id)
     }
 

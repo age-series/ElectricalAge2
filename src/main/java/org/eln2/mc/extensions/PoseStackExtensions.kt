@@ -5,6 +5,8 @@ import com.mojang.blaze3d.vertex.*
 import net.minecraft.client.renderer.GameRenderer
 
 object PoseStackExtensions {
+    // todo: remove this nonsense
+
     class Union4i(val a : Int, val b : Int, val c : Int, val d : Int)
     fun PoseStack.blitMultiple(collection : ArrayList<Union4i>) {
         val tesselator = Tesselator.getInstance()

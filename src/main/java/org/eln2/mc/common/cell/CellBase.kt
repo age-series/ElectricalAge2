@@ -15,17 +15,19 @@ abstract class CellBase(val pos : BlockPos) {
 
     /**
      * Called when the tile entity is being unloaded.
-     * After this method is called, the field will be null.
+     * After this method is called, the field will become null.
     */
-    open fun tileUnloaded(){}
+    open fun entityUnloaded(){}
 
     /**
      * Called when the tile entity is being loaded.
      * The field is assigned before this is called.
     */
-    open fun tileLoaded(){}
+    open fun entityLoaded(){}
 
-    fun hasGraph() : Boolean { return this::graph.isInitialized }
+    fun hasGraph() : Boolean {
+        return this::graph.isInitialized
+    }
 
     /**
      * Called when the graph manager completed loading this cell from the disk.
