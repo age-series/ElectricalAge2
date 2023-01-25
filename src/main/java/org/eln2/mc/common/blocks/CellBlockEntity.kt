@@ -20,7 +20,7 @@ import kotlin.collections.ArrayList
 
 class CellBlockEntity(var pos : BlockPos, var state: BlockState)
     : BlockEntity(BlockRegistry.CELL_BLOCK_ENTITY.get(), pos, state),
-    ICellContainer{
+    ICellContainer {
     // Initialized when placed or loading
 
     lateinit var graphManager : CellGraphManager

@@ -1,4 +1,4 @@
-package org.eln2.mc.common.blocks
+package org.eln2.mc.common.parts
 
 import net.minecraft.resources.ResourceLocation
 import net.minecraftforge.eventbus.api.IEventBus
