@@ -33,6 +33,11 @@ object BlockRegistry {
         BlockEntityType.Builder.of(::CellBlockEntity).build(null)
     }
 
+    val MULTIPART_BLOCK_ENTITY: RegistryObject<BlockEntityType<MultipartBlockEntity>> = BLOCK_ENTITY_REGISTRY.register("multipart"){
+        @Suppress("NULLABILITY_MISMATCH_BASED_ON_JAVA_ANNOTATIONS") // Thanks, Minecraft for the high quality code.
+        BlockEntityType.Builder.of(::MultipartBlockEntity).build(null)
+    }
+
     class CellBlockRegistryItem(
         val name : String,
         val block : RegistryObject<CellBlockBase>,

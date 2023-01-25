@@ -18,7 +18,9 @@ import org.eln2.mc.extensions.BlockEntityExtensions.getNeighborEntity
 import java.util.*
 import kotlin.collections.ArrayList
 
-class CellBlockEntity(var pos : BlockPos, var state: BlockState): BlockEntity(BlockRegistry.CELL_BLOCK_ENTITY.get(), pos, state) {
+class CellBlockEntity(var pos : BlockPos, var state: BlockState)
+    : BlockEntity(BlockRegistry.CELL_BLOCK_ENTITY.get(), pos, state),
+    ICellContainer{
     // Initialized when placed or loading
 
     lateinit var graphManager : CellGraphManager
@@ -57,7 +59,14 @@ class CellBlockEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Bl
             return
         }
 
-        cell = CellEntityWorldManager.place(this)
+        // Create the cell based on the provider.
+
+        cell = cellProvider.create(pos)
+
+        cell!!.entity = this
+        cell!!.id = cellProvider.registryName!!
+
+        CellConnectionManager.connect(this)
 
         setChanged()
     }
@@ -71,7 +80,7 @@ class CellBlockEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Bl
             return
         }
 
-        CellEntityWorldManager.destroy(this)
+        CellConnectionManager.destroy(this)
     }
 
     private fun canConnectFrom(dir : Direction) : Boolean {
@@ -192,4 +201,17 @@ class CellBlockEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Bl
             result
           }
     }
+
+    override fun getCells(): ArrayList<CellBase> {
+        return arrayListOf(cell!!)
+    }
+
+    override fun getNeighbors(cell: CellBase): ArrayList<CellBase> {
+        assert(cell == this.cell)
+
+        return getNeighborCells()
+    }
+
+    override val manager: CellGraphManager
+        get() = CellGraphManager.getFor(serverLevel)
 }

@@ -2,47 +2,36 @@ package org.eln2.mc.common.cell
 
 import net.minecraft.server.level.ServerLevel
 import org.eln2.mc.common.blocks.CellBlockEntity
+import org.eln2.mc.common.blocks.ICellContainer
 
-object CellEntityWorldManager {
-    fun place(entity : CellBlockEntity) : CellBase{
-        val provider = entity.cellProvider
+object CellConnectionManager {
+    fun connect(container : ICellContainer){
+        val cells = container.getCells()
 
-        // Create the cell based on the provider.
-        val cell = provider.create(entity.pos)
+        cells.forEach { cell ->
+            // Handle updating/creating graphs using the new cell.
+            registerCell(cell, container)
 
-        cell.entity = entity
-        cell.id = provider.registryName!!
+            // Notify the cell of the new placement.
+            cell.onPlaced()
+        }
 
-        //val direction = PlacementRotation (entity.state.getValue(HorizontalDirectionalBlock.FACING))
-
-        val graphManager = CellGraphManager.getFor(entity.level as ServerLevel)
-
-        entity.graphManager = graphManager
-
-        // Handle updating/creating graphs using the new cell.
-        registerCell(cell)
-
-        // Notify the cell of the new placement.
-        cell.onPlaced()
-
-        // Finally, build the solver.
-        cell.graph.build()
-
-        return cell
+        // Finally, build all the solvers
+        cells.map { it.graph }.distinct().forEach { graph ->
+            graph.build()
+        }
     }
 
-    fun destroy(entity : CellBlockEntity){
-        val cell = entity.cell!!
-
-        removeCell(cell)
-
-        cell.onDestroyed()
+    fun destroy(container: ICellContainer){
+        container.getCells().forEach { cell ->
+            removeCell(cell, container)
+            cell.onDestroyed()
+        }
     }
 
-    private fun removeCell(cell : CellBase){
-        val entity = cell.entity!!
-        val manager = entity.graphManager
-        val neighborCells = entity.getNeighborCells()
+    private fun removeCell(cell : CellBase, container: ICellContainer){
+        val manager = container.manager
+        val neighborCells = container.getNeighbors(cell)
 
         val graph = cell.graph
 
@@ -86,10 +75,9 @@ object CellEntityWorldManager {
         }
     }
 
-    private fun registerCell(cell : CellBase){
-        val entity = cell.entity!!
-        val manager = entity.graphManager
-        val neighborCells = entity.getNeighborCells()
+    private fun registerCell(cell : CellBase, container: ICellContainer){
+        val manager = container.manager
+        val neighborCells = container.getNeighbors(cell)
 
         /*
         * Cases:
