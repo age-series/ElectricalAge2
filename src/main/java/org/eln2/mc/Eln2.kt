@@ -9,6 +9,7 @@ import org.eln2.mc.client.events.ClientEvents
 import org.eln2.mc.common.Configuration
 import org.eln2.mc.common.ElectricalAgeConfiguration
 import org.eln2.mc.common.blocks.BlockRegistry
+import org.eln2.mc.common.blocks.PartRegistry
 import org.eln2.mc.common.cell.CellRegistry
 import org.eln2.mc.common.containers.ContainerRegistry
 import org.eln2.mc.common.items.ItemRegistry
@@ -39,6 +40,7 @@ object Eln2 {
 
         // custom registries
         CellRegistry.setup(MOD_BUS)
+        PartRegistry.setup(MOD_BUS)
 
         LOGGER.info("Prepared registries.")
 
