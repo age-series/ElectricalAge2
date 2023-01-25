@@ -1,5 +1,6 @@
 package org.eln2.mc.common.blocks
 
+import net.minecraft.core.Direction
 import org.eln2.mc.common.cell.CellBase
 import org.eln2.mc.common.cell.CellGraphManager
 
@@ -23,6 +24,12 @@ interface ICellContainer {
      * @return A list of cells in this container.
      * */
     fun getCells() : ArrayList<CellBase>
+
+    /**
+     * @param direction The side of the container.
+     * @return The cell on that face of the container, or null.
+     * */
+    fun getCell(direction : Direction) : CellBase?
 
     /**
      * @param cell The cell to scan for. It must be a cell from within this container.

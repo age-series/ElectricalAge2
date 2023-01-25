@@ -89,35 +89,22 @@ class CellBlockEntity(var pos : BlockPos, var state: BlockState)
         return cellProvider.canConnectFrom(localDirection)
     }
 
-    private fun getCandidateNeighborEntities() : ArrayList<CellBlockEntity>{
-        val results = ArrayList<CellBlockEntity>()
+    private fun getNeighborCells() : ArrayList<CellBase>{
+        val results = ArrayList<CellBase>()
 
         Direction.values().forEach { direction ->
-            val entity = this.getNeighborEntity<CellBlockEntity>(direction)
+            val container = this.getNeighborEntity<ICellContainer>(direction)
 
-            if(entity != null && entity.canConnectFrom(direction.opposite)){
-                results.add(entity)
+            if(container != null){
+                val cell = container.getCell(direction.opposite)
+
+                if(cell != null){
+                    results.add(cell)
+                }
             }
         }
 
         return results
-    }
-
-    fun getNeighborCells() : ArrayList<CellBase>{
-        val results = ArrayList<CellBase>();
-
-        getCandidateNeighborEntities().forEach { entity ->
-            if(entity.cell == null){
-                // The method may be called when the entity is being placed, and the circuits are being built.
-                // The cell will be null. We ignore it here.
-
-                return@forEach
-            }
-
-            results.add(entity.cell!!)
-        }
-
-        return results;
     }
 
     //#region Saving and Loading
@@ -204,6 +191,16 @@ class CellBlockEntity(var pos : BlockPos, var state: BlockState)
 
     override fun getCells(): ArrayList<CellBase> {
         return arrayListOf(cell!!)
+    }
+
+    override fun getCell(direction: Direction): CellBase? {
+        assert(cell != null)
+
+        return if(canConnectFrom(direction)){
+            cell!!
+        } else{
+            null
+        }
     }
 
     override fun getNeighbors(cell: CellBase): ArrayList<CellBase> {
