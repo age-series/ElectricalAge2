@@ -1,4 +1,4 @@
-package org.eln2.mc.common.blocks
+package org.eln2.mc.common.parts
 
 /**
  * Parts are entity-like units that exist in a multipart entity. They are similar to normal block entities,

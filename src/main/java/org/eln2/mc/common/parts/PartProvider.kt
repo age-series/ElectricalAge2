@@ -1,4 +1,4 @@
-package org.eln2.mc.common.blocks
+package org.eln2.mc.common.parts
 
 import net.minecraft.core.BlockPos
 import net.minecraftforge.registries.ForgeRegistryEntry

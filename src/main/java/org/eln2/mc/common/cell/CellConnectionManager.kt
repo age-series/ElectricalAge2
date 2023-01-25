@@ -1,9 +1,5 @@
 package org.eln2.mc.common.cell
 
-import net.minecraft.server.level.ServerLevel
-import org.eln2.mc.common.blocks.CellBlockEntity
-import org.eln2.mc.common.blocks.ICellContainer
-
 object CellConnectionManager {
     fun connect(container : ICellContainer){
         val cells = container.getCells()

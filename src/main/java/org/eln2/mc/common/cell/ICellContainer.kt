@@ -1,4 +1,4 @@
-package org.eln2.mc.common.blocks
+package org.eln2.mc.common.cell
 
 import net.minecraft.core.Direction
 import org.eln2.mc.common.cell.CellBase
