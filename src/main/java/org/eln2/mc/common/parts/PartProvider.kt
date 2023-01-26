@@ -1,6 +1,7 @@
 package org.eln2.mc.common.parts
 
 import net.minecraft.core.BlockPos
+import net.minecraft.core.Direction
 import net.minecraftforge.registries.ForgeRegistryEntry
 
 abstract class PartProvider : ForgeRegistryEntry<PartProvider>(){
@@ -9,5 +10,5 @@ abstract class PartProvider : ForgeRegistryEntry<PartProvider>(){
      * or when the multipart entity is loading from disk.
      * @return Unique instance of the part.
      */
-    abstract fun create(pos : BlockPos) : Part
+    abstract fun create(pos : BlockPos, face : Direction) : Part
 }
