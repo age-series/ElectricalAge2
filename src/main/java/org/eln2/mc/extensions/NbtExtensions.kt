@@ -1,7 +1,9 @@
 package org.eln2.mc.extensions
 
 import net.minecraft.core.BlockPos
+import net.minecraft.core.Direction
 import net.minecraft.nbt.CompoundTag
+import net.minecraft.resources.ResourceLocation
 
 object NbtExtensions {
     fun CompoundTag.putBlockPos(key : String, pos : BlockPos) {
@@ -51,5 +53,29 @@ object NbtExtensions {
             tag.putString(k, v)
         }
         this.put(key, tag)
+    }
+
+    fun CompoundTag.setResourceLocation(key : String, resourceLocation: ResourceLocation){
+        this.putString(key, resourceLocation.toString())
+    }
+
+    fun CompoundTag.tryGetResourceLocation(key : String) : ResourceLocation?{
+        val str = this.getString(key)
+
+        return ResourceLocation.tryParse(str)
+    }
+
+    fun CompoundTag.getResourceLocation(key : String) : ResourceLocation{
+        return this.tryGetResourceLocation(key) ?: error("Invalid resource location with key $key")
+    }
+
+    fun CompoundTag.setDirection(key : String, direction: Direction){
+        this.putInt(key, direction.get3DDataValue())
+    }
+
+    fun CompoundTag.getDirection(key : String) : Direction{
+        val data3d = this.getInt(key)
+
+        return Direction.from3DDataValue(data3d)
     }
 }

@@ -2,17 +2,36 @@ package org.eln2.mc.common.parts
 
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
+import net.minecraft.nbt.CompoundTag
+import net.minecraft.resources.ResourceLocation
 import net.minecraft.world.entity.LivingEntity
+import net.minecraft.world.level.Level
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
+import net.minecraft.world.phys.shapes.Shapes
+import net.minecraft.world.phys.shapes.VoxelShape
+import org.eln2.mc.extensions.Vec3Extensions.minus
+import org.eln2.mc.extensions.Vec3Extensions.plus
 
 /**
  * Parts are entity-like units that exist in a multipart entity. They are similar to normal block entities,
  * but up to 6 can exist in the same block space.
  * They are placed on the inner faces of a multipart container block space.
  * */
-abstract class Part(val pos : BlockPos, val face : Direction) {
+abstract class Part(val pos : BlockPos, val face : Direction, val id : ResourceLocation, val level : Level) {
     abstract val size : Double
+
+    private var cachedCollisionShape : VoxelShape? = null
+
+    open val blockShape : VoxelShape get() {
+        if(cachedCollisionShape == null){
+            val halfSize = size / 2
+
+            cachedCollisionShape = Shapes.create(-halfSize, -halfSize, -halfSize, halfSize, halfSize, halfSize)
+        }
+
+        return cachedCollisionShape!!
+    }
 
     /**
      * The local center of the face.
@@ -38,11 +57,23 @@ abstract class Part(val pos : BlockPos, val face : Direction) {
     val boundingBox : AABB get(){
         val center = boundaryPosition
 
-        val min = Vec3(center.x - size, center.y - size, center.z - size)
-        val max = Vec3(center.x + size, center.y + size, center.z + size)
+        val sizeVector = Vec3(size, size, size)
 
-        return  AABB(min, max)
+        val min = center - size
+        val max = center + size
+
+        return AABB(min, max)
     }
 
     abstract fun onUsedBy(entity : LivingEntity)
+
+    open fun getCustomTag() : CompoundTag?{
+        return null
+    }
+
+    open fun useCustomTag(tag : CompoundTag){}
+
+    open fun onDestroyed(){}
+
+    open fun onAddedToClient(){}
 }
