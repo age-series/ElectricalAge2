@@ -40,5 +40,15 @@ object Vec3Extensions {
         return Vec3(this.x / scalar, this.y / scalar, this.z / scalar);
     }
 
+    operator fun Vec3.unaryMinus() : Vec3{
+        return Vec3(-this.x, -this.y, -this.z);
+    }
+
+    operator fun Vec3.unaryPlus() : Vec3{
+        // For completeness
+
+        return Vec3(this.x, this.y, this.z);
+    }
+
     //#endregion
 }
