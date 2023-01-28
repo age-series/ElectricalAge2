@@ -6,6 +6,7 @@ import net.minecraftforge.fml.loading.FMLEnvironment
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.eln2.mc.client.events.ClientEvents
+import org.eln2.mc.client.flywheel.FlywheelRegistry
 import org.eln2.mc.common.Configuration
 import org.eln2.mc.common.ElectricalAgeConfiguration
 import org.eln2.mc.common.blocks.BlockRegistry
@@ -23,7 +24,6 @@ object Eln2 {
     val LOGGER: Logger = LogManager.getLogger()
     val config: ElectricalAgeConfiguration
 
-
     init {
         Configuration.loadConfig()
         config = Configuration.config
@@ -33,7 +33,10 @@ object Eln2 {
         ContainerRegistry.setup(MOD_BUS)
 
         if (Dist.CLIENT == FMLEnvironment.dist) {
-            MOD_BUS.register(ClientEvents) //client-side setup
+            // Client-side setup
+
+            MOD_BUS.register(ClientEvents)
+            FlywheelRegistry.initialize()
         }
 
         Networking.setup()
