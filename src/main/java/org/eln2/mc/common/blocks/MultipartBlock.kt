@@ -25,6 +25,7 @@ class MultipartBlock : Block(Properties.of(Material.AIR).noOcclusion()), EntityB
         return true
     }
 
+    @Deprecated("Deprecated in Java")
     override fun getCollisionShape(
         pState: BlockState,
         pLevel: BlockGetter,
@@ -34,6 +35,7 @@ class MultipartBlock : Block(Properties.of(Material.AIR).noOcclusion()), EntityB
         return getPartShape(pLevel, pPos, pContext)
     }
 
+    @Deprecated("Deprecated in Java")
     override fun getShape(
         pState: BlockState,
         pLevel: BlockGetter,
@@ -44,6 +46,7 @@ class MultipartBlock : Block(Properties.of(Material.AIR).noOcclusion()), EntityB
         return getPartShape(pLevel, pPos, pContext)
     }
 
+    @Deprecated("Deprecated in Java")
     override fun getVisualShape(
         pState: BlockState,
         pLevel: BlockGetter,
@@ -57,33 +60,27 @@ class MultipartBlock : Block(Properties.of(Material.AIR).noOcclusion()), EntityB
         val multipart = pLevel.getBlockEntity(pPos)
 
         if(multipart == null){
-            Eln2.LOGGER.error("Multipart block failed to get entity")
+            Eln2.LOGGER.error("Multipart block failed to get entity at $pPos")
             return emptyBox
         }
 
         if(multipart !is MultipartBlockEntity){
-            Eln2.LOGGER.fatal("Multipart block found other entity type")
+            Eln2.LOGGER.error("Multipart block found other entity type at $pPos")
             return emptyBox
         }
 
         if(pContext !is EntityCollisionContext){
-            Eln2.LOGGER.error("Collision context was not an entity collision context")
+            Eln2.LOGGER.error("Collision context was not an entity collision context at $pPos")
             return emptyBox
         }
 
         if(pContext.entity !is Player){
-            Eln2.LOGGER.error("Collision context entity was not a player")
+            Eln2.LOGGER.error("Collision context entity was not a player at $pPos")
             return emptyBox
         }
 
         val pickedPart = multipart.pickPart(pContext.entity as Player)
-
-        if(pickedPart == null){
-            Eln2.LOGGER.info("Did not clip any parts")
-            return emptyBox
-        }
-
-        Eln2.LOGGER.info(pickedPart.shape)
+            ?: return emptyBox
 
         return pickedPart.shape
     }

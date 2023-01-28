@@ -36,15 +36,10 @@ object AABBUtilities {
         objects.forEach{obj ->
             val box = access(obj)
 
-            Eln2.LOGGER.info("Clip test $box")
-
             val intersection = box.viewClip(entity)
 
             if(!intersection.isEmpty){
                 intersections[intersection.get()] = obj
-            }
-            else{
-                Eln2.LOGGER.info("Did not clip")
             }
         }
 
