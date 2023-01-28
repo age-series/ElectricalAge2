@@ -34,26 +34,28 @@ abstract class Part(val pos : BlockPos, val face : Direction, val id : ResourceL
      * This is the bounding box of the part, rotated and placed
      * on the inner face.
      * */
-    private val modelBoundingBox : AABB
+    val modelBoundingBox : AABB
         get() {
             // TODO: document this, it is pretty involved
-
-            val halfSize = baseSize / 2.0
-
-            val baseAABB = AABBUtilities
+            return AABBUtilities
                 .fromSize(baseSize)
                 .transformed(face.rotation)
-
-            val positiveOffset = halfSize.y
-            val negativeOffset = 1 - halfSize.y
-
-            return when(val axis = face.axis){
-                Direction.Axis.X -> baseAABB.move((if(face.axisDirection == AxisDirection.POSITIVE) positiveOffset else negativeOffset), 0.5, 0.5)
-                Direction.Axis.Y -> baseAABB.move(0.5, (if(face.axisDirection == AxisDirection.POSITIVE) positiveOffset else negativeOffset), 0.5)
-                Direction.Axis.Z -> baseAABB.move(0.5, 0.5, (if(face.axisDirection == AxisDirection.POSITIVE) positiveOffset else negativeOffset))
-                else -> error("Invalid axis $axis")
-            }
+                .move(offset)
         }
+
+    val offset : Vec3 get() {
+        val halfSize = baseSize / 2.0
+
+        val positiveOffset = halfSize.y
+        val negativeOffset = 1 - halfSize.y
+
+        return when(val axis = face.axis){
+            Direction.Axis.X -> Vec3((if(face.axisDirection == AxisDirection.POSITIVE) positiveOffset else negativeOffset), 0.5, 0.5)
+            Direction.Axis.Y -> Vec3(0.5, (if(face.axisDirection == AxisDirection.POSITIVE) positiveOffset else negativeOffset), 0.5)
+            Direction.Axis.Z -> Vec3(0.5, 0.5, (if(face.axisDirection == AxisDirection.POSITIVE) positiveOffset else negativeOffset))
+            else -> error("Invalid axis $axis")
+        }
+    }
 
     /**
      * This is the bounding box of the part, in its block position.
