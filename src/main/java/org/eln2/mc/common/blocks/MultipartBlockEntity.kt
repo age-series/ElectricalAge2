@@ -14,21 +14,17 @@ import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.state.BlockState
-import net.minecraft.world.phys.AABB
 import org.eln2.mc.Eln2
 import org.eln2.mc.common.parts.Part
 import org.eln2.mc.common.parts.PartProvider
 import org.eln2.mc.common.parts.PartRegistry
-import org.eln2.mc.extensions.AABBExtensions.viewClip
 import org.eln2.mc.extensions.NbtExtensions.getBlockPos
 import org.eln2.mc.extensions.NbtExtensions.getDirection
 import org.eln2.mc.extensions.NbtExtensions.getResourceLocation
 import org.eln2.mc.extensions.NbtExtensions.putBlockPos
 import org.eln2.mc.extensions.NbtExtensions.setDirection
 import org.eln2.mc.extensions.NbtExtensions.setResourceLocation
-import org.eln2.mc.extensions.Vec3Extensions.minus
-import kotlin.collections.ArrayList
-import kotlin.collections.HashMap
+import org.eln2.mc.utility.AABBUtilities
 
 /**
  * Multipart entities
@@ -48,10 +44,6 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
     // used for disk loading
     private var savedTag : CompoundTag? = null
 
-    private val boundingBox : AABB get(){
-        return AABB(pos)
-    }
-
     init {
         Eln2.LOGGER.info("Constructed multipart block entity $this")
     }
@@ -63,22 +55,7 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
     }
 
     fun pickPart(entity : Player) : Part?{
-        // I don't like what I did here very much.
-        // also does not work very well. todo
-
-        parts.values
-            .sortedBy { (entity.eyePosition - it.boundingBox.center).lengthSqr() }
-            .forEach { part ->
-                val aabb = part.boundingBox
-
-                val intersection = aabb.viewClip(entity)
-
-                if(!intersection.isEmpty){
-                    return part
-                }
-            }
-
-        return null
+        return AABBUtilities.clipScene(entity, { it.worldBoundingBox }, parts.values)
     }
 
     fun place(entity: Player, pos : BlockPos, face : Direction, provider : PartProvider) : Boolean{
