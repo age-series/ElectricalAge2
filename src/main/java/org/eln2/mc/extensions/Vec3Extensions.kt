@@ -1,9 +1,9 @@
 package org.eln2.mc.extensions
 
-import net.minecraft.core.Direction
-import net.minecraft.core.Direction.AxisDirection
+import com.mojang.math.Vector3f
+import com.mojang.math.Vector4f
+import net.minecraft.core.Vec3i
 import net.minecraft.world.phys.Vec3
-import kotlin.math.abs
 
 object Vec3Extensions {
     //#region Operators
@@ -51,4 +51,24 @@ object Vec3Extensions {
     }
 
     //#endregion
+
+    fun Vec3i.toVec3() : Vec3{
+        return Vec3(this.x.toDouble(), this.y.toDouble(), this.z.toDouble());
+    }
+
+    fun Vector3f.toVec3() : Vec3{
+        return Vec3(this.x().toDouble(), this.y().toDouble(), this.z().toDouble())
+    }
+
+    fun Vec3i.toVector3f() : Vector3f{
+        return Vector3f(this.x.toFloat(), this.y.toFloat(), this.z.toFloat())
+    }
+
+    fun Vec3.toVector3f() : Vector3f{
+        return Vector3f(this.x.toFloat(), this.y.toFloat(), this.z.toFloat())
+    }
+
+    fun Vec3.toVector4f(w : Float) : Vector4f{
+        return Vector4f(this.x.toFloat(), this.y.toFloat(), this.z.toFloat(), w);
+    }
 }

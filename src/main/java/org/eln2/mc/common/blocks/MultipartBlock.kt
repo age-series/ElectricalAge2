@@ -83,6 +83,8 @@ class MultipartBlock : Block(Properties.of(Material.AIR).noOcclusion()), EntityB
             return emptyBox
         }
 
-        return pickedPart.blockShape
+        Eln2.LOGGER.info(pickedPart.shape)
+
+        return pickedPart.shape
     }
 }
