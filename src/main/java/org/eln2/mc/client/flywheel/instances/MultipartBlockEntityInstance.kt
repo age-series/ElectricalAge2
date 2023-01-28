@@ -33,6 +33,10 @@ class MultipartBlockEntityInstance(
             part.renderer.relight()
         }
 
+        processRelightQueue()
+    }
+
+    private fun processRelightQueue(){
         relight(pos, relightModels.stream())
         relightModels.clear()
     }
@@ -50,6 +54,7 @@ class MultipartBlockEntityInstance(
 
             parts.add(part)
             part.renderer.setupRendering(this)
+            part.renderer.relight()
         }
     }
 
