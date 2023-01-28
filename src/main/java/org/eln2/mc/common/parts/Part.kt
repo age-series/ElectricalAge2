@@ -14,6 +14,7 @@ import net.minecraft.world.phys.shapes.VoxelShape
 import org.eln2.mc.extensions.AABBExtensions.transformed
 import org.eln2.mc.extensions.Vec3Extensions.div
 import org.eln2.mc.utility.AABBUtilities
+import java.util.*
 
 /**
  * Parts are entity-like units that exist in a multipart entity. They are similar to normal block entities,
@@ -78,5 +79,26 @@ abstract class Part(val pos : BlockPos, val face : Direction, val id : ResourceL
 
     open fun onDestroyed(){}
 
+    //#region Client
+
     open fun onAddedToClient(){}
+
+    private var cachedRenderer : IPartRenderer? = null
+
+    val renderer : IPartRenderer
+        get(){
+            if(!level.isClientSide){
+                error("Tried to get renderer on non-client side!")
+            }
+
+            if(cachedRenderer == null){
+                cachedRenderer = createRenderer()
+            }
+
+            return cachedRenderer!!
+        }
+
+    protected abstract fun createRenderer() : IPartRenderer
+
+    //#endregion
 }

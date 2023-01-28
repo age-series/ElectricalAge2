@@ -26,6 +26,9 @@ import org.eln2.mc.extensions.NbtExtensions.putBlockPos
 import org.eln2.mc.extensions.NbtExtensions.setDirection
 import org.eln2.mc.extensions.NbtExtensions.setResourceLocation
 import org.eln2.mc.utility.AABBUtilities
+import java.util.concurrent.BlockingQueue
+import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.locks.ReentrantReadWriteLock
 
 /**
  * Multipart entities
@@ -49,7 +52,11 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
     // used for disk loading
     private var savedTag : CompoundTag? = null
 
-    private fun partsChanged(){
+    // Used for rendering:
+    val clientNewPartQueue = ConcurrentLinkedQueue<Part>()
+    val clientRemovedQueue = ConcurrentLinkedQueue<Part>()
+
+    private fun invalidate(){
         setChanged()
         level!!.sendBlockUpdated(blockPos, state, state, Block.UPDATE_CLIENTS)
     }
@@ -85,7 +92,7 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
 
         Eln2.LOGGER.info("Part placement completed.")
 
-        partsChanged()
+        invalidate()
 
         return true
     }
@@ -109,7 +116,7 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
 
         part.onDestroyed()
 
-        partsChanged()
+        invalidate()
 
         return parts.size == 0
     }
@@ -209,7 +216,7 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
                 Eln2.LOGGER.error("Client received new part, but a part was already present on the ${part.face} face!")
             }
 
-            part.onAddedToClient()
+            clientAddPart(part)
         }
 
         removedPartsTag?.forEach { faceTag ->
@@ -221,10 +228,21 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
                 Eln2.LOGGER.error("Client received broken part on $face, but there was no part present on the face!")
             }
             else{
-                Eln2.LOGGER.info("Client destroyed part on $face")
-                part.onDestroyed()
+                clientRemovePart(part)
             }
         }
+    }
+
+    // Enqueues a part for rendering set-up.
+    private fun clientAddPart(part : Part){
+        part.onAddedToClient()
+        clientNewPartQueue.add(part)
+    }
+
+    // Dequeues a part for rendering set-up.
+    private fun clientRemovePart(part : Part){
+        part.onDestroyed()
+        clientRemovedQueue.add(part)
     }
 
     //#endregion
