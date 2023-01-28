@@ -44,14 +44,15 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
     // used for disk loading
     private var savedTag : CompoundTag? = null
 
-    init {
-        Eln2.LOGGER.info("Constructed multipart block entity $this")
+    private fun partsChanged(){
+        setChanged()
+        level!!.sendBlockUpdated(blockPos, state, state, Block.UPDATE_CLIENTS)
     }
 
     override fun setRemoved() {
-        Eln2.LOGGER.info("Multipart block entity removed")
-
         super.setRemoved()
+
+        Eln2.LOGGER.info("Multipart block entity removed at $pos")
     }
 
     fun pickPart(entity : Player) : Part?{
@@ -60,40 +61,27 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
 
     fun place(entity: Player, pos : BlockPos, face : Direction, provider : PartProvider) : Boolean{
         if(entity.level.isClientSide){
-            Eln2.LOGGER.fatal("MULTIPART PLACE CALLED ON CLIENT")
+            Eln2.LOGGER.error("Multipart place on client!")
             return false
         }
 
         val level = entity.level as ServerLevel
 
-        Eln2.LOGGER.info("Part placing on $face")
+        Eln2.LOGGER.info("Part placing on $face at $pos")
 
         if(parts.containsKey(face)){
-            Eln2.LOGGER.error("Already have a part there!")
             return false
         }
 
         val part = provider.create(pos, face, level)
 
-        assert(parts.put(face, part) == null)
+        parts[face] = part
 
         newParts.add(part)
 
-        Eln2.LOGGER.info("Successfully placed part!")
+        Eln2.LOGGER.info("Part placement completed.")
 
-        // to test picking:
-
-        val picked = pickPart(entity)
-
-        Eln2.LOGGER.info("Picked: $picked, expected: $part")
-
-        setChanged()
-
-        level.sendBlockUpdated(blockPos, state, state, Block.UPDATE_CLIENTS)
-
-        Eln2.LOGGER.info("Sent some update things")
-
-        // send part packets updates
+        partsChanged()
 
         return true
     }
@@ -104,26 +92,22 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
     // Here, we send all the parts we have.
 
     override fun getUpdateTag(): CompoundTag {
-        if(level!!.isClientSide){
-            error("getUpdateTag called on client!")
-        }
-
         return savePartsToTag()
     }
 
     override fun handleUpdateTag(tag: CompoundTag?) {
         if(tag == null){
-            Eln2.LOGGER.error("Update tag NULL!")
+            Eln2.LOGGER.error("Part update tag was null at $pos")
             return
         }
 
         if(level == null){
-            Eln2.LOGGER.error("Level was null in handleUpdateTag!")
+            Eln2.LOGGER.error("Level was null in handleUpdateTag at $pos")
             return
         }
 
         if(!level!!.isClientSide){
-            Eln2.LOGGER.error("handleUpdateTag called on server!")
+            Eln2.LOGGER.info("handleUpdateTag called on the server!")
             return
         }
 
@@ -143,18 +127,17 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
 
     override fun getUpdatePacket(): Packet<ClientGamePacketListener>? {
         if(newParts.size == 0){
-            Eln2.LOGGER.error("getUpdatePacket new parts list is empty!")
+            Eln2.LOGGER.error("getUpdatePacket new parts list is empty at $pos")
             return null
         }
 
         val tag = CompoundTag()
+
         val newPartsTag = ListTag()
 
         newParts.forEach { part ->
             newPartsTag.add(savePartToTag(part))
         }
-
-        Eln2.LOGGER.info("Serialized ${newParts.size} new parts")
 
         newParts.clear()
 
@@ -163,14 +146,14 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
         return ClientboundBlockEntityDataPacket.create(this) { tag };
     }
 
-    override fun onDataPacket(net: Connection?, pkt: ClientboundBlockEntityDataPacket?) {
-        if(pkt == null){
-            Eln2.LOGGER.error("onDataPacket null!")
+    override fun onDataPacket(net: Connection?, packet: ClientboundBlockEntityDataPacket?) {
+        if(packet == null){
+            Eln2.LOGGER.error("onDataPacket null at $pos")
             return
         }
 
         if(level == null){
-            Eln2.LOGGER.error("onDataPacket level null!")
+            Eln2.LOGGER.error("onDataPacket level null at $pos")
             return
         }
 
@@ -179,7 +162,7 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
             return
         }
 
-        val tag = pkt.tag!!
+        val tag = packet.tag!!
         val newPartsTag = tag.get("NewParts") as? ListTag
 
         if(newPartsTag == null){
@@ -187,16 +170,14 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
             return
         }
 
-        newPartsTag.forEach{partTag ->
+        newPartsTag.forEach { partTag ->
             val part = createPartFromTag(partTag as CompoundTag)
 
             if(parts.put(part.face, part) != null){
-                Eln2.LOGGER.warn("Client received new part, but a part was already present on the ${part.face} face!")
+                Eln2.LOGGER.error("Client received new part, but a part was already present on the ${part.face} face!")
             }
 
             part.onAddedToClient()
-
-            Eln2.LOGGER.info("Deserialized ${part.id}")
         }
     }
 
@@ -213,23 +194,30 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
     override fun load(pTag: CompoundTag) {
         super.load(pTag)
 
-        Eln2.LOGGER.info("Loaded multipart tag")
-
         savedTag = pTag
+
+        // This is necessary because we don't have the level at this stage
+        // We need the level to load the parts
+        // Loading will complete in setLevel
     }
 
     override fun setLevel(pLevel: Level) {
         super.setLevel(pLevel)
 
         if(this.savedTag != null){
-            Eln2.LOGGER.info("Completing disk load")
+            Eln2.LOGGER.info("Completing multipart disk load at $pos")
             loadPartsFromTag(savedTag!!)
+
+            // GC reference tracking
             savedTag = null
         }
     }
 
     //#endregion
 
+    /**
+     * Saves all the data associated with a part to a CompoundTag.
+     * */
     private fun savePartToTag(part : Part) : CompoundTag{
         val tag = CompoundTag()
 
@@ -246,6 +234,9 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
         return tag
     }
 
+    /**
+     * Saves the entire part set to a CompoundTag.
+     * */
     private fun savePartsToTag() : CompoundTag{
         val tag = CompoundTag()
 
@@ -254,6 +245,9 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
         return tag
     }
 
+    /**
+     * Saves the entire part set to the provided CompoundTag.
+     * */
     private fun savePartsToTag(tag : CompoundTag){
         val partsTag = ListTag()
 
