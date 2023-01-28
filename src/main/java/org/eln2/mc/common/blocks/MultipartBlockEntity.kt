@@ -149,7 +149,7 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
         loadPartsFromTag(tag)
 
         parts.values.forEach { part ->
-            part.onAddedToClient()
+            clientAddPart(part)
         }
     }
 
