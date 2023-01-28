@@ -36,7 +36,6 @@ object Eln2 {
             // Client-side setup
 
             MOD_BUS.register(ClientEvents)
-            FlywheelRegistry.initialize()
         }
 
         Networking.setup()
