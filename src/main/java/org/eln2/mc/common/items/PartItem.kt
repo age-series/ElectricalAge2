@@ -48,6 +48,10 @@ class PartItem(private val provider: PartProvider) : BlockItem(BlockRegistry.MUL
 
         Eln2.LOGGER.info("Target multipart entity: $entity")
 
+        if(entity == null){
+            return InteractionResult.FAIL
+        }
+
         val placed = (entity as MultipartBlockEntity).place(pContext.player!!, targetPos, pContext.clickedFace, provider)
 
         // ignore for now

@@ -9,6 +9,7 @@ import net.minecraft.network.protocol.Packet
 import net.minecraft.network.protocol.game.ClientGamePacketListener
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket
 import net.minecraft.server.level.ServerLevel
+import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.Block
@@ -38,8 +39,12 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
 
     private val parts = HashMap<Direction, Part>()
 
-    // Used for streaming to clients
+    // Used for streaming to clients:
+
     private val newParts = ArrayList<Part>()
+    // We should not store references to destroyed parts.
+    // All we need for removal is the face.
+    private val removedParts = ArrayList<Direction>()
 
     // used for disk loading
     private var savedTag : CompoundTag? = null
@@ -55,13 +60,12 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
         Eln2.LOGGER.info("Multipart block entity removed at $pos")
     }
 
-    fun pickPart(entity : Player) : Part?{
+    fun pickPart(entity : LivingEntity) : Part?{
         return AABBUtilities.clipScene(entity, { it.worldBoundingBox }, parts.values)
     }
 
     fun place(entity: Player, pos : BlockPos, face : Direction, provider : PartProvider) : Boolean{
         if(entity.level.isClientSide){
-            Eln2.LOGGER.error("Multipart place on client!")
             return false
         }
 
@@ -84,6 +88,30 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
         partsChanged()
 
         return true
+    }
+
+    /**
+     * Tries to break the part picked by the player.
+     * @return True if there are no parts left after breaking and, as such, this entity should be destroyed.
+     * */
+    fun remove(entity : Player, level : Level, pos : BlockPos) : Boolean{
+        if(level.isClientSide){
+            return false
+        }
+
+        val part = pickPart(entity) ?: return false
+
+        parts.remove(part.face)
+
+        Eln2.LOGGER.info("Removed part on ${part.face} at $pos")
+
+        removedParts.add(part.face)
+
+        part.onDestroyed()
+
+        partsChanged()
+
+        return parts.size == 0
     }
 
     //#region Client Chunk Synchronization
@@ -126,22 +154,30 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
     // Here, we send the freshly placed parts to clients that are already observing this multipart.
 
     override fun getUpdatePacket(): Packet<ClientGamePacketListener>? {
-        if(newParts.size == 0){
-            Eln2.LOGGER.error("getUpdatePacket new parts list is empty at $pos")
+        if(newParts.size == 0 && removedParts.size == 0){
+            Eln2.LOGGER.error("getUpdatePacket changed list is empty at $pos")
             return null
         }
 
         val tag = CompoundTag()
 
         val newPartsTag = ListTag()
-
         newParts.forEach { part ->
             newPartsTag.add(savePartToTag(part))
         }
 
         newParts.clear()
 
+        val removedPartsTag = ListTag()
+        removedParts.forEach { face ->
+            val faceTag = CompoundTag()
+            faceTag.setDirection("Face", face)
+            removedPartsTag.add(faceTag)
+        }
+        removedParts.clear()
+
         tag.put("NewParts", newPartsTag)
+        tag.put("RemovedParts", removedPartsTag)
 
         return ClientboundBlockEntityDataPacket.create(this) { tag };
     }
@@ -164,13 +200,9 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
 
         val tag = packet.tag!!
         val newPartsTag = tag.get("NewParts") as? ListTag
+        val removedPartsTag = tag.get("RemovedParts") as? ListTag
 
-        if(newPartsTag == null){
-            Eln2.LOGGER.error("onDataPacket new parts tag was null!")
-            return
-        }
-
-        newPartsTag.forEach { partTag ->
+        newPartsTag?.forEach { partTag ->
             val part = createPartFromTag(partTag as CompoundTag)
 
             if(parts.put(part.face, part) != null){
@@ -179,6 +211,20 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
 
             part.onAddedToClient()
         }
+
+        removedPartsTag?.forEach { faceTag ->
+            val face = (faceTag as CompoundTag).getDirection("Face")
+
+            val part = parts.remove(face)
+
+            if(part == null){
+                Eln2.LOGGER.error("Client received broken part on $face, but there was no part present on the face!")
+            }
+            else{
+                Eln2.LOGGER.info("Client destroyed part on $face")
+                part.onDestroyed()
+            }
+        }
     }
 
     //#endregion
@@ -186,14 +232,12 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
     //#region Disk Loading
 
     override fun saveAdditional(pTag: CompoundTag) {
-        super.saveAdditional(pTag)
-
+        Eln2.LOGGER.info("Saving additional...")
         savePartsToTag(pTag)
+        Eln2.LOGGER.info("Done saving")
     }
 
     override fun load(pTag: CompoundTag) {
-        super.load(pTag)
-
         savedTag = pTag
 
         // This is necessary because we don't have the level at this stage
