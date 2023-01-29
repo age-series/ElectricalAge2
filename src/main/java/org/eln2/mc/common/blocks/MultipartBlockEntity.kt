@@ -23,6 +23,7 @@ import org.eln2.mc.common.parts.Part
 import org.eln2.mc.common.parts.PartPlacementContext
 import org.eln2.mc.common.parts.PartProvider
 import org.eln2.mc.common.parts.PartRegistry
+import org.eln2.mc.extensions.BlockPosExtensions.directionTo
 import org.eln2.mc.extensions.DirectionExtensions.isVertical
 import org.eln2.mc.extensions.NbtExtensions.getBlockPos
 import org.eln2.mc.extensions.NbtExtensions.getDirection
@@ -58,7 +59,6 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
     // Used for rendering:
     val clientNewPartQueue = ConcurrentLinkedQueue<Part>()
     val clientRemovedQueue = ConcurrentLinkedQueue<Part>()
-
 
     var collisionShape : VoxelShape
         get
@@ -129,14 +129,41 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
 
         val part = pickPart(entity) ?: return false
 
-        parts.remove(part.placementContext.face)
-        removedParts.add(part.placementContext.face)
-
-        part.onDestroyed()
-
-        invalidateData()
+        removePart(part)
 
         return parts.size == 0
+    }
+
+    private fun removePart(part : Part){
+        parts.remove(part.placementContext.face)
+        removedParts.add(part.placementContext.face)
+        part.onDestroyed()
+        invalidateData()
+    }
+
+    /**
+     * Called by the block when a neighbor is destroyed.
+     * If a part is placed on the face corresponding to that neighbor,
+     * the part must be destroyed.
+     * */
+    fun onNeighborDestroyed(neighborPos : BlockPos){
+        if(level!!.isClientSide){
+            return
+        }
+
+        val direction = pos.directionTo(neighborPos)
+
+        if(direction == null){
+            Eln2.LOGGER.error("Failed to get direction")
+            return
+        }
+        else{
+            Eln2.LOGGER.info("Face: $direction")
+        }
+
+        if(parts.containsKey(direction)){
+            removePart(parts[direction]!!)
+        }
     }
 
     private fun joinCollider(part : Part){
