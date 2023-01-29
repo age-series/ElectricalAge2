@@ -20,6 +20,7 @@ import org.eln2.mc.common.parts.Part
 import org.eln2.mc.common.parts.PartPlacementContext
 import org.eln2.mc.common.parts.PartProvider
 import org.eln2.mc.common.parts.PartRegistry
+import org.eln2.mc.extensions.DirectionExtensions.isVertical
 import org.eln2.mc.extensions.NbtExtensions.getBlockPos
 import org.eln2.mc.extensions.NbtExtensions.getDirection
 import org.eln2.mc.extensions.NbtExtensions.getResourceLocation
@@ -85,7 +86,14 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
             return false
         }
 
-        val part = provider.create(PartPlacementContext(pos, face, level))
+        val placeDirection = if(face.isVertical()){
+            entity.direction
+        }
+        else{
+            Direction.NORTH
+        }
+
+        val part = provider.create(PartPlacementContext(pos, face, placeDirection, level))
 
         parts[face] = part
 
@@ -284,6 +292,7 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
         tag.setResourceLocation("ID", part.id)
         tag.putBlockPos("Pos", part.placementContext.pos)
         tag.setDirection("Face", part.placementContext.face)
+        tag.setDirection("Facing", part.placementContext.horizontalFacing)
 
         val customTag = part.getCustomTag()
 
@@ -351,11 +360,12 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
         val id = tag.getResourceLocation("ID")
         val pos = tag.getBlockPos("Pos")
         val face = tag.getDirection("Face")
+        val facing = tag.getDirection("Facing")
         val customTag = tag.get("CustomTag") as? CompoundTag
 
         val provider = PartRegistry.tryGetProvider(id) ?: error("Failed to get part with id $id")
 
-        val part = provider.create(PartPlacementContext(pos, face, level!!))
+        val part = provider.create(PartPlacementContext(pos, face, facing, level!!))
 
         if(customTag != null){
             part.useCustomTag(customTag)
