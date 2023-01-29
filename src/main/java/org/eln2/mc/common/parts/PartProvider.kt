@@ -14,5 +14,5 @@ abstract class PartProvider : ForgeRegistryEntry<PartProvider>(){
      * or when the multipart entity is loading from disk.
      * @return Unique instance of the part.
      */
-    abstract fun create(pos : BlockPos, face : Direction, level : Level) : Part
+    abstract fun create(context: PartPlacementContext) : Part
 }

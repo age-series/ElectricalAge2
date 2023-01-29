@@ -17,6 +17,7 @@ import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.state.BlockState
 import org.eln2.mc.Eln2
 import org.eln2.mc.common.parts.Part
+import org.eln2.mc.common.parts.PartPlacementContext
 import org.eln2.mc.common.parts.PartProvider
 import org.eln2.mc.common.parts.PartRegistry
 import org.eln2.mc.extensions.NbtExtensions.getBlockPos
@@ -84,7 +85,7 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
             return false
         }
 
-        val part = provider.create(pos, face, level)
+        val part = provider.create(PartPlacementContext(pos, face, level))
 
         parts[face] = part
 
@@ -108,11 +109,8 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
 
         val part = pickPart(entity) ?: return false
 
-        parts.remove(part.face)
-
-        Eln2.LOGGER.info("Removed part on ${part.face} at $pos")
-
-        removedParts.add(part.face)
+        parts.remove(part.placementContext.face)
+        removedParts.add(part.placementContext.face)
 
         part.onDestroyed()
 
@@ -212,8 +210,8 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
         newPartsTag?.forEach { partTag ->
             val part = createPartFromTag(partTag as CompoundTag)
 
-            if(parts.put(part.face, part) != null){
-                Eln2.LOGGER.error("Client received new part, but a part was already present on the ${part.face} face!")
+            if(parts.put(part.placementContext.face, part) != null){
+                Eln2.LOGGER.error("Client received new part, but a part was already present on the ${part.placementContext.face} face!")
             }
 
             clientAddPart(part)
@@ -284,8 +282,8 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
         val tag = CompoundTag()
 
         tag.setResourceLocation("ID", part.id)
-        tag.putBlockPos("Pos", part.pos)
-        tag.setDirection("Face", part.face)
+        tag.putBlockPos("Pos", part.placementContext.pos)
+        tag.setDirection("Face", part.placementContext.face)
 
         val customTag = part.getCustomTag()
 
@@ -332,7 +330,7 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
             partsTag.forEach { partTag ->
                 val part = createPartFromTag(partTag as CompoundTag)
 
-                parts[part.face] = part
+                parts[part.placementContext.face] = part
 
                 Eln2.LOGGER.info("Loaded $part")
             }
@@ -357,7 +355,7 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
 
         val provider = PartRegistry.tryGetProvider(id) ?: error("Failed to get part with id $id")
 
-        val part = provider.create(pos, face, level!!)
+        val part = provider.create(PartPlacementContext(pos, face, level!!))
 
         if(customTag != null){
             part.useCustomTag(customTag)
