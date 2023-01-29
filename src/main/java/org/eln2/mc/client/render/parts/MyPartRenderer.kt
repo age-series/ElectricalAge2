@@ -5,6 +5,7 @@ import com.jozufozu.flywheel.core.model.BlockMesh
 import com.jozufozu.flywheel.core.structs.FlatLit
 import com.jozufozu.flywheel.core.structs.StructTypes
 import com.jozufozu.flywheel.core.structs.model.ModelData
+import net.minecraft.core.Direction
 import org.eln2.mc.client.flywheel.instances.MultipartBlockEntityInstance
 import org.eln2.mc.client.render.PartialModels
 import org.eln2.mc.common.parts.IPartRenderer
@@ -30,6 +31,7 @@ class MyPartRenderer(val part : MyPart) : IPartRenderer {
             .loadIdentity()
             .translate(part.worldBoundingBox.center)
             .multiply(part.placementContext.face.rotation)
+            .multiply(part.facingRotation)
             .translate(-part.baseSize / 2.0)
             .scale(part.baseSize.x.toFloat(), part.baseSize.y.toFloat(), part.baseSize.z.toFloat())
     }

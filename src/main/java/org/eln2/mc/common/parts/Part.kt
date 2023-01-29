@@ -1,5 +1,7 @@
 package org.eln2.mc.common.parts
 
+import com.mojang.math.Quaternion
+import com.mojang.math.Vector3f
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
 import net.minecraft.core.Direction.AxisDirection
@@ -39,9 +41,16 @@ abstract class Part(val id : ResourceLocation, val placementContext: PartPlaceme
             // TODO: document this, it is pretty involved
             return AABBUtilities
                 .fromSize(baseSize)
+                .transformed(facingRotation)
                 .transformed(placementContext.face.rotation)
                 .move(offset)
         }
+
+    val facingRotation : Quaternion
+        get() = Vector3f.YP.rotationDegrees(facingRotationDegrees)
+
+    private val facingRotationDegrees : Float
+        get() = placementContext.horizontalFacing.toYRot()
 
     val offset : Vec3 get() {
         val halfSize = baseSize / 2.0

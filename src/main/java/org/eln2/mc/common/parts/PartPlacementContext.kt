@@ -7,4 +7,5 @@ import net.minecraft.world.level.Level
 data class PartPlacementContext(
     val pos : BlockPos,
     val face : Direction,
+    val horizontalFacing : Direction,
     val level : Level)
