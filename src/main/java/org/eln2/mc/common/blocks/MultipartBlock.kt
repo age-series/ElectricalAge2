@@ -6,6 +6,7 @@ import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.level.BlockGetter
 import net.minecraft.world.level.Level
+import net.minecraft.world.level.LevelReader
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.EntityBlock
 import net.minecraft.world.level.block.entity.BlockEntity
@@ -108,6 +109,21 @@ class MultipartBlock : Block(Properties.of(Material.AIR).noOcclusion()), EntityB
 
             false
         }
+    }
+
+    override fun neighborChanged(
+        pState: BlockState,
+        pLevel: Level,
+        pPos: BlockPos,
+        pBlock: Block,
+        pFromPos: BlockPos,
+        pIsMoving: Boolean
+    ) {
+        val multipart = pLevel.getBlockEntity(pPos) as? MultipartBlockEntity ?: return
+
+        multipart.onNeighborDestroyed(pFromPos)
+
+        super.neighborChanged(pState, pLevel, pPos, pBlock, pFromPos, pIsMoving)
     }
 
     //#endregion
