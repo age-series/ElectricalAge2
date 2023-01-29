@@ -24,6 +24,8 @@ import org.eln2.mc.common.parts.PartPlacementContext
 import org.eln2.mc.common.parts.PartProvider
 import org.eln2.mc.common.parts.PartRegistry
 import org.eln2.mc.extensions.BlockPosExtensions.directionTo
+import org.eln2.mc.extensions.BlockPosExtensions.minus
+import org.eln2.mc.extensions.BlockPosExtensions.plus
 import org.eln2.mc.extensions.DirectionExtensions.isVertical
 import org.eln2.mc.extensions.NbtExtensions.getBlockPos
 import org.eln2.mc.extensions.NbtExtensions.getDirection
@@ -93,6 +95,14 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
         Eln2.LOGGER.info("Part placing on $face at $pos")
 
         if(parts.containsKey(face)){
+            return false
+        }
+
+        val neighborPos = pos - face
+        val targetBlockState = level.getBlockState(neighborPos)
+
+        if(!targetBlockState.isCollisionShapeFullBlock(level, neighborPos)){
+            Eln2.LOGGER.info("Cannot place on non-full block")
             return false
         }
 
