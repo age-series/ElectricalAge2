@@ -6,6 +6,9 @@ import net.minecraft.world.phys.Vec3
 import org.eln2.mc.Eln2
 import org.eln2.mc.client.render.PartialModelPartRenderer
 import org.eln2.mc.client.render.PartialModels
+import org.eln2.mc.common.RelativeRotationDirection
+import org.eln2.mc.common.cell.CellBase
+import org.eln2.mc.common.parts.IPartCellContainer
 import org.eln2.mc.common.parts.IPartRenderer
 import org.eln2.mc.common.parts.Part
 import org.eln2.mc.common.parts.PartPlacementContext

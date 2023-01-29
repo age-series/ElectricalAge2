@@ -1,32 +1,39 @@
 package org.eln2.mc.common.cell
 
+import org.eln2.mc.common.cell.container.CellSpaceLocation
+import org.eln2.mc.common.cell.container.ICellContainer
+
 object CellConnectionManager {
     fun connect(container : ICellContainer){
-        val cells = container.getCells()
+        val cellSpaces = container.getCells()
 
-        cells.forEach { cell ->
+        cellSpaces.forEach { cellSpace ->
             // Handle updating/creating graphs using the new cell.
-            registerCell(cell, container)
+            registerCell(cellSpace, container)
 
             // Notify the cell of the new placement.
-            cell.onPlaced()
+            cellSpace.cell.onPlaced()
         }
 
         // Finally, build all the solvers
-        cells.map { it.graph }.distinct().forEach { graph ->
+        cellSpaces.map { it.cell.graph }.distinct().forEach { graph ->
             graph.build()
         }
     }
 
     fun destroy(container: ICellContainer){
+        TODO()
+        /*
         container.getCells().forEach { cell ->
             removeCell(cell, container)
             cell.onDestroyed()
-        }
+        }*/
     }
 
     private fun removeCell(cell : CellBase, container: ICellContainer){
-        val manager = container.manager
+        TODO()
+
+        /*val manager = container.manager
         val neighborCells = container.getNeighbors(cell)
 
         val graph = cell.graph
@@ -36,14 +43,14 @@ object CellConnectionManager {
             neighbor.connections.remove(cell)
         }
 
-        /*
+        *//*
         * Cases:
         *   1. We don't have any neighbors. We can destroy the circuit.
         *   2. We have a single neighbor. We can remove ourselves from the circuit.
         *   3. We have multiple neighbors, and we are not a cut vertex. We can remove ourselves from the circuit.
         *   4. We have multiple neighbors, and we are a cut vertex. We need to remove ourselves, find the new disjoint graphs,
         *        and rebuild the circuits.
-        * */
+        * *//*
 
         if(neighborCells.isEmpty()){
             // Case 1. Destroy this circuit.
@@ -68,12 +75,13 @@ object CellConnectionManager {
 
             graph.destroy()
             rebuildTopologies(neighborCells, cell, manager)
-        }
+        }*/
     }
 
-    private fun registerCell(cell : CellBase, container: ICellContainer){
+    private fun registerCell(cellSpace : CellSpaceLocation, container: ICellContainer){
         val manager = container.manager
-        val neighborCells = container.getNeighbors(cell)
+        val cell = cellSpace.cell
+        val neighborCells = container.queryNeighbors(cellSpace)
 
         /*
         * Cases:
