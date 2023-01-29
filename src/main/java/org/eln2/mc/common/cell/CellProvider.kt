@@ -1,10 +1,13 @@
 package org.eln2.mc.common.cell
 
 import net.minecraft.core.BlockPos
+import net.minecraft.resources.ResourceLocation
 import net.minecraftforge.registries.ForgeRegistryEntry
 import org.eln2.mc.common.RelativeRotationDirection
 
 abstract class CellProvider : ForgeRegistryEntry<CellProvider>() {
+    val id : ResourceLocation get() = this.registryName ?: error("ID not available in CellProvider")
+
     val connectableDirections = HashSet<RelativeRotationDirection>()
 
     /**

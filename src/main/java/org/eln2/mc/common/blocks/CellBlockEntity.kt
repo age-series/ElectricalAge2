@@ -11,10 +11,16 @@ import net.minecraft.world.level.block.HorizontalDirectionalBlock
 import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.state.BlockState
 import org.eln2.mc.Eln2
+import org.eln2.mc.common.DirectionMask
 import org.eln2.mc.common.PlacementRotation
 import org.eln2.mc.common.RelativeRotationDirection
 import org.eln2.mc.common.cell.*
+import org.eln2.mc.common.cell.container.CellSpaceLocation
+import org.eln2.mc.common.cell.container.CellSpaceQuery
+import org.eln2.mc.common.cell.container.ICellContainer
 import org.eln2.mc.extensions.BlockEntityExtensions.getNeighborEntity
+import org.eln2.mc.extensions.BlockPosExtensions.plus
+import org.eln2.mc.extensions.DirectionExtensions.isVertical
 import java.util.*
 import kotlin.collections.ArrayList
 
@@ -87,24 +93,6 @@ class CellBlockEntity(var pos : BlockPos, var state: BlockState)
         val localDirection = getLocalDirection(dir)
 
         return cellProvider.canConnectFrom(localDirection)
-    }
-
-    private fun getNeighborCells() : ArrayList<CellBase>{
-        val results = ArrayList<CellBase>()
-
-        Direction.values().forEach { direction ->
-            val container = this.getNeighborEntity<ICellContainer>(direction)
-
-            if(container != null){
-                val cell = container.getCell(direction.opposite)
-
-                if(cell != null){
-                    results.add(cell)
-                }
-            }
-        }
-
-        return results
     }
 
     //#region Saving and Loading
@@ -189,25 +177,47 @@ class CellBlockEntity(var pos : BlockPos, var state: BlockState)
           }
     }
 
-    override fun getCells(): ArrayList<CellBase> {
-        return arrayListOf(cell!!)
+    private fun getCellSpace() : CellSpaceLocation{
+        return CellSpaceLocation(cell!!, Direction.UP)
     }
 
-    override fun getCell(direction: Direction): CellBase? {
-        assert(cell != null)
+    override fun getCells(): ArrayList<CellSpaceLocation> {
+        return arrayListOf(getCellSpace())
+    }
 
-        return if(canConnectFrom(direction)){
-            cell!!
+    override fun query(query: CellSpaceQuery): CellSpaceLocation? {
+        return if(canConnectFrom(query.connectionFace)){
+            getCellSpace()
         } else{
             null
         }
     }
 
-    override fun getNeighbors(cell: CellBase): ArrayList<CellBase> {
-        assert(cell == this.cell)
+    override fun queryNeighbors(location: CellSpaceLocation): ArrayList<CellBase> {
+        val results = ArrayList<CellBase>()
 
-        return getNeighborCells()
+        Direction.values()
+            .filter { !it.isVertical() }
+            .forEach { direction ->
+                val local = getLocalDirection(direction)
+
+                if(cellProvider.canConnectFrom(local)){
+                    val remoteContainer = level!!
+                        .getBlockEntity(pos + direction)
+                        as? ICellContainer
+                        ?: return@forEach
+
+                    val queryResult = remoteContainer.query(CellSpaceQuery(direction.opposite, Direction.UP))
+
+                    if(queryResult != null){
+                        results.add(queryResult.cell)
+                    }
+                }
+            }
+
+        return results
     }
+
 
     override val manager: CellGraphManager
         get() = CellGraphManager.getFor(serverLevel)

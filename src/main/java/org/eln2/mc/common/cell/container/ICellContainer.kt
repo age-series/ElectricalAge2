@@ -1,6 +1,5 @@
-package org.eln2.mc.common.cell
+package org.eln2.mc.common.cell.container
 
-import net.minecraft.core.Direction
 import org.eln2.mc.common.cell.CellBase
 import org.eln2.mc.common.cell.CellGraphManager
 
@@ -23,19 +22,11 @@ interface ICellContainer {
     /**
      * @return A list of cells in this container.
      * */
-    fun getCells() : ArrayList<CellBase>
+    fun getCells() : ArrayList<CellSpaceLocation>
 
-    /**
-     * @param direction The side of the container.
-     * @return The cell on that face of the container, or null.
-     * */
-    fun getCell(direction : Direction) : CellBase?
+    fun query(query: CellSpaceQuery) : CellSpaceLocation?
 
-    /**
-     * @param cell The cell to scan for. It must be a cell from within this container.
-     * @return The neighbors for the specified cell.
-     * */
-    fun getNeighbors(cell : CellBase) : ArrayList<CellBase>
+    fun queryNeighbors(location : CellSpaceLocation) : ArrayList<CellBase>
 
     /**
      * The manager responsible for the cells of this container (per dimension)
