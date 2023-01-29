@@ -2,17 +2,22 @@ package org.eln2.mc.client.render.parts
 
 import com.jozufozu.flywheel.api.material.Material
 import com.jozufozu.flywheel.core.BasicModelSupplier
+import com.jozufozu.flywheel.core.PartialModel
 import com.jozufozu.flywheel.core.hardcoded.ModelPart
 import com.jozufozu.flywheel.core.material.MaterialShaders
+import com.jozufozu.flywheel.core.model.BlockMesh
+import com.jozufozu.flywheel.core.model.Mesh
 import com.jozufozu.flywheel.core.structs.StructTypes
 import com.jozufozu.flywheel.core.structs.model.ModelData
 import com.jozufozu.flywheel.core.structs.oriented.OrientedData
 import com.jozufozu.flywheel.util.transform.TransformStack
 import com.mojang.blaze3d.vertex.PoseStack
+import net.minecraft.client.renderer.RenderType
 import net.minecraft.client.renderer.Sheets
 import net.minecraft.world.phys.Vec3
 import org.eln2.mc.Eln2
 import org.eln2.mc.client.flywheel.instances.MultipartBlockEntityInstance
+import org.eln2.mc.client.render.PartialModels
 import org.eln2.mc.common.parts.IPartRenderer
 import org.eln2.mc.common.parts.part.MyPart
 import org.eln2.mc.extensions.Vec3Extensions.div
@@ -23,18 +28,7 @@ import org.eln2.mc.extensions.Vec3Extensions.unaryMinus
 
 class MyPartRenderer(val part : MyPart) : IPartRenderer {
     companion object{
-        val modelSupplier = BasicModelSupplier({
-            ModelPart.builder("my_model", 64, 64)
-                .cuboid()
-                    .size(16f, 16f, 16f)
-                .endCuboid()
-                .build()
-        },
-            Material(
-                Sheets.solidBlockSheet(),
-                MaterialShaders.SHADED_VERTEX,
-                MaterialShaders.DEFAULT_FRAGMENT)
-        )
+        val modelSupplier = BasicModelSupplier { BlockMesh(PartialModels.MY_MODEL) }
     }
 
     private lateinit var multipartInstance : MultipartBlockEntityInstance
