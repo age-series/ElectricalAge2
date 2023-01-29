@@ -26,10 +26,13 @@ class MultipartBlock : Block(Properties.of(Material.AIR).noOcclusion()), EntityB
     private val epsilon = 0.00001
     private val emptyBox = box(0.0, 0.0, 0.0, epsilon, epsilon, epsilon);
 
+    //#region Block Methods
+
     override fun newBlockEntity(pPos: BlockPos, pState: BlockState): BlockEntity {
         return MultipartBlockEntity(pPos, pState)
     }
 
+    @Deprecated("Deprecated in Java", ReplaceWith("true"))
     override fun skipRendering(pState: BlockState, pAdjacentBlockState: BlockState, pDirection: Direction): Boolean {
         return true
     }
@@ -41,7 +44,7 @@ class MultipartBlock : Block(Properties.of(Material.AIR).noOcclusion()), EntityB
         pPos: BlockPos,
         pContext: CollisionContext
     ): VoxelShape {
-        return getPartShape(pLevel, pPos, pContext)
+        return getMultipartShape(pLevel, pPos, pContext)
     }
 
     @Deprecated("Deprecated in Java")
@@ -51,7 +54,6 @@ class MultipartBlock : Block(Properties.of(Material.AIR).noOcclusion()), EntityB
         pPos: BlockPos,
         pContext: CollisionContext
     ): VoxelShape {
-
         return getPartShape(pLevel, pPos, pContext)
     }
 
@@ -108,24 +110,32 @@ class MultipartBlock : Block(Properties.of(Material.AIR).noOcclusion()), EntityB
         }
     }
 
-    private fun getPartShape(level : BlockGetter, pos: BlockPos, context: CollisionContext) : VoxelShape{
-        if(context !is EntityCollisionContext){
-            Eln2.LOGGER.error("Collision context was not an entity collision context at $pos")
-            return emptyBox
-        }
+    //#endregion
 
-        if(context.entity !is LivingEntity){
-            return emptyBox
-        }
+    private fun getMultipartShape(level : BlockGetter, pos: BlockPos, context: CollisionContext) : VoxelShape{
+        val multipart = level.getBlockEntity(pos) as? MultipartBlockEntity ?: return emptyBox
 
-        return getPartShape(level, pos, context.entity!! as LivingEntity)
+        return multipart.collisionShape
     }
 
-    private fun getPartShape(level : BlockGetter, pos: BlockPos, entity : LivingEntity) : VoxelShape{
-        val pickedPart = pickPart(level, pos, entity)
+    private fun getPartShape(level : BlockGetter, pos: BlockPos, context: CollisionContext) : VoxelShape{
+        val pickedPart = pickPart(level, pos, context)
             ?: return emptyBox
 
         return pickedPart.shape
+    }
+
+    private fun pickPart(level : BlockGetter, pos : BlockPos, context: CollisionContext) : Part?{
+        if(context !is EntityCollisionContext){
+            Eln2.LOGGER.error("Collision context was not an entity collision context at $pos")
+            return null
+        }
+
+        if(context.entity !is LivingEntity){
+            return null
+        }
+
+        return pickPart(level, pos, (context.entity as LivingEntity))
     }
 
     private fun pickPart(level : BlockGetter, pos : BlockPos, entity : LivingEntity) : Part?{

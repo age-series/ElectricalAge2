@@ -15,6 +15,9 @@ import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.state.BlockState
+import net.minecraft.world.phys.shapes.BooleanOp
+import net.minecraft.world.phys.shapes.Shapes
+import net.minecraft.world.phys.shapes.VoxelShape
 import org.eln2.mc.Eln2
 import org.eln2.mc.common.parts.Part
 import org.eln2.mc.common.parts.PartPlacementContext
@@ -28,9 +31,7 @@ import org.eln2.mc.extensions.NbtExtensions.putBlockPos
 import org.eln2.mc.extensions.NbtExtensions.setDirection
 import org.eln2.mc.extensions.NbtExtensions.setResourceLocation
 import org.eln2.mc.utility.AABBUtilities
-import java.util.concurrent.BlockingQueue
 import java.util.concurrent.ConcurrentLinkedQueue
-import java.util.concurrent.locks.ReentrantReadWriteLock
 
 /**
  * Multipart entities
@@ -58,7 +59,16 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
     val clientNewPartQueue = ConcurrentLinkedQueue<Part>()
     val clientRemovedQueue = ConcurrentLinkedQueue<Part>()
 
-    private fun invalidate(){
+
+    var collisionShape : VoxelShape
+        get
+        private set
+
+    init {
+        collisionShape = Shapes.empty()
+    }
+
+    private fun invalidateData(){
         setChanged()
         level!!.sendBlockUpdated(blockPos, state, state, Block.UPDATE_CLIENTS)
     }
@@ -99,9 +109,11 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
 
         newParts.add(part)
 
+        joinCollider(part)
+
         Eln2.LOGGER.info("Part placement completed.")
 
-        invalidate()
+        invalidateData()
 
         return true
     }
@@ -122,9 +134,23 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
 
         part.onDestroyed()
 
-        invalidate()
+        invalidateData()
 
         return parts.size == 0
+    }
+
+    private fun joinCollider(part : Part){
+        collisionShape = Shapes.join(collisionShape, part.shape, BooleanOp.OR)
+    }
+
+    private fun rebuildCollider(){
+        collisionShape = Shapes.empty()
+
+        parts.values.map { it.shape }.forEach {
+            collisionShape = Shapes.joinUnoptimized(collisionShape, it, BooleanOp.OR)
+        }
+
+        collisionShape.optimize()
     }
 
     //#region Client Chunk Synchronization
@@ -157,6 +183,8 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
         parts.values.forEach { part ->
             clientAddPart(part)
         }
+
+        rebuildCollider()
     }
 
     //#endregion
@@ -223,6 +251,7 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
             }
 
             clientAddPart(part)
+            joinCollider(part)
         }
 
         removedPartsTag?.forEach { faceTag ->
@@ -343,6 +372,8 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
 
                 Eln2.LOGGER.info("Loaded $part")
             }
+
+            rebuildCollider()
 
             Eln2.LOGGER.info("Deserialized all parts")
         }
