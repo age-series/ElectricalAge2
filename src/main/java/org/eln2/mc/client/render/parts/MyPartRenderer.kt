@@ -29,7 +29,7 @@ class MyPartRenderer(val part : MyPart) : IPartRenderer {
             .createInstance()
             .loadIdentity()
             .translate(part.worldBoundingBox.center)
-            .multiply(part.face.rotation)
+            .multiply(part.placementContext.face.rotation)
             .translate(-part.baseSize / 2.0)
             .scale(part.baseSize.x.toFloat(), part.baseSize.y.toFloat(), part.baseSize.z.toFloat())
     }

@@ -39,5 +39,5 @@ object PartRegistry {
         return partRegistry.get().getValue(id)
     }
 
-    val MY_PART = registerPart("my_part", MyPartProvider { pos, face, id, level -> MyPart(pos, face, id, level)} )
+    val MY_PART = registerPart("my_part", MyPartProvider { id, context -> MyPart(id, context)} )
 }

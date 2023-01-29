@@ -21,7 +21,7 @@ import java.util.*
  * but up to 6 can exist in the same block space.
  * They are placed on the inner faces of a multipart container block space.
  * */
-abstract class Part(val pos : BlockPos, val face : Direction, val id : ResourceLocation, val level : Level) {
+abstract class Part(val id : ResourceLocation, val placementContext: PartPlacementContext) {
     /**
      * This is the size that will be used to create the bounding box for this part.
      * It should not exceed the block size.
@@ -39,7 +39,7 @@ abstract class Part(val pos : BlockPos, val face : Direction, val id : ResourceL
             // TODO: document this, it is pretty involved
             return AABBUtilities
                 .fromSize(baseSize)
-                .transformed(face.rotation)
+                .transformed(placementContext.face.rotation)
                 .move(offset)
         }
 
@@ -49,10 +49,10 @@ abstract class Part(val pos : BlockPos, val face : Direction, val id : ResourceL
         val positiveOffset = halfSize.y
         val negativeOffset = 1 - halfSize.y
 
-        return when(val axis = face.axis){
-            Direction.Axis.X -> Vec3((if(face.axisDirection == AxisDirection.POSITIVE) positiveOffset else negativeOffset), 0.5, 0.5)
-            Direction.Axis.Y -> Vec3(0.5, (if(face.axisDirection == AxisDirection.POSITIVE) positiveOffset else negativeOffset), 0.5)
-            Direction.Axis.Z -> Vec3(0.5, 0.5, (if(face.axisDirection == AxisDirection.POSITIVE) positiveOffset else negativeOffset))
+        return when(val axis = placementContext.face.axis){
+            Direction.Axis.X -> Vec3((if(placementContext.face.axisDirection == AxisDirection.POSITIVE) positiveOffset else negativeOffset), 0.5, 0.5)
+            Direction.Axis.Y -> Vec3(0.5, (if(placementContext.face.axisDirection == AxisDirection.POSITIVE) positiveOffset else negativeOffset), 0.5)
+            Direction.Axis.Z -> Vec3(0.5, 0.5, (if(placementContext.face.axisDirection == AxisDirection.POSITIVE) positiveOffset else negativeOffset))
             else -> error("Invalid axis $axis")
         }
     }
@@ -61,7 +61,7 @@ abstract class Part(val pos : BlockPos, val face : Direction, val id : ResourceL
      * This is the bounding box of the part, in its block position.
      * */
     val worldBoundingBox : AABB
-        get() = modelBoundingBox.move(pos)
+        get() = modelBoundingBox.move(placementContext.pos)
 
     open val shape : VoxelShape get() {
         if(cachedShape == null){
@@ -89,7 +89,7 @@ abstract class Part(val pos : BlockPos, val face : Direction, val id : ResourceL
 
     val renderer : IPartRenderer
         get(){
-            if(!level.isClientSide){
+            if(!placementContext.level.isClientSide){
                 error("Tried to get renderer on non-client side!")
             }
 
