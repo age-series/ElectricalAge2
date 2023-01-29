@@ -49,12 +49,20 @@ class MultipartBlockEntityInstance(
     }
 
     private fun setupNewParts(){
+        var hasNewParts = false
+
         while (true){
             val part = blockEntity.clientNewPartQueue.poll() ?: break
 
             parts.add(part)
             part.renderer.setupRendering(this)
             part.renderer.relight()
+
+            hasNewParts = true
+        }
+
+        if(hasNewParts){
+            processRelightQueue()
         }
     }
 

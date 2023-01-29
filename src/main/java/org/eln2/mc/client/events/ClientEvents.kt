@@ -30,6 +30,7 @@ object ClientEvents {
             MenuScreens.register(RESISTOR_CELL_CONTAINER.get(), ::ResistorCellScreen)
             MenuScreens.register(CAPACITOR_CELL_CONTAINER.get(), ::CapacitorCellScreen)
             MenuScreens.register(INDUCTOR_CELL_CONTAINER.get(), ::InductorCellScreen)
+
             FlywheelRegistry.initialize()
         }
     }
