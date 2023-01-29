@@ -1,22 +1,19 @@
-package org.eln2.mc.client.render.parts
+package org.eln2.mc.client.render
 
 import com.jozufozu.flywheel.core.BasicModelSupplier
+import com.jozufozu.flywheel.core.PartialModel
 import com.jozufozu.flywheel.core.model.BlockMesh
 import com.jozufozu.flywheel.core.structs.FlatLit
 import com.jozufozu.flywheel.core.structs.StructTypes
 import com.jozufozu.flywheel.core.structs.model.ModelData
-import net.minecraft.core.Direction
 import org.eln2.mc.client.flywheel.instances.MultipartBlockEntityInstance
-import org.eln2.mc.client.render.PartialModels
 import org.eln2.mc.common.parts.IPartRenderer
-import org.eln2.mc.common.parts.part.MyPart
+import org.eln2.mc.common.parts.Part
 import org.eln2.mc.extensions.Vec3Extensions.div
 import org.eln2.mc.extensions.Vec3Extensions.unaryMinus
 
-class MyPartRenderer(val part : MyPart) : IPartRenderer {
-    companion object{
-        val modelSupplier = BasicModelSupplier { BlockMesh(PartialModels.MY_MODEL) }
-    }
+open class PartialModelPartRenderer(val part : Part, val model : PartialModel) : IPartRenderer {
+    private val modelSupplier = BasicModelSupplier { BlockMesh(model) }
 
     private lateinit var multipartInstance : MultipartBlockEntityInstance
     private lateinit var modelInstance : ModelData
@@ -36,8 +33,7 @@ class MyPartRenderer(val part : MyPart) : IPartRenderer {
             .scale(part.baseSize.x.toFloat(), part.baseSize.y.toFloat(), part.baseSize.z.toFloat())
     }
 
-    override fun beginFrame() {
-    }
+    override fun beginFrame(){}
 
     override fun relightModels(): List<FlatLit<*>> {
         return listOf(modelInstance)

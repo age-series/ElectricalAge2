@@ -6,7 +6,7 @@ import net.minecraftforge.registries.*
 import org.eln2.mc.Eln2
 import org.eln2.mc.common.items.PartItem
 import org.eln2.mc.common.parts.part.MyPart
-import org.eln2.mc.common.parts.providers.MyPartProvider
+import org.eln2.mc.common.parts.providers.BasicPartProvider
 import java.util.function.Supplier
 
 object PartRegistry {
@@ -29,9 +29,10 @@ object PartRegistry {
         val item : RegistryObject<PartItem>
     )
 
-    private fun registerPart(name : String, provider : PartProvider) : PartRegistryItem {
+    private fun part(name : String, provider : PartProvider) : PartRegistryItem {
         val part = PART_REGISTRY.register(name) { provider }
         val item = PART_ITEM_REGISTRY.register(name) { PartItem(provider) }
+
         return PartRegistryItem(name, part, item)
     }
 
@@ -39,5 +40,5 @@ object PartRegistry {
         return partRegistry.get().getValue(id)
     }
 
-    val MY_PART = registerPart("my_part", MyPartProvider { id, context -> MyPart(id, context)} )
+    val MY_PART = part("my_part", BasicPartProvider(::MyPart))
 }
