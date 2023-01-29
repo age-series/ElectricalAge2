@@ -15,8 +15,15 @@ object BlockPosExtensions {
         return this + direction.normal
     }
 
+    operator fun BlockPos.minus(displacement: Vec3i) : BlockPos{
+        return this.subtract(displacement)
+    }
+
     operator fun BlockPos.minus(other: BlockPos) : BlockPos{
         return BlockPos(this.x - other.x, this.y - other.y, this.z - other.z)
+    }
+    operator fun BlockPos.minus(direction: Direction) : BlockPos{
+        return this - direction.normal
     }
 
     fun BlockPos.toVec3() : Vec3{
