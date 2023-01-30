@@ -16,7 +16,15 @@ abstract class CellProvider : ForgeRegistryEntry<CellProvider>() {
      * @return Unique instance of the cell. If the cell is being created by the block, the setPlaced method will be called.
      * @see CellBase.onPlaced
     */
-    abstract fun create(pos : BlockPos) : CellBase
+    protected abstract fun createInstance(pos : BlockPos) : CellBase
+
+    fun create(pos : BlockPos) : CellBase{
+        val instance = createInstance(pos)
+
+        instance.id = id
+
+        return instance
+    }
 
     /**
      * Used to check if a cell is valid for connection.

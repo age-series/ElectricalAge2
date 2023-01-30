@@ -29,6 +29,8 @@ class CellBlockEntity(var pos : BlockPos, var state: BlockState)
     ICellContainer {
     // Initialized when placed or loading
 
+    open val cellFace = Direction.UP
+
     lateinit var graphManager : CellGraphManager
     lateinit var cellProvider : CellProvider
 
@@ -72,7 +74,7 @@ class CellBlockEntity(var pos : BlockPos, var state: BlockState)
         cell!!.entity = this
         cell!!.id = cellProvider.registryName!!
 
-        CellConnectionManager.connect(this)
+        CellConnectionManager.connect(this, getCellSpace())
 
         setChanged()
     }
@@ -86,7 +88,7 @@ class CellBlockEntity(var pos : BlockPos, var state: BlockState)
             return
         }
 
-        CellConnectionManager.destroy(this)
+        CellConnectionManager.destroy(getCellSpace(), this)
     }
 
     private fun canConnectFrom(dir : Direction) : Boolean {
@@ -178,7 +180,7 @@ class CellBlockEntity(var pos : BlockPos, var state: BlockState)
     }
 
     private fun getCellSpace() : CellSpaceLocation{
-        return CellSpaceLocation(cell!!, Direction.UP)
+        return CellSpaceLocation(cell!!, cellFace)
     }
 
     override fun getCells(): ArrayList<CellSpaceLocation> {
@@ -216,6 +218,14 @@ class CellBlockEntity(var pos : BlockPos, var state: BlockState)
             }
 
         return results
+    }
+
+    override fun canConnectFrom(location: CellSpaceLocation, direction: Direction): Boolean {
+        assert(location.cell == cell!!)
+
+        val local = getLocalDirection(direction)
+
+        return cellProvider.canConnectFrom(local)
     }
 
 

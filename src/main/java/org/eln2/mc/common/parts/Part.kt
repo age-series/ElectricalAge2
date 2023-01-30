@@ -13,6 +13,8 @@ import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
 import net.minecraft.world.phys.shapes.Shapes
 import net.minecraft.world.phys.shapes.VoxelShape
+import org.eln2.mc.common.PlacementRotation
+import org.eln2.mc.common.RelativeRotationDirection
 import org.eln2.mc.extensions.AABBExtensions.transformed
 import org.eln2.mc.extensions.Vec3Extensions.div
 import org.eln2.mc.utility.AABBUtilities
@@ -31,6 +33,10 @@ abstract class Part(val id : ResourceLocation, val placementContext: PartPlaceme
     abstract val baseSize : Vec3
 
     private var cachedShape : VoxelShape? = null
+
+    fun getRelative(global : Direction) : RelativeRotationDirection{
+        return PlacementRotation(placementContext.horizontalFacing).getRelativeFromAbsolute(global)
+    }
 
     /**
      * This is the bounding box of the part, rotated and placed

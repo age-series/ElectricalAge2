@@ -6,7 +6,7 @@ import org.eln2.mc.common.cell.CellBase
 import org.eln2.mc.common.cell.CellProvider
 
 class NoPinCellProvider(val factory : ((pos : BlockPos) -> CellBase)) : CellProvider() {
-    override fun create(pos: BlockPos): CellBase {
+    override fun createInstance(pos: BlockPos): CellBase {
         return factory(pos)
     }
 

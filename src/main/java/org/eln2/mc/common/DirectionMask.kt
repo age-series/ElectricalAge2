@@ -50,11 +50,17 @@ data class DirectionMask(val mask : Int){
         return sb.toString()
     }
 
-    fun toList(results : MutableList<Direction>) {
+    inline fun forEach(action: (Direction) -> Unit) {
         Direction.values().forEach { direction ->
             if(hasFlag(direction)){
-                results.add(direction)
+                action(direction)
             }
+        }
+    }
+
+    fun toList(results : MutableList<Direction>) {
+        this.forEach {
+            results.add(it)
         }
     }
 
@@ -101,6 +107,26 @@ data class DirectionMask(val mask : Int){
             }
 
             return DirectionMask(result)
+        }
+
+        private fun computePerpendicular(direction : Direction) : DirectionMask{
+            var result = 0;
+
+            Direction.values()
+                .filter { it != direction && it != direction.opposite }
+                .forEach { perpendicular ->
+                    result = result or getDirectionBit(perpendicular)
+                }
+
+            return DirectionMask(result)
+        }
+
+        private val perpendiculars = Direction.values().associateWith {
+            computePerpendicular(it)
+        }
+
+        fun perpendicular(direction: Direction) : DirectionMask{
+            return perpendiculars[direction]!!
         }
     }
 }
