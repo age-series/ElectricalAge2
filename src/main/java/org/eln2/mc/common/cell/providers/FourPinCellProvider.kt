@@ -15,7 +15,7 @@ class FourPinCellProvider(val factory : ((pos : BlockPos) -> CellBase)) : CellPr
         ))
     }
 
-    override fun create(pos: BlockPos): CellBase {
+    override fun createInstance(pos: BlockPos): CellBase {
         return factory(pos)
     }
 

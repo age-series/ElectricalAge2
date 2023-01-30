@@ -1,19 +1,17 @@
 package org.eln2.mc.common.cell
 
+import org.eln2.mc.Eln2
 import org.eln2.mc.common.cell.container.CellSpaceLocation
 import org.eln2.mc.common.cell.container.ICellContainer
 
 object CellConnectionManager {
-    fun connect(container : ICellContainer){
+    fun connect(container : ICellContainer, cellSpace : CellSpaceLocation){
         val cellSpaces = container.getCells()
 
-        cellSpaces.forEach { cellSpace ->
-            // Handle updating/creating graphs using the new cell.
-            registerCell(cellSpace, container)
+        registerCell(cellSpace, container)
 
-            // Notify the cell of the new placement.
-            cellSpace.cell.onPlaced()
-        }
+        // Notify the cell of the new placement.
+        cellSpace.cell.onPlaced()
 
         // Finally, build all the solvers
         cellSpaces.map { it.cell.graph }.distinct().forEach { graph ->
@@ -21,20 +19,15 @@ object CellConnectionManager {
         }
     }
 
-    fun destroy(container: ICellContainer){
-        TODO()
-        /*
-        container.getCells().forEach { cell ->
-            removeCell(cell, container)
-            cell.onDestroyed()
-        }*/
+    fun destroy(cellSpace: CellSpaceLocation, container: ICellContainer){
+        removeCell(cellSpace, container)
+        cellSpace.cell.onDestroyed()
     }
 
-    private fun removeCell(cell : CellBase, container: ICellContainer){
-        TODO()
-
-        /*val manager = container.manager
-        val neighborCells = container.getNeighbors(cell)
+    private fun removeCell(cellSpace : CellSpaceLocation, container: ICellContainer){
+        val cell = cellSpace.cell
+        val manager = container.manager
+        val neighborCells = container.queryNeighbors(cellSpace)
 
         val graph = cell.graph
 
@@ -43,14 +36,13 @@ object CellConnectionManager {
             neighbor.connections.remove(cell)
         }
 
-        *//*
-        * Cases:
+        /* Cases:
         *   1. We don't have any neighbors. We can destroy the circuit.
         *   2. We have a single neighbor. We can remove ourselves from the circuit.
         *   3. We have multiple neighbors, and we are not a cut vertex. We can remove ourselves from the circuit.
         *   4. We have multiple neighbors, and we are a cut vertex. We need to remove ourselves, find the new disjoint graphs,
         *        and rebuild the circuits.
-        * *//*
+        */
 
         if(neighborCells.isEmpty()){
             // Case 1. Destroy this circuit.
@@ -69,13 +61,15 @@ object CellConnectionManager {
             val neighbor = neighborCells[0]
 
             neighbor.update(connectionsChanged = true, graphChanged = false)
+
+            // todo: do we need to rebuild the solver?
         }
         else{
             // Case 3 and 4. Implement a more sophisticated algorithm, if necessary.
 
             graph.destroy()
             rebuildTopologies(neighborCells, cell, manager)
-        }*/
+        }
     }
 
     private fun registerCell(cellSpace : CellSpaceLocation, container: ICellContainer){
@@ -97,6 +91,7 @@ object CellConnectionManager {
         cell.connections = neighborCells
 
         neighborCells.forEach { neighbor ->
+            Eln2.LOGGER.info("Neighbor $neighbor")
             neighbor.connections.add(cell)
         }
 
@@ -118,6 +113,8 @@ object CellConnectionManager {
             neighborCells.forEach { neighborCell ->
                 neighborCell.update(connectionsChanged = true, graphChanged = false)
             }
+
+            // todo: do we need to rebuild the solver?
         }
         else{
             // Case 4. We need to create a new circuit, with all cells and this one.

@@ -14,7 +14,7 @@ class TwoPinCellProvider(val factory : ((pos : BlockPos) -> CellBase)) : CellPro
         ))
     }
 
-    override fun create(pos: BlockPos): CellBase {
+    override fun createInstance(pos: BlockPos): CellBase {
         return factory(pos)
     }
 

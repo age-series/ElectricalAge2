@@ -8,12 +8,10 @@ import org.eln2.mc.client.render.PartialModelPartRenderer
 import org.eln2.mc.client.render.PartialModels
 import org.eln2.mc.common.RelativeRotationDirection
 import org.eln2.mc.common.cell.CellBase
-import org.eln2.mc.common.parts.IPartCellContainer
-import org.eln2.mc.common.parts.IPartRenderer
-import org.eln2.mc.common.parts.Part
-import org.eln2.mc.common.parts.PartPlacementContext
+import org.eln2.mc.common.cell.CellRegistry
+import org.eln2.mc.common.parts.*
 
-class MyPart(id : ResourceLocation, context : PartPlacementContext) : Part(id, context) {
+class MyPart(id : ResourceLocation, context : PartPlacementContext) : CellPart(id, context, CellRegistry.WIRE_CELL.get()) {
     override val baseSize: Vec3
         get() = Vec3(0.5, 0.25, 0.5)
 
@@ -24,4 +22,9 @@ class MyPart(id : ResourceLocation, context : PartPlacementContext) : Part(id, c
     override fun createRenderer(): IPartRenderer {
         return PartialModelPartRenderer(this, PartialModels.MY_MODEL)
     }
+
+    override val allowPlanarConnections = true
+    override val allowInnerConnections = true
+    override val allowWrappedConnections: Boolean
+        get() = TODO("Not yet implemented")
 }
