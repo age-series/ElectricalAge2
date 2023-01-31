@@ -54,11 +54,7 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
     private val parts = HashMap<Direction, Part>()
 
     // Used for streaming to clients:
-
-    private val newParts = ArrayList<Part>()
-    // We should not store references to destroyed parts.
-    // All we need for removal is the face.
-    private val removedParts = ArrayList<Direction>()
+    private val changedParts = ArrayList<PartUpdate>()
 
     // used for disk loading
     private var savedTag : CompoundTag? = null
@@ -121,8 +117,7 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
 
         parts[face] = part
 
-        newParts.add(part)
-
+        changedParts.add(PartUpdate(part, PartUpdateType.Add))
         joinCollider(part)
 
         if(part is IPartCellContainer){
@@ -161,7 +156,7 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
         }
 
         parts.remove(part.placementContext.face)
-        removedParts.add(part.placementContext.face)
+        changedParts.add(PartUpdate(part, PartUpdateType.Remove))
 
         part.onDestroyed()
         invalidateData()
@@ -248,7 +243,7 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
     // Here, we send the freshly placed parts to clients that are already observing this multipart.
 
     override fun getUpdatePacket(): Packet<ClientGamePacketListener>? {
-        if(newParts.size == 0 && removedParts.size == 0){
+        if(changedParts.size == 0){
             Eln2.LOGGER.error("getUpdatePacket changed list is empty at $pos")
             return null
         }
@@ -256,22 +251,32 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
         val tag = CompoundTag()
 
         val newPartsTag = ListTag()
-        newParts.forEach { part ->
-            newPartsTag.add(savePartToTag(part))
-        }
-
-        newParts.clear()
-
         val removedPartsTag = ListTag()
-        removedParts.forEach { face ->
-            val faceTag = CompoundTag()
-            faceTag.setDirection("Face", face)
-            removedPartsTag.add(faceTag)
-        }
-        removedParts.clear()
 
-        tag.put("NewParts", newPartsTag)
-        tag.put("RemovedParts", removedPartsTag)
+        changedParts.forEach { update ->
+            val part = update.part
+
+            when(update.type){
+                PartUpdateType.Add -> {
+                    newPartsTag.add(savePartToTag(part))
+                }
+                PartUpdateType.Remove -> {
+                    val faceTag = CompoundTag()
+                    faceTag.setDirection("Face", part.placementContext.face)
+                    removedPartsTag.add(faceTag)
+                }
+            }
+        }
+
+        changedParts.clear()
+
+        if(newPartsTag.size > 0){
+            tag.put("NewParts", newPartsTag)
+        }
+
+        if(removedPartsTag.size > 0){
+            tag.put("RemovedParts", removedPartsTag)
+        }
 
         return ClientboundBlockEntityDataPacket.create(this) { tag };
     }
