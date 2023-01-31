@@ -120,6 +120,8 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
         changedParts.add(PartUpdate(part, PartUpdateType.Add))
         joinCollider(part)
 
+        part.onPlaced()
+
         if(part is IPartCellContainer){
             Eln2.LOGGER.info("Connecting part.")
 
@@ -362,6 +364,10 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
         if(this.savedTag != null){
             Eln2.LOGGER.info("Completing multipart disk load at $pos")
             loadPartsFromTag(savedTag!!)
+
+            parts.values.forEach { part ->
+                part.onLoaded()
+            }
 
             // GC reference tracking
             savedTag = null
