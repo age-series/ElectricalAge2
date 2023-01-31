@@ -91,6 +91,19 @@ abstract class Part(val id : ResourceLocation, val placementContext: PartPlaceme
 
     open fun useCustomTag(tag : CompoundTag){}
 
+    /**
+     *  Called on the server when the part is placed.
+     * */
+    open fun onPlaced(){}
+
+    /**
+     * Called on the server when the part finished loading from disk
+     * */
+    open fun onLoaded(){}
+
+    /**
+     * Called when the part is destroyed.
+     * */
     open fun onDestroyed(){}
 
     //#region Client
