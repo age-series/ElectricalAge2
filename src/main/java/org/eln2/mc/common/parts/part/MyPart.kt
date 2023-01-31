@@ -53,6 +53,5 @@ class MyPart(id : ResourceLocation, context : PartPlacementContext) : CellPart(i
 
     override val allowPlanarConnections = true
     override val allowInnerConnections = true
-    override val allowWrappedConnections: Boolean
-        get() = TODO("Not yet implemented")
+    override val allowWrappedConnections = true
 }
