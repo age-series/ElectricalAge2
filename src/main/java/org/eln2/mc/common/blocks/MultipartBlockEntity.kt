@@ -64,8 +64,7 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
     private var savedTag : CompoundTag? = null
 
     // Used for rendering:
-    val clientNewPartQueue = ConcurrentLinkedQueue<Part>()
-    val clientRemovedQueue = ConcurrentLinkedQueue<Part>()
+    val clientUpdateQueue = ConcurrentLinkedQueue<PartUpdate>()
 
     var collisionShape : VoxelShape
         get
@@ -325,13 +324,13 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
     // Enqueues a part for rendering set-up.
     private fun clientAddPart(part : Part){
         part.onAddedToClient()
-        clientNewPartQueue.add(part)
+        clientUpdateQueue.add(PartUpdate(part, PartUpdateType.Add))
     }
 
     // Dequeues a part for rendering set-up.
     private fun clientRemovePart(part : Part){
         part.onDestroyed()
-        clientRemovedQueue.add(part)
+        clientUpdateQueue.add(PartUpdate(part, PartUpdateType.Remove))
     }
 
     //#endregion
