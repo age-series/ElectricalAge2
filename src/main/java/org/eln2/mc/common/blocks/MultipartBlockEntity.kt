@@ -167,16 +167,16 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
      * If a part is placed on the face corresponding to that neighbor,
      * the part must be destroyed.
      * */
-    fun onNeighborDestroyed(neighborPos : BlockPos){
+    fun onNeighborDestroyed(neighborPos : BlockPos) : Boolean{
         if(level!!.isClientSide){
-            return
+            return false
         }
 
         val direction = pos.directionTo(neighborPos)
 
         if(direction == null){
             Eln2.LOGGER.error("Failed to get direction")
-            return
+            return false
         }
         else{
             Eln2.LOGGER.info("Face: $direction")
@@ -185,6 +185,8 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
         if(parts.containsKey(direction)){
             removePart(parts[direction]!!)
         }
+
+        return parts.size == 0
     }
 
     private fun joinCollider(part : Part){

@@ -110,6 +110,7 @@ class MultipartBlock : Block(Properties.of(Material.AIR).noOcclusion()), EntityB
         }
     }
 
+    @Deprecated("Deprecated in Java")
     override fun neighborChanged(
         pState: BlockState,
         pLevel: Level,
@@ -120,7 +121,11 @@ class MultipartBlock : Block(Properties.of(Material.AIR).noOcclusion()), EntityB
     ) {
         val multipart = pLevel.getBlockEntity(pPos) as? MultipartBlockEntity ?: return
 
-        multipart.onNeighborDestroyed(pFromPos)
+        val completelyDestroyed = multipart.onNeighborDestroyed(pFromPos)
+
+        if(completelyDestroyed){
+            pLevel.destroyBlock(pPos, false)
+        }
 
         super.neighborChanged(pState, pLevel, pPos, pBlock, pFromPos, pIsMoving)
     }
