@@ -618,8 +618,6 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
             else if(part.allowPlanarConnections && level!!.getBlockEntity(pos + searchDirection) is ICellContainer){
                 val remoteContainer = level!!.getBlockEntity(pos + searchDirection) as ICellContainer
 
-                Eln2.LOGGER.info("got remote container: $remoteContainer")
-
                 val remoteConnectionFace = searchDirection.opposite
 
                 val remoteSpace = remoteContainer.query(CellSpaceQuery(remoteConnectionFace, partFace))
@@ -637,6 +635,31 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
                 Eln2.LOGGER.info("Remote container allowed planar direction on $searchDirection")
                 results.add(remoteSpace.cell)
             }
+            else if(part.allowWrappedConnections){
+                val wrapDirection = partFace.opposite
+
+                val remoteContainer = level!!.getBlockEntity(pos + searchDirection + wrapDirection) as? ICellContainer
+
+                if(remoteContainer == null){
+                    Eln2.LOGGER.info("No wrapped connection containers on $searchDirection")
+                    return@forEach
+                }
+
+                val remoteSpace = remoteContainer.query(CellSpaceQuery(part.placementContext.face, searchDirection))
+
+                if(remoteSpace == null){
+                    Eln2.LOGGER.info("Neighbor does not have candidate for wrapped connection on $searchDirection")
+                    return@forEach
+                }
+
+                if(!remoteContainer.canConnectFrom(remoteSpace, wrapDirection)){
+                    Eln2.LOGGER.info("Neighbor rejected wrapped connection on $wrapDirection")
+                    return@forEach
+                }
+
+                Eln2.LOGGER.info("Remote container allowed wrapped connection on $searchDirection")
+                results.add(remoteSpace.cell)
+            }
         }
 
         return results
@@ -651,4 +674,18 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
 
     override val manager: CellGraphManager
         get() = CellGraphManager.getFor(level as? ServerLevel ?: error("Tried to get multipart cell provider on the client"))
+
+    fun getHudMap() : Map<String, String>{
+        val result = LinkedHashMap<String, String>()
+
+        parts.values.forEach{ part ->
+            if(part is IPartCellContainer){
+                if(part.hasCell){
+                    result[part.placementContext.face.getName()] = part.cell.graph.id.toString()
+                }
+            }
+        }
+
+        return result
+    }
 }

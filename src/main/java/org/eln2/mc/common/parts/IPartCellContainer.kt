@@ -6,6 +6,7 @@ import org.eln2.mc.common.cell.CellProvider
 
 interface IPartCellContainer {
     val cell : CellBase
+    val hasCell : Boolean
     val provider : CellProvider
 
     val allowPlanarConnections : Boolean

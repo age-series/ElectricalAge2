@@ -20,6 +20,9 @@ abstract class CellPart(
 
     final override lateinit var cell: CellBase
 
+    final override val hasCell: Boolean
+        get() = this::cell.isInitialized
+
     val cellPos = CellPos(placementContext.pos, placementContext.face)
 
     private lateinit var loadGraphId : UUID
