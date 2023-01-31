@@ -11,9 +11,10 @@ import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
 import net.minecraft.world.phys.shapes.Shapes
 import net.minecraft.world.phys.shapes.VoxelShape
+import org.eln2.mc.Eln2
 import org.eln2.mc.common.RelativeRotationDirection
+import org.eln2.mc.common.blocks.MultipartBlockEntity
 import org.eln2.mc.extensions.AABBExtensions.transformed
-import org.eln2.mc.extensions.DirectionExtensions.isVertical
 import org.eln2.mc.extensions.Vec3Extensions.div
 import org.eln2.mc.utility.AABBUtilities
 
@@ -85,11 +86,32 @@ abstract class Part(val id : ResourceLocation, val placementContext: PartPlaceme
 
     abstract fun onUsedBy(entity : LivingEntity)
 
-    open fun getCustomTag() : CompoundTag?{
+    open fun getSaveTag() : CompoundTag?{
         return null
     }
 
-    open fun useCustomTag(tag : CompoundTag){}
+    open fun loadFromTag(tag : CompoundTag){}
+
+    open fun getSyncTag() : CompoundTag?{
+        return null
+    }
+
+    open fun handleSyncTag(tag : CompoundTag){}
+
+    fun syncChanges(){
+        if(placementContext.level.isClientSide){
+            error("Cannot sync changes from client to server!")
+        }
+
+        val entity = placementContext.level.getBlockEntity(placementContext.pos) as? MultipartBlockEntity
+
+        if(entity == null){
+            Eln2.LOGGER.error("FAILED TO GET MULTIPART AT ${placementContext.pos}")
+            return
+        }
+
+        entity.enqueuePartSync(placementContext.face)
+    }
 
     /**
      *  Called on the server when the part is placed.

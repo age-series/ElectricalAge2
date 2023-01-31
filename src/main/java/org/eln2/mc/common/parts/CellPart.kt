@@ -28,7 +28,7 @@ abstract class CellPart(
         cell = provider.create(cellPos)
     }
 
-    override fun getCustomTag(): CompoundTag? {
+    override fun getSaveTag(): CompoundTag? {
         val tag = CompoundTag()
 
         tag.putUUID("GraphID", cell.graph.id)
@@ -36,7 +36,7 @@ abstract class CellPart(
         return tag
     }
 
-    override fun useCustomTag(tag: CompoundTag) {
+    override fun loadFromTag(tag: CompoundTag) {
         if(placementContext.level.isClientSide){
             return
         }

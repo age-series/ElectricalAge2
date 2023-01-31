@@ -53,6 +53,9 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
 
     private val parts = HashMap<Direction, Part>()
 
+    // Used for part sync:
+    private val partsRequestingUpdate = ArrayList<Direction>()
+
     // Used for streaming to clients:
     private val changedParts = ArrayList<PartUpdate>()
 
@@ -79,6 +82,11 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
         super.setRemoved()
 
         Eln2.LOGGER.info("Multipart block entity removed at $pos")
+    }
+
+    fun enqueuePartSync(face : Direction){
+        partsRequestingUpdate.add(face)
+        invalidateData()
     }
 
     fun pickPart(entity : LivingEntity) : Part?{
@@ -282,6 +290,35 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
             tag.put("RemovedParts", removedPartsTag)
         }
 
+        if(partsRequestingUpdate.size > 0){
+            val partUpdatesTag = ListTag()
+
+            partsRequestingUpdate.forEach{ face ->
+                val part = parts[face]
+
+                if(part == null){
+                    Eln2.LOGGER.error("Multipart at $pos part $face requested update, but was null")
+                    return@forEach
+                }
+
+                val syncTag = part.getSyncTag()
+
+                if(syncTag == null){
+                    Eln2.LOGGER.error("Part $part had an update enqueued, but returned a null sync tag")
+                    return@forEach
+                }
+
+                val updateTag = CompoundTag()
+                updateTag.setDirection("Face", face)
+                updateTag.put("SyncTag", syncTag)
+
+                partUpdatesTag.add(updateTag)
+            }
+
+            partsRequestingUpdate.clear()
+            tag.put("PartUpdates", partUpdatesTag)
+        }
+
         return ClientboundBlockEntityDataPacket.create(this) { tag };
     }
 
@@ -304,6 +341,7 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
         val tag = packet.tag!!
         val newPartsTag = tag.get("NewParts") as? ListTag
         val removedPartsTag = tag.get("RemovedParts") as? ListTag
+        val partUpdatesTag = tag.get("PartUpdates") as? ListTag
 
         newPartsTag?.forEach { partTag ->
             val part = createPartFromTag(partTag as CompoundTag)
@@ -326,6 +364,22 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
             }
             else{
                 clientRemovePart(part)
+            }
+        }
+
+        partUpdatesTag?.forEach { updateTag ->
+            val compound = updateTag as CompoundTag
+
+            val face = compound.getDirection("Face")
+
+            val part = parts[face]
+
+            if(part == null){
+                Eln2.LOGGER.error("Multipart at $pos received update on $face, but part is null!")
+            }
+            else{
+                val syncTag = compound.get("SyncTag") as CompoundTag
+                part.handleSyncTag(syncTag)
             }
         }
     }
@@ -387,7 +441,7 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
         tag.setDirection("Face", part.placementContext.face)
         tag.setDirection("Facing", part.placementContext.horizontalFacing)
 
-        val customTag = part.getCustomTag()
+        val customTag = part.getSaveTag()
 
         if(customTag != null){
             tag.put("CustomTag", customTag)
@@ -463,7 +517,7 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
         val part = provider.create(PartPlacementContext(pos, face, facing, level!!))
 
         if(customTag != null){
-            part.useCustomTag(customTag)
+            part.loadFromTag(customTag)
         }
 
         return part
