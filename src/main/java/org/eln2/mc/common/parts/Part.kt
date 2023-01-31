@@ -2,23 +2,20 @@ package org.eln2.mc.common.parts
 
 import com.mojang.math.Quaternion
 import com.mojang.math.Vector3f
-import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
 import net.minecraft.core.Direction.AxisDirection
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.world.entity.LivingEntity
-import net.minecraft.world.level.Level
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
 import net.minecraft.world.phys.shapes.Shapes
 import net.minecraft.world.phys.shapes.VoxelShape
-import org.eln2.mc.common.PlacementRotation
 import org.eln2.mc.common.RelativeRotationDirection
 import org.eln2.mc.extensions.AABBExtensions.transformed
+import org.eln2.mc.extensions.DirectionExtensions.isVertical
 import org.eln2.mc.extensions.Vec3Extensions.div
 import org.eln2.mc.utility.AABBUtilities
-import java.util.*
 
 /**
  * Parts are entity-like units that exist in a multipart entity. They are similar to normal block entities,
@@ -34,8 +31,8 @@ abstract class Part(val id : ResourceLocation, val placementContext: PartPlaceme
 
     private var cachedShape : VoxelShape? = null
 
-    fun getRelative(global : Direction) : RelativeRotationDirection{
-        return PlacementRotation(placementContext.horizontalFacing).getRelativeFromAbsolute(global)
+    fun getRelative(global : Direction) : RelativeRotationDirection {
+        return RelativeRotationDirection.fromFacingUp(placementContext.horizontalFacing, placementContext.face, global)
     }
 
     /**
