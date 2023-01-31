@@ -7,14 +7,16 @@ import net.minecraft.resources.ResourceLocation
 import org.ageseries.libage.sim.electrical.mna.Circuit
 import org.eln2.mc.Eln2
 import org.eln2.mc.extensions.NbtExtensions.getBlockPos
+import org.eln2.mc.extensions.NbtExtensions.getCellPos
 import org.eln2.mc.extensions.NbtExtensions.putBlockPos
+import org.eln2.mc.extensions.NbtExtensions.putCellPos
 import java.util.*
 import kotlin.system.measureNanoTime
 
 class CellGraph(val id : UUID, val manager : CellGraphManager) {
     val cells = ArrayList<CellBase>()
 
-    private val posCells = HashMap<BlockPos, CellBase>()
+    private val posCells = HashMap<CellPos, CellBase>()
 
     lateinit var circuit : Circuit
 
@@ -47,7 +49,7 @@ class CellGraph(val id : UUID, val manager : CellGraphManager) {
         Eln2.LOGGER.info("Built circuit! component count: ${circuit.components.count()}, graph cell count: ${cells.count()}")
     }
 
-    fun getCell(pos: BlockPos): CellBase {
+    fun getCell(pos: CellPos): CellBase {
         return posCells[pos] ?: error("Could not find cell at $pos!")
     }
 
@@ -86,11 +88,11 @@ class CellGraph(val id : UUID, val manager : CellGraphManager) {
 
             cell.connections.forEach { conn->
                 val connCompound = CompoundTag()
-                connCompound.putBlockPos("Position", conn.pos)
+                connCompound.putCellPos("Position", conn.pos)
                 connectionsTag.add(connCompound)
             }
 
-            cellTag.putBlockPos("Position", cell.pos)
+            cellTag.putCellPos("Position", cell.pos)
             cellTag.putString("ID", cell.id.toString())
             cellTag.put("Connections", connectionsTag)
 
@@ -111,23 +113,23 @@ class CellGraph(val id : UUID, val manager : CellGraphManager) {
                 return result
 
             // used to assign the connections after all cells have been loaded
-            val cellConnections = HashMap<CellBase, ArrayList<BlockPos>>()
+            val cellConnections = HashMap<CellBase, ArrayList<CellPos>>()
 
             cellListTag.forEach{ cellNbt ->
                 val cellCompound = cellNbt as CompoundTag
-                val pos = cellCompound.getBlockPos("Position")
+                val pos = cellCompound.getCellPos("Position")
                 val cellId = ResourceLocation.tryParse(cellCompound.getString("ID"))!!
 
-                val connectionPositions = ArrayList<BlockPos>()
+                val connectionPositions = ArrayList<CellPos>()
                 val connectionsTag = cellCompound.get("Connections") as ListTag
 
                 connectionsTag.forEach {
                     val connectionCompound = it as CompoundTag
-                    val connectionPos = connectionCompound.getBlockPos("Position")
+                    val connectionPos = connectionCompound.getCellPos("Position")
                     connectionPositions.add(connectionPos)
                 }
 
-                val cell = CellRegistry.registry.getValue(cellId)!!.create(pos)
+                val cell = CellRegistry.getProvider(cellId).create(pos)
 
                 cellConnections[cell] = connectionPositions
 

@@ -4,6 +4,7 @@ import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.resources.ResourceLocation
+import org.eln2.mc.common.cell.CellPos
 
 object NbtExtensions {
     fun CompoundTag.putBlockPos(key : String, pos : BlockPos) {
@@ -21,6 +22,21 @@ object NbtExtensions {
         val z = dataTag.getInt("Z")
 
         return BlockPos(x, y, z)
+    }
+
+    fun CompoundTag.putCellPos(key : String, pos : CellPos){
+        val dataTag = CompoundTag()
+        dataTag.putBlockPos("Pos", pos.blockPos)
+        dataTag.setDirection("Face", pos.face)
+        this.put(key, dataTag)
+    }
+
+    fun CompoundTag.getCellPos(key : String) : CellPos{
+        val dataTag = this.get(key) as CompoundTag
+        val blockPos = dataTag.getBlockPos("Pos")
+        val face = dataTag.getDirection("Face")
+
+        return CellPos(blockPos, face)
     }
 
     fun CompoundTag.getStringList(key: String): List<String> {

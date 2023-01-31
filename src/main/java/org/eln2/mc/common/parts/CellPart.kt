@@ -2,6 +2,7 @@ package org.eln2.mc.common.parts
 
 import net.minecraft.resources.ResourceLocation
 import org.eln2.mc.common.cell.CellBase
+import org.eln2.mc.common.cell.CellPos
 import org.eln2.mc.common.cell.CellProvider
 
 abstract class CellPart(
@@ -14,7 +15,9 @@ abstract class CellPart(
 
     final override var cell: CellBase
 
+    val cellPos = CellPos(placementContext.pos, placementContext.face)
+
     init {
-        cell = provider.create(placementContext.pos)
+        cell = provider.create(cellPos)
     }
 }

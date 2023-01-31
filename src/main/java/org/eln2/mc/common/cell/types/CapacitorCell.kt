@@ -3,13 +3,14 @@ package org.eln2.mc.common.cell.types
 import net.minecraft.core.BlockPos
 import org.ageseries.libage.sim.electrical.mna.component.Capacitor
 import org.eln2.mc.common.cell.CellBase
+import org.eln2.mc.common.cell.CellPos
 import org.eln2.mc.common.cell.ComponentInfo
 import org.eln2.mc.common.cell.ISingleElementGuiCell
 import org.eln2.mc.extensions.ComponentExtensions.connectToPinOf
 import org.eln2.mc.utility.UnitType
 import org.eln2.mc.utility.ValueText.valueText
 
-class CapacitorCell(pos: BlockPos) : CellBase(pos), ISingleElementGuiCell<Double> {
+class CapacitorCell(pos: CellPos) : CellBase(pos), ISingleElementGuiCell<Double> {
     lateinit var capacitor: Capacitor
     var added = false
 

@@ -3,12 +3,13 @@ package org.eln2.mc.common.cell.types
 import net.minecraft.core.BlockPos
 import org.ageseries.libage.sim.electrical.mna.component.IdealDiode
 import org.eln2.mc.common.cell.CellBase
+import org.eln2.mc.common.cell.CellPos
 import org.eln2.mc.common.cell.ComponentInfo
 import org.eln2.mc.extensions.ComponentExtensions.connectToPinOf
 import org.eln2.mc.utility.UnitType
 import org.eln2.mc.utility.ValueText.valueText
 
-class DiodeCell(pos : BlockPos): CellBase(pos) {
+class DiodeCell(pos : CellPos): CellBase(pos) {
     lateinit var diode : IdealDiode
     var added = false
 
