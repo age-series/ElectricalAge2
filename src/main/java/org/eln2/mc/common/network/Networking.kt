@@ -28,7 +28,6 @@ object Networking {
         { it == protocolVersion },
         { it == protocolVersion })
 
-
     fun setup() {
         Eln2.LOGGER.info("Registering network packets")
         channel.registerMessage(

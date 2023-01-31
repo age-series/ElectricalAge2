@@ -514,7 +514,7 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
         DirectionMask.perpendicular(partFace).forEach { searchDirection ->
             val partRelative = part.getRelative(searchDirection)
 
-            Eln2.LOGGER.info("Scan $searchDirection")
+            Eln2.LOGGER.info("Scan $searchDirection from $partFace -> $partRelative")
 
             if(!part.provider.canConnectFrom(partRelative)){
                 Eln2.LOGGER.info("Part rejected connection on $partRelative")

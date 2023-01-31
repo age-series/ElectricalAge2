@@ -1,6 +1,8 @@
 package org.eln2.mc.common
 
+import com.mojang.math.Matrix4f
 import net.minecraft.core.Direction
+import org.eln2.mc.extensions.DirectionExtensions.isVertical
 
 enum class RelativeRotationDirection {
     Front,
@@ -8,7 +10,33 @@ enum class RelativeRotationDirection {
     Left,
     Right,
     Up,
-    Down
+    Down;
+
+    companion object{
+        fun fromFacingUp(facing : Direction, normal : Direction, direction: Direction) : RelativeRotationDirection{
+            if(facing.isVertical()){
+                error("Facing cannot be vertical")
+            }
+
+            if(direction == normal){
+                return Up
+            }
+
+            if(direction == normal.opposite){
+                return Down
+            }
+
+            val adjustedFacing = Direction.rotate(Matrix4f(normal.rotation), facing)
+
+            return when(direction){
+                adjustedFacing -> Front
+                adjustedFacing.opposite -> Back
+                adjustedFacing.getClockWise(normal.axis) -> Right
+                adjustedFacing.getCounterClockWise(normal.axis) -> Left
+                else -> error("Adjusted facing did not match")
+            }
+        }
+    }
 }
 
 class PlacementRotation(val placementDirection : Direction) {
