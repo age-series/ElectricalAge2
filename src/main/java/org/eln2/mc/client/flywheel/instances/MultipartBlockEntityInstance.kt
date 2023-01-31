@@ -7,6 +7,7 @@ import com.jozufozu.flywheel.core.structs.FlatLit
 import org.eln2.mc.Eln2
 import org.eln2.mc.common.blocks.MultipartBlockEntity
 import org.eln2.mc.common.parts.Part
+import org.eln2.mc.common.parts.PartUpdateType
 
 class MultipartBlockEntityInstance(
     val instancerManager: InstancerManager,
@@ -17,8 +18,7 @@ class MultipartBlockEntityInstance(
     private val parts = ArrayList<Part>()
 
     override fun beginFrame() {
-        setupNewParts()
-        cleanupRemovedParts()
+        handlePartUpdates()
 
         parts.forEach { part ->
             val renderer = part.renderer
@@ -33,26 +33,28 @@ class MultipartBlockEntityInstance(
         }
     }
 
-    private fun setupNewParts(){
+    private fun handlePartUpdates(){
         while (true){
-            val part = blockEntity.clientNewPartQueue.poll() ?: break
+            val update = blockEntity.clientUpdateQueue.poll() ?: break
+            val part = update.part
 
-            parts.add(part)
-            part.renderer.setupRendering(this)
-            relightPart(part)
-        }
-    }
-
-    private fun cleanupRemovedParts(){
-        while (true){
-            val part = blockEntity.clientRemovedQueue.poll() ?: break
-
-            parts.remove(part)
-            part.renderer.remove()
+            when(update.type){
+                PartUpdateType.Add -> {
+                    parts.add(part)
+                    part.renderer.setupRendering(this)
+                    relightPart(part)
+                }
+                PartUpdateType.Remove -> {
+                    parts.remove(part)
+                    part.renderer.remove()
+                }
+            }
         }
     }
 
     override fun remove() {
+        Eln2.LOGGER.info("Removing multipart renderer")
+
         parts.forEach { part ->
             part.renderer.remove()
         }
