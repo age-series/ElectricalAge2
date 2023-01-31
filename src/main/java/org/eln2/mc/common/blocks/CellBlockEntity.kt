@@ -69,7 +69,7 @@ class CellBlockEntity(var pos : BlockPos, var state: BlockState)
 
         // Create the cell based on the provider.
 
-        cell = cellProvider.create(pos)
+        cell = cellProvider.create(getCellPos())
 
         cell!!.entity = this
         cell!!.id = cellProvider.registryName!!
@@ -154,7 +154,7 @@ class CellBlockEntity(var pos : BlockPos, var state: BlockState)
             // fetch cell instance
             println("Loading cell at location $pos")
 
-            cell = graph.getCell(pos)
+            cell = graph.getCell(getCellPos())
 
             cellProvider = CellRegistry.getProvider(cell!!.id)
 
@@ -181,6 +181,10 @@ class CellBlockEntity(var pos : BlockPos, var state: BlockState)
 
     private fun getCellSpace() : CellSpaceLocation{
         return CellSpaceLocation(cell!!, cellFace)
+    }
+
+    private fun getCellPos() : CellPos{
+        return CellPos(pos, cellFace)
     }
 
     override fun getCells(): ArrayList<CellSpaceLocation> {

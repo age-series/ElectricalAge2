@@ -7,7 +7,7 @@ import org.eln2.mc.common.blocks.CellBlockEntity
 
 class ComponentInfo(val component: Component, val index : Int)
 
-abstract class CellBase(val pos : BlockPos) {
+abstract class CellBase(val pos : CellPos) {
     lateinit var id : ResourceLocation
     lateinit var graph: CellGraph
     lateinit var connections : ArrayList<CellBase>

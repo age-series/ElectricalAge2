@@ -4,12 +4,13 @@ import net.minecraft.core.BlockPos
 import org.ageseries.libage.sim.electrical.mna.component.Resistor
 import org.ageseries.libage.sim.electrical.mna.component.VoltageSource
 import org.eln2.mc.common.cell.CellBase
+import org.eln2.mc.common.cell.CellPos
 import org.eln2.mc.common.cell.ComponentInfo
 import org.eln2.mc.extensions.ComponentExtensions.connectToPinOf
 import org.eln2.mc.utility.UnitType
 import org.eln2.mc.utility.ValueText
 
-class `12VBatteryCell`(pos : BlockPos) : CellBase(pos) {
+class `12VBatteryCell`(pos : CellPos) : CellBase(pos) {
 
     /*
     *   V -> local voltage source.

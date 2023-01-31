@@ -7,9 +7,7 @@ import net.minecraft.server.level.ServerPlayer
 import net.minecraftforge.network.NetworkDirection
 import net.minecraftforge.network.NetworkRegistry
 import org.eln2.mc.Eln2
-import org.eln2.mc.common.network.clientToServer.CircuitExplorerOpenPacket
 import org.eln2.mc.common.network.clientToServer.SingleDoubleElementGuiUpdatePacket
-import org.eln2.mc.common.network.serverToClient.CircuitExplorerContextPacket
 import org.eln2.mc.common.network.serverToClient.SingleDoubleElementGuiOpenPacket
 
 enum class PacketType(val id: Int) {
@@ -29,21 +27,6 @@ object Networking {
         { it == protocolVersion })
 
     fun setup() {
-        Eln2.LOGGER.info("Registering network packets")
-        channel.registerMessage(
-            PacketType.CIRCUIT_EXPLORER_OPEN_PACKET.id,
-            CircuitExplorerOpenPacket::class.java,
-            CircuitExplorerOpenPacket::encode,
-            ::CircuitExplorerOpenPacket,
-            CircuitExplorerOpenPacket::handle
-        )
-        channel.registerMessage(
-            PacketType.CIRCUIT_EXPLORER_CONTEXT_PACKET.id,
-            CircuitExplorerContextPacket::class.java,
-            CircuitExplorerContextPacket::encode,
-            ::CircuitExplorerContextPacket,
-            CircuitExplorerContextPacket::handle
-        )
         channel.registerMessage(
             PacketType.SINGLE_DOUBLE_ELEMENT_GUI_UPDATE_PACKET.id,
             SingleDoubleElementGuiUpdatePacket::class.java,
