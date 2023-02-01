@@ -20,9 +20,10 @@ import net.minecraft.world.phys.shapes.Shapes
 import net.minecraft.world.phys.shapes.VoxelShape
 import org.eln2.mc.Eln2
 import org.eln2.mc.common.DirectionMask
-import org.eln2.mc.common.cell.CellBase
+import org.eln2.mc.common.RelativeRotationDirection
 import org.eln2.mc.common.cell.CellConnectionManager
 import org.eln2.mc.common.cell.CellGraphManager
+import org.eln2.mc.common.cell.container.CellNeighborInfo
 import org.eln2.mc.common.cell.container.CellSpaceLocation
 import org.eln2.mc.common.cell.container.CellSpaceQuery
 import org.eln2.mc.common.cell.container.ICellContainer
@@ -564,7 +565,7 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
         return null
     }
 
-    override fun queryNeighbors(location: CellSpaceLocation): ArrayList<CellBase> {
+    override fun queryNeighbors(location: CellSpaceLocation): ArrayList<CellNeighborInfo> {
         Eln2.LOGGER.info("Query neighbors ${location.innerFace}")
 
         val partFace = location.innerFace
@@ -575,7 +576,7 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
             error("FATAL! Queried neighbors for non-cell part!")
         }
 
-        val results = ArrayList<CellBase>()
+        val results = ArrayList<CellNeighborInfo>()
 
         DirectionMask.perpendicular(partFace).forEach { searchDirection ->
             val partRelative = part.getRelative(searchDirection)
@@ -613,7 +614,7 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
                 // Connection can happen!
                 Eln2.LOGGER.info("Part on inner face recorded!")
 
-                results.add(innerPart.cell)
+                results.add(CellNeighborInfo(CellSpaceLocation(innerPart.cell, innerPart.placementContext.face), this, partRelative, innerRelativeRotation))
             }
             else if(part.allowPlanarConnections && level!!.getBlockEntity(pos + searchDirection) is ICellContainer){
                 val remoteContainer = level!!.getBlockEntity(pos + searchDirection) as ICellContainer
@@ -627,13 +628,15 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
                     return@forEach
                 }
 
-                if(!remoteContainer.canConnectFrom(remoteSpace, remoteConnectionFace)){
+                val remoteRelative = remoteContainer.checkConnectionCandidate(remoteSpace, remoteConnectionFace)
+
+                if(remoteRelative == null){
                     Eln2.LOGGER.info("Neighbor rejected remote planar on $remoteConnectionFace")
                     return@forEach
                 }
 
                 Eln2.LOGGER.info("Remote container allowed planar direction on $searchDirection")
-                results.add(remoteSpace.cell)
+                results.add(CellNeighborInfo(remoteSpace, remoteContainer, partRelative, remoteRelative))
             }
             else if(part.allowWrappedConnections){
                 val wrapDirection = partFace.opposite
@@ -652,24 +655,37 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
                     return@forEach
                 }
 
-                if(!remoteContainer.canConnectFrom(remoteSpace, wrapDirection)){
+                val remoteRelative = remoteContainer.checkConnectionCandidate(remoteSpace, wrapDirection)
+
+                if(remoteRelative == null){
                     Eln2.LOGGER.info("Neighbor rejected wrapped connection on $wrapDirection")
                     return@forEach
                 }
 
                 Eln2.LOGGER.info("Remote container allowed wrapped connection on $searchDirection")
-                results.add(remoteSpace.cell)
+                results.add(CellNeighborInfo(remoteSpace, remoteContainer, partRelative, remoteRelative))
             }
         }
 
         return results
     }
 
-    override fun canConnectFrom(location: CellSpaceLocation, direction: Direction): Boolean {
+    override fun checkConnectionCandidate(location: CellSpaceLocation, direction: Direction): RelativeRotationDirection? {
         val part = (parts[location.innerFace]!!)
         val relative = part.getRelative(direction)
 
-        return (part as IPartCellContainer).provider.canConnectFrom(relative)
+        assert(part is IPartCellContainer)
+
+        return if((part as IPartCellContainer).provider.canConnectFrom(relative)){
+            relative
+        }
+        else{
+            null
+        }
+    }
+
+    override fun recordConnection(location: CellSpaceLocation, direction: RelativeRotationDirection) {
+        Eln2.LOGGER.info("Multipart record connection from ${location.innerFace} to $direction")
     }
 
     override val manager: CellGraphManager
