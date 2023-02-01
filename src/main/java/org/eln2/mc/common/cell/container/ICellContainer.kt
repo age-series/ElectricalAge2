@@ -1,7 +1,7 @@
 package org.eln2.mc.common.cell.container
 
 import net.minecraft.core.Direction
-import org.eln2.mc.common.cell.CellBase
+import org.eln2.mc.common.RelativeRotationDirection
 import org.eln2.mc.common.cell.CellGraphManager
 
 /**
@@ -27,9 +27,11 @@ interface ICellContainer {
 
     fun query(query: CellSpaceQuery) : CellSpaceLocation?
 
-    fun queryNeighbors(location : CellSpaceLocation) : ArrayList<CellBase>
+    fun queryNeighbors(location : CellSpaceLocation) : ArrayList<CellNeighborInfo>
 
-    fun canConnectFrom(location: CellSpaceLocation, direction: Direction) : Boolean
+    fun checkConnectionCandidate(location: CellSpaceLocation, direction: Direction) : RelativeRotationDirection?
+
+    fun recordConnection(location : CellSpaceLocation, direction: RelativeRotationDirection)
 
     /**
      * The manager responsible for the cells of this container (per dimension)

@@ -15,6 +15,7 @@ import org.eln2.mc.common.DirectionMask
 import org.eln2.mc.common.PlacementRotation
 import org.eln2.mc.common.RelativeRotationDirection
 import org.eln2.mc.common.cell.*
+import org.eln2.mc.common.cell.container.CellNeighborInfo
 import org.eln2.mc.common.cell.container.CellSpaceLocation
 import org.eln2.mc.common.cell.container.CellSpaceQuery
 import org.eln2.mc.common.cell.container.ICellContainer
@@ -199,8 +200,8 @@ class CellBlockEntity(var pos : BlockPos, var state: BlockState)
         }
     }
 
-    override fun queryNeighbors(location: CellSpaceLocation): ArrayList<CellBase> {
-        val results = ArrayList<CellBase>()
+    override fun queryNeighbors(location: CellSpaceLocation): ArrayList<CellNeighborInfo> {
+        val results = ArrayList<CellNeighborInfo>()
 
         Direction.values()
             .filter { !it.isVertical() }
@@ -216,7 +217,12 @@ class CellBlockEntity(var pos : BlockPos, var state: BlockState)
                     val queryResult = remoteContainer.query(CellSpaceQuery(direction.opposite, Direction.UP))
 
                     if(queryResult != null){
-                        results.add(queryResult.cell)
+                        val remoteRelative = remoteContainer.checkConnectionCandidate(getCellSpace(), direction.opposite)
+
+                        if(remoteRelative != null){
+                            results.add(CellNeighborInfo(queryResult, remoteContainer, local, remoteRelative))
+                        }
+
                     }
                 }
             }
@@ -224,12 +230,21 @@ class CellBlockEntity(var pos : BlockPos, var state: BlockState)
         return results
     }
 
-    override fun canConnectFrom(location: CellSpaceLocation, direction: Direction): Boolean {
+    override fun checkConnectionCandidate(location: CellSpaceLocation, direction: Direction): RelativeRotationDirection? {
         assert(location.cell == cell!!)
 
         val local = getLocalDirection(direction)
 
-        return cellProvider.canConnectFrom(local)
+        return if(cellProvider.canConnectFrom(local)){
+            local
+        }
+        else{
+            null
+        }
+    }
+
+    override fun recordConnection(location: CellSpaceLocation, direction: RelativeRotationDirection) {
+        Eln2.LOGGER.info("Cell Block recorded connection to the $direction")
     }
 
 

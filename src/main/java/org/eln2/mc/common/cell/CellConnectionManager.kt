@@ -1,6 +1,7 @@
 package org.eln2.mc.common.cell
 
 import org.eln2.mc.Eln2
+import org.eln2.mc.common.cell.container.CellNeighborInfo
 import org.eln2.mc.common.cell.container.CellSpaceLocation
 import org.eln2.mc.common.cell.container.ICellContainer
 
@@ -32,8 +33,8 @@ object CellConnectionManager {
         val graph = cell.graph
 
         // This is common logic for all cases.
-        neighborCells.forEach { neighbor ->
-            neighbor.connections.remove(cell)
+        neighborCells.forEach { neighborInfo ->
+            neighborInfo.neighborSpace.cell.connections.remove(cell)
         }
 
         /* Cases:
@@ -58,9 +59,9 @@ object CellConnectionManager {
             // Remove the cell from the circuit.
             graph.removeCell(cell)
 
-            val neighbor = neighborCells[0]
+            val neighbor = neighborCells[0].neighborSpace
 
-            neighbor.update(connectionsChanged = true, graphChanged = false)
+            neighbor.cell.update(connectionsChanged = true, graphChanged = false)
 
             // todo: do we need to rebuild the solver?
         }
@@ -75,7 +76,8 @@ object CellConnectionManager {
     private fun registerCell(cellSpace : CellSpaceLocation, container: ICellContainer){
         val manager = container.manager
         val cell = cellSpace.cell
-        val neighborCells = container.queryNeighbors(cellSpace)
+        val neighborInfos = container.queryNeighbors(cellSpace)
+        val neighborCells = neighborInfos.map { it.neighborSpace.cell }.toHashSet()
 
         /*
         * Cases:
@@ -88,30 +90,34 @@ object CellConnectionManager {
 
         // This is common logic for all cases
 
-        cell.connections = neighborCells
+        cell.connections = ArrayList(neighborInfos.map { it.neighborSpace.cell })
 
-        neighborCells.forEach { neighbor ->
-            Eln2.LOGGER.info("Neighbor $neighbor")
-            neighbor.connections.add(cell)
+        neighborInfos.forEach { neighborInfo ->
+            Eln2.LOGGER.info("Neighbor $neighborInfo")
+
+            neighborInfo.neighborSpace.cell.connections.add(cell)
+            neighborInfo.neighborContainer.recordConnection(neighborInfo.neighborSpace, neighborInfo.neighborDirection)
+
+            container.recordConnection(cellSpace, neighborInfo.sourceDirection)
         }
 
-        if(neighborCells.isEmpty()){
+        if(neighborInfos.isEmpty()){
             // Case 1. Create new circuit
 
             val graph = manager.createGraph()
             graph.addCell(cell)
         }
-        else if(haveCommonCircuit(neighborCells)){
+        else if(haveCommonCircuit(neighborInfos)){
             // Case 2 and 3. Join the existing circuit.
 
-            val graph = neighborCells[0].graph
+            val graph = neighborInfos[0].neighborSpace.cell.graph
 
             graph.addCell(cell)
 
             // Add this cell to the neighbors' connections.
 
-            neighborCells.forEach { neighborCell ->
-                neighborCell.update(connectionsChanged = true, graphChanged = false)
+            neighborInfos.forEach { neighborInfo ->
+                neighborInfo.neighborSpace.cell.update(connectionsChanged = true, graphChanged = false)
             }
 
             // todo: do we need to rebuild the solver?
@@ -120,7 +126,7 @@ object CellConnectionManager {
             // Case 4. We need to create a new circuit, with all cells and this one.
 
             // Identify separate circuits.
-            val disjointGraphs = neighborCells.map { it.graph }.distinct()
+            val disjointGraphs = neighborInfos.map { it.neighborSpace.cell.graph }.distinct()
 
             // Create new circuit.
             val graph = manager.createGraph()
@@ -154,15 +160,15 @@ object CellConnectionManager {
         cell.update(connectionsChanged = true, graphChanged = true)
     }
 
-    private fun haveCommonCircuit(neighbors : ArrayList<CellBase>) : Boolean{
+    private fun haveCommonCircuit(neighbors : ArrayList<CellNeighborInfo>) : Boolean{
         if(neighbors.size < 2){
             return true
         }
 
-        val graph = neighbors[0].graph
+        val graph = neighbors[0].neighborSpace.cell.graph
 
-        neighbors.drop(1).forEach {cell ->
-            if(cell.graph != graph){
+        neighbors.drop(1).forEach {info ->
+            if(info.neighborSpace.cell.graph != graph){
                 return false
             }
         }
@@ -170,7 +176,7 @@ object CellConnectionManager {
         return true
     }
 
-    private fun rebuildTopologies(neighbors: ArrayList<CellBase>, removedCell : CellBase, manager: CellGraphManager){
+    private fun rebuildTopologies(neighborInfos: ArrayList<CellNeighborInfo>, removedCell : CellBase, manager: CellGraphManager){
         /*
         * For now, we use this simple algorithm.:
         *   We enqueue all neighbors for visitation. We perform searches through their graphs,
@@ -182,6 +188,7 @@ object CellConnectionManager {
         *   After a queue element has been processed, we build a new circuit with the cells we found.
         * */
 
+        val neighbors = neighborInfos.map { it.neighborSpace.cell }.toHashSet()
         val neighborQueue = ArrayDeque<CellBase>()
         neighborQueue.addAll(neighbors)
 
