@@ -35,6 +35,7 @@ object CellConnectionManager {
         // This is common logic for all cases.
         neighborCells.forEach { neighborInfo ->
             neighborInfo.neighborSpace.cell.connections.remove(cell)
+            neighborInfo.neighborContainer.recordDeletedConnection(neighborInfo.neighborSpace, neighborInfo.neighborDirection)
         }
 
         /* Cases:
@@ -150,6 +151,7 @@ object CellConnectionManager {
                     val isNeighbor = neighborCells.contains(cell)
 
                     cell.update(connectionsChanged = isNeighbor, graphChanged = true)
+                    cell.container?.topologyChanged()
                 }
 
                 existingGraph.destroy()
@@ -158,6 +160,7 @@ object CellConnectionManager {
 
         // This cell had a complete update.
         cell.update(connectionsChanged = true, graphChanged = true)
+        cell.container?.topologyChanged()
     }
 
     private fun haveCommonCircuit(neighbors : ArrayList<CellNeighborInfo>) : Boolean{
@@ -236,6 +239,7 @@ object CellConnectionManager {
                 val isNeighbor = neighbors.contains(cell)
 
                 cell.update(connectionsChanged = isNeighbor, graphChanged = true)
+                cell.container?.topologyChanged()
             }
 
             // Finally, build the solver.

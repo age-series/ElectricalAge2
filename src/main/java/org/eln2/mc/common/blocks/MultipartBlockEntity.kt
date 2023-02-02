@@ -122,7 +122,7 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
             Direction.NORTH
         }
 
-        val part = provider.create(PartPlacementContext(pos, face, placeDirection, level))
+        val part = provider.create(PartPlacementContext(pos, face, placeDirection, level, this))
 
         parts[face] = part
 
@@ -257,7 +257,6 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
 
     override fun getUpdatePacket(): Packet<ClientGamePacketListener>? {
         if(changedParts.size == 0){
-            Eln2.LOGGER.error("getUpdatePacket changed list is empty at $pos")
             return null
         }
 
@@ -402,34 +401,63 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
     //#region Disk Loading
 
     override fun saveAdditional(pTag: CompoundTag) {
+        super.saveAdditional(pTag)
         savePartsToTag(pTag)
     }
 
     override fun load(pTag: CompoundTag) {
+        super.load(pTag)
+
         savedTag = pTag
 
         // This is necessary because we don't have the level at this stage
         // We need the level to load the parts
         // Loading will complete in setLevel
+
+        Eln2.LOGGER.info("Save tag: ${savedTag!!.size()}")
     }
 
     override fun setLevel(pLevel: Level) {
-        super.setLevel(pLevel)
+        try {
+            super.setLevel(pLevel)
 
-        if(this.savedTag != null){
-            Eln2.LOGGER.info("Completing multipart disk load at $pos")
-            loadPartsFromTag(savedTag!!)
-
-            parts.values.forEach { part ->
-                part.onLoaded()
+            if(pLevel.isClientSide){
+                return
             }
 
-            // GC reference tracking
-            savedTag = null
+            if(this.savedTag != null){
+                Eln2.LOGGER.info("Completing multipart disk load at $pos with ${savedTag!!.size()}")
+                loadPartsFromTag(savedTag!!)
+                Eln2.LOGGER.info("Loaded from tag")
+                parts.values.forEach { part ->
+                    part.onLoaded()
+                }
+
+                Eln2.LOGGER.info("Done")
+
+                // GC reference tracking
+                //savedTag = null
+            }
+            else{
+                Eln2.LOGGER.info("Multipart save tag null")
+            }
         }
+        catch (ex : Exception){
+            Eln2.LOGGER.error("Unhandled exception in setLevel: $ex")
+        }
+
+
     }
 
     //#endregion
+
+    override fun onChunkUnloaded() {
+        super.onChunkUnloaded()
+
+        parts.values.forEach { part ->
+            part.onUnloaded()
+        }
+    }
 
     /**
      * Saves all the data associated with a part to a CompoundTag.
@@ -475,6 +503,8 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
         }
 
         tag.put("Parts", partsTag)
+
+        Eln2.LOGGER.info("Put ${partsTag.size} parts")
     }
 
     /**
@@ -482,11 +512,13 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
      * */
     private fun loadPartsFromTag(tag: CompoundTag){
         if (tag.contains("Parts")) {
+            Eln2.LOGGER.info("Casting...")
             val partsTag = tag.get("Parts") as ListTag
-
+            Eln2.LOGGER.info("Cast")
             partsTag.forEach { partTag ->
+                Eln2.LOGGER.info("Part from tag...")
                 val part = createPartFromTag(partTag as CompoundTag)
-
+                Eln2.LOGGER.info("writing...")
                 parts[part.placementContext.face] = part
 
                 Eln2.LOGGER.info("Loaded $part")
@@ -514,8 +546,7 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
         val customTag = tag.get("CustomTag") as? CompoundTag
 
         val provider = PartRegistry.tryGetProvider(id) ?: error("Failed to get part with id $id")
-
-        val part = provider.create(PartPlacementContext(pos, face, facing, level!!))
+        val part = provider.create(PartPlacementContext(pos, face, facing, level!!, this))
 
         if(customTag != null){
             part.loadFromTag(customTag)
@@ -686,6 +717,14 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
 
     override fun recordConnection(location: CellSpaceLocation, direction: RelativeRotationDirection) {
         Eln2.LOGGER.info("Multipart record connection from ${location.innerFace} to $direction")
+    }
+
+    override fun recordDeletedConnection(location: CellSpaceLocation, direction: RelativeRotationDirection) {
+        Eln2.LOGGER.info("Multipart record deleted from ${location.innerFace} to $direction")
+    }
+
+    override fun topologyChanged() {
+        invalidateData()
     }
 
     override val manager: CellGraphManager

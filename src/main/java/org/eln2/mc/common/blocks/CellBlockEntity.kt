@@ -72,7 +72,7 @@ class CellBlockEntity(var pos : BlockPos, var state: BlockState)
 
         cell = cellProvider.create(getCellPos())
 
-        cell!!.entity = this
+        cell!!.container = this
         cell!!.id = cellProvider.registryName!!
 
         CellConnectionManager.connect(this, getCellSpace())
@@ -133,7 +133,7 @@ class CellBlockEntity(var pos : BlockPos, var state: BlockState)
             cell!!.onEntityUnloaded()
 
             // GC reference tracking
-            cell!!.entity = null
+            cell!!.container = null
         }
     }
 
@@ -159,7 +159,7 @@ class CellBlockEntity(var pos : BlockPos, var state: BlockState)
 
             cellProvider = CellRegistry.getProvider(cell!!.id)
 
-            cell!!.entity = this
+            cell!!.container = this
             cell!!.onEntityLoaded()
         }
     }
@@ -245,6 +245,14 @@ class CellBlockEntity(var pos : BlockPos, var state: BlockState)
 
     override fun recordConnection(location: CellSpaceLocation, direction: RelativeRotationDirection) {
         Eln2.LOGGER.info("Cell Block recorded connection to the $direction")
+    }
+
+    override fun recordDeletedConnection(location: CellSpaceLocation, direction: RelativeRotationDirection) {
+        Eln2.LOGGER.info("Cell Block recorded deleted to the $direction")
+    }
+
+    override fun topologyChanged() {
+        setChanged()
     }
 
 

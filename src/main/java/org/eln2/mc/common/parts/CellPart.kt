@@ -4,6 +4,7 @@ import net.minecraft.nbt.CompoundTag
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.level.ServerLevel
 import org.eln2.mc.Eln2
+import org.eln2.mc.common.blocks.MultipartBlockEntity
 import org.eln2.mc.common.cell.CellBase
 import org.eln2.mc.common.cell.CellGraphManager
 import org.eln2.mc.common.cell.CellPos
@@ -29,6 +30,14 @@ abstract class CellPart(
 
     override fun onPlaced() {
         cell = provider.create(cellPos)
+        cell.container = placementContext.multipart
+    }
+
+    override fun onUnloaded() {
+        if(hasCell){
+            cell.onEntityUnloaded()
+            cell.container = null
+        }
     }
 
     override fun getSaveTag(): CompoundTag? {
@@ -61,7 +70,6 @@ abstract class CellPart(
             Eln2.LOGGER.error("Part cell not initialized!")
             provider.create(cellPos)
         } else{
-
             Eln2.LOGGER.info("Part loading cell from disk $loadGraphId")
 
             CellGraphManager
@@ -69,5 +77,8 @@ abstract class CellPart(
                 .getGraphWithId(loadGraphId)
                 .getCell(cellPos)
         }
+
+        cell.container = placementContext.multipart
+        cell.onEntityLoaded()
     }
 }
