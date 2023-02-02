@@ -607,7 +607,7 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
             error("FATAL! Queried neighbors for non-cell part!")
         }
 
-        val results = ArrayList<CellNeighborInfo>()
+        val results = LinkedHashSet<CellNeighborInfo>()
 
         DirectionMask.perpendicular(partFace).forEach { searchDirection ->
             val partRelative = part.getRelative(searchDirection)
@@ -647,7 +647,8 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
 
                 results.add(CellNeighborInfo(CellSpaceLocation(innerPart.cell, innerPart.placementContext.face), this, partRelative, innerRelativeRotation))
             }
-            else if(part.allowPlanarConnections && level!!.getBlockEntity(pos + searchDirection) is ICellContainer){
+
+            if(part.allowPlanarConnections && level!!.getBlockEntity(pos + searchDirection) is ICellContainer){
                 val remoteContainer = level!!.getBlockEntity(pos + searchDirection) as ICellContainer
 
                 val remoteConnectionFace = searchDirection.opposite
@@ -669,7 +670,8 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
                 Eln2.LOGGER.info("Remote container allowed planar direction on $searchDirection")
                 results.add(CellNeighborInfo(remoteSpace, remoteContainer, partRelative, remoteRelative))
             }
-            else if(part.allowWrappedConnections){
+
+            if(part.allowWrappedConnections){
                 val wrapDirection = partFace.opposite
 
                 val remoteContainer = level!!.getBlockEntity(pos + searchDirection + wrapDirection) as? ICellContainer
@@ -698,7 +700,7 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
             }
         }
 
-        return results
+        return ArrayList(results)
     }
 
     override fun checkConnectionCandidate(location: CellSpaceLocation, direction: Direction): RelativeRotationDirection? {

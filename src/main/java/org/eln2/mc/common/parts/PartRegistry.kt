@@ -5,7 +5,7 @@ import net.minecraftforge.eventbus.api.IEventBus
 import net.minecraftforge.registries.*
 import org.eln2.mc.Eln2
 import org.eln2.mc.common.items.PartItem
-import org.eln2.mc.common.parts.part.MyPart
+import org.eln2.mc.common.parts.part.WirePart
 import org.eln2.mc.common.parts.providers.BasicPartProvider
 import java.util.function.Supplier
 
@@ -40,5 +40,5 @@ object PartRegistry {
         return partRegistry.get().getValue(id)
     }
 
-    val MY_PART = part("my_part", BasicPartProvider(::MyPart))
+    val WIRE_PART = part("wire_part", BasicPartProvider(::WirePart))
 }

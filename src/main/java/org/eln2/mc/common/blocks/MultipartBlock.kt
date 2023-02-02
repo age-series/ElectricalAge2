@@ -2,6 +2,8 @@ package org.eln2.mc.common.blocks
 
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
+import net.minecraft.server.level.ServerLevel
+import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.level.BlockGetter
@@ -18,7 +20,7 @@ import net.minecraft.world.phys.shapes.VoxelShape
 import org.eln2.mc.Eln2
 import org.eln2.mc.common.parts.Part
 
-class MultipartBlock : Block(Properties.of(Material.AIR).noOcclusion()), EntityBlock {
+class MultipartBlock : Block(Properties.of(Material.STONE).noOcclusion()), EntityBlock {
     /* This is required.
      * When minecraft tries to break the block, but no part is picked, it returns this empty box.
      * But a completely empty box will cause some minecraft processes to fail when they try to get
@@ -110,6 +112,21 @@ class MultipartBlock : Block(Properties.of(Material.AIR).noOcclusion()), EntityB
         }
     }
 
+    override fun addRunningEffects(state: BlockState?, level: Level?, pos: BlockPos?, entity: Entity?): Boolean {
+        return true
+    }
+
+    override fun addLandingEffects(
+        state1: BlockState?,
+        level: ServerLevel?,
+        pos: BlockPos?,
+        state2: BlockState?,
+        entity: LivingEntity?,
+        numberOfParticles: Int
+    ): Boolean {
+        return true
+    }
+
     @Deprecated("Deprecated in Java")
     override fun neighborChanged(
         pState: BlockState,
@@ -128,6 +145,10 @@ class MultipartBlock : Block(Properties.of(Material.AIR).noOcclusion()), EntityB
         }
 
         super.neighborChanged(pState, pLevel, pPos, pBlock, pFromPos, pIsMoving)
+    }
+
+    override fun spawnDestroyParticles(pLevel: Level, pPlayer: Player, pPos: BlockPos, pState: BlockState) {
+        //super.spawnDestroyParticles(pLevel, pPlayer, pPos, pState)
     }
 
     //#endregion

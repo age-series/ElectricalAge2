@@ -84,7 +84,9 @@ abstract class Part(val id : ResourceLocation, val placementContext: PartPlaceme
         return cachedShape!!
     }
 
-    abstract fun onUsedBy(entity : LivingEntity)
+    open fun onUsedBy(entity : LivingEntity){
+
+    }
 
     open fun getSaveTag() : CompoundTag?{
         return null

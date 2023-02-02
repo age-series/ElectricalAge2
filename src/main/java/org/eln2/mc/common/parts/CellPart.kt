@@ -41,6 +41,11 @@ abstract class CellPart(
     }
 
     override fun getSaveTag(): CompoundTag? {
+        if(!hasCell){
+            Eln2.LOGGER.error("Saving, but cell not initialized!")
+            return null
+        }
+
         val tag = CompoundTag()
 
         tag.putUUID("GraphID", cell.graph.id)
