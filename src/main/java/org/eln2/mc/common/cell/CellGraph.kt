@@ -1,14 +1,11 @@
 package org.eln2.mc.common.cell
 
-import net.minecraft.core.BlockPos
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.nbt.ListTag
 import net.minecraft.resources.ResourceLocation
 import org.ageseries.libage.sim.electrical.mna.Circuit
 import org.eln2.mc.Eln2
-import org.eln2.mc.extensions.NbtExtensions.getBlockPos
 import org.eln2.mc.extensions.NbtExtensions.getCellPos
-import org.eln2.mc.extensions.NbtExtensions.putBlockPos
 import org.eln2.mc.extensions.NbtExtensions.putCellPos
 import java.util.*
 import kotlin.system.measureNanoTime
@@ -50,7 +47,14 @@ class CellGraph(val id : UUID, val manager : CellGraphManager) {
     }
 
     fun getCell(pos: CellPos): CellBase {
-        return posCells[pos] ?: error("Could not find cell at $pos!")
+        val result = posCells[pos]
+
+        if(result == null){
+            Eln2.LOGGER.error("Could not get cell at $pos")
+            error("")
+        }
+
+        return result
     }
 
     fun removeCell(cell : CellBase) {
@@ -86,10 +90,10 @@ class CellGraph(val id : UUID, val manager : CellGraphManager) {
             val cellTag = CompoundTag()
             val connectionsTag = ListTag()
 
-            cell.connections.forEach { conn->
-                val connCompound = CompoundTag()
-                connCompound.putCellPos("Position", conn.pos)
-                connectionsTag.add(connCompound)
+            cell.connections.forEach { connections ->
+                val connectionCompound = CompoundTag()
+                connectionCompound.putCellPos("Position", connections .pos)
+                connectionsTag.add(connectionCompound)
             }
 
             cellTag.putCellPos("Position", cell.pos)

@@ -123,6 +123,8 @@ abstract class Part(val id : ResourceLocation, val placementContext: PartPlaceme
      * */
     open fun onLoaded(){}
 
+    open fun onUnloaded(){}
+
     /**
      * Called when the part is destroyed.
      * */
