@@ -4,13 +4,13 @@ import com.mojang.math.Matrix4f
 import net.minecraft.core.Direction
 import org.eln2.mc.extensions.DirectionExtensions.isVertical
 
-enum class RelativeRotationDirection {
-    Front,
-    Back,
-    Left,
-    Right,
-    Up,
-    Down;
+enum class RelativeRotationDirection(val id : Int) {
+    Front(1),
+    Back(2),
+    Left(3),
+    Right(4),
+    Up(5),
+    Down(6);
 
     companion object{
         fun fromFacingUp(facing : Direction, normal : Direction, direction: Direction) : RelativeRotationDirection{
@@ -34,6 +34,19 @@ enum class RelativeRotationDirection {
                 adjustedFacing.getClockWise(normal.axis) -> Right
                 adjustedFacing.getCounterClockWise(normal.axis) -> Left
                 else -> error("Adjusted facing did not match")
+            }
+        }
+
+        fun fromId(id : Int) : RelativeRotationDirection{
+            return when(id){
+                Front.id -> Front
+                Back.id -> Back
+                Left.id -> Left
+                Right.id -> Right
+                Up.id -> Up
+                Down.id -> Down
+
+                else -> error("Invalid local direction id: $id")
             }
         }
     }

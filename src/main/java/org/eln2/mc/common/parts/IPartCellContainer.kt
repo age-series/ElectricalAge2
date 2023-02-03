@@ -12,4 +12,7 @@ interface IPartCellContainer {
     val allowPlanarConnections : Boolean
     val allowInnerConnections : Boolean
     val allowWrappedConnections : Boolean
+
+    fun recordConnection(direction: RelativeRotationDirection)
+    fun recordDeletedConnection(direction: RelativeRotationDirection)
 }

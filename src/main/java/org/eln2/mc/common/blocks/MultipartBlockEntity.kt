@@ -76,6 +76,9 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
 
     private fun invalidateData(){
         setChanged()
+    }
+
+    private fun syncData(){
         level!!.sendBlockUpdated(blockPos, state, state, Block.UPDATE_CLIENTS)
     }
 
@@ -87,11 +90,11 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
 
     fun enqueuePartSync(face : Direction){
         partsRequestingUpdate.add(face)
-        invalidateData()
+        syncData()
     }
 
     fun pickPart(entity : LivingEntity) : Part?{
-        return AABBUtilities.clipScene(entity, { it.worldBoundingBox }, parts.values)
+        return AABBUtilities.clipScene(entity, { it.gridBoundingBox }, parts.values)
     }
 
     fun place(entity: Player, pos : BlockPos, face : Direction, provider : PartProvider) : Boolean{
@@ -140,6 +143,7 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
         Eln2.LOGGER.info("Part placement completed.")
 
         invalidateData()
+        syncData()
 
         return true
     }
@@ -171,6 +175,7 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
 
         part.onDestroyed()
         invalidateData()
+        syncData()
     }
 
     /**
@@ -256,12 +261,9 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
     // Here, we send the freshly placed parts to clients that are already observing this multipart.
 
     override fun getUpdatePacket(): Packet<ClientGamePacketListener>? {
-        if(changedParts.size == 0){
-            return null
-        }
-
         val tag = CompoundTag()
 
+        // todo: remove allocations and unify
         val newPartsTag = ListTag()
         val removedPartsTag = ListTag()
 
@@ -463,6 +465,8 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
      * Saves all the data associated with a part to a CompoundTag.
      * */
     private fun savePartToTag(part : Part) : CompoundTag{
+        assert(!level!!.isClientSide)
+
         val tag = CompoundTag()
 
         tag.setResourceLocation("ID", part.id)
@@ -483,6 +487,8 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
      * Saves the entire part set to a CompoundTag.
      * */
     private fun savePartsToTag() : CompoundTag{
+        assert(!level!!.isClientSide)
+
         val tag = CompoundTag()
 
         savePartsToTag(tag)
@@ -494,6 +500,8 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
      * Saves the entire part set to the provided CompoundTag.
      * */
     private fun savePartsToTag(tag : CompoundTag){
+        assert(!level!!.isClientSide)
+
         val partsTag = ListTag()
 
         parts.keys.forEach { face ->
@@ -718,11 +726,15 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
     }
 
     override fun recordConnection(location: CellSpaceLocation, direction: RelativeRotationDirection) {
-        Eln2.LOGGER.info("Multipart record connection from ${location.innerFace} to $direction")
+        val part = parts[location.innerFace] as IPartCellContainer
+
+        part.recordConnection(direction)
     }
 
     override fun recordDeletedConnection(location: CellSpaceLocation, direction: RelativeRotationDirection) {
-        Eln2.LOGGER.info("Multipart record deleted from ${location.innerFace} to $direction")
+        val part = parts[location.innerFace] as IPartCellContainer
+
+        part.recordDeletedConnection(direction)
     }
 
     override fun topologyChanged() {
