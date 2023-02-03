@@ -9,7 +9,6 @@ import com.jozufozu.flywheel.core.structs.model.ModelData
 import org.eln2.mc.client.flywheel.instances.MultipartBlockEntityInstance
 import org.eln2.mc.common.parts.IPartRenderer
 import org.eln2.mc.common.parts.Part
-import org.eln2.mc.extensions.ModelDataExtensions.applyPartTransform
 import org.eln2.mc.extensions.Vec3Extensions.div
 import org.eln2.mc.extensions.Vec3Extensions.unaryMinus
 
@@ -26,7 +25,6 @@ open class PartialModelPartRenderer(val part : Part, val model : PartialModel) :
             .factory(StructTypes.MODEL)
             .model(modelSupplier)
             .createInstance()
-            .applyPartTransform(part)
     }
 
     override fun beginFrame(){}

@@ -73,8 +73,11 @@ abstract class Part(val id : ResourceLocation, val placementContext: PartPlaceme
     /**
      * This is the bounding box of the part, in its block position.
      * */
-    val worldBoundingBox : AABB
+    val gridBoundingBox : AABB
         get() = modelBoundingBox.move(placementContext.pos)
+
+    val worldBoundingBox : AABB
+        get() = gridBoundingBox.move(Vec3(-0.5, 0.0, -0.5))
 
     open val shape : VoxelShape get() {
         if(cachedShape == null){
@@ -100,19 +103,25 @@ abstract class Part(val id : ResourceLocation, val placementContext: PartPlaceme
 
     open fun handleSyncTag(tag : CompoundTag){}
 
+    fun invalidateSave(){
+        if(placementContext.level.isClientSide){
+            error("Cannot save on the client")
+        }
+
+        placementContext.multipart.setChanged()
+    }
+
     fun syncChanges(){
         if(placementContext.level.isClientSide){
             error("Cannot sync changes from client to server!")
         }
 
-        val entity = placementContext.level.getBlockEntity(placementContext.pos) as? MultipartBlockEntity
+        placementContext.multipart.enqueuePartSync(placementContext.face)
+    }
 
-        if(entity == null){
-            Eln2.LOGGER.error("FAILED TO GET MULTIPART AT ${placementContext.pos}")
-            return
-        }
-
-        entity.enqueuePartSync(placementContext.face)
+    fun syncAndSave(){
+        syncChanges()
+        invalidateSave()
     }
 
     /**
