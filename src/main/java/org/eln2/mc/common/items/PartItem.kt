@@ -13,7 +13,7 @@ import org.eln2.mc.extensions.BlockPosExtensions.plus
 class PartItem(private val provider: PartProvider) : BlockItem(BlockRegistry.MULTIPART_BLOCK.block.get(), Properties()) {
     override fun useOn(pContext: UseOnContext): InteractionResult {
         if(pContext.level.isClientSide){
-            return InteractionResult.PASS
+            return InteractionResult.FAIL
         }
 
         if(pContext.player == null){
@@ -53,7 +53,8 @@ class PartItem(private val provider: PartProvider) : BlockItem(BlockRegistry.MUL
             return InteractionResult.FAIL
         }
 
-        val placed = (entity as MultipartBlockEntity).place(pContext.player!!, targetPos, pContext.clickedFace, provider)
+        val placed = (entity as MultipartBlockEntity)
+            .place(pContext.player!!, targetPos, pContext.clickedFace, provider)
 
         // If the part was placed successfully, let us consume this item.
 

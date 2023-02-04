@@ -8,6 +8,7 @@ import net.minecraft.network.Connection
 import net.minecraft.network.protocol.Packet
 import net.minecraft.network.protocol.game.ClientGamePacketListener
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket
+import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.player.Player
@@ -66,6 +67,8 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
 
     // Used for disk loading:
     private var savedTag : CompoundTag? = null
+
+    val isEmpty = parts.isEmpty()
 
     // Used for rendering:
     @ClientOnly
@@ -167,16 +170,17 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
      * */
     // TODO: return a break result (so we can drop the item)
     @ServerOnly
-    fun remove(entity : Player, level : Level, pos : BlockPos) : Boolean{
+    fun remove(entity : Player, level : Level, pos : BlockPos) : ResourceLocation?{
         if(level.isClientSide){
-            return false
+            return null
         }
 
-        val part = pickPart(entity) ?: return false
+        val part = pickPart(entity) ?: return null
 
+        val id = part.id
         removePart(part)
 
-        return parts.size == 0
+        return id
     }
 
     /**

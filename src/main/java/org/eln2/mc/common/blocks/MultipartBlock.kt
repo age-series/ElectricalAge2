@@ -6,6 +6,7 @@ import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.player.Player
+import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.BlockGetter
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.Block
@@ -19,12 +20,11 @@ import net.minecraft.world.phys.shapes.EntityCollisionContext
 import net.minecraft.world.phys.shapes.VoxelShape
 import org.eln2.mc.Eln2
 import org.eln2.mc.common.parts.Part
+import org.eln2.mc.common.parts.PartRegistry
 
-class MultipartBlock : Block(Properties.of(Material.STONE).noOcclusion()), EntityBlock {
-    /* This is required.
-     * When minecraft tries to break the block, but no part is picked, it returns this empty box.
-     * But a completely empty box will cause some minecraft processes to fail when they try to get
-     */
+class MultipartBlock : Block(Properties.of(Material.STONE)
+    .noOcclusion()
+    .destroyTime(0.2f)), EntityBlock {
     private val epsilon = 0.00001
     private val emptyBox = box(0.0, 0.0, 0.0, epsilon, epsilon, epsilon);
 
@@ -78,17 +78,14 @@ class MultipartBlock : Block(Properties.of(Material.STONE).noOcclusion()), Entit
         fluid: FluidState?
     ): Boolean {
         if(pos == null){
-            Eln2.LOGGER.error("Pos null")
             return false
         }
 
         if(level == null){
-            Eln2.LOGGER.error("Destroy level null at $pos")
             return false
         }
 
         if(player == null){
-            Eln2.LOGGER.error("Destroy player null at $pos")
             return false
         }
 
@@ -99,17 +96,24 @@ class MultipartBlock : Block(Properties.of(Material.STONE).noOcclusion()), Entit
             return false
         }
 
-        val completelyDestroyed = multipart.remove(player, level, pos)
+        val removedId =
+            multipart.remove(player, level, pos)
+            ?: return false
 
-        return if(completelyDestroyed){
-            // Only a part was removed, there are other parts in this multipart.
+        val item = PartRegistry.getPartItem(removedId)
 
-            super.onDestroyedByPlayer(state, level, pos, player, willHarvest, fluid)
-        } else{
-            // We don't want to destroy the whole block and entity
-
-            false
+        if(!player.isCreative){
+            player.inventory.add(ItemStack(item))
         }
+
+        // We want to destroy the multipart only if it is empty
+        val multipartIsDestroyed = multipart.isEmpty
+
+        if(multipartIsDestroyed){
+            level.destroyBlock(pos, false)
+        }
+
+        return multipartIsDestroyed
     }
 
     override fun addRunningEffects(state: BlockState?, level: Level?, pos: BlockPos?, entity: Entity?): Boolean {

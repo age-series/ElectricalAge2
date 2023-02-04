@@ -49,5 +49,9 @@ object PartRegistry {
         return partRegistry.get().getValue(id)
     }
 
+    fun getPartItem(id : ResourceLocation) : PartItem{
+        return ForgeRegistries.ITEMS.getValue(id) as PartItem
+    }
+
     val WIRE_PART = part("wire_part", BasicPartProvider(::WirePart))
 }
