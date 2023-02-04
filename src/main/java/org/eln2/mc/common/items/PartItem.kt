@@ -63,7 +63,7 @@ class PartItem(private val provider: PartProvider, tab : CreativeModeTab) : Bloc
         // If the part was placed successfully, let us consume this item.
 
         return if(placed){
-            InteractionResult.CONSUME
+            InteractionResult.SUCCESS
         }
         else{
             InteractionResult.FAIL
