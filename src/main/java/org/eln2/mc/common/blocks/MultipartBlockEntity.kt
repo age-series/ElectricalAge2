@@ -40,6 +40,8 @@ import org.eln2.mc.extensions.NbtExtensions.putBlockPos
 import org.eln2.mc.extensions.NbtExtensions.setDirection
 import org.eln2.mc.extensions.NbtExtensions.setResourceLocation
 import org.eln2.mc.utility.AABBUtilities
+import org.eln2.mc.utility.ClientOnly
+import org.eln2.mc.utility.ServerOnly
 import java.util.concurrent.ConcurrentLinkedQueue
 
 /**
@@ -48,6 +50,7 @@ import java.util.concurrent.ConcurrentLinkedQueue
  *  - Act as a container for Parts. There may be one part per inner face (maximum of 6 parts per multipart entity)
  *  - The player can place inside the multipart entity. Placement and breaking logic must be emulated.
  *  - The multipart entity saves data for all the parts. Parts are responsible for their rendering.
+ *  - A part can also be included in the simulation. Special connection logic is implemented for CellPart.
  * */
 class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
     BlockEntity(BlockRegistry.MULTIPART_BLOCK_ENTITY.get(), pos, state),
@@ -61,41 +64,58 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
     // Used for streaming to clients:
     private val changedParts = ArrayList<PartUpdate>()
 
-    // used for disk loading
+    // Used for disk loading:
     private var savedTag : CompoundTag? = null
 
     // Used for rendering:
+    @ClientOnly
     val clientUpdateQueue = ConcurrentLinkedQueue<PartUpdate>()
 
     var collisionShape : VoxelShape
-        get
         private set
 
     init {
         collisionShape = Shapes.empty()
     }
 
-    private fun invalidateData(){
+    /**
+     * Ensures that this multipart will be saved at a later date.
+     * */
+    @ServerOnly
+    private fun saveData(){
         setChanged()
     }
 
+    /**
+     * Enqueues this multipart for synchronization to clients.
+     * */
+    @ServerOnly
     private fun syncData(){
         level!!.sendBlockUpdated(blockPos, state, state, Block.UPDATE_CLIENTS)
     }
 
-    override fun setRemoved() {
-        super.setRemoved()
-    }
-
+    /**
+     * Enqueues a part for synchronization to clients.
+     * This is used to synchronize custom part data.
+     * */
+    @ServerOnly
     fun enqueuePartSync(face : Direction){
         partsRequestingUpdate.add(face)
-        syncData()
+        syncData() // TODO: Can we batch multiple updates?
     }
 
+    /**
+     * Finds the part intersected by the entity's view.
+     * */
     fun pickPart(entity : LivingEntity) : Part?{
         return AABBUtilities.clipScene(entity, { it.gridBoundingBox }, parts.values)
     }
 
+    /**
+     * Attempts to place a part.
+     * @return True if the part was successfully placed. Otherwise, false.
+     * */
+    @ServerOnly
     fun place(entity: Player, pos : BlockPos, face : Direction, provider : PartProvider) : Boolean{
         if(entity.level.isClientSide){
             return false
@@ -135,16 +155,18 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
             CellConnectionManager.connect(this, CellSpaceLocation(part.cell, part.placementContext.face))
         }
 
-        invalidateData()
+        saveData()
         syncData()
 
         return true
     }
 
     /**
-     * Tries to break the part picked by the player.
-     * @return True if there are no parts left after breaking and, as such, this entity should be destroyed.
+     * Tries to destroy a part.
+     * @return True if there are no parts left after breaking and, as such, this entity should be destroyed. Otherwise, false.
      * */
+    // TODO: return a break result (so we can drop the item)
+    @ServerOnly
     fun remove(entity : Player, level : Level, pos : BlockPos) : Boolean{
         if(level.isClientSide){
             return false
@@ -157,17 +179,25 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
         return parts.size == 0
     }
 
+    /**
+     * Destroys a part, saves and synchronizes the changes.
+     * */
+    @ServerOnly
     private fun removePart(part : Part){
         if(part is IPartCellContainer){
-            Eln2.LOGGER.info("Destroyed part cell on ${part.placementContext.face}")
-            CellConnectionManager.destroy(CellSpaceLocation(part.cell, part.placementContext.face), this)
+            CellConnectionManager.destroy(CellSpaceLocation(
+                part.cell,
+                part.placementContext.face),
+                this
+            )
         }
 
         parts.remove(part.placementContext.face)
         changedParts.add(PartUpdate(part, PartUpdateType.Remove))
 
         part.onDestroyed()
-        invalidateData()
+
+        saveData()
         syncData()
     }
 
@@ -176,6 +206,7 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
      * If a part is placed on the face corresponding to that neighbor,
      * the part must be destroyed.
      * */
+    @ServerOnly
     fun onNeighborDestroyed(neighborPos : BlockPos) : Boolean{
         if(level!!.isClientSide){
             return false
@@ -198,10 +229,16 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
         return parts.size == 0
     }
 
+    /**
+     * Merges the current multipart collider with the collider of the part.
+     * */
     private fun joinCollider(part : Part){
         collisionShape = Shapes.join(collisionShape, part.shape, BooleanOp.OR)
     }
 
+    /**
+     * Builds the collider from the current parts.
+     * */
     private fun rebuildCollider(){
         collisionShape = Shapes.empty()
 
@@ -217,6 +254,7 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
     // The following methods get called when chunks are first synchronized to clients
     // Here, we send all the parts we have.
 
+    @ServerOnly
     override fun getUpdateTag(): CompoundTag {
         if(level!!.isClientSide){
             return CompoundTag()
@@ -225,6 +263,7 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
         return savePartsToTag()
     }
 
+    @ClientOnly
     override fun handleUpdateTag(tag: CompoundTag?) {
         if(tag == null){
             Eln2.LOGGER.error("Part update tag was null at $pos")
@@ -257,6 +296,7 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
     // The following methods get called by our code (through forge), after we add new parts
     // Here, we send the freshly placed parts to clients that are already observing this multipart.
 
+    @ServerOnly
     override fun getUpdatePacket(): Packet<ClientGamePacketListener>? {
         if(level!!.isClientSide){
             return null
@@ -325,6 +365,7 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
         return ClientboundBlockEntityDataPacket.create(this) { tag };
     }
 
+    @ClientOnly
     override fun onDataPacket(net: Connection?, packet: ClientboundBlockEntityDataPacket?) {
         if(packet == null){
             Eln2.LOGGER.error("onDataPacket null at $pos")
@@ -387,13 +428,19 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
         }
     }
 
-    // Enqueues a part for rendering set-up.
+    /**
+     * Enqueues a part for renderer setup.
+     * */
+    @ClientOnly
     private fun clientAddPart(part : Part){
         part.onAddedToClient()
         clientUpdateQueue.add(PartUpdate(part, PartUpdateType.Add))
     }
 
-    // Dequeues a part for rendering set-up.
+    /**
+     * Removes a part from the renderer.
+     * */
+    @ClientOnly
     private fun clientRemovePart(part : Part){
         part.onDestroyed()
         clientUpdateQueue.add(PartUpdate(part, PartUpdateType.Remove))
@@ -403,6 +450,7 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
 
     //#region Disk Loading
 
+    @ServerOnly
     override fun saveAdditional(pTag: CompoundTag) {
         super.saveAdditional(pTag)
 
@@ -413,18 +461,22 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
         savePartsToTag(pTag)
     }
 
+    /**
+     * This method gets called when the tile entity is constructed.
+     * The level is not available at this stage. We require this level to reconstruct the parts.
+     * As such, we defer part reconstruction to a stage where the level becomes available (setLevel)
+     * */
+    @ServerOnly
     override fun load(pTag: CompoundTag) {
         super.load(pTag)
 
         savedTag = pTag
-
-        // This is necessary because we don't have the level at this stage
-        // We need the level to load the parts
-        // Loading will complete in setLevel
-
-        Eln2.LOGGER.info("Save tag: ${savedTag!!.size()}")
     }
 
+    /**
+     * This method finishes loading from disk. It constructs all parts from the saved tag.
+     * */
+    @ServerOnly
     override fun setLevel(pLevel: Level) {
         try {
             super.setLevel(pLevel)
@@ -444,7 +496,7 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
                 Eln2.LOGGER.info("Done")
 
                 // GC reference tracking
-                //savedTag = null
+                savedTag = null
             }
             else{
                 Eln2.LOGGER.info("Multipart save tag null")
@@ -453,12 +505,13 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
         catch (ex : Exception){
             Eln2.LOGGER.error("Unhandled exception in setLevel: $ex")
         }
-
-
     }
 
     //#endregion
 
+    /**
+     * This method notifies the parts that the chunk is being unloaded.
+     * */
     override fun onChunkUnloaded() {
         super.onChunkUnloaded()
 
@@ -470,6 +523,7 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
     /**
      * Saves all the data associated with a part to a CompoundTag.
      * */
+    @ServerOnly
     private fun savePartToTag(part : Part) : CompoundTag{
         val tag = CompoundTag()
 
@@ -490,6 +544,7 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
     /**
      * Saves the entire part set to a CompoundTag.
      * */
+    @ServerOnly
     private fun savePartsToTag() : CompoundTag{
         val tag = CompoundTag()
 
@@ -501,6 +556,7 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
     /**
      * Saves the entire part set to the provided CompoundTag.
      * */
+    @ServerOnly
     private fun savePartsToTag(tag : CompoundTag){
         assert(!level!!.isClientSide)
 
@@ -516,7 +572,9 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
     }
 
     /**
-     * Loads all the parts from the tag and adds them to the map.
+     * Loads all the parts from the tag and adds sets them up within this multipart.
+     * This is used by the server to load from disk, and by the client to set up parts during the initial
+     * chunk synchronization.
      * */
     private fun loadPartsFromTag(tag: CompoundTag){
         if (tag.contains("Parts")) {
@@ -563,6 +621,10 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
         return part
     }
 
+    /**
+     * Gets a list of all cells within this container's parts.
+     * */
+    @ServerOnly
     override fun getCells(): ArrayList<CellSpaceLocation> {
         val results = ArrayList<CellSpaceLocation>()
 
@@ -590,7 +652,7 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
             return null
         }
 
-        val relativeRotation = part.getRelative(query.connectionFace)
+        val relativeRotation = part.getRelativeDirection(query.connectionFace)
 
         Eln2.LOGGER.info("${query.connectionFace} mapped to $relativeRotation")
 
@@ -616,7 +678,7 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
         val results = LinkedHashSet<CellNeighborInfo>()
 
         DirectionMask.perpendicular(partFace).forEach { searchDirection ->
-            val partRelative = part.getRelative(searchDirection)
+            val partRelative = part.getRelativeDirection(searchDirection)
 
             if(!part.provider.canConnectFrom(partRelative)){
                 Eln2.LOGGER.info("Part rejected connection on $partRelative")
@@ -638,7 +700,7 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
                         return
                     }
 
-                    val innerRelativeRotation = innerPart.getRelative(partFace.opposite)
+                    val innerRelativeRotation = innerPart.getRelativeDirection(partFace.opposite)
 
                     if(!innerPart.provider.canConnectFrom(innerRelativeRotation)){
                         return
@@ -700,7 +762,7 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
 
     override fun checkConnectionCandidate(location: CellSpaceLocation, direction: Direction): RelativeRotationDirection? {
         val part = (parts[location.innerFace]!!)
-        val relative = part.getRelative(direction)
+        val relative = part.getRelativeDirection(direction)
 
         assert(part is IPartCellContainer)
 
@@ -725,9 +787,10 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
     }
 
     override fun topologyChanged() {
-        invalidateData()
+        saveData()
     }
 
+    @ServerOnly
     override val manager: CellGraphManager
         get() = CellGraphManager.getFor(level as? ServerLevel ?: error("Tried to get multipart cell provider on the client"))
 

@@ -26,20 +26,46 @@ interface ICellContainer {
      * */
     fun getCells() : ArrayList<CellSpaceLocation>
 
+    /**
+     * @return A cell that matches the specified query, or null, if no cell matches.
+     * */
     fun query(query: CellSpaceQuery) : CellSpaceLocation?
 
+    /**
+     * Queries the neighbors of the specified cell.
+     * @return A list of all the neighbors of the specified cell.
+     * */
     fun queryNeighbors(location : CellSpaceLocation) : ArrayList<CellNeighborInfo>
 
+    /**
+     * Checks if the specified cell accepts connection from the specified direction.
+     * @param location The cell to check candidates for.
+     * @param direction The global direction.
+     * @return A relative rotation, if the connection is accepted. Otherwise, null.
+     * */
     fun checkConnectionCandidate(location: CellSpaceLocation, direction: Direction) : RelativeRotationDirection?
 
+    /**
+     * Called by the connection manager when a connection is made.
+     * @param location The cell that received the new connection.
+     * @param direction The local direction towards the remote cell.
+     * */
     fun recordConnection(location : CellSpaceLocation, direction: RelativeRotationDirection)
 
+    /**
+     * Called by the connection manager when a connection is destroyed.
+     * @param location The cell whose connection was destroyed.
+     * @param direction The local direction towards the remote cell.
+     * */
     fun recordDeletedConnection(location: CellSpaceLocation, direction : RelativeRotationDirection)
 
+    /**
+     * Called by the connection manager when the graphs associated with this container have changed (completely different graph).
+     * */
     fun topologyChanged()
 
     /**
-     * The manager responsible for the cells of this container (per dimension)
+     * The manager responsible for the cells in this container (per dimension)
      * */
     val manager : CellGraphManager
 }

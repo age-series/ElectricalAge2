@@ -29,6 +29,15 @@ object PartRegistry {
         val item : RegistryObject<PartItem>
     )
 
+    /**
+     * Registers everything needed to create a part.
+     * This includes:
+     *  - The part provider (the actual part)
+     *  - The part item (used to place the part)
+     *
+     *  @param name The name for all the registry items.
+     *  @param provider The part provider that will be used to create the part.
+     * */
     private fun part(name : String, provider : PartProvider) : PartRegistryItem {
         val part = PART_REGISTRY.register(name) { provider }
         val item = PART_ITEM_REGISTRY.register(name) { PartItem(provider) }
