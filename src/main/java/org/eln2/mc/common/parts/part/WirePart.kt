@@ -9,6 +9,7 @@ import org.eln2.mc.client.render.WirePartRenderer
 import org.eln2.mc.common.RelativeRotationDirection
 import org.eln2.mc.common.cell.CellRegistry
 import org.eln2.mc.common.parts.CellPart
+import org.eln2.mc.common.parts.ConnectionMode
 import org.eln2.mc.common.parts.IPartRenderer
 import org.eln2.mc.common.parts.PartPlacementContext
 import org.eln2.mc.extensions.NbtExtensions.getRelativeDirection
@@ -102,8 +103,8 @@ class WirePart(id : ResourceLocation, context : PartPlacementContext) : CellPart
         wireRenderer?.applyDirections(connectedDirections.toList())
     }
 
-    override fun recordConnection(direction: RelativeRotationDirection) {
-        Eln2.LOGGER.error("Wire $this record $direction")
+    override fun recordConnection(direction: RelativeRotationDirection, mode : ConnectionMode) {
+        Eln2.LOGGER.error("Wire $this record $direction : $mode")
         connectedDirections.add(direction)
         syncChanges()
         invalidateSave()

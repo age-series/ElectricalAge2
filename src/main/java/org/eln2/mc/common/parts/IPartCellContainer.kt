@@ -46,7 +46,7 @@ interface IPartCellContainer {
      * Called when this part receives a cell connection.
      * @param direction The local direction towards the remote cell.
      * */
-    fun recordConnection(direction: RelativeRotationDirection)
+    fun recordConnection(direction: RelativeRotationDirection, mode : ConnectionMode)
 
     /**
      * Called when this part is disconnected from the remote cell.

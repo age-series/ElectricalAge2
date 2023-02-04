@@ -99,9 +99,9 @@ object CellConnectionManager {
             Eln2.LOGGER.info("Neighbor $neighborInfo")
 
             neighborInfo.neighborSpace.cell.connections.add(cell)
-            neighborInfo.neighborContainer.recordConnection(neighborInfo.neighborSpace, neighborInfo.neighborDirection)
+            neighborInfo.neighborContainer.recordConnection(neighborInfo.neighborSpace, neighborInfo.neighborDirection, cellSpace)
 
-            container.recordConnection(cellSpace, neighborInfo.sourceDirection)
+            container.recordConnection(cellSpace, neighborInfo.sourceDirection, neighborInfo.neighborSpace)
         }
 
         if(neighborInfos.isEmpty()){

@@ -774,10 +774,25 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
         }
     }
 
-    override fun recordConnection(location: CellSpaceLocation, direction: RelativeRotationDirection) {
+    override fun recordConnection(location: CellSpaceLocation, direction: RelativeRotationDirection, neighborSpace : CellSpaceLocation) {
         val part = parts[location.innerFace] as IPartCellContainer
 
-        part.recordConnection(direction)
+        val cellPos = location.cell.pos
+        val neighborPos = neighborSpace.cell.pos
+
+        val mode : ConnectionMode = if(cellPos.blockPos == neighborPos.blockPos){
+            // They are in the same block space. This is certainly an inner connection.
+
+            ConnectionMode.Inner
+        } else if(location.innerFace == neighborSpace.innerFace){
+            // This is planar. If it were wrapped, the normals would be perpendicular (i.e. not equal)
+
+            ConnectionMode.Planar
+        } else{
+            ConnectionMode.Wrapped
+        }
+
+        part.recordConnection(direction, mode)
     }
 
     override fun recordDeletedConnection(location: CellSpaceLocation, direction: RelativeRotationDirection) {
