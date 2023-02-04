@@ -32,7 +32,7 @@ class CellGraph(val id : UUID, val manager : CellGraphManager) {
         }
     }
 
-    fun build() {
+    fun buildSolver() {
         circuit = Circuit()
 
         cells.forEach{ cell ->
@@ -68,6 +68,11 @@ class CellGraph(val id : UUID, val manager : CellGraphManager) {
         cell.graph = this
         posCells[cell.pos] = cell
         manager.setDirty()
+    }
+
+    fun connectCell(cell : CellBase){
+        cell.clear()
+        cell.buildConnections()
     }
 
     fun copyTo(graph : CellGraph){

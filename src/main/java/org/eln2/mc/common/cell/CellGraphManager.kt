@@ -75,7 +75,7 @@ class CellGraphManager(val level : Level) : SavedData() {
 
                 manager.addGraph(graph)
                 Eln2.LOGGER.info("Loaded ${graph.cells.count()} cells for ${graph.id}!")
-                graph.build()
+                graph.buildSolver()
             }
 
             return manager
