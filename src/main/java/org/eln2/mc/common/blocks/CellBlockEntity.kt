@@ -243,7 +243,7 @@ class CellBlockEntity(var pos : BlockPos, var state: BlockState)
         }
     }
 
-    override fun recordConnection(location: CellSpaceLocation, direction: RelativeRotationDirection) {
+    override fun recordConnection(location: CellSpaceLocation, direction: RelativeRotationDirection, neighborSpace : CellSpaceLocation) {
         Eln2.LOGGER.info("Cell Block recorded connection to the $direction")
     }
 
