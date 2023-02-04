@@ -4,6 +4,7 @@ import net.minecraft.resources.ResourceLocation
 import net.minecraftforge.eventbus.api.IEventBus
 import net.minecraftforge.registries.*
 import org.eln2.mc.Eln2
+import org.eln2.mc.common.eln2Tab
 import org.eln2.mc.common.items.PartItem
 import org.eln2.mc.common.parts.part.WirePart
 import org.eln2.mc.common.parts.providers.BasicPartProvider
@@ -40,7 +41,7 @@ object PartRegistry {
      * */
     private fun part(name : String, provider : PartProvider) : PartRegistryItem {
         val part = PART_REGISTRY.register(name) { provider }
-        val item = PART_ITEM_REGISTRY.register(name) { PartItem(provider) }
+        val item = PART_ITEM_REGISTRY.register(name) { PartItem(provider, eln2Tab) }
 
         return PartRegistryItem(name, part, item)
     }
