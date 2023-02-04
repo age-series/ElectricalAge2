@@ -2,7 +2,6 @@ package org.eln2.mc.common.cell.container
 
 import net.minecraft.core.Direction
 import org.eln2.mc.common.RelativeRotationDirection
-import org.eln2.mc.common.cell.CellGraph
 import org.eln2.mc.common.cell.CellGraphManager
 
 /**

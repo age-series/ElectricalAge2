@@ -97,7 +97,7 @@ class MultipartBlock : Block(Properties.of(Material.STONE)
         }
 
         val removedId =
-            multipart.remove(player, level, pos)
+            multipart.remove(player, level)
             ?: return false
 
         val item = PartRegistry.getPartItem(removedId)
@@ -149,10 +149,6 @@ class MultipartBlock : Block(Properties.of(Material.STONE)
         }
 
         super.neighborChanged(pState, pLevel, pPos, pBlock, pFromPos, pIsMoving)
-    }
-
-    override fun spawnDestroyParticles(pLevel: Level, pPlayer: Player, pPos: BlockPos, pState: BlockState) {
-        //super.spawnDestroyParticles(pLevel, pPlayer, pPos, pState)
     }
 
     //#endregion

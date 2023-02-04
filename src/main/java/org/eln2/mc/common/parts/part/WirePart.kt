@@ -16,9 +16,9 @@ import org.eln2.mc.extensions.NbtExtensions.getRelativeDirection
 import org.eln2.mc.extensions.NbtExtensions.setRelativeDirection
 
 class WirePart(id : ResourceLocation, context : PartPlacementContext) : CellPart(id, context, CellRegistry.WIRE_CELL.get()) {
-    override val baseSize: Vec3
-        get() = Vec3(0.5, 0.25, 0.5)
+    override val baseSize: Vec3 get() = Vec3(0.5, 0.25, 0.5)
 
+    val connectedDirections = HashSet<RelativeRotationDirection>()
     private var wireRenderer : WirePartRenderer? = null
 
     override fun createRenderer(): IPartRenderer {
@@ -28,8 +28,6 @@ class WirePart(id : ResourceLocation, context : PartPlacementContext) : CellPart
 
         return wireRenderer!!
     }
-
-    val connectedDirections = HashSet<RelativeRotationDirection>()
 
     override fun onPlaced() {
         super.onPlaced()

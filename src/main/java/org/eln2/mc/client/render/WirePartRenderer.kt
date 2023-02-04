@@ -38,12 +38,6 @@ class WirePartRenderer(val part : WirePart) : IPartRenderer {
 
     fun applyDirections(directions : List<RelativeRotationDirection>){
         latestDirections = directions
-
-        Eln2.LOGGER.info("dirs: ")
-
-        directions.forEach {
-            Eln2.LOGGER.info(it.name)
-        }
     }
 
     override fun setupRendering(multipart: MultipartBlockEntityInstance) {
