@@ -20,14 +20,18 @@ import java.io.IOException
 
 @Mod.EventBusSubscriber
 object CommonEvents {
-
     private const val THIRTY_DAYS_AS_MILLISECONDS: Long = 2_592_000_000L
 
     @SubscribeEvent
     fun onServerTick(event : TickEvent.ServerTickEvent){
-        if(event.phase == TickEvent.Phase.END){
+        if(event.phase == TickEvent.Phase.START){
             ServerLifecycleHooks.getCurrentServer().allLevels.forEach{
-                CellGraphManager.getFor(it).update()
+                CellGraphManager.getFor(it).beginUpdate()
+            }
+        }
+        else if(event.phase == TickEvent.Phase.END){
+            ServerLifecycleHooks.getCurrentServer().allLevels.forEach{
+                CellGraphManager.getFor(it).endUpdate()
             }
         }
     }
