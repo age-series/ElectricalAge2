@@ -41,6 +41,7 @@ class PartItem(private val provider: PartProvider) : BlockItem(BlockRegistry.MUL
         else {
             Eln2.LOGGER.error("Placing new multipart.")
 
+            // Place multipart
             super.useOn(pContext)
 
             entity = level.getBlockEntity(targetPos)
@@ -54,8 +55,13 @@ class PartItem(private val provider: PartProvider) : BlockItem(BlockRegistry.MUL
 
         val placed = (entity as MultipartBlockEntity).place(pContext.player!!, targetPos, pContext.clickedFace, provider)
 
-        // ignore for now
+        // If the part was placed successfully, let us consume this item.
 
-        return InteractionResult.SUCCESS;
+        return if(placed){
+            InteractionResult.CONSUME
+        }
+        else{
+            InteractionResult.FAIL
+        }
     }
 }
