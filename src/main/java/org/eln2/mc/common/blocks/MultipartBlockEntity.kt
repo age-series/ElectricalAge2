@@ -166,11 +166,10 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
 
     /**
      * Tries to destroy a part.
-     * @return True if there are no parts left after breaking and, as such, this entity should be destroyed. Otherwise, false.
+     * @return The ID of the part that was broken, if any were picked. Otherwise, null.
      * */
-    // TODO: return a break result (so we can drop the item)
     @ServerOnly
-    fun remove(entity : Player, level : Level, pos : BlockPos) : ResourceLocation?{
+    fun remove(entity : Player, level : Level) : ResourceLocation?{
         if(level.isClientSide){
             return null
         }

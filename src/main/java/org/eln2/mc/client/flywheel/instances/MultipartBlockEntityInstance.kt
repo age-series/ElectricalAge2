@@ -10,9 +10,7 @@ import org.eln2.mc.common.parts.PartUpdateType
 import org.eln2.mc.utility.ClientOnly
 
 @ClientOnly
-class MultipartBlockEntityInstance(
-    val instancerManager: InstancerManager,
-    val blockEntity: MultipartBlockEntity) :
+class MultipartBlockEntityInstance(val instancerManager: InstancerManager, blockEntity: MultipartBlockEntity) :
     BlockEntityInstance<MultipartBlockEntity>(instancerManager, blockEntity),
     DynamicInstance {
 
