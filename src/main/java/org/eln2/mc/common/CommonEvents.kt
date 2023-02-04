@@ -36,7 +36,7 @@ object CommonEvents {
     fun onChat(event : ServerChatEvent){
         when (event.message) {
             "build" -> {
-                CellGraphManager.getFor(event.player.level as ServerLevel).graphs.values.forEach{ it.build() }
+                CellGraphManager.getFor(event.player.level as ServerLevel).graphs.values.forEach{ it.buildSolver() }
             }
             "circuits" -> {
                 CellGraphManager.getFor(event.player.level as ServerLevel).graphs.values.forEach {

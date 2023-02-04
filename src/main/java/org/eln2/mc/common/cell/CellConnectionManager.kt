@@ -7,17 +7,11 @@ import org.eln2.mc.common.cell.container.ICellContainer
 
 object CellConnectionManager {
     fun connect(container : ICellContainer, cellSpace : CellSpaceLocation){
-        val cellSpaces = container.getCells()
+        cellSpace.cell.onPlaced()
 
         registerCell(cellSpace, container)
 
         // Notify the cell of the new placement.
-        cellSpace.cell.onPlaced()
-
-        // Finally, build all the solvers
-        cellSpaces.map { it.cell.graph }.distinct().forEach { graph ->
-            graph.build()
-        }
     }
 
     fun destroy(cellSpace: CellSpaceLocation, container: ICellContainer){
@@ -66,7 +60,7 @@ object CellConnectionManager {
 
             // todo: do we need to rebuild the solver?
 
-            graph.build()
+            graph.buildSolver()
         }
         else{
             // Case 3 and 4. Implement a more sophisticated algorithm, if necessary.
@@ -108,7 +102,9 @@ object CellConnectionManager {
             // Case 1. Create new circuit
 
             val graph = manager.createGraph()
+
             graph.addCell(cell)
+            graph.buildSolver()
         }
         else if(haveCommonCircuit(neighborInfos)){
             // Case 2 and 3. Join the existing circuit.
@@ -123,8 +119,10 @@ object CellConnectionManager {
                 neighborInfo.neighborSpace.cell.update(connectionsChanged = true, graphChanged = false)
             }
 
+            graph.connectCell(cell)
+
             // todo: do we need to rebuild the solver?
-            graph.build()
+            //graph.buildSolver()
         }
         else{
             // Case 4. We need to create a new circuit, with all cells and this one.
@@ -159,6 +157,8 @@ object CellConnectionManager {
 
                 existingGraph.destroy()
             }
+
+            graph.buildSolver()
         }
 
         // This cell had a complete update.
@@ -247,7 +247,7 @@ object CellConnectionManager {
 
             // Finally, build the solver.
 
-            graph.build()
+            graph.buildSolver()
 
             // We don't need to keep the cells, we have already traversed all the connected ones.
             bfsVisited.clear()
