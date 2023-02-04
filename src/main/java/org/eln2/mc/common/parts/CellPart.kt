@@ -9,6 +9,7 @@ import org.eln2.mc.common.cell.CellBase
 import org.eln2.mc.common.cell.CellGraphManager
 import org.eln2.mc.common.cell.CellPos
 import org.eln2.mc.common.cell.CellProvider
+import org.eln2.mc.utility.ServerOnly
 import java.util.UUID
 
 abstract class CellPart(
@@ -19,13 +20,15 @@ abstract class CellPart(
     Part(id, placementContext),
     IPartCellContainer {
 
+    @ServerOnly
     final override lateinit var cell: CellBase
 
     final override val hasCell: Boolean
         get() = this::cell.isInitialized
 
-    val cellPos = CellPos(placementContext.pos, placementContext.face)
+    private val cellPos = CellPos(placementContext.pos, placementContext.face)
 
+    @ServerOnly
     private lateinit var loadGraphId : UUID
 
     override fun onPlaced() {

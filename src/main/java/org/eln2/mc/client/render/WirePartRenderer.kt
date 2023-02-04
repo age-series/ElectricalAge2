@@ -26,6 +26,7 @@ class WirePartRenderer(val part : WirePart) : IPartRenderer {
         val WIRE_CROSSING_SINGLE_WIRE_SUPPLIER = BasicModelSupplier { BlockMesh(PartialModels.WIRE_CROSSING_SINGLE_WIRE) }
         val WIRE_STRAIGHT_SUPPLIER = BasicModelSupplier { BlockMesh(PartialModels.WIRE_STRAIGHT) }
         val WIRE_CORNER_SUPPLIER = BasicModelSupplier { BlockMesh(PartialModels.WIRE_CORNER) }
+        val WIRE_CROSSING_SUPPLIER = BasicModelSupplier { BlockMesh(PartialModels.WIRE_CROSSING) }
         val WIRE_CROSSING_FULL_SUPPLIER = BasicModelSupplier { BlockMesh(PartialModels.WIRE_CROSSING_FULL) }
     }
 
@@ -59,9 +60,64 @@ class WirePartRenderer(val part : WirePart) : IPartRenderer {
         val directions = latestDirections ?: return
         latestDirections = null
 
+        if(applyEmpty(directions)){
+            return
+        }
+
+        if(applySingleLine(directions)){
+            return
+        }
+
         if(applyStraightLine(directions)){
             return
         }
+
+        if(applyCorner(directions)){
+            return
+        }
+
+        if(applyCrossing(directions)){
+            return
+        }
+
+        if(applyFull(directions)){
+            return
+        }
+
+        Eln2.LOGGER.error("Wire did not handle cases: $directions")
+    }
+
+    private fun applyEmpty(directions: List<RelativeRotationDirection>) : Boolean{
+        fun isEmptyCase() = directions.isEmpty()
+
+        if(isEmptyCase()){
+            updateInstance(WIRE_CROSSING_EMPTY_SUPPLIER, Quaternion.ONE)
+            return true
+        }
+
+        return false
+    }
+
+    private fun applySingleLine(directions: List<RelativeRotationDirection>) : Boolean{
+        fun lineCanForm() = directions.size == 1
+
+        val modelOffset = 0f
+
+        if(lineCanForm()){
+            val angle = modelOffset + when(directions[0]){
+                RelativeRotationDirection.Front -> 0f
+                RelativeRotationDirection.Back -> 179.99f
+                RelativeRotationDirection.Left -> 90f
+                RelativeRotationDirection.Right -> 270f
+                else -> error("Unexpected ${directions[0]} in wire")
+
+            }
+
+            updateInstance(WIRE_CROSSING_SINGLE_WIRE_SUPPLIER, Vector3f.YP.rotationDegrees(angle))
+            return true
+        }
+
+        return false
     }
 
     private fun applyStraightLine(directions: List<RelativeRotationDirection>) : Boolean{
@@ -75,14 +131,104 @@ class WirePartRenderer(val part : WirePart) : IPartRenderer {
         }
 
         if(isFrontCase()){
-            Eln2.LOGGER.info("Front")
             updateInstance(WIRE_STRAIGHT_SUPPLIER, Vector3f.YP.rotationDegrees(0f))
             return true
         }
 
         if(isRightCase()){
-            Eln2.LOGGER.info("Back")
             updateInstance(WIRE_STRAIGHT_SUPPLIER, Vector3f.YP.rotationDegrees(90f))
+            return true
+        }
+
+        return false
+    }
+
+    private fun applyCorner(directions: List<RelativeRotationDirection>) : Boolean{
+        fun canCornerForm() = directions.size == 2
+        fun isFrontLeftCase() = directions.contains(RelativeRotationDirection.Front) && directions.contains(RelativeRotationDirection.Left)
+        fun isFrontRightCase() = directions.contains(RelativeRotationDirection.Front) && directions.contains(RelativeRotationDirection.Right)
+        fun isBackLeftCase() = directions.contains(RelativeRotationDirection.Back) && directions.contains(RelativeRotationDirection.Left)
+        fun isBackRightCase() = directions.contains(RelativeRotationDirection.Back) && directions.contains(RelativeRotationDirection.Right)
+
+        if(!canCornerForm()){
+            return false
+        }
+
+        val modelOffset = 0f
+
+        if(isFrontLeftCase()){
+            updateInstance(WIRE_CORNER_SUPPLIER, Vector3f.YP.rotationDegrees(0f + modelOffset))
+            return true
+        }
+
+        if(isFrontRightCase()){
+            updateInstance(WIRE_CORNER_SUPPLIER, Vector3f.YP.rotationDegrees(-90f + modelOffset))
+            return true
+        }
+
+        if(isBackLeftCase()){
+            updateInstance(WIRE_CORNER_SUPPLIER, Vector3f.YP.rotationDegrees(90f + modelOffset))
+            return true
+        }
+
+        if(isBackRightCase()){
+            updateInstance(WIRE_CORNER_SUPPLIER, Vector3f.YP.rotationDegrees(180f + modelOffset))
+            return true
+        }
+
+        return false
+    }
+
+    private fun applyCrossing(directions: List<RelativeRotationDirection>) : Boolean{
+        fun canCrossingForm() = directions.size == 3
+        fun isFrontLeftRightCase() = directions.contains(RelativeRotationDirection.Front) && directions.contains(RelativeRotationDirection.Left) && directions.contains(RelativeRotationDirection.Right)
+        fun isRightFrontBackCase() = directions.contains(RelativeRotationDirection.Right) && directions.contains(RelativeRotationDirection.Front) && directions.contains(RelativeRotationDirection.Back)
+        fun isBackRightLeftCase() = directions.contains(RelativeRotationDirection.Back) && directions.contains(RelativeRotationDirection.Right) && directions.contains(RelativeRotationDirection.Left)
+        fun isLeftBackFrontCase() = directions.contains(RelativeRotationDirection.Left) && directions.contains(RelativeRotationDirection.Back) && directions.contains(RelativeRotationDirection.Front)
+
+        if(!canCrossingForm()){
+            return false
+        }
+
+        val modelOffset = 0f
+
+        if(isFrontLeftRightCase()){
+            updateInstance(WIRE_CROSSING_SUPPLIER, Vector3f.YP.rotationDegrees(0f + modelOffset))
+            return true
+        }
+
+        if(isRightFrontBackCase()){
+            updateInstance(WIRE_CROSSING_SUPPLIER, Vector3f.YP.rotationDegrees(-90f + modelOffset))
+            return true
+        }
+
+        if(isBackRightLeftCase()){
+            updateInstance(WIRE_CROSSING_SUPPLIER, Vector3f.YP.rotationDegrees(-179.99f + modelOffset))
+            return true
+        }
+
+        if(isLeftBackFrontCase()){
+            updateInstance(WIRE_CROSSING_SUPPLIER, Vector3f.YP.rotationDegrees(90f + modelOffset))
+            return true
+        }
+
+        return false
+    }
+
+    private fun applyFull(directions: List<RelativeRotationDirection>) : Boolean{
+        fun canFullCrossingForm() = directions.size == 4
+        fun isValidCase() = directions.containsAll(listOf(
+            RelativeRotationDirection.Front,
+            RelativeRotationDirection.Back,
+            RelativeRotationDirection.Left,
+            RelativeRotationDirection.Right))
+
+        if(!canFullCrossingForm()){
+            return false
+        }
+
+        if(isValidCase()){
+            updateInstance(WIRE_CROSSING_FULL_SUPPLIER, Quaternion.ONE)
             return true
         }
 
@@ -97,6 +243,8 @@ class WirePartRenderer(val part : WirePart) : IPartRenderer {
         // S = B / 16
         val size = 1.5 / 16
 
+        // todo: it still looks a little bit off the ground, why?
+
         modelInstance = multipartInstance.instancerManager
             .factory(StructTypes.MODEL)
             .model(supplier)
@@ -105,8 +253,10 @@ class WirePartRenderer(val part : WirePart) : IPartRenderer {
             .translate(part.placementContext.face.opposite.normal.toVec3() * Vec3(size, size, size))
             .blockCenter()
             .translate(part.worldBoundingBox.center)
-            .multiply(part.placementContext.face.rotation * rotation * part.facingRotation)
+            .multiply(part.placementContext.face.rotation * part.facingRotation * rotation)
             .zeroCenter()
+
+        multipartInstance.relightPart(part)
     }
 
     override fun relightModels(): List<FlatLit<*>> {

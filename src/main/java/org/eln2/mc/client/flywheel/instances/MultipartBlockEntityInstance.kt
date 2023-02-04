@@ -60,7 +60,7 @@ class MultipartBlockEntityInstance(
         }
     }
 
-    private fun relightPart(part : Part){
+    fun relightPart(part : Part){
         val models = part.renderer.relightModels()
 
         if(models != null){
