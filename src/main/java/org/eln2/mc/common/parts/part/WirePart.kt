@@ -26,7 +26,17 @@ class WirePart(id : ResourceLocation, context : PartPlacementContext) : CellPart
 
         applyRendererState()
 
+        Eln2.LOGGER.info("Created wire renderer: $wireRenderer")
+
         return wireRenderer!!
+    }
+
+    override fun destroyRenderer() {
+        super.destroyRenderer()
+
+        Eln2.LOGGER.info("Destroying wire renderer: $wireRenderer")
+
+        wireRenderer = null
     }
 
     override fun onPlaced() {

@@ -1,6 +1,6 @@
 package org.eln2.mc.client.flywheel.instances
 
-import com.jozufozu.flywheel.api.InstancerManager
+import com.jozufozu.flywheel.api.MaterialManager
 import com.jozufozu.flywheel.api.instance.DynamicInstance
 import com.jozufozu.flywheel.backend.instancing.blockentity.BlockEntityInstance
 import org.eln2.mc.Eln2
@@ -10,11 +10,17 @@ import org.eln2.mc.common.parts.PartUpdateType
 import org.eln2.mc.utility.ClientOnly
 
 @ClientOnly
-class MultipartBlockEntityInstance(val instancerManager: InstancerManager, blockEntity: MultipartBlockEntity) :
-    BlockEntityInstance<MultipartBlockEntity>(instancerManager, blockEntity),
+class MultipartBlockEntityInstance(val materialManager: MaterialManager, blockEntity: MultipartBlockEntity) :
+    BlockEntityInstance<MultipartBlockEntity>(materialManager, blockEntity),
     DynamicInstance {
 
     private val parts = ArrayList<Part>()
+
+    override fun init() {
+        super.init()
+
+        blockEntity.bindRenderer(this)
+    }
 
     /**
      * Called by flywheel at the start of each frame.
@@ -54,13 +60,17 @@ class MultipartBlockEntityInstance(val instancerManager: InstancerManager, block
 
             when(update.type){
                 PartUpdateType.Add -> {
-                    parts.add(part)
-                    part.renderer.setupRendering(this)
-                    relightPart(part)
+                    // Parts may already be added, because of the bind method that we called.
+
+                    if(!parts.contains(part)){
+                        parts.add(part)
+                        part.renderer.setupRendering(this)
+                        relightPart(part)
+                    }
                 }
                 PartUpdateType.Remove -> {
                     parts.remove(part)
-                    part.renderer.remove()
+                    part.destroyRenderer()
                 }
             }
         }
@@ -74,8 +84,10 @@ class MultipartBlockEntityInstance(val instancerManager: InstancerManager, block
         Eln2.LOGGER.info("Removing multipart renderer")
 
         parts.forEach { part ->
-            part.renderer.remove()
+            part.destroyRenderer()
         }
+
+        blockEntity.unbindRenderer()
     }
 
     /**

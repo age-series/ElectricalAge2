@@ -1,6 +1,6 @@
 package org.eln2.mc.extensions
 
-import com.jozufozu.flywheel.core.structs.model.ModelData
+import com.jozufozu.flywheel.core.materials.model.ModelData
 import net.minecraft.world.phys.Vec3
 
 object ModelDataExtensions {

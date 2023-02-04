@@ -1,6 +1,6 @@
 package org.eln2.mc.common.parts
 
-import com.jozufozu.flywheel.core.structs.FlatLit
+import com.jozufozu.flywheel.core.materials.FlatLit
 import org.eln2.mc.client.flywheel.instances.MultipartBlockEntityInstance
 import org.eln2.mc.utility.CrossThreadAccess
 
