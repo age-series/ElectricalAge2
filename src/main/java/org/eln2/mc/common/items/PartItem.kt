@@ -3,6 +3,7 @@ package org.eln2.mc.common.items
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.InteractionResult
 import net.minecraft.world.item.BlockItem
+import net.minecraft.world.item.CreativeModeTab
 import net.minecraft.world.item.context.UseOnContext
 import org.eln2.mc.Eln2
 import org.eln2.mc.common.blocks.BlockRegistry
@@ -10,7 +11,10 @@ import org.eln2.mc.common.blocks.MultipartBlockEntity
 import org.eln2.mc.common.parts.PartProvider
 import org.eln2.mc.extensions.BlockPosExtensions.plus
 
-class PartItem(private val provider: PartProvider) : BlockItem(BlockRegistry.MULTIPART_BLOCK.block.get(), Properties()) {
+class PartItem(private val provider: PartProvider, tab : CreativeModeTab) : BlockItem(
+    BlockRegistry.MULTIPART_BLOCK.block.get(),
+    Properties().tab(tab)) {
+
     override fun useOn(pContext: UseOnContext): InteractionResult {
         if(pContext.level.isClientSide){
             return InteractionResult.FAIL
@@ -64,5 +68,12 @@ class PartItem(private val provider: PartProvider) : BlockItem(BlockRegistry.MUL
         else{
             InteractionResult.FAIL
         }
+    }
+
+    override fun getDescriptionId(): String {
+        // By default, this uses the block's description ID.
+        // This is not what we want.
+
+        return orCreateDescriptionId
     }
 }

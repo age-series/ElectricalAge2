@@ -62,7 +62,7 @@ object BlockRegistry {
         return BlockRegistryItem(name, block, item)
     }
 
-    val MULTIPART_BLOCK = registerBasicBlock("multipart", eln2Tab) { MultipartBlock() }
+    val MULTIPART_BLOCK = registerBasicBlock("multipart") { MultipartBlock() }
 
     val RESISTOR_CELL = registerCellBlock("resistor", eln2Tab) { ResistorCellBlock() }
     val WIRE_CELL = registerCellBlock("wire", eln2Tab) { WireCellBlock() }
