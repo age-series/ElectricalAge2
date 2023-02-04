@@ -6,10 +6,10 @@ import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.saveddata.SavedData
 import org.eln2.mc.Eln2
+import org.eln2.mc.utility.Chrono
 import java.util.*
 import java.util.concurrent.ExecutorCompletionService
 import java.util.concurrent.Executors
-import java.util.concurrent.TimeUnit
 
 
 class CellGraphManager(val level : Level) : SavedData() {
@@ -24,11 +24,9 @@ class CellGraphManager(val level : Level) : SavedData() {
     fun beginUpdate(){
         graphs.values.forEach { graph ->
             completionService.submit {
-                val timeStamp = System.nanoTime()
-
                 graph.update()
 
-                return@submit (System.nanoTime() - timeStamp)
+                return@submit graph.latestSolveTime
             }
 
             runningTasks++
@@ -36,17 +34,17 @@ class CellGraphManager(val level : Level) : SavedData() {
     }
 
     fun endUpdate(){
-        var totalTime = 0L
+        var totalTime = 0.0
 
         while (runningTasks-- > 0){
-            val timeSpent = completionService.take().get()
+            val nanoseconds = completionService.take().get()
 
-            totalTime += timeSpent
+            totalTime += Chrono.toSeconds(nanoseconds)
         }
 
         runningTasks = 0
 
-        Eln2.LOGGER.info("Total CPU time: ${TimeUnit.NANOSECONDS.toSeconds(totalTime) * 1000}ms")
+        Eln2.LOGGER.info("Total CPU time: ${totalTime * 1000}ms")
     }
 /*
 
