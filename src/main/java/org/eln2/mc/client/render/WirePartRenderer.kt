@@ -1,49 +1,43 @@
 package org.eln2.mc.client.render
 
-import com.jozufozu.flywheel.core.BasicModelSupplier
-import com.jozufozu.flywheel.core.model.BlockMesh
-import com.jozufozu.flywheel.core.structs.FlatLit
-import com.jozufozu.flywheel.core.structs.StructTypes
-import com.jozufozu.flywheel.core.structs.model.ModelData
+import com.jozufozu.flywheel.core.Materials
+import com.jozufozu.flywheel.core.PartialModel
+import com.jozufozu.flywheel.core.materials.FlatLit
+import com.jozufozu.flywheel.core.materials.model.ModelData
 import com.mojang.math.Quaternion
 import com.mojang.math.Vector3f
 import net.minecraft.world.phys.Vec3
 import org.eln2.mc.Eln2
 import org.eln2.mc.client.flywheel.instances.MultipartBlockEntityInstance
+import org.eln2.mc.client.render.PartialModels.WIRE_CORNER
+import org.eln2.mc.client.render.PartialModels.WIRE_CROSSING
+import org.eln2.mc.client.render.PartialModels.WIRE_CROSSING_EMPTY
+import org.eln2.mc.client.render.PartialModels.WIRE_CROSSING_FULL
+import org.eln2.mc.client.render.PartialModels.WIRE_CROSSING_SINGLE_WIRE
+import org.eln2.mc.client.render.PartialModels.WIRE_STRAIGHT
 import org.eln2.mc.common.RelativeRotationDirection
 import org.eln2.mc.common.parts.IPartRenderer
 import org.eln2.mc.common.parts.part.WirePart
-import org.eln2.mc.extensions.DirectionExtensions.isVertical
 import org.eln2.mc.extensions.ModelDataExtensions.blockCenter
 import org.eln2.mc.extensions.ModelDataExtensions.zeroCenter
 import org.eln2.mc.extensions.QuaternionExtensions.times
 import org.eln2.mc.extensions.Vec3Extensions.times
 import org.eln2.mc.extensions.Vec3Extensions.toVec3
+import java.util.concurrent.atomic.AtomicReference
 
 class WirePartRenderer(val part : WirePart) : IPartRenderer {
-    companion object{
-        val WIRE_CROSSING_EMPTY_SUPPLIER = BasicModelSupplier { BlockMesh(PartialModels.WIRE_CROSSING_EMPTY) }
-        val WIRE_CROSSING_SINGLE_WIRE_SUPPLIER = BasicModelSupplier { BlockMesh(PartialModels.WIRE_CROSSING_SINGLE_WIRE) }
-        val WIRE_STRAIGHT_SUPPLIER = BasicModelSupplier { BlockMesh(PartialModels.WIRE_STRAIGHT) }
-        val WIRE_CORNER_SUPPLIER = BasicModelSupplier { BlockMesh(PartialModels.WIRE_CORNER) }
-        val WIRE_CROSSING_SUPPLIER = BasicModelSupplier { BlockMesh(PartialModels.WIRE_CROSSING) }
-        val WIRE_CROSSING_FULL_SUPPLIER = BasicModelSupplier { BlockMesh(PartialModels.WIRE_CROSSING_FULL) }
-    }
-
     private lateinit var multipartInstance : MultipartBlockEntityInstance
     private var modelInstance : ModelData? = null
 
     // Reset on every frame
-    private var latestDirections : List<RelativeRotationDirection>? = null
+    private var latestDirections = AtomicReference<List<RelativeRotationDirection>>()
 
     fun applyDirections(directions : List<RelativeRotationDirection>){
-        latestDirections = directions
+        latestDirections.set(directions)
     }
 
     override fun setupRendering(multipart: MultipartBlockEntityInstance) {
         multipartInstance = multipart
-
-        updateInstance(WIRE_CROSSING_EMPTY_SUPPLIER, Vector3f.YP.rotationDegrees(0f))
     }
 
     override fun beginFrame(){
@@ -51,8 +45,9 @@ class WirePartRenderer(val part : WirePart) : IPartRenderer {
     }
 
     private fun selectModel(){
-        val directions = latestDirections ?: return
-        latestDirections = null
+        val directions =
+            latestDirections.getAndSet(null)
+            ?: return
 
         if(applyEmpty(directions)){
             return
@@ -85,7 +80,7 @@ class WirePartRenderer(val part : WirePart) : IPartRenderer {
         fun isEmptyCase() = directions.isEmpty()
 
         if(isEmptyCase()){
-            updateInstance(WIRE_CROSSING_EMPTY_SUPPLIER, Quaternion.ONE)
+            updateInstance(WIRE_CROSSING_EMPTY, Quaternion.ONE)
             return true
         }
 
@@ -107,7 +102,7 @@ class WirePartRenderer(val part : WirePart) : IPartRenderer {
 
             }
 
-            updateInstance(WIRE_CROSSING_SINGLE_WIRE_SUPPLIER, Vector3f.YP.rotationDegrees(angle))
+            updateInstance(WIRE_CROSSING_SINGLE_WIRE, Vector3f.YP.rotationDegrees(angle))
             return true
         }
 
@@ -125,12 +120,12 @@ class WirePartRenderer(val part : WirePart) : IPartRenderer {
         }
 
         if(isFrontCase()){
-            updateInstance(WIRE_STRAIGHT_SUPPLIER, Vector3f.YP.rotationDegrees(0f))
+            updateInstance(WIRE_STRAIGHT, Vector3f.YP.rotationDegrees(0f))
             return true
         }
 
         if(isRightCase()){
-            updateInstance(WIRE_STRAIGHT_SUPPLIER, Vector3f.YP.rotationDegrees(90f))
+            updateInstance(WIRE_STRAIGHT, Vector3f.YP.rotationDegrees(90f))
             return true
         }
 
@@ -151,22 +146,22 @@ class WirePartRenderer(val part : WirePart) : IPartRenderer {
         val modelOffset = 0f
 
         if(isFrontLeftCase()){
-            updateInstance(WIRE_CORNER_SUPPLIER, Vector3f.YP.rotationDegrees(0f + modelOffset))
+            updateInstance(WIRE_CORNER, Vector3f.YP.rotationDegrees(0f + modelOffset))
             return true
         }
 
         if(isFrontRightCase()){
-            updateInstance(WIRE_CORNER_SUPPLIER, Vector3f.YP.rotationDegrees(-90f + modelOffset))
+            updateInstance(WIRE_CORNER, Vector3f.YP.rotationDegrees(-90f + modelOffset))
             return true
         }
 
         if(isBackLeftCase()){
-            updateInstance(WIRE_CORNER_SUPPLIER, Vector3f.YP.rotationDegrees(90f + modelOffset))
+            updateInstance(WIRE_CORNER, Vector3f.YP.rotationDegrees(90f + modelOffset))
             return true
         }
 
         if(isBackRightCase()){
-            updateInstance(WIRE_CORNER_SUPPLIER, Vector3f.YP.rotationDegrees(180f + modelOffset))
+            updateInstance(WIRE_CORNER, Vector3f.YP.rotationDegrees(180f + modelOffset))
             return true
         }
 
@@ -187,22 +182,22 @@ class WirePartRenderer(val part : WirePart) : IPartRenderer {
         val modelOffset = 0f
 
         if(isFrontLeftRightCase()){
-            updateInstance(WIRE_CROSSING_SUPPLIER, Vector3f.YP.rotationDegrees(0f + modelOffset))
+            updateInstance(WIRE_CROSSING, Vector3f.YP.rotationDegrees(0f + modelOffset))
             return true
         }
 
         if(isRightFrontBackCase()){
-            updateInstance(WIRE_CROSSING_SUPPLIER, Vector3f.YP.rotationDegrees(-90f + modelOffset))
+            updateInstance(WIRE_CROSSING, Vector3f.YP.rotationDegrees(-90f + modelOffset))
             return true
         }
 
         if(isBackRightLeftCase()){
-            updateInstance(WIRE_CROSSING_SUPPLIER, Vector3f.YP.rotationDegrees(-179.99f + modelOffset))
+            updateInstance(WIRE_CROSSING, Vector3f.YP.rotationDegrees(-179.99f + modelOffset))
             return true
         }
 
         if(isLeftBackFrontCase()){
-            updateInstance(WIRE_CROSSING_SUPPLIER, Vector3f.YP.rotationDegrees(90f + modelOffset))
+            updateInstance(WIRE_CROSSING, Vector3f.YP.rotationDegrees(90f + modelOffset))
             return true
         }
 
@@ -222,14 +217,14 @@ class WirePartRenderer(val part : WirePart) : IPartRenderer {
         }
 
         if(isValidCase()){
-            updateInstance(WIRE_CROSSING_FULL_SUPPLIER, Quaternion.ONE)
+            updateInstance(WIRE_CROSSING_FULL, Quaternion.ONE)
             return true
         }
 
         return false
     }
 
-    private fun updateInstance(supplier: BasicModelSupplier, rotation : Quaternion){
+    private fun updateInstance(model : PartialModel, rotation : Quaternion){
         modelInstance?.delete()
 
         // Conversion equation:
@@ -239,9 +234,10 @@ class WirePartRenderer(val part : WirePart) : IPartRenderer {
 
         // todo: it still looks a little bit off the ground, why?
 
-        modelInstance = multipartInstance.instancerManager
-            .factory(StructTypes.MODEL)
-            .model(supplier)
+        modelInstance = multipartInstance.materialManager
+            .defaultSolid()
+            .material(Materials.TRANSFORMED)
+            .getModel(model)
             .createInstance()
             .loadIdentity()
             .translate(part.placementContext.face.opposite.normal.toVec3() * Vec3(size, size, size))

@@ -249,9 +249,14 @@ abstract class Part(val id : ResourceLocation, val placementContext: PartPlaceme
 
     /**
      * Creates a renderer instance for this part.
-     * This is used by the renderer property. By default, this method is called once.
      * @return A new instance of the part renderer.
      * */
     @ClientOnly
-    protected abstract fun createRenderer() : IPartRenderer
+    abstract fun createRenderer() : IPartRenderer
+
+    @ClientOnly
+    open fun destroyRenderer(){
+        cachedRenderer?.remove()
+        cachedRenderer = null
+    }
 }

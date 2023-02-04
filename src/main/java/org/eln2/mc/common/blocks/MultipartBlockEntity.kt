@@ -20,6 +20,7 @@ import net.minecraft.world.phys.shapes.BooleanOp
 import net.minecraft.world.phys.shapes.Shapes
 import net.minecraft.world.phys.shapes.VoxelShape
 import org.eln2.mc.Eln2
+import org.eln2.mc.client.flywheel.instances.MultipartBlockEntityInstance
 import org.eln2.mc.common.DirectionMask
 import org.eln2.mc.common.RelativeRotationDirection
 import org.eln2.mc.common.cell.CellConnectionManager
@@ -830,5 +831,19 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
         }
 
         return result
+    }
+
+    /**
+     * I found that flywheel removes our instance sometimes, not sure why.
+     * We use this to send the current parts to the renderer.
+     * */
+    fun bindRenderer(instance: MultipartBlockEntityInstance){
+        parts.values.forEach { part ->
+            clientUpdateQueue.add(PartUpdate(part, PartUpdateType.Add))
+        }
+    }
+
+    fun unbindRenderer(){
+
     }
 }
