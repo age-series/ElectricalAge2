@@ -25,6 +25,8 @@ class CellGraph(val id : UUID, val manager : CellGraphManager) {
     var latestSolveTime = 0L
 
     fun update(){
+        latestSolveTime = 0
+
         if(hasCircuit){
             latestSolveTime = measureNanoTime {
                 successful = circuit.step(0.05)
