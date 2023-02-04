@@ -65,6 +65,8 @@ object CellConnectionManager {
             neighbor.cell.update(connectionsChanged = true, graphChanged = false)
 
             // todo: do we need to rebuild the solver?
+
+            graph.build()
         }
         else{
             // Case 3 and 4. Implement a more sophisticated algorithm, if necessary.
@@ -122,6 +124,7 @@ object CellConnectionManager {
             }
 
             // todo: do we need to rebuild the solver?
+            graph.build()
         }
         else{
             // Case 4. We need to create a new circuit, with all cells and this one.

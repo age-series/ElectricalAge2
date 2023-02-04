@@ -28,7 +28,7 @@ class WirePart(id : ResourceLocation, context : PartPlacementContext) : CellPart
         return wireRenderer!!
     }
 
-    private val connectedDirections = HashSet<RelativeRotationDirection>()
+    val connectedDirections = HashSet<RelativeRotationDirection>()
 
     override fun onPlaced() {
         super.onPlaced()

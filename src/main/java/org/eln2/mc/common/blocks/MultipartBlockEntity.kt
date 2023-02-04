@@ -28,6 +28,7 @@ import org.eln2.mc.common.cell.container.CellSpaceLocation
 import org.eln2.mc.common.cell.container.CellSpaceQuery
 import org.eln2.mc.common.cell.container.ICellContainer
 import org.eln2.mc.common.parts.*
+import org.eln2.mc.common.parts.part.WirePart
 import org.eln2.mc.extensions.BlockPosExtensions.directionTo
 import org.eln2.mc.extensions.BlockPosExtensions.minus
 import org.eln2.mc.extensions.BlockPosExtensions.plus
@@ -84,8 +85,6 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
 
     override fun setRemoved() {
         super.setRemoved()
-
-        Eln2.LOGGER.info("Multipart block entity removed at $pos")
     }
 
     fun enqueuePartSync(face : Direction){
@@ -103,8 +102,6 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
         }
 
         val level = entity.level as ServerLevel
-
-        Eln2.LOGGER.info("Part placing on $face at $pos")
 
         if(parts.containsKey(face)){
             return false
@@ -135,12 +132,8 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
         part.onPlaced()
 
         if(part is IPartCellContainer){
-            Eln2.LOGGER.info("Connecting part.")
-
             CellConnectionManager.connect(this, CellSpaceLocation(part.cell, part.placementContext.face))
         }
-
-        Eln2.LOGGER.info("Part placement completed.")
 
         invalidateData()
         syncData()
@@ -225,6 +218,10 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
     // Here, we send all the parts we have.
 
     override fun getUpdateTag(): CompoundTag {
+        if(level!!.isClientSide){
+            return CompoundTag()
+        }
+
         return savePartsToTag()
     }
 
@@ -261,6 +258,10 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
     // Here, we send the freshly placed parts to clients that are already observing this multipart.
 
     override fun getUpdatePacket(): Packet<ClientGamePacketListener>? {
+        if(level!!.isClientSide){
+            return null
+        }
+
         val tag = CompoundTag()
 
         // todo: remove allocations and unify
@@ -404,6 +405,11 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
 
     override fun saveAdditional(pTag: CompoundTag) {
         super.saveAdditional(pTag)
+
+        if(level!!.isClientSide){
+            return
+        }
+
         savePartsToTag(pTag)
     }
 
@@ -465,8 +471,6 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
      * Saves all the data associated with a part to a CompoundTag.
      * */
     private fun savePartToTag(part : Part) : CompoundTag{
-        assert(!level!!.isClientSide)
-
         val tag = CompoundTag()
 
         tag.setResourceLocation("ID", part.id)
@@ -487,8 +491,6 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
      * Saves the entire part set to a CompoundTag.
      * */
     private fun savePartsToTag() : CompoundTag{
-        assert(!level!!.isClientSide)
-
         val tag = CompoundTag()
 
         savePartsToTag(tag)
@@ -511,8 +513,6 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
         }
 
         tag.put("Parts", partsTag)
-
-        Eln2.LOGGER.info("Put ${partsTag.size} parts")
     }
 
     /**
@@ -605,8 +605,6 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
     }
 
     override fun queryNeighbors(location: CellSpaceLocation): ArrayList<CellNeighborInfo> {
-        Eln2.LOGGER.info("Query neighbors ${location.innerFace}")
-
         val partFace = location.innerFace
 
         val part = parts[partFace]!!
@@ -620,92 +618,81 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
         DirectionMask.perpendicular(partFace).forEach { searchDirection ->
             val partRelative = part.getRelative(searchDirection)
 
-            Eln2.LOGGER.info("Scan $searchDirection from $partFace -> $partRelative")
-
             if(!part.provider.canConnectFrom(partRelative)){
                 Eln2.LOGGER.info("Part rejected connection on $partRelative")
                 return@forEach
             }
 
-            if(part.allowInnerConnections && parts[searchDirection] != null){
-                val innerPart = parts[searchDirection] ?: return@forEach
+            fun innerScan(){
+                if(part.allowInnerConnections){
+                    val innerFace = searchDirection.opposite
 
-                if(innerPart !is IPartCellContainer){
-                    Eln2.LOGGER.info("Part on inner face $searchDirection was not a cell part")
-                    return@forEach
+                    val innerPart = parts[innerFace]
+                        ?: return
+
+                    if(innerPart !is IPartCellContainer){
+                        return
+                    }
+
+                    if(!innerPart.allowInnerConnections){
+                        return
+                    }
+
+                    val innerRelativeRotation = innerPart.getRelative(partFace.opposite)
+
+                    if(!innerPart.provider.canConnectFrom(innerRelativeRotation)){
+                        return
+                    }
+
+                    results.add(CellNeighborInfo(CellSpaceLocation(innerPart.cell, innerPart.placementContext.face), this, partRelative, innerRelativeRotation))
                 }
-
-                if(!innerPart.allowInnerConnections){
-                    Eln2.LOGGER.info("Part on inner face did not accept inner connection")
-                    return@forEach
-                }
-
-                // Connection goes towards the part, so it is just the opposite
-                // of the part's face
-
-                val innerRelativeRotation = innerPart.getRelative(partFace.opposite)
-
-                if(!innerPart.provider.canConnectFrom(innerRelativeRotation)){
-                    Eln2.LOGGER.info("Part on inner face rejected direction $innerRelativeRotation")
-                    return@forEach
-                }
-
-                // Connection can happen!
-                Eln2.LOGGER.info("Part on inner face recorded!")
-
-                results.add(CellNeighborInfo(CellSpaceLocation(innerPart.cell, innerPart.placementContext.face), this, partRelative, innerRelativeRotation))
             }
 
-            if(part.allowPlanarConnections && level!!.getBlockEntity(pos + searchDirection) is ICellContainer){
-                val remoteContainer = level!!.getBlockEntity(pos + searchDirection) as ICellContainer
+            fun planarScan(){
+                if(part.allowPlanarConnections && level!!.getBlockEntity(pos + searchDirection) is ICellContainer){
+                    val remoteContainer = level!!
+                        .getBlockEntity(pos + searchDirection)
+                        as? ICellContainer
+                        ?: return
 
-                val remoteConnectionFace = searchDirection.opposite
+                    val remoteConnectionFace = searchDirection.opposite
 
-                val remoteSpace = remoteContainer.query(CellSpaceQuery(remoteConnectionFace, partFace))
+                    val remoteSpace = remoteContainer
+                        .query(CellSpaceQuery(remoteConnectionFace, partFace))
+                        ?: return
 
-                if(remoteSpace == null){
-                    Eln2.LOGGER.info("Neighbor does not have candidate for planar connection on $remoteConnectionFace")
-                    return@forEach
+                    val remoteRelative = remoteContainer
+                        .checkConnectionCandidate(remoteSpace, remoteConnectionFace)
+                        ?: return
+
+                    results.add(CellNeighborInfo(remoteSpace, remoteContainer, partRelative, remoteRelative))
                 }
-
-                val remoteRelative = remoteContainer.checkConnectionCandidate(remoteSpace, remoteConnectionFace)
-
-                if(remoteRelative == null){
-                    Eln2.LOGGER.info("Neighbor rejected remote planar on $remoteConnectionFace")
-                    return@forEach
-                }
-
-                Eln2.LOGGER.info("Remote container allowed planar direction on $searchDirection")
-                results.add(CellNeighborInfo(remoteSpace, remoteContainer, partRelative, remoteRelative))
             }
 
-            if(part.allowWrappedConnections){
-                val wrapDirection = partFace.opposite
+            fun wrappedScan(){
+                if(part.allowWrappedConnections){
+                    val wrapDirection = partFace.opposite
 
-                val remoteContainer = level!!.getBlockEntity(pos + searchDirection + wrapDirection) as? ICellContainer
+                    val remoteContainer = level!!
+                        .getBlockEntity(pos + searchDirection + wrapDirection)
+                        as? ICellContainer
+                        ?: return
 
-                if(remoteContainer == null){
-                    Eln2.LOGGER.info("No wrapped connection containers on $searchDirection")
-                    return@forEach
+                    val remoteSpace = remoteContainer
+                        .query(CellSpaceQuery(part.placementContext.face, searchDirection))
+                        ?: return
+
+                    val remoteRelative = remoteContainer
+                        .checkConnectionCandidate(remoteSpace, wrapDirection.opposite)
+                        ?: return
+
+                    results.add(CellNeighborInfo(remoteSpace, remoteContainer, partRelative, remoteRelative))
                 }
-
-                val remoteSpace = remoteContainer.query(CellSpaceQuery(part.placementContext.face, searchDirection))
-
-                if(remoteSpace == null){
-                    Eln2.LOGGER.info("Neighbor does not have candidate for wrapped connection on $searchDirection")
-                    return@forEach
-                }
-
-                val remoteRelative = remoteContainer.checkConnectionCandidate(remoteSpace, wrapDirection)
-
-                if(remoteRelative == null){
-                    Eln2.LOGGER.info("Neighbor rejected wrapped connection on $wrapDirection")
-                    return@forEach
-                }
-
-                Eln2.LOGGER.info("Remote container allowed wrapped connection on $searchDirection")
-                results.add(CellNeighborInfo(remoteSpace, remoteContainer, partRelative, remoteRelative))
             }
+
+            innerScan()
+            planarScan()
+            wrappedScan()
         }
 
         return ArrayList(results)
@@ -751,6 +738,12 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
             if(part is IPartCellContainer){
                 if(part.hasCell){
                     result[part.placementContext.face.getName()] = part.cell.graph.id.toString()
+
+                    if(part is WirePart){
+                        result["neighbors"] = part.connectedDirections.joinToString(" ")
+                    }
+
+                    result["facing"] = part.placementContext.horizontalFacing.getName()
                 }
             }
         }

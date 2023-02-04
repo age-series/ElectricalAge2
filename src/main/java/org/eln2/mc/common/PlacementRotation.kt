@@ -12,8 +12,17 @@ enum class RelativeRotationDirection(val id : Int) {
     Up(5),
     Down(6);
 
+    val opposite get() = when(this){
+        Front -> Back
+        Back -> Front
+        Left -> Right
+        Right -> Left
+        Up -> Down
+        Down -> Up
+    }
+
     companion object{
-        fun fromFacingUp(facing : Direction, normal : Direction, direction: Direction) : RelativeRotationDirection{
+        fun fromForwardUp(facing : Direction, normal : Direction, direction: Direction) : RelativeRotationDirection{
             if(facing.isVertical()){
                 error("Facing cannot be vertical")
             }
@@ -28,13 +37,21 @@ enum class RelativeRotationDirection(val id : Int) {
 
             val adjustedFacing = Direction.rotate(Matrix4f(normal.rotation), facing)
 
-            return when(direction){
+            var result = when(direction){
                 adjustedFacing -> Front
                 adjustedFacing.opposite -> Back
                 adjustedFacing.getClockWise(normal.axis) -> Right
                 adjustedFacing.getCounterClockWise(normal.axis) -> Left
                 else -> error("Adjusted facing did not match")
             }
+
+            if(normal.axisDirection == Direction.AxisDirection.NEGATIVE){
+                if(result == Left || result == Right){
+                    result = result.opposite
+                }
+            }
+
+            return result
         }
 
         fun fromId(id : Int) : RelativeRotationDirection{
