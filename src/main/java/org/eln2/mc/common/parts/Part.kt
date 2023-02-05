@@ -41,18 +41,7 @@ abstract class Part(val id : ResourceLocation, val placementContext: PartPlaceme
      * @return The relative direction towards the global direction.
      * */
     fun getRelativeDirection(global: Direction): RelativeRotationDirection {
-        val res = RelativeRotationDirection.fromForwardUp(
-            placementContext.horizontalFacing,
-            placementContext.face,
-            global
-        )
-
-        val adjustedFacing = Direction.rotate(Matrix4f(placementContext.face.rotation), placementContext.horizontalFacing)
-
-        Eln2.LOGGER.info("Adj facing: $adjustedFacing")
-
-
-        return res
+        return PartTransformations.getRelativeRotation(placementContext.horizontalFacing, placementContext.face, global)
     }
 
     /**
@@ -60,57 +49,31 @@ abstract class Part(val id : ResourceLocation, val placementContext: PartPlaceme
      * on the inner face. It is not translated to the position of the part in the world (it is a local frame)
      * */
     private val modelBoundingBox : AABB
-        get() = AABBUtilities
-            .fromSize(baseSize)
-            .transformed(facingRotation)
-            .transformed(placementContext.face.rotation)
-            .move(offset)
+        get() = PartTransformations.modelBoundingBox(baseSize, placementContext.horizontalFacing, placementContext.face)
 
     /**
      * This gets the local Y rotation due to facing.
      * */
     val facingRotation : Quaternion
-        get() = Vector3f.YP.rotationDegrees(facingRotationDegrees)
+        get() = PartTransformations.facingRotation(placementContext.horizontalFacing)
 
     /**
      * This calculates the local Y rotation degrees due to facing.
      * */
     private val facingRotationDegrees : Float
-        get(){
-            val offset = 0
+        get() = PartTransformations.facingRotationDegrees(placementContext.horizontalFacing)
 
-            return offset + when(placementContext.horizontalFacing){
-                NORTH -> 0f
-                SOUTH -> 180f
-                WEST -> 90f
-                EAST -> -90f
-                else -> error("Invalid horizontal facing ${placementContext.horizontalFacing}")
-            }
-        }
-
-    private val offset : Vec3 get() {
-        val halfSize = baseSize / 2.0
-
-        val positiveOffset = halfSize.y
-        val negativeOffset = 1 - halfSize.y
-
-        return when(val axis = placementContext.face.axis){
-            Axis.X -> Vec3((if(placementContext.face.axisDirection == AxisDirection.POSITIVE) positiveOffset else negativeOffset), 0.5, 0.5)
-            Axis.Y -> Vec3(0.5, (if(placementContext.face.axisDirection == AxisDirection.POSITIVE) positiveOffset else negativeOffset), 0.5)
-            Axis.Z -> Vec3(0.5, 0.5, (if(placementContext.face.axisDirection == AxisDirection.POSITIVE) positiveOffset else negativeOffset))
-            else -> error("Invalid axis $axis")
-        }
-    }
+    private val offset : Vec3 get() = PartTransformations.offset(baseSize, placementContext.face)
 
     /**
      * This is the bounding box of the part, in its block position.
      * */
-    val gridBoundingBox : AABB get() = modelBoundingBox.move(placementContext.pos)
+    val gridBoundingBox : AABB get() = PartTransformations.gridBoundingBox(baseSize, placementContext.horizontalFacing, placementContext.face, placementContext.pos)
 
     /**
      * This is the bounding box of the part, in final world coordinates.
      * */
-    val worldBoundingBox : AABB get() = gridBoundingBox.move(Vec3(-0.5, 0.0, -0.5))
+    val worldBoundingBox : AABB get() = PartTransformations.worldBoundingBox(baseSize, placementContext.horizontalFacing, placementContext.face, placementContext.pos)
 
     /**
      * Gets the shape of this part. Used for block highlighting and collisions.

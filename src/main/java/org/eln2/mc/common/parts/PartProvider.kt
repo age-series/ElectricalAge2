@@ -1,6 +1,7 @@
 package org.eln2.mc.common.parts
 
 import net.minecraft.resources.ResourceLocation
+import net.minecraft.world.phys.Vec3
 import net.minecraftforge.registries.ForgeRegistryEntry
 
 /**
@@ -16,4 +17,10 @@ abstract class PartProvider : ForgeRegistryEntry<PartProvider>(){
      * @return Unique instance of the part.
      */
     abstract fun create(context: PartPlacementContext) : Part
+
+    /**
+     * This is the size used to validate placement. This is different from baseSize, because
+     * you can implement a visual placement margin here.
+     * */
+    abstract val placementCollisionSize : Vec3
 }
