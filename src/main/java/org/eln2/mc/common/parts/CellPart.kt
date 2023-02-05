@@ -115,4 +115,8 @@ abstract class CellPart(
         cell.container = placementContext.multipart
         cell.onEntityLoaded()
     }
+
+    open override val allowPlanarConnections = true
+    open override val allowInnerConnections = true
+    open override val allowWrappedConnections = true
 }
