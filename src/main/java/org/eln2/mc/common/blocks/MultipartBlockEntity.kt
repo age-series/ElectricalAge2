@@ -148,7 +148,23 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
             Direction.NORTH
         }
 
-        val part = provider.create(PartPlacementContext(pos, face, placeDirection, level, this))
+        val placementContext = PartPlacementContext(pos, face, placeDirection, level, this)
+
+        val worldBoundingBox = PartTransformations.worldBoundingBox(
+            provider.placementCollisionSize,
+            placementContext.horizontalFacing,
+            placementContext.face,
+            placementContext.pos)
+
+        val collides = parts.values.any { part ->
+            part.worldBoundingBox.intersects(worldBoundingBox)
+        }
+
+        if(collides){
+            return false
+        }
+
+        val part = provider.create(placementContext)
 
         parts[face] = part
 

@@ -1,11 +1,13 @@
 package org.eln2.mc.common.parts.providers
 
 import net.minecraft.resources.ResourceLocation
+import net.minecraft.world.phys.Vec3
 import org.eln2.mc.common.parts.Part
 import org.eln2.mc.common.parts.PartPlacementContext
 import org.eln2.mc.common.parts.PartProvider
 
-open class BasicPartProvider(val factory : ((id : ResourceLocation, context : PartPlacementContext) -> Part)) : PartProvider() {
+open class BasicPartProvider(val factory : ((id : ResourceLocation, context : PartPlacementContext) -> Part),
+                             final override val placementCollisionSize: Vec3) : PartProvider() {
     override fun create(context: PartPlacementContext): Part {
         return factory(id, context)
     }

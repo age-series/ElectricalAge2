@@ -14,12 +14,12 @@ import org.eln2.mc.common.parts.PartPlacementContext
 class BatteryPart(id : ResourceLocation, context : PartPlacementContext) : CellPart(id, context, CellRegistry.`12V_BATTERY_CELL`.get()) {
     override val allowInnerConnections = false
     override val baseSize: Vec3
-        get() = Vec3(0.7, 0.6, 0.7)
+        get() = Vec3(0.6, 0.6, 0.725)
 
     override fun createRenderer(): IPartRenderer {
         val renderer = BasicPartRenderer(this, PartialModels.BATTERY)
 
-        renderer.downOffset = 0.4
+        renderer.downOffset = 0.35
 
         return renderer
     }
