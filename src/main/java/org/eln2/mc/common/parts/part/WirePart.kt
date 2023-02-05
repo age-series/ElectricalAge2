@@ -3,15 +3,13 @@ package org.eln2.mc.common.parts.part
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.nbt.ListTag
 import net.minecraft.resources.ResourceLocation
+import net.minecraft.world.InteractionResult
 import net.minecraft.world.phys.Vec3
 import org.eln2.mc.Eln2
 import org.eln2.mc.client.render.WirePartRenderer
 import org.eln2.mc.common.RelativeRotationDirection
 import org.eln2.mc.common.cell.CellRegistry
-import org.eln2.mc.common.parts.CellPart
-import org.eln2.mc.common.parts.ConnectionMode
-import org.eln2.mc.common.parts.IPartRenderer
-import org.eln2.mc.common.parts.PartPlacementContext
+import org.eln2.mc.common.parts.*
 import org.eln2.mc.extensions.NbtExtensions.getRelativeDirection
 import org.eln2.mc.extensions.NbtExtensions.setRelativeDirection
 
@@ -122,6 +120,12 @@ class WirePart(id : ResourceLocation, context : PartPlacementContext) : CellPart
         connectedDirections.remove(direction)
         syncChanges()
         invalidateSave()
+    }
+
+    override fun onUsedBy(context: PartUseContext): InteractionResult {
+        Eln2.LOGGER.info("Wire Part used by ${context.player}")
+
+        return super.onUsedBy(context)
     }
 
     override val allowPlanarConnections = true

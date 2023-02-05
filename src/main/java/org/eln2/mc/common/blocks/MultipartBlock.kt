@@ -3,6 +3,8 @@ package org.eln2.mc.common.blocks
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
 import net.minecraft.server.level.ServerLevel
+import net.minecraft.world.InteractionHand
+import net.minecraft.world.InteractionResult
 import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.player.Player
@@ -15,6 +17,7 @@ import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.level.material.FluidState
 import net.minecraft.world.level.material.Material
+import net.minecraft.world.phys.BlockHitResult
 import net.minecraft.world.phys.shapes.CollisionContext
 import net.minecraft.world.phys.shapes.EntityCollisionContext
 import net.minecraft.world.phys.shapes.VoxelShape
@@ -149,6 +152,22 @@ class MultipartBlock : Block(Properties.of(Material.STONE)
         }
 
         super.neighborChanged(pState, pLevel, pPos, pBlock, pFromPos, pIsMoving)
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun use(
+        pState: BlockState,
+        pLevel: Level,
+        pPos: BlockPos,
+        pPlayer: Player,
+        pHand: InteractionHand,
+        pHit: BlockHitResult
+    ): InteractionResult {
+        val multipart = pLevel
+            .getBlockEntity(pPos) as? MultipartBlockEntity
+            ?: return InteractionResult.FAIL
+
+        return multipart.use(pPlayer, pHand)
     }
 
     //#endregion

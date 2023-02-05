@@ -10,6 +10,8 @@ import net.minecraft.network.protocol.game.ClientGamePacketListener
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.level.ServerLevel
+import net.minecraft.world.InteractionHand
+import net.minecraft.world.InteractionResult
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.level.Level
@@ -831,6 +833,13 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
         }
 
         return result
+    }
+
+    fun use(player: Player, hand : InteractionHand) : InteractionResult{
+        val part = pickPart(player)
+            ?: return InteractionResult.FAIL
+
+        return part.onUsedBy(PartUseContext(player, hand))
     }
 
     /**

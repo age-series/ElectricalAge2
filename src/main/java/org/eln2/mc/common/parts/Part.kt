@@ -7,6 +7,7 @@ import net.minecraft.core.Direction
 import net.minecraft.core.Direction.*
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.resources.ResourceLocation
+import net.minecraft.world.InteractionResult
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
@@ -126,7 +127,9 @@ abstract class Part(val id : ResourceLocation, val placementContext: PartPlaceme
     /**
      * Called when the part is right-clicked by a living entity.
      * */
-    open fun onUsedBy(entity : LivingEntity){}
+    open fun onUsedBy(context: PartUseContext) : InteractionResult{
+        return InteractionResult.SUCCESS
+    }
 
     /**
      * This method is used for saving the part.
