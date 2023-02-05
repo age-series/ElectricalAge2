@@ -6,6 +6,7 @@ import net.minecraftforge.registries.*
 import org.eln2.mc.Eln2
 import org.eln2.mc.common.eln2Tab
 import org.eln2.mc.common.items.PartItem
+import org.eln2.mc.common.parts.part.BatteryPart
 import org.eln2.mc.common.parts.part.WirePart
 import org.eln2.mc.common.parts.providers.BasicPartProvider
 import java.util.function.Supplier
@@ -55,4 +56,5 @@ object PartRegistry {
     }
 
     val WIRE_PART = part("wire_part", BasicPartProvider(::WirePart))
+    val BATTERY_PART = part("battery_part", BasicPartProvider(::BatteryPart))
 }
