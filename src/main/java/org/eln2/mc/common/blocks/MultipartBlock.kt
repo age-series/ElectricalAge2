@@ -11,10 +11,14 @@ import net.minecraft.world.entity.player.Player
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.BlockGetter
 import net.minecraft.world.level.Level
+import net.minecraft.world.level.block.BaseEntityBlock
 import net.minecraft.world.level.block.Block
-import net.minecraft.world.level.block.EntityBlock
 import net.minecraft.world.level.block.entity.BlockEntity
+import net.minecraft.world.level.block.entity.BlockEntityTicker
+import net.minecraft.world.level.block.entity.BlockEntityType
 import net.minecraft.world.level.block.state.BlockState
+import net.minecraft.world.level.block.state.StateDefinition
+import net.minecraft.world.level.block.state.properties.BooleanProperty
 import net.minecraft.world.level.material.FluidState
 import net.minecraft.world.level.material.Material
 import net.minecraft.world.phys.BlockHitResult
@@ -24,10 +28,9 @@ import net.minecraft.world.phys.shapes.VoxelShape
 import org.eln2.mc.Eln2
 import org.eln2.mc.common.parts.Part
 import org.eln2.mc.common.parts.PartRegistry
+import java.util.*
 
-class MultipartBlock : Block(Properties.of(Material.STONE)
-    .noOcclusion()
-    .destroyTime(0.2f)), EntityBlock {
+class MultipartBlock : BaseEntityBlock(Properties.of(Material.STONE).noOcclusion().destroyTime(0.2f)) {
     private val epsilon = 0.00001
     private val emptyBox = box(0.0, 0.0, 0.0, epsilon, epsilon, epsilon);
 
@@ -212,5 +215,17 @@ class MultipartBlock : Block(Properties.of(Material.STONE)
         }
 
         return multipart.pickPart(entity)
+    }
+
+    override fun <T : BlockEntity?> getTicker(
+        pLevel: Level,
+        pState: BlockState,
+        pBlockEntityType: BlockEntityType<T>
+    ): BlockEntityTicker<T>? {
+
+        return createTickerHelper(
+            pBlockEntityType,
+            BlockRegistry.MULTIPART_BLOCK_ENTITY.get(),
+            MultipartBlockEntity.Companion::blockTick)
     }
 }

@@ -35,7 +35,7 @@ object BlockRegistry {
 
     val MULTIPART_BLOCK_ENTITY: RegistryObject<BlockEntityType<MultipartBlockEntity>> = BLOCK_ENTITY_REGISTRY.register("multipart"){
         @Suppress("NULLABILITY_MISMATCH_BASED_ON_JAVA_ANNOTATIONS") // Thanks, Minecraft for the high quality code.
-        BlockEntityType.Builder.of(::MultipartBlockEntity).build(null)
+        BlockEntityType.Builder.of(::MultipartBlockEntity, MULTIPART_BLOCK.block.get()).build(null)
     }
 
     class CellBlockRegistryItem(
@@ -62,8 +62,7 @@ object BlockRegistry {
         return BlockRegistryItem(name, block, item)
     }
 
-    val MULTIPART_BLOCK = registerBasicBlock("multipart") { MultipartBlock() }
-
+    val MULTIPART_BLOCK = registerBasicBlock("multipart", tab = null) { MultipartBlock() }
     val RESISTOR_CELL = registerCellBlock("resistor", eln2Tab) { ResistorCellBlock() }
     val WIRE_CELL = registerCellBlock("wire", eln2Tab) { WireCellBlock() }
     val VOLTAGE_SOURCE_CELL = registerCellBlock("voltage_source", eln2Tab) { VoltageSourceCellBlock() }

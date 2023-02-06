@@ -15,12 +15,14 @@ import net.minecraft.world.InteractionResult
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.level.Level
+import net.minecraft.world.level.block.AbstractFurnaceBlock
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.shapes.BooleanOp
 import net.minecraft.world.phys.shapes.Shapes
 import net.minecraft.world.phys.shapes.VoxelShape
+import net.minecraftforge.fml.util.ObfuscationReflectionHelper
 import org.eln2.mc.Eln2
 import org.eln2.mc.client.flywheel.instances.MultipartBlockEntityInstance
 import org.eln2.mc.common.DirectionMask
@@ -71,6 +73,9 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
     // Used for disk loading:
     private var savedTag : CompoundTag? = null
 
+    private var tickingParts = ArrayList<ITickablePart>()
+    private var tickingRemoveQueue = ArrayDeque<ITickablePart>()
+
     val isEmpty = parts.isEmpty()
 
     // Used for rendering:
@@ -82,6 +87,22 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
 
     init {
         collisionShape = Shapes.empty()
+    }
+
+    private fun removePart(face : Direction) : Part?{
+        val result = parts.remove(face)
+            ?: return null
+
+        tickingParts.removeIf { it == result }
+
+        result.onRemoved()
+
+        return result
+    }
+
+    private fun addPart(face : Direction, part : Part){
+        parts[face] = part
+        part.onAdded()
     }
 
     /**
@@ -166,7 +187,7 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
 
         val part = provider.create(placementContext)
 
-        parts[face] = part
+        addPart(face, part)
 
         changedParts.add(PartUpdate(part, PartUpdateType.Add))
         joinCollider(part)
@@ -214,7 +235,7 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
             )
         }
 
-        parts.remove(part.placementContext.face)
+        removePart(part.placementContext.face)
         changedParts.add(PartUpdate(part, PartUpdateType.Remove))
 
         part.onDestroyed()
@@ -423,7 +444,7 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
         removedPartsTag?.forEach { faceTag ->
             val face = (faceTag as CompoundTag).getDirection("Face")
 
-            val part = parts.remove(face)
+            val part = removePart(face)
 
             if(part == null){
                 Eln2.LOGGER.error("Client received broken part on $face, but there was no part present on the face!")
@@ -607,7 +628,7 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
                 Eln2.LOGGER.info("Part from tag...")
                 val part = createPartFromTag(partTag as CompoundTag)
                 Eln2.LOGGER.info("writing...")
-                parts[part.placementContext.face] = part
+                addPart(part.placementContext.face, part)
 
                 Eln2.LOGGER.info("Loaded $part")
             }
@@ -870,5 +891,77 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
 
     fun unbindRenderer(){
 
+    }
+
+    fun addTicker(part : ITickablePart){
+        if(!parts.values.any { it == part }){
+            error("Cannot register ticker for a part that is not added!")
+        }
+
+        if(tickingParts.contains(part)){
+            error("Duplicate add ticking part $part")
+        }
+
+        tickingParts.add(part)
+
+        val chunk = level!!.getChunkAt(pos)
+
+        chunk.updateBlockEntityTicker(this)
+
+        Eln2.LOGGER.info("activated ticker")
+    }
+
+    fun removeTicker(part : ITickablePart){
+        tickingRemoveQueue.add(part)
+    }
+
+    val needsTicks get() = tickingParts.isNotEmpty()
+
+    companion object{
+        fun <T : BlockEntity> blockTick(level: Level?, pos: BlockPos?, state: BlockState?, entity: T?) {
+            if(entity !is MultipartBlockEntity){
+                Eln2.LOGGER.error("Block tick entity is not a multipart!")
+                return
+            }
+
+            if(level == null){
+                Eln2.LOGGER.error("Block tick level was null")
+                return
+            }
+
+            if(state == null){
+                Eln2.LOGGER.error("Block tick BlockState was null")
+                return
+            }
+
+            if(pos == null){
+                Eln2.LOGGER.error("Block tick pos was null")
+                return
+            }
+
+            if(!entity.needsTicks){
+                // Remove the ticker
+
+                val chunk = level.getChunkAt(pos)
+
+                chunk.removeBlockEntityTicker(pos)
+
+                Eln2.LOGGER.info("Removed ticker!")
+
+                return
+            }
+
+            entity.tickingParts.forEach { it.tick() }
+
+            while(entity.tickingRemoveQueue.isNotEmpty()){
+                val removed = entity.tickingRemoveQueue.removeFirst()
+
+                if(!entity.tickingParts.remove(removed)){
+                    error("Tried to remove part ticker $removed that was not registered")
+                }
+            }
+
+            Eln2.LOGGER.info("Multipart tick")
+        }
     }
 }
