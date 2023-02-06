@@ -15,14 +15,12 @@ import net.minecraft.world.InteractionResult
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.level.Level
-import net.minecraft.world.level.block.AbstractFurnaceBlock
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.shapes.BooleanOp
 import net.minecraft.world.phys.shapes.Shapes
 import net.minecraft.world.phys.shapes.VoxelShape
-import net.minecraftforge.fml.util.ObfuscationReflectionHelper
 import org.eln2.mc.Eln2
 import org.eln2.mc.client.flywheel.instances.MultipartBlockEntityInstance
 import org.eln2.mc.common.DirectionMask
@@ -41,9 +39,11 @@ import org.eln2.mc.extensions.BlockPosExtensions.plus
 import org.eln2.mc.extensions.DirectionExtensions.isVertical
 import org.eln2.mc.extensions.NbtExtensions.getBlockPos
 import org.eln2.mc.extensions.NbtExtensions.getDirection
+import org.eln2.mc.extensions.NbtExtensions.getPartUpdateType
 import org.eln2.mc.extensions.NbtExtensions.getResourceLocation
 import org.eln2.mc.extensions.NbtExtensions.putBlockPos
 import org.eln2.mc.extensions.NbtExtensions.setDirection
+import org.eln2.mc.extensions.NbtExtensions.setPartUpdateType
 import org.eln2.mc.extensions.NbtExtensions.setResourceLocation
 import org.eln2.mc.utility.AABBUtilities
 import org.eln2.mc.utility.ClientOnly
@@ -65,31 +65,31 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
     private val parts = HashMap<Direction, Part>()
 
     // Used for part sync:
-    private val partsRequestingUpdate = ArrayList<Direction>()
-
-    // Used for streaming to clients:
-    private val changedParts = ArrayList<PartUpdate>()
+    private val syncingParts = ArrayList<Direction>()
+    private val placementUpdates = ArrayList<PartUpdate>()
 
     // Used for disk loading:
     private var savedTag : CompoundTag? = null
 
     private var tickingParts = ArrayList<ITickablePart>()
+
+    // This is useful, because a part might remove its ticker whilst being ticked
+    // (which would cause our issues with iteration)
     private var tickingRemoveQueue = ArrayDeque<ITickablePart>()
 
     val isEmpty = parts.isEmpty()
 
     // Used for rendering:
     @ClientOnly
-    val clientUpdateQueue = ConcurrentLinkedQueue<PartUpdate>()
+    val renderQueue = ConcurrentLinkedQueue<PartUpdate>()
 
-    var collisionShape : VoxelShape
-        private set
+    var collisionShape : VoxelShape private set
 
     init {
         collisionShape = Shapes.empty()
     }
 
-    private fun removePart(face : Direction) : Part?{
+    private fun destroyPart(face : Direction) : Part?{
         val result = parts.remove(face)
             ?: return null
 
@@ -127,7 +127,7 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
      * */
     @ServerOnly
     fun enqueuePartSync(face : Direction){
-        partsRequestingUpdate.add(face)
+        syncingParts.add(face)
         syncData() // TODO: Can we batch multiple updates?
     }
 
@@ -189,7 +189,7 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
 
         addPart(face, part)
 
-        changedParts.add(PartUpdate(part, PartUpdateType.Add))
+        placementUpdates.add(PartUpdate(part, PartUpdateType.Add))
         joinCollider(part)
 
         part.onPlaced()
@@ -217,7 +217,7 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
         val part = pickPart(entity) ?: return null
 
         val id = part.id
-        removePart(part)
+        breakPart(part)
 
         return id
     }
@@ -226,7 +226,7 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
      * Destroys a part, saves and synchronizes the changes.
      * */
     @ServerOnly
-    private fun removePart(part : Part){
+    private fun breakPart(part : Part){
         if(part is IPartCellContainer){
             CellConnectionManager.destroy(CellSpaceLocation(
                 part.cell,
@@ -235,10 +235,10 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
             )
         }
 
-        removePart(part.placementContext.face)
-        changedParts.add(PartUpdate(part, PartUpdateType.Remove))
+        destroyPart(part.placementContext.face)
+        placementUpdates.add(PartUpdate(part, PartUpdateType.Remove))
 
-        part.onDestroyed()
+        part.onBroken()
 
         saveData()
         syncData()
@@ -266,7 +266,7 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
         }
 
         if(parts.containsKey(direction)){
-            removePart(parts[direction]!!)
+            breakPart(parts[direction]!!)
         }
 
         return parts.size == 0
@@ -303,7 +303,7 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
             return CompoundTag()
         }
 
-        return savePartsToTag()
+        return saveParts()
     }
 
     @ClientOnly
@@ -323,7 +323,7 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
             return
         }
 
-        loadPartsFromTag(tag)
+        loadParts(tag)
 
         parts.values.forEach { part ->
             clientAddPart(part)
@@ -347,65 +347,77 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
 
         val tag = CompoundTag()
 
-        // todo: remove allocations and unify
-        val newPartsTag = ListTag()
-        val removedPartsTag = ListTag()
+        packPlacementUpdates(tag)
+        packPartUpdates(tag)
 
-        changedParts.forEach { update ->
+        return ClientboundBlockEntityDataPacket.create(this) { tag };
+    }
+
+    @ServerOnly
+    private fun packPlacementUpdates(tag : CompoundTag){
+        if(placementUpdates.size == 0){
+            return
+        }
+
+        val placementUpdatesTag = ListTag()
+
+        placementUpdates.forEach { update ->
             val part = update.part
+
+            val updateTag = CompoundTag()
+
+            updateTag.setPartUpdateType("Type", update.type)
 
             when(update.type){
                 PartUpdateType.Add -> {
-                    newPartsTag.add(savePartToTag(part))
+                    updateTag.put("NewPart", savePart(part))
                 }
                 PartUpdateType.Remove -> {
-                    val faceTag = CompoundTag()
-                    faceTag.setDirection("Face", part.placementContext.face)
-                    removedPartsTag.add(faceTag)
+                    updateTag.setDirection("RemovedPartFace", part.placementContext.face)
                 }
             }
+
+            placementUpdatesTag.add(updateTag)
         }
 
-        changedParts.clear()
+        placementUpdates.clear()
 
-        if(newPartsTag.size > 0){
-            tag.put("NewParts", newPartsTag)
+        tag.put("PlacementUpdates", placementUpdatesTag)
+    }
+
+    @ServerOnly
+    private fun packPartUpdates(tag : CompoundTag){
+        if(syncingParts.size == 0){
+            return
         }
 
-        if(removedPartsTag.size > 0){
-            tag.put("RemovedParts", removedPartsTag)
-        }
+        val partUpdatesTag = ListTag()
 
-        if(partsRequestingUpdate.size > 0){
-            val partUpdatesTag = ListTag()
+        syncingParts.forEach{ face ->
+            val part = parts[face]
 
-            partsRequestingUpdate.forEach{ face ->
-                val part = parts[face]
-
-                if(part == null){
-                    Eln2.LOGGER.error("Multipart at $pos part $face requested update, but was null")
-                    return@forEach
-                }
-
-                val syncTag = part.getSyncTag()
-
-                if(syncTag == null){
-                    Eln2.LOGGER.error("Part $part had an update enqueued, but returned a null sync tag")
-                    return@forEach
-                }
-
-                val updateTag = CompoundTag()
-                updateTag.setDirection("Face", face)
-                updateTag.put("SyncTag", syncTag)
-
-                partUpdatesTag.add(updateTag)
+            if(part == null){
+                Eln2.LOGGER.error("Multipart at $pos part $face requested update, but was null")
+                return@forEach
             }
 
-            partsRequestingUpdate.clear()
-            tag.put("PartUpdates", partUpdatesTag)
+            val syncTag = part.getSyncTag()
+
+            if(syncTag == null){
+                Eln2.LOGGER.error("Part $part had an update enqueued, but returned a null sync tag")
+                return@forEach
+            }
+
+            val updateTag = CompoundTag()
+            updateTag.setDirection("Face", face)
+            updateTag.put("SyncTag", syncTag)
+
+            partUpdatesTag.add(updateTag)
         }
 
-        return ClientboundBlockEntityDataPacket.create(this) { tag };
+        syncingParts.clear()
+
+        tag.put("PartUpdates", partUpdatesTag)
     }
 
     @ClientOnly
@@ -426,35 +438,53 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
         }
 
         val tag = packet.tag!!
-        val newPartsTag = tag.get("NewParts") as? ListTag
-        val removedPartsTag = tag.get("RemovedParts") as? ListTag
-        val partUpdatesTag = tag.get("PartUpdates") as? ListTag
 
-        newPartsTag?.forEach { partTag ->
-            val part = createPartFromTag(partTag as CompoundTag)
+        unpackPlacementUpdates(tag)
+        unpackPartUpdates(tag)
+    }
 
-            if(parts.put(part.placementContext.face, part) != null){
-                Eln2.LOGGER.error("Client received new part, but a part was already present on the ${part.placementContext.face} face!")
+    @ClientOnly
+    private fun unpackPlacementUpdates(tag : CompoundTag){
+        val placementUpdatesTag = tag.get("PlacementUpdates")
+            as? ListTag
+            ?: return
+
+        placementUpdatesTag.map { it as CompoundTag }.forEach { updateTag ->
+            when(updateTag.getPartUpdateType("Type")){
+                PartUpdateType.Add -> {
+                    val newPartTag = updateTag.get("NewPart") as CompoundTag
+                    val part = unpackPart(newPartTag)
+
+                    if(parts.put(part.placementContext.face, part) != null){
+                        Eln2.LOGGER.error("Client received new part, but a part was already present on the ${part.placementContext.face} face!")
+                    }
+
+                    clientAddPart(part)
+                    joinCollider(part)
+                }
+
+                PartUpdateType.Remove -> {
+                    val face = updateTag.getDirection("RemovedPartFace")
+                    val part = destroyPart(face)
+
+                    if(part == null){
+                        Eln2.LOGGER.error("Client received broken part on $face, but there was no part present on the face!")
+                    }
+                    else{
+                        clientRemovePart(part)
+                    }
+                }
             }
-
-            clientAddPart(part)
-            joinCollider(part)
         }
+    }
 
-        removedPartsTag?.forEach { faceTag ->
-            val face = (faceTag as CompoundTag).getDirection("Face")
+    @ClientOnly
+    private fun unpackPartUpdates(tag : CompoundTag){
+        val partUpdatesTag = tag.get("PartUpdates")
+            as? ListTag
+            ?: return
 
-            val part = removePart(face)
-
-            if(part == null){
-                Eln2.LOGGER.error("Client received broken part on $face, but there was no part present on the face!")
-            }
-            else{
-                clientRemovePart(part)
-            }
-        }
-
-        partUpdatesTag?.forEach { updateTag ->
+        partUpdatesTag.forEach { updateTag ->
             val compound = updateTag as CompoundTag
 
             val face = compound.getDirection("Face")
@@ -477,7 +507,7 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
     @ClientOnly
     private fun clientAddPart(part : Part){
         part.onAddedToClient()
-        clientUpdateQueue.add(PartUpdate(part, PartUpdateType.Add))
+        renderQueue.add(PartUpdate(part, PartUpdateType.Add))
     }
 
     /**
@@ -485,8 +515,8 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
      * */
     @ClientOnly
     private fun clientRemovePart(part : Part){
-        part.onDestroyed()
-        clientUpdateQueue.add(PartUpdate(part, PartUpdateType.Remove))
+        part.onBroken()
+        renderQueue.add(PartUpdate(part, PartUpdateType.Remove))
     }
 
     //#endregion
@@ -501,7 +531,7 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
             return
         }
 
-        savePartsToTag(pTag)
+        saveParts(pTag)
     }
 
     /**
@@ -530,7 +560,7 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
 
             if(this.savedTag != null){
                 Eln2.LOGGER.info("Completing multipart disk load at $pos with ${savedTag!!.size()}")
-                loadPartsFromTag(savedTag!!)
+                loadParts(savedTag!!)
                 Eln2.LOGGER.info("Loaded from tag")
                 parts.values.forEach { part ->
                     part.onLoaded()
@@ -567,7 +597,7 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
      * Saves all the data associated with a part to a CompoundTag.
      * */
     @ServerOnly
-    private fun savePartToTag(part : Part) : CompoundTag{
+    private fun savePart(part : Part) : CompoundTag{
         val tag = CompoundTag()
 
         tag.setResourceLocation("ID", part.id)
@@ -588,10 +618,10 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
      * Saves the entire part set to a CompoundTag.
      * */
     @ServerOnly
-    private fun savePartsToTag() : CompoundTag{
+    private fun saveParts() : CompoundTag{
         val tag = CompoundTag()
 
-        savePartsToTag(tag)
+        saveParts(tag)
 
         return tag
     }
@@ -600,7 +630,7 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
      * Saves the entire part set to the provided CompoundTag.
      * */
     @ServerOnly
-    private fun savePartsToTag(tag : CompoundTag){
+    private fun saveParts(tag : CompoundTag){
         assert(!level!!.isClientSide)
 
         val partsTag = ListTag()
@@ -608,7 +638,7 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
         parts.keys.forEach { face ->
             val part = parts[face]
 
-            partsTag.add(savePartToTag(part!!))
+            partsTag.add(savePart(part!!))
         }
 
         tag.put("Parts", partsTag)
@@ -619,26 +649,19 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
      * This is used by the server to load from disk, and by the client to set up parts during the initial
      * chunk synchronization.
      * */
-    private fun loadPartsFromTag(tag: CompoundTag){
+    private fun loadParts(tag: CompoundTag){
         if (tag.contains("Parts")) {
-            Eln2.LOGGER.info("Casting...")
             val partsTag = tag.get("Parts") as ListTag
-            Eln2.LOGGER.info("Cast")
             partsTag.forEach { partTag ->
-                Eln2.LOGGER.info("Part from tag...")
-                val part = createPartFromTag(partTag as CompoundTag)
-                Eln2.LOGGER.info("writing...")
-                addPart(part.placementContext.face, part)
+                val part = unpackPart(partTag as CompoundTag)
 
-                Eln2.LOGGER.info("Loaded $part")
+                addPart(part.placementContext.face, part)
             }
 
             rebuildCollider()
-
-            Eln2.LOGGER.info("Deserialized all parts")
         }
         else{
-            Eln2.LOGGER.warn("Multipart had no saved data")
+            Eln2.LOGGER.error("Multipart at $pos had no saved data")
         }
     }
 
@@ -647,7 +670,7 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
      * This tag should be a product of the getPartTag method.
      * This method _does not_ add the part to the part map!
      * */
-    private fun createPartFromTag(tag : CompoundTag) : Part{
+    private fun unpackPart(tag : CompoundTag) : Part{
         val id = tag.getResourceLocation("ID")
         val pos = tag.getBlockPos("Pos")
         val face = tag.getDirection("Face")
@@ -767,7 +790,7 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
                         ?: return
 
                     val remoteRelative = remoteContainer
-                        .checkConnectionCandidate(remoteSpace, remoteConnectionFace)
+                        .probeConnectionCandidate(remoteSpace, remoteConnectionFace)
                         ?: return
 
                     results.add(CellNeighborInfo(remoteSpace, remoteContainer, partRelative, remoteRelative))
@@ -788,7 +811,7 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
                         ?: return
 
                     val remoteRelative = remoteContainer
-                        .checkConnectionCandidate(remoteSpace, wrapDirection.opposite)
+                        .probeConnectionCandidate(remoteSpace, wrapDirection.opposite)
                         ?: return
 
                     results.add(CellNeighborInfo(remoteSpace, remoteContainer, partRelative, remoteRelative))
@@ -803,11 +826,9 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
         return ArrayList(results)
     }
 
-    override fun checkConnectionCandidate(location: CellSpaceLocation, direction: Direction): RelativeRotationDirection? {
+    override fun probeConnectionCandidate(location: CellSpaceLocation, direction: Direction): RelativeRotationDirection? {
         val part = (parts[location.innerFace]!!)
         val relative = part.getRelativeDirection(direction)
-
-        assert(part is IPartCellContainer)
 
         return if((part as IPartCellContainer).provider.canConnectFrom(relative)){
             relative
@@ -885,7 +906,7 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
      * */
     fun bindRenderer(instance: MultipartBlockEntityInstance){
         parts.values.forEach { part ->
-            clientUpdateQueue.add(PartUpdate(part, PartUpdateType.Add))
+            renderQueue.add(PartUpdate(part, PartUpdateType.Add))
         }
     }
 

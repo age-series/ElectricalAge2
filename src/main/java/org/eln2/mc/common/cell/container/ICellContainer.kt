@@ -42,7 +42,7 @@ interface ICellContainer {
      * @param direction The global direction.
      * @return A relative rotation, if the connection is accepted. Otherwise, null.
      * */
-    fun checkConnectionCandidate(location: CellSpaceLocation, direction: Direction) : RelativeRotationDirection?
+    fun probeConnectionCandidate(location: CellSpaceLocation, direction: Direction) : RelativeRotationDirection?
 
     /**
      * Called by the connection manager when a connection is made.
