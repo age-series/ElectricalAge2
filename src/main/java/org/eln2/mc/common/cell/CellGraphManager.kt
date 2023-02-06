@@ -6,6 +6,7 @@ import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.saveddata.SavedData
 import org.eln2.mc.Eln2
+import org.eln2.mc.utility.AveragingList
 import org.eln2.mc.utility.Chrono
 import java.util.*
 import java.util.concurrent.ExecutorCompletionService
@@ -15,11 +16,14 @@ import java.util.concurrent.Executors
 class CellGraphManager(val level : Level) : SavedData() {
     private val executor = Executors.newWorkStealingPool(12)
     private val completionService = ExecutorCompletionService<Long>(executor)
+    private val averageSeconds = AveragingList(100)
 
     val graphs = HashMap<UUID, CellGraph>()
 
     // Could also use graph count, but let's be safe.
     private var runningTasks = 0
+
+    private var logCountdown = 100
 
     fun beginUpdate(){
         graphs.values.forEach { graph ->
@@ -44,7 +48,13 @@ class CellGraphManager(val level : Level) : SavedData() {
 
         runningTasks = 0
 
-        Eln2.LOGGER.info("Total CPU time: ${totalTime * 1000}ms")
+        averageSeconds.addSample(totalTime)
+
+        if(--logCountdown == 0){
+            logCountdown = 100
+
+            Eln2.LOGGER.info("Average simulation time: ${averageSeconds.calculate() * 1000}ms")
+        }
     }
 /*
 

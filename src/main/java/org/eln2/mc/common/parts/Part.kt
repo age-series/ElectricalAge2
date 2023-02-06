@@ -180,6 +180,11 @@ abstract class Part(val id : ResourceLocation, val placementContext: PartPlaceme
     open fun onLoaded(){}
 
     /**
+     * Called when this part is added to a multipart.
+     * */
+    open fun onAdded(){}
+
+    /**
      * Called when this part is being unloaded.
      * */
     open fun onUnloaded(){}
@@ -188,6 +193,11 @@ abstract class Part(val id : ResourceLocation, val placementContext: PartPlaceme
      * Called when the part is destroyed (broken).
      * */
     open fun onDestroyed(){}
+
+    /**
+     * Called when the part is removed from the multipart.
+     * */
+    open fun onRemoved(){}
 
     @ClientOnly
     open fun onAddedToClient(){}
