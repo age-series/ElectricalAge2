@@ -11,7 +11,6 @@ import net.minecraft.world.level.block.HorizontalDirectionalBlock
 import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.state.BlockState
 import org.eln2.mc.Eln2
-import org.eln2.mc.common.DirectionMask
 import org.eln2.mc.common.PlacementRotation
 import org.eln2.mc.common.RelativeRotationDirection
 import org.eln2.mc.common.cell.*
@@ -19,7 +18,6 @@ import org.eln2.mc.common.cell.container.CellNeighborInfo
 import org.eln2.mc.common.cell.container.CellSpaceLocation
 import org.eln2.mc.common.cell.container.CellSpaceQuery
 import org.eln2.mc.common.cell.container.ICellContainer
-import org.eln2.mc.extensions.BlockEntityExtensions.getNeighborEntity
 import org.eln2.mc.extensions.BlockPosExtensions.plus
 import org.eln2.mc.extensions.DirectionExtensions.isVertical
 import java.util.*
@@ -217,7 +215,7 @@ class CellBlockEntity(var pos : BlockPos, var state: BlockState)
                     val queryResult = remoteContainer.query(CellSpaceQuery(direction.opposite, Direction.UP))
 
                     if(queryResult != null){
-                        val remoteRelative = remoteContainer.checkConnectionCandidate(getCellSpace(), direction.opposite)
+                        val remoteRelative = remoteContainer.probeConnectionCandidate(getCellSpace(), direction.opposite)
 
                         if(remoteRelative != null){
                             results.add(CellNeighborInfo(queryResult, remoteContainer, local, remoteRelative))
@@ -230,7 +228,7 @@ class CellBlockEntity(var pos : BlockPos, var state: BlockState)
         return results
     }
 
-    override fun checkConnectionCandidate(location: CellSpaceLocation, direction: Direction): RelativeRotationDirection? {
+    override fun probeConnectionCandidate(location: CellSpaceLocation, direction: Direction): RelativeRotationDirection? {
         assert(location.cell == cell!!)
 
         val local = getLocalDirection(direction)

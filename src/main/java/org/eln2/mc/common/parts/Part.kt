@@ -1,23 +1,15 @@
 package org.eln2.mc.common.parts
 
-import com.mojang.math.Matrix4f
 import com.mojang.math.Quaternion
-import com.mojang.math.Vector3f
 import net.minecraft.core.Direction
-import net.minecraft.core.Direction.*
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.world.InteractionResult
-import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
 import net.minecraft.world.phys.shapes.Shapes
 import net.minecraft.world.phys.shapes.VoxelShape
-import org.eln2.mc.Eln2
 import org.eln2.mc.common.RelativeRotationDirection
-import org.eln2.mc.extensions.AABBExtensions.transformed
-import org.eln2.mc.extensions.Vec3Extensions.div
-import org.eln2.mc.utility.AABBUtilities
 import org.eln2.mc.utility.ClientOnly
 import org.eln2.mc.utility.ServerOnly
 
@@ -192,7 +184,7 @@ abstract class Part(val id : ResourceLocation, val placementContext: PartPlaceme
     /**
      * Called when the part is destroyed (broken).
      * */
-    open fun onDestroyed(){}
+    open fun onBroken(){}
 
     /**
      * Called when the part is removed from the multipart.

@@ -6,6 +6,7 @@ import net.minecraft.nbt.CompoundTag
 import net.minecraft.resources.ResourceLocation
 import org.eln2.mc.common.RelativeRotationDirection
 import org.eln2.mc.common.cell.CellPos
+import org.eln2.mc.common.parts.PartUpdateType
 
 object NbtExtensions {
     fun CompoundTag.putBlockPos(key : String, pos : BlockPos) {
@@ -106,5 +107,17 @@ object NbtExtensions {
         val data = this.getInt(key)
 
         return RelativeRotationDirection.fromId(data)
+    }
+
+    fun CompoundTag.setPartUpdateType(key : String, type : PartUpdateType){
+        val data = type.id
+
+        this.putInt(key, data)
+    }
+
+    fun CompoundTag.getPartUpdateType(key : String) : PartUpdateType{
+        val data = this.getInt(key)
+
+        return PartUpdateType.fromId(data)
     }
 }
