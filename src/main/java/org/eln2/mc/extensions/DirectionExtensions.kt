@@ -5,7 +5,11 @@ import org.eln2.mc.common.RelativeRotationDirection
 
 object DirectionExtensions {
     fun Direction.isVertical() : Boolean{
-        return this == Direction.UP || this == Direction.DOWN;
+        return this == Direction.UP || this == Direction.DOWN
+    }
+
+    fun Direction.isHorizontal() : Boolean{
+        return !isVertical()
     }
 
     fun Direction.relativeAlias() : RelativeRotationDirection{
@@ -36,5 +40,17 @@ object DirectionExtensions {
 
     fun Array<Direction>.horizontal(consumer: (Direction) -> Unit) : List<Direction>{
         return this.filter { !it.isVertical() }
+    }
+
+    fun Array<Direction>.verticals() : List<Direction>{
+        return this.filter { it.isVertical() }
+    }
+
+    fun Array<Direction>.horizontals() : List<Direction>{
+        return this.filter { !it.isVertical() }
+    }
+
+    fun Direction.index() : Int{
+        return this.get3DDataValue()
     }
 }

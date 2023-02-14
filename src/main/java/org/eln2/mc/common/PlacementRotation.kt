@@ -20,6 +20,8 @@ enum class RelativeRotationDirection(val id : Int) {
         Up -> Down
         Down -> Up
     }
+    val isHorizontal get() = this != Up && this != Down
+    val isVertical get() = this == Up || this == Down
 
     companion object{
         fun fromForwardUp(facing : Direction, normal : Direction, direction: Direction) : RelativeRotationDirection{
