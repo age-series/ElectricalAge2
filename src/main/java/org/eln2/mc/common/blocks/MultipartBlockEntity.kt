@@ -743,12 +743,12 @@ class MultipartBlockEntity (var pos : BlockPos, var state: BlockState) :
 
         val results = LinkedHashSet<CellNeighborInfo>()
 
-        DirectionMask.perpendicular(partFace).forEach { searchDirection ->
+        DirectionMask.perpendicular(partFace).process { searchDirection ->
             val partRelative = part.getRelativeDirection(searchDirection)
 
             if(!part.provider.canConnectFrom(partRelative)){
                 Eln2.LOGGER.info("Part rejected connection on $partRelative")
-                return@forEach
+                return@process
             }
 
             fun innerScan(){
