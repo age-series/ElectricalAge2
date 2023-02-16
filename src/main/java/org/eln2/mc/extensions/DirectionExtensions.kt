@@ -34,22 +34,6 @@ object DirectionExtensions {
         }
     }
 
-    fun Array<Direction>.vertical(consumer: (Direction) -> Unit): List<Direction> {
-        return this.filter { it.isVertical() }
-    }
-
-    fun Array<Direction>.horizontal(consumer: (Direction) -> Unit): List<Direction> {
-        return this.filter { !it.isVertical() }
-    }
-
-    fun Array<Direction>.verticals(): List<Direction> {
-        return this.filter { it.isVertical() }
-    }
-
-    fun Array<Direction>.horizontals(): List<Direction> {
-        return this.filter { !it.isVertical() }
-    }
-
     fun Direction.index(): Int {
         return this.get3DDataValue()
     }

@@ -9,7 +9,7 @@ import org.eln2.mc.Eln2
 import org.eln2.mc.common.blocks.foundation.CellBlockEntity
 import org.eln2.mc.common.blocks.foundation.MultipartBlockEntity
 import org.eln2.mc.extensions.NbtExtensions.getStringMap
-import org.eln2.mc.extensions.NbtExtensions.setStringMap
+import org.eln2.mc.extensions.NbtExtensions.putStringMap
 
 
 @WailaPlugin(id = "${Eln2.MODID}:waila_plugin")
@@ -51,7 +51,7 @@ class Eln2WailaPlugin : IWailaPlugin {
 
                     val cellBlockEntity = accessor.target
 
-                    data.setStringMap("body", cellBlockEntity.getHudMap().mapKeys { "waila.eln2.${it.key}" })
+                    data.putStringMap("body", cellBlockEntity.getHudMap().mapKeys { "waila.eln2.${it.key}" })
                 }
             }
 
@@ -70,7 +70,7 @@ class Eln2WailaPlugin : IWailaPlugin {
 
                     val multipartBlockEntity = accessor.target
 
-                    data.setStringMap("body", multipartBlockEntity.getHudMap().mapKeys { "waila.eln2.${it.key}" })
+                    data.putStringMap("body", multipartBlockEntity.getHudMap().mapKeys { "waila.eln2.${it.key}" })
                 }
             }
 

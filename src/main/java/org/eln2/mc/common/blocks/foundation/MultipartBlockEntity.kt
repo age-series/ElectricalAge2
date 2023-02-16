@@ -41,9 +41,9 @@ import org.eln2.mc.extensions.NbtExtensions.getDirection
 import org.eln2.mc.extensions.NbtExtensions.getPartUpdateType
 import org.eln2.mc.extensions.NbtExtensions.getResourceLocation
 import org.eln2.mc.extensions.NbtExtensions.putBlockPos
-import org.eln2.mc.extensions.NbtExtensions.setDirection
-import org.eln2.mc.extensions.NbtExtensions.setPartUpdateType
-import org.eln2.mc.extensions.NbtExtensions.setResourceLocation
+import org.eln2.mc.extensions.NbtExtensions.putDirection
+import org.eln2.mc.extensions.NbtExtensions.putPartUpdateType
+import org.eln2.mc.extensions.NbtExtensions.putResourceLocation
 import org.eln2.mc.utility.BoundingBox
 import java.util.concurrent.ConcurrentLinkedQueue
 
@@ -364,7 +364,7 @@ class MultipartBlockEntity(var pos: BlockPos, var state: BlockState) :
 
             val updateTag = CompoundTag()
 
-            updateTag.setPartUpdateType("Type", update.type)
+            updateTag.putPartUpdateType("Type", update.type)
 
             when (update.type) {
                 PartUpdateType.Add -> {
@@ -372,7 +372,7 @@ class MultipartBlockEntity(var pos: BlockPos, var state: BlockState) :
                 }
 
                 PartUpdateType.Remove -> {
-                    updateTag.setDirection("RemovedPartFace", part.placementContext.face)
+                    updateTag.putDirection("RemovedPartFace", part.placementContext.face)
                 }
             }
 
@@ -408,7 +408,7 @@ class MultipartBlockEntity(var pos: BlockPos, var state: BlockState) :
             }
 
             val updateTag = CompoundTag()
-            updateTag.setDirection("Face", face)
+            updateTag.putDirection("Face", face)
             updateTag.put("SyncTag", syncTag)
 
             partUpdatesTag.add(updateTag)
@@ -595,10 +595,10 @@ class MultipartBlockEntity(var pos: BlockPos, var state: BlockState) :
     private fun savePart(part: Part): CompoundTag {
         val tag = CompoundTag()
 
-        tag.setResourceLocation("ID", part.id)
+        tag.putResourceLocation("ID", part.id)
         tag.putBlockPos("Pos", part.placementContext.pos)
-        tag.setDirection("Face", part.placementContext.face)
-        tag.setDirection("Facing", part.placementContext.horizontalFacing)
+        tag.putDirection("Face", part.placementContext.face)
+        tag.putDirection("Facing", part.placementContext.horizontalFacing)
 
         val customTag = part.getSaveTag()
 

@@ -11,7 +11,7 @@ import org.eln2.mc.common.cells.CellRegistry
 import org.eln2.mc.common.parts.foundation.*
 import org.eln2.mc.common.space.RelativeRotationDirection
 import org.eln2.mc.extensions.NbtExtensions.getRelativeDirection
-import org.eln2.mc.extensions.NbtExtensions.setRelativeDirection
+import org.eln2.mc.extensions.NbtExtensions.putRelativeDirection
 
 class WirePart(id: ResourceLocation, context: PartPlacementContext) :
     CellPart(id, context, CellRegistry.WIRE_CELL.get()) {
@@ -80,7 +80,7 @@ class WirePart(id: ResourceLocation, context: PartPlacementContext) :
         connectedDirections.forEach { direction ->
             val directionTag = CompoundTag()
 
-            directionTag.setRelativeDirection("Direction", direction)
+            directionTag.putRelativeDirection("Direction", direction)
 
             directionList.add(directionTag)
         }

@@ -4,7 +4,7 @@ import org.ageseries.libage.sim.electrical.mna.component.Resistor
 import org.eln2.mc.common.cells.foundation.CellBase
 import org.eln2.mc.common.cells.foundation.CellPos
 import org.eln2.mc.common.cells.foundation.ComponentInfo
-import org.eln2.mc.extensions.ComponentExtensions.connectToPinOf
+import org.eln2.mc.extensions.ComponentExtensions.connect
 import org.eln2.mc.utility.UnitType
 import org.eln2.mc.utility.ValueText.valueText
 
@@ -40,7 +40,7 @@ class GroundCell(pos: CellPos) : CellBase(pos) {
             val resistor = getOfferedComponent(adjacentCell).component
             resistor.ground(0) // ground one pin of our resistor
             // then connect the other pin to them
-            resistor.connectToPinOf(1, adjacentCell.getOfferedComponent(this))
+            resistor.connect(1, adjacentCell.getOfferedComponent(this))
         }
     }
 

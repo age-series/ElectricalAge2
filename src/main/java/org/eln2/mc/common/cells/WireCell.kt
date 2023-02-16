@@ -4,7 +4,7 @@ import org.ageseries.libage.sim.electrical.mna.component.Resistor
 import org.eln2.mc.common.cells.foundation.CellBase
 import org.eln2.mc.common.cells.foundation.CellPos
 import org.eln2.mc.common.cells.foundation.ComponentInfo
-import org.eln2.mc.extensions.ComponentExtensions.connectToPinOf
+import org.eln2.mc.extensions.ComponentExtensions.connect
 import org.eln2.mc.utility.UnitType
 import org.eln2.mc.utility.ValueText.valueText
 import kotlin.math.abs
@@ -41,7 +41,7 @@ class WireCell(pos: CellPos) : CellBase(pos) {
     override fun buildConnections() {
         connections.forEach { adjacentCell ->
             val resistor = getOfferedComponent(adjacentCell).component
-            resistor.connectToPinOf(1, adjacentCell.getOfferedComponent(this))
+            resistor.connect(1, adjacentCell.getOfferedComponent(this))
         }
     }
 
