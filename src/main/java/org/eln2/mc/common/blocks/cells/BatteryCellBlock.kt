@@ -15,7 +15,7 @@ import org.eln2.mc.extensions.VoxelShapeExtensions.align
 
 class BatteryCellBlock : CellBlock() {
     override fun getCellProvider(): ResourceLocation {
-        return CellRegistry.`12V_BATTERY_CELL`.id
+        return CellRegistry.BATTERY_CELL.id
     }
 
     override fun getCollisionShape(

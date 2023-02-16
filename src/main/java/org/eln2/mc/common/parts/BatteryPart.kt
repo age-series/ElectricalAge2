@@ -11,7 +11,7 @@ import org.eln2.mc.common.parts.foundation.*
 import org.eln2.mc.common.space.RelativeRotationDirection
 
 class BatteryPart(id: ResourceLocation, context: PartPlacementContext) :
-    CellPart(id, context, CellRegistry.`12V_BATTERY_CELL`.get()),
+    CellPart(id, context, CellRegistry.BATTERY_CELL.get()),
     ITickablePart {
 
     override val allowInnerConnections = false

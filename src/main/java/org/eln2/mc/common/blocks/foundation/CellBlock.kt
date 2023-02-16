@@ -48,7 +48,7 @@ abstract class CellBlock : HorizontalDirectionalBlock(Properties.of(Material.STO
             blockState,
             entity,
             itemStack,
-            CellRegistry.registry.getValue(getCellProvider()) ?: error("Unable to get cell provider")
+            CellRegistry.getProvider(getCellProvider())
         )
     }
 
