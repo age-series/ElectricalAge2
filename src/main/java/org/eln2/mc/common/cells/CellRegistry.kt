@@ -2,7 +2,6 @@ package org.eln2.mc.common.cells
 
 import net.minecraft.resources.ResourceLocation
 import net.minecraftforge.eventbus.api.IEventBus
-import net.minecraftforge.fml.common.Mod
 import net.minecraftforge.registries.*
 import org.eln2.mc.Eln2
 import org.eln2.mc.Eln2.LOGGER
@@ -39,7 +38,7 @@ object CellRegistry {
     val CAPACITOR_CELL = register("capacitor", TwoPinCellProvider { CapacitorCell(it) })
     val INDUCTOR_CELL = register("inductor", TwoPinCellProvider { InductorCell(it) })
     val DIODE_CELL = register("diode", TwoPinCellProvider { DiodeCell(it) })
-    val BATTERY_CELL = register("12v_battery", TwoPinCellProvider { `12VBatteryCell`(it) })
+    val BATTERY_CELL = register("12v_battery", TwoPinCellProvider { BatteryCell(it) })
     val LIGHT_CELL = register("light", FourPinCellProvider { LightCell(it) })
     val SOLAR_LIGHT_CELL = register("solar_light", NoPinCellProvider { SolarLightCell(it) })
     val SOLAR_PANEL_CELL = register("solar_panel", TwoPinCellProvider { SolarPanelCell(it) })

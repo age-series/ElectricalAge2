@@ -9,7 +9,7 @@ import org.eln2.mc.extensions.ComponentExtensions.connectToPinOf
 import org.eln2.mc.utility.UnitType
 import org.eln2.mc.utility.ValueText
 
-class `12VBatteryCell`(pos: CellPos) : CellBase(pos) {
+class BatteryCell(pos: CellPos) : CellBase(pos) {
 
     /*
     *   V -> local voltage source.
