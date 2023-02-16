@@ -6,7 +6,7 @@ import com.mojang.math.Vector3f
 import net.minecraft.world.phys.Vec3
 import org.eln2.mc.extensions.Vec3Extensions.toVector3f
 
-object MatrixUtilities {
+object Matrix {
     fun translation(position : Vector3f) : Matrix4f{
         return Matrix4f.createTranslateMatrix(position.x(), position.y(), position.z())
     }

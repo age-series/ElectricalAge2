@@ -1,7 +1,7 @@
 package org.eln2.mc.extensions
 
 import net.minecraft.core.Direction
-import org.eln2.mc.common.RelativeRotationDirection
+import org.eln2.mc.common.space.RelativeRotationDirection
 
 object DirectionExtensions {
     fun Direction.isVertical() : Boolean{
@@ -12,7 +12,7 @@ object DirectionExtensions {
         return !isVertical()
     }
 
-    fun Direction.relativeAlias() : RelativeRotationDirection{
+    fun Direction.relativeAlias() : RelativeRotationDirection {
         return when(this){
             Direction.DOWN -> RelativeRotationDirection.Down
             Direction.UP -> RelativeRotationDirection.Up

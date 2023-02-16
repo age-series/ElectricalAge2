@@ -1,7 +1,7 @@
 package org.eln2.mc.common.cells.foundation
 
 import net.minecraft.core.Direction
-import org.eln2.mc.common.RelativeRotationDirection
+import org.eln2.mc.common.space.RelativeRotationDirection
 
 /**
  * Cell container

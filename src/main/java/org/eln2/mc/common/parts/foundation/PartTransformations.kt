@@ -6,7 +6,7 @@ import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
-import org.eln2.mc.common.RelativeRotationDirection
+import org.eln2.mc.common.space.RelativeRotationDirection
 import org.eln2.mc.extensions.AABBExtensions.transformed
 import org.eln2.mc.extensions.Vec3Extensions.div
 import org.eln2.mc.utility.AABBUtilities
@@ -58,7 +58,7 @@ object PartTransformations {
         return gridBoundingBox(baseSize, horizontalFacing, face, pos).move(Vec3(-0.5, 0.0, -0.5))
     }
 
-    fun getRelativeRotation(horizontalFacing: Direction, face: Direction, global : Direction) : RelativeRotationDirection{
+    fun getRelativeRotation(horizontalFacing: Direction, face: Direction, global : Direction) : RelativeRotationDirection {
         return RelativeRotationDirection.fromForwardUp(
             horizontalFacing,
             face,

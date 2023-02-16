@@ -1,4 +1,4 @@
-package org.eln2.mc.common.items
+package org.eln2.mc.common.items.foundation
 
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.InteractionResult

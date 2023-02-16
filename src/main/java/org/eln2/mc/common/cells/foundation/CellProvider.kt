@@ -2,7 +2,7 @@ package org.eln2.mc.common.cells.foundation
 
 import net.minecraft.resources.ResourceLocation
 import net.minecraftforge.registries.ForgeRegistryEntry
-import org.eln2.mc.common.RelativeRotationDirection
+import org.eln2.mc.common.space.RelativeRotationDirection
 
 abstract class CellProvider : ForgeRegistryEntry<CellProvider>() {
     val id : ResourceLocation get() = this.registryName ?: error("ID not available in CellProvider")

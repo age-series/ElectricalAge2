@@ -1,4 +1,4 @@
-package org.eln2.mc.common
+package org.eln2.mc.common.configs
 
 import com.charleskorn.kaml.Yaml
 import kotlinx.serialization.Serializable

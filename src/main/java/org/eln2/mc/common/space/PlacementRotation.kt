@@ -1,4 +1,4 @@
-package org.eln2.mc.common
+package org.eln2.mc.common.space
 
 import com.mojang.math.Matrix4f
 import net.minecraft.core.Direction
@@ -24,7 +24,7 @@ enum class RelativeRotationDirection(val id : Int) {
     val isVertical get() = this == Up || this == Down
 
     companion object{
-        fun fromForwardUp(facing : Direction, normal : Direction, direction: Direction) : RelativeRotationDirection{
+        fun fromForwardUp(facing : Direction, normal : Direction, direction: Direction) : RelativeRotationDirection {
             if(facing.isVertical()){
                 error("Facing cannot be vertical")
             }
@@ -56,7 +56,7 @@ enum class RelativeRotationDirection(val id : Int) {
             return result
         }
 
-        fun fromId(id : Int) : RelativeRotationDirection{
+        fun fromId(id : Int) : RelativeRotationDirection {
             return when(id){
                 Front.id -> Front
                 Back.id -> Back

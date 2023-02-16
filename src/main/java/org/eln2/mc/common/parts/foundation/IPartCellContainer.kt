@@ -1,6 +1,6 @@
 package org.eln2.mc.common.parts.foundation
 
-import org.eln2.mc.common.RelativeRotationDirection
+import org.eln2.mc.common.space.RelativeRotationDirection
 import org.eln2.mc.common.cells.foundation.CellBase
 import org.eln2.mc.common.cells.foundation.CellProvider
 
