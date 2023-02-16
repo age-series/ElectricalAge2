@@ -9,11 +9,11 @@ import net.minecraft.world.phys.Vec3
 import org.eln2.mc.common.space.RelativeRotationDirection
 import org.eln2.mc.extensions.AABBExtensions.transformed
 import org.eln2.mc.extensions.Vec3Extensions.div
-import org.eln2.mc.utility.AABBUtilities
+import org.eln2.mc.utility.BoundingBox
 
 object PartTransformations {
     fun modelBoundingBox(baseSize: Vec3, horizontalFacing: Direction, face: Direction): AABB {
-        return AABBUtilities
+        return BoundingBox
             .fromSize(baseSize)
             .transformed(facingRotation(horizontalFacing))
             .transformed(face.rotation)

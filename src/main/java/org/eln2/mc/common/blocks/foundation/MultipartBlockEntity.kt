@@ -44,7 +44,7 @@ import org.eln2.mc.extensions.NbtExtensions.putBlockPos
 import org.eln2.mc.extensions.NbtExtensions.setDirection
 import org.eln2.mc.extensions.NbtExtensions.setPartUpdateType
 import org.eln2.mc.extensions.NbtExtensions.setResourceLocation
-import org.eln2.mc.utility.AABBUtilities
+import org.eln2.mc.utility.BoundingBox
 import java.util.concurrent.ConcurrentLinkedQueue
 
 /**
@@ -132,7 +132,7 @@ class MultipartBlockEntity(var pos: BlockPos, var state: BlockState) :
      * Finds the part intersected by the entity's view.
      * */
     fun pickPart(entity: LivingEntity): Part? {
-        return AABBUtilities.clipScene(entity, { it.gridBoundingBox }, parts.values)
+        return BoundingBox.clipScene(entity, { it.gridBoundingBox }, parts.values)
     }
 
     /**
