@@ -56,5 +56,4 @@ object Eln2 {
     fun resource(path: String): ResourceLocation {
         return ResourceLocation(MODID, path)
     }
-
 }
