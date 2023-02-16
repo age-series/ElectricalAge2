@@ -110,7 +110,7 @@ value class DirectionMask(val mask: Int) {
         private val allMasks = (0..FULL.mask)
             .map { DirectionMask(it) }
             .toList()
-            .toTypedArray();
+            .toTypedArray()
 
         val ALL_MASKS = allMasks.toList()
 
@@ -131,7 +131,7 @@ value class DirectionMask(val mask: Int) {
         // Vertical directions will be unaffected by those transformations.
 
         private fun horizontalFilter(dir: Direction): Boolean {
-            return dir.isHorizontal();
+            return dir.isHorizontal()
         }
 
         private val clockwiseMasks = allMasks

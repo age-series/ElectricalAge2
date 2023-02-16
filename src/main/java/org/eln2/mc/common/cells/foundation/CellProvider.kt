@@ -33,9 +33,9 @@ abstract class CellProvider : ForgeRegistryEntry<CellProvider>() {
 
     fun canConnectFrom(direction: RelativeRotationDirection): Boolean {
         if (!connectableDirections.contains(direction)) {
-            return false;
+            return false
         }
 
-        return connectionPredicate(direction);
+        return connectionPredicate(direction)
     }
 }

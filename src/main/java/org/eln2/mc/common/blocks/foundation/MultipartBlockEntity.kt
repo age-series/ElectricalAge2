@@ -348,7 +348,7 @@ class MultipartBlockEntity(var pos: BlockPos, var state: BlockState) :
         packPlacementUpdates(tag)
         packPartUpdates(tag)
 
-        return ClientboundBlockEntityDataPacket.create(this) { tag };
+        return ClientboundBlockEntityDataPacket.create(this) { tag }
     }
 
     @ServerOnly
@@ -694,7 +694,7 @@ class MultipartBlockEntity(var pos: BlockPos, var state: BlockState) :
             }
         }
 
-        return results;
+        return results
     }
 
     override fun query(query: CellQuery): CellInfo? {
