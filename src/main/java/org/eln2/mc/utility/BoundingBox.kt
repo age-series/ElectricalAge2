@@ -8,7 +8,7 @@ import org.eln2.mc.extensions.Vec3Extensions.div
 import org.eln2.mc.extensions.Vec3Extensions.minus
 import org.eln2.mc.extensions.Vec3Extensions.plus
 
-object AABBUtilities {
+object BoundingBox {
     fun fromCenterSize(center: Vec3, size: Vec3): AABB {
         val halfSize = size / 2.0
 
