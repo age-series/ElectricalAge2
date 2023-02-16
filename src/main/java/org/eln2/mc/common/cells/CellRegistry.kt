@@ -16,7 +16,7 @@ import java.util.function.Supplier
 @Mod.EventBusSubscriber(bus = Mod.EventBusSubscriber.Bus.MOD)
 object CellRegistry {
     private val CELLS = DeferredRegister.create(CellProvider::class.java, Eln2.MODID)
-    private var REGISTRY : Supplier<IForgeRegistry<CellProvider>?>? = null
+    private var REGISTRY: Supplier<IForgeRegistry<CellProvider>?>? = null
     val registry get() = REGISTRY!!.get()!!
 
     val RESISTOR_CELL = register("resistor", TwoPinCellProvider { ResistorCell(it) })
@@ -31,13 +31,13 @@ object CellRegistry {
     val SOLAR_LIGHT_CELL = register("solar_light", NoPinCellProvider { SolarLightCell(it) })
     val SOLAR_PANEL_CELL = register("solar_panel", TwoPinCellProvider { SolarPanelCell(it) })
 
-    fun setup(bus : IEventBus) {
+    fun setup(bus: IEventBus) {
         CELLS.register(bus)
         LOGGER.info("Prepared cell registry.")
     }
 
     @SubscribeEvent
-    fun createRegistry(event : NewRegistryEvent) {
+    fun createRegistry(event: NewRegistryEvent) {
         val reg = RegistryBuilder<CellProvider>()
         reg.setName(ResourceLocation(Eln2.MODID, "cells"))
         reg.type = CellProvider::class.java
@@ -45,11 +45,11 @@ object CellRegistry {
         LOGGER.info("Created cell registry!")
     }
 
-    private fun register(id : String, provider: CellProvider) : RegistryObject<CellProvider> {
+    private fun register(id: String, provider: CellProvider): RegistryObject<CellProvider> {
         return CELLS.register(id) { provider }
     }
 
-    fun getProvider(id : ResourceLocation) : CellProvider {
+    fun getProvider(id: ResourceLocation): CellProvider {
         return registry.getValue(id) ?: error("Could not get cell provider with id $id")
     }
 }

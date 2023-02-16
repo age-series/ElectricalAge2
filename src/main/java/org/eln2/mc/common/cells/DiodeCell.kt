@@ -8,8 +8,8 @@ import org.eln2.mc.extensions.ComponentExtensions.connectToPinOf
 import org.eln2.mc.utility.UnitType
 import org.eln2.mc.utility.ValueText.valueText
 
-class DiodeCell(pos : CellPos): CellBase(pos) {
-    lateinit var diode : IdealDiode
+class DiodeCell(pos: CellPos) : CellBase(pos) {
+    lateinit var diode: IdealDiode
     var added = false
 
     override fun clear() {
@@ -19,7 +19,7 @@ class DiodeCell(pos : CellPos): CellBase(pos) {
 
     override fun getOfferedComponent(neighbour: CellBase): ComponentInfo {
         val circuit = graph.circuit
-        if(!added) {
+        if (!added) {
             circuit.add(diode)
             added = true
         }
@@ -27,7 +27,7 @@ class DiodeCell(pos : CellPos): CellBase(pos) {
     }
 
     override fun buildConnections() {
-        connections.forEach{remoteCell ->
+        connections.forEach { remoteCell ->
             val localInfo = getOfferedComponent(remoteCell)
             localInfo.component.connectToPinOf(localInfo.index, remoteCell.getOfferedComponent(this))
         }
@@ -41,7 +41,8 @@ class DiodeCell(pos : CellPos): CellBase(pos) {
 
         try {
             // TODO: This feature (mode) should be exposed in libage as an enum. It also needs to be translated on the client.
-            mode = if (diode.resistance == diode.minimumResistance) "Forward Bias Mode (conducting)" else "Reverse Bias Mode (blocking)"
+            mode =
+                if (diode.resistance == diode.minimumResistance) "Forward Bias Mode (conducting)" else "Reverse Bias Mode (blocking)"
             current = valueText(diode.current, UnitType.AMPERE)
             voltage = diode.pins.joinToString(", ") { valueText(it.node?.potential ?: 0.0, UnitType.VOLT) }
 
@@ -51,7 +52,7 @@ class DiodeCell(pos : CellPos): CellBase(pos) {
 
         map["voltage"] = voltage
         map["current"] = current
-        if (mode != null)map["mode"] = mode
+        if (mode != null) map["mode"] = mode
 
         return map
     }

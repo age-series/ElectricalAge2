@@ -28,8 +28,10 @@ object ModStatistics {
     }
 
     fun sendAnalytics() {
-        if (sent) { return }
-        thread (start = true, isDaemon = true, name = "Electrical Age Analytics") {
+        if (sent) {
+            return
+        }
+        thread(start = true, isDaemon = true, name = "Electrical Age Analytics") {
             try {
                 val data = collectData()
                 val serialized = """

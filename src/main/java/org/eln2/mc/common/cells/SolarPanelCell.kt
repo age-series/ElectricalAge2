@@ -9,7 +9,7 @@ import org.eln2.mc.extensions.ComponentExtensions.connectToPinOf
 import org.eln2.mc.utility.UnitType
 import org.eln2.mc.utility.ValueText
 
-class SolarPanelCell(pos : CellPos) : CellBase(pos) {
+class SolarPanelCell(pos: CellPos) : CellBase(pos) {
 
     /*
     *   V -> local voltage source.
@@ -18,7 +18,7 @@ class SolarPanelCell(pos : CellPos) : CellBase(pos) {
     *   C V C
     */
 
-    private lateinit var source : VoltageSource
+    private lateinit var source: VoltageSource
 
     override fun clear() {
         source = VoltageSource()
@@ -46,7 +46,10 @@ class SolarPanelCell(pos : CellPos) : CellBase(pos) {
 
         connections.forEach { remoteCell ->
             val localResistor = getOfferedComponent(remoteCell).component // get local resistor
-            localResistor.connectToPinOf(1,  remoteCell.getOfferedComponent(this)) // connect local resistor to remote component
+            localResistor.connectToPinOf(
+                1,
+                remoteCell.getOfferedComponent(this)
+            ) // connect local resistor to remote component
             localResistor.connect(0, source, 1) // connect local resistor to our voltage source
         }
     }

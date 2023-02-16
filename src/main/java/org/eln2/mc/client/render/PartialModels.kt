@@ -13,9 +13,9 @@ object PartialModels {
 
     val BATTERY = partial("block/12v_battery")
 
-    private fun partial(path : String) : PartialModel{
+    private fun partial(path: String): PartialModel {
         return PartialModel(Eln2.resource(path))
     }
 
-    fun initialize(){}
+    fun initialize() {}
 }

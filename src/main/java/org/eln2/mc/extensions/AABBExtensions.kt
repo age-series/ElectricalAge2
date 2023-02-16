@@ -14,12 +14,11 @@ import org.eln2.mc.extensions.Vec3Extensions.toVector3f
 import org.eln2.mc.extensions.Vec3Extensions.toVector4f
 import org.eln2.mc.extensions.Vector4fExtensions.toVector3f
 import org.eln2.mc.utility.Vectors
-import java.util.Optional
-import kotlin.collections.ArrayList
+import java.util.*
 
 object AABBExtensions {
     //todo remove
-    fun AABB.viewClip(entity : LivingEntity) : Optional<Vec3>{
+    fun AABB.viewClip(entity: LivingEntity): Optional<Vec3> {
         val viewDirection = entity.lookAngle
 
         val start = Vec3(entity.x, entity.eyeY, entity.z)
@@ -31,19 +30,19 @@ object AABBExtensions {
         return this.clip(start, end)
     }
 
-    fun AABB.minVec3() : Vec3{
+    fun AABB.minVec3(): Vec3 {
         return Vec3(this.minX, this.minY, this.minZ);
     }
 
-    fun AABB.maxVec3() : Vec3{
+    fun AABB.maxVec3(): Vec3 {
         return Vec3(this.maxX, this.maxY, this.maxZ);
     }
 
-    fun AABB.size() : Vec3{
+    fun AABB.size(): Vec3 {
         return this.maxVec3() - this.minVec3()
     }
 
-    fun AABB.corners(list : MutableList<Vec3>){
+    fun AABB.corners(list: MutableList<Vec3>) {
         val min = this.minVec3()
         val max = this.maxVec3()
 
@@ -57,7 +56,7 @@ object AABBExtensions {
         list.add(max)
     }
 
-    fun AABB.corners() : ArrayList<Vec3>{
+    fun AABB.corners(): ArrayList<Vec3> {
         val list = ArrayList<Vec3>()
 
         this.corners(list)
@@ -69,7 +68,7 @@ object AABBExtensions {
      * Transforms the Axis Aligned Bounding Box by the given rotation.
      * This operation does not change the volume for axis aligned transformations.
      * */
-    fun AABB.transformed(quaternion: Quaternion) : AABB {
+    fun AABB.transformed(quaternion: Quaternion): AABB {
         var min = Vector3f(Float.MAX_VALUE, Float.MAX_VALUE, Float.MAX_VALUE)
         var max = Vector3f(Float.MIN_VALUE, Float.MIN_VALUE, Float.MIN_VALUE)
 
@@ -85,7 +84,7 @@ object AABBExtensions {
         return AABB(min.toVec3(), max.toVec3())
     }
 
-    fun AABB.transformed(transform : Matrix4f) : AABB {
+    fun AABB.transformed(transform: Matrix4f): AABB {
         var min = Vector3f(Float.MAX_VALUE, Float.MAX_VALUE, Float.MAX_VALUE)
         var max = Vector3f(Float.MIN_VALUE, Float.MIN_VALUE, Float.MIN_VALUE)
 

@@ -6,16 +6,16 @@ import org.eln2.mc.extensions.DirectionExtensions.index
 import org.eln2.mc.extensions.DirectionExtensions.isHorizontal
 
 @JvmInline
-value class DirectionMask(val mask : Int){
-    companion object{
-        fun getBit(direction: Direction) : Int{
-            return when(direction){
-                Direction.NORTH ->  1 shl 0
-                Direction.SOUTH ->  1 shl 1
-                Direction.WEST ->   1 shl 2
-                Direction.EAST ->   1 shl 3
-                Direction.DOWN ->   1 shl 4
-                Direction.UP ->     1 shl 5
+value class DirectionMask(val mask: Int) {
+    companion object {
+        fun getBit(direction: Direction): Int {
+            return when (direction) {
+                Direction.NORTH -> 1 shl 0
+                Direction.SOUTH -> 1 shl 1
+                Direction.WEST -> 1 shl 2
+                Direction.EAST -> 1 shl 3
+                Direction.DOWN -> 1 shl 4
+                Direction.UP -> 1 shl 5
             }
         }
 
@@ -32,16 +32,16 @@ value class DirectionMask(val mask : Int){
             .map { DirectionMask(getBit(it)) }
             .toTypedArray()
 
-        fun of(direction: Direction) : DirectionMask {
+        fun of(direction: Direction): DirectionMask {
             return perDirection[direction.index()]
         }
 
-        fun ofRelative(direction: RelativeRotationDirection) : DirectionMask {
+        fun ofRelative(direction: RelativeRotationDirection): DirectionMask {
             return of(direction.directionAlias())
         }
 
-        fun of(directions : List<Direction>) : DirectionMask {
-            if(directions.isEmpty()){
+        fun of(directions: List<Direction>): DirectionMask {
+            if (directions.isEmpty()) {
                 return EMPTY
             }
 
@@ -51,22 +51,22 @@ value class DirectionMask(val mask : Int){
             )
         }
 
-        fun of(vararg directions : Direction) : DirectionMask {
+        fun of(vararg directions: Direction): DirectionMask {
             return of(directions.asList())
         }
 
-        fun ofRelatives(directions : List<RelativeRotationDirection>) : DirectionMask {
-            if(directions.isEmpty()){
+        fun ofRelatives(directions: List<RelativeRotationDirection>): DirectionMask {
+            if (directions.isEmpty()) {
                 return EMPTY
             }
 
             return DirectionMask(directions
                 .map { getBit(it.directionAlias()) }
-                .reduce {acc, mask -> acc or mask }
+                .reduce { acc, mask -> acc or mask }
             )
         }
 
-        fun ofRelatives(vararg directions : RelativeRotationDirection) : DirectionMask {
+        fun ofRelatives(vararg directions: RelativeRotationDirection): DirectionMask {
             return ofRelatives(directions.asList())
         }
 
@@ -99,10 +99,11 @@ value class DirectionMask(val mask : Int){
                         result = result or getBit(perpendicular)
                     }
 
-                return@map DirectionMask(result) }
+                return@map DirectionMask(result)
+            }
             .toTypedArray()
 
-        fun perpendicular(direction: Direction) : DirectionMask {
+        fun perpendicular(direction: Direction): DirectionMask {
             return perpendiculars[direction.index()]
         }
 
@@ -114,11 +115,11 @@ value class DirectionMask(val mask : Int){
         val ALL_MASKS = allMasks.toList()
 
         private val directionLists = allMasks.        // Pre-compute lists of Direction for lookup
-            map { mask ->
-                val list = ArrayList<Direction>()
-                mask.toList(list)
-                return@map list.toList()
-            }
+        map { mask ->
+            val list = ArrayList<Direction>()
+            mask.toList(list)
+            return@map list.toList()
+        }
             .toTypedArray()
 
         /**
@@ -129,7 +130,7 @@ value class DirectionMask(val mask : Int){
         // I chose to allow all masks to be transformed using clockwise/counterclockwise.
         // Vertical directions will be unaffected by those transformations.
 
-        private fun horizontalFilter(dir : Direction) : Boolean{
+        private fun horizontalFilter(dir: Direction): Boolean {
             return dir.isHorizontal();
         }
 
@@ -142,7 +143,7 @@ value class DirectionMask(val mask : Int){
             .toTypedArray()
 
         private val oppositeMasks = allMasks
-            .map {  mask -> mask.transformed { dir -> dir.opposite } }
+            .map { mask -> mask.transformed { dir -> dir.opposite } }
             .toTypedArray()
     }
 
@@ -156,31 +157,31 @@ value class DirectionMask(val mask : Int){
     val isEmpty get() = (mask == 0)
     val isNotEmpty get() = !isEmpty
 
-    fun hasFlag(direction : Direction) : Boolean{
+    fun hasFlag(direction: Direction): Boolean {
         return (mask and getBit(direction)) > 0
     }
 
-    fun hasFlag(direction : RelativeRotationDirection) : Boolean{
+    fun hasFlag(direction: RelativeRotationDirection): Boolean {
         return hasFlag(direction.directionAlias())
     }
 
-    fun hasFlags(flags : DirectionMask) : Boolean{
+    fun hasFlags(flags: DirectionMask): Boolean {
         return (mask and flags.mask) == flags.mask
     }
 
-    fun hasAnyFlags(flags : DirectionMask) : Boolean{
+    fun hasAnyFlags(flags: DirectionMask): Boolean {
         return (mask and flags.mask) > 0
     }
 
-    infix fun has(direction: Direction) : Boolean{
+    infix fun has(direction: Direction): Boolean {
         return hasFlag(direction)
     }
 
-    infix fun has(direction: RelativeRotationDirection) : Boolean{
+    infix fun has(direction: RelativeRotationDirection): Boolean {
         return hasFlag(direction)
     }
 
-    infix fun has(flags : DirectionMask) : Boolean{
+    infix fun has(flags: DirectionMask): Boolean {
         return hasFlags(flags)
     }
 
@@ -224,7 +225,7 @@ value class DirectionMask(val mask : Int){
 
     inline fun process(action: (Direction) -> Unit) {
         Direction.values().forEach { direction ->
-            if(hasFlag(direction)){
+            if (hasFlag(direction)) {
                 action(direction)
             }
         }
@@ -232,8 +233,8 @@ value class DirectionMask(val mask : Int){
 
     //#region Transformations
 
-    private fun transformed(transform : ((Direction) -> Direction)) : DirectionMask {
-        if(isEmpty){
+    private fun transformed(transform: ((Direction) -> Direction)): DirectionMask {
+        if (isEmpty) {
             // REQUIRED
             return EMPTY
         }
@@ -245,13 +246,13 @@ value class DirectionMask(val mask : Int){
      * Applies the specified transform function to the mask's directions, if they match the filter, and returns the transformed mask.
      * If they do not match the filter, the direction remains unaffected.
      * */
-    fun transformed(transform : ((Direction) -> Direction), filter : ((Direction) -> Boolean)) : DirectionMask {
-        if(isEmpty){
+    fun transformed(transform: ((Direction) -> Direction), filter: ((Direction) -> Boolean)): DirectionMask {
+        if (isEmpty) {
             // REQUIRED
             return EMPTY
         }
 
-        return of(directionList.map { if(filter(it)) transform(it) else it })
+        return of(directionList.map { if (filter(it)) transform(it) else it })
     }
 
     val clockWise get() = clockwiseMasks[this.mask]
@@ -262,18 +263,18 @@ value class DirectionMask(val mask : Int){
     // We want these APIs to not affect vertical directions, and OPPOSITE would.
     // To do so, we get the opposite of the horizontal components, then combine that with the original vertical components
 
-    fun clockWise(steps : Int) : DirectionMask {
-        return when(val remainder = steps % 4){
-           0 -> this
-           1 -> this.clockWise
-           2 -> this.horizontalComponent.opposite + this.verticalComponent
-           3 -> this.counterClockWise
-           else -> error("Unexpected remainder $remainder")
+    fun clockWise(steps: Int): DirectionMask {
+        return when (val remainder = steps % 4) {
+            0 -> this
+            1 -> this.clockWise
+            2 -> this.horizontalComponent.opposite + this.verticalComponent
+            3 -> this.counterClockWise
+            else -> error("Unexpected remainder $remainder")
         }
     }
 
-    fun counterClockWise(steps : Int) : DirectionMask {
-        return when(val remainder = steps % 4){
+    fun counterClockWise(steps: Int): DirectionMask {
+        return when (val remainder = steps % 4) {
             0 -> this
             1 -> this.counterClockWise
             2 -> this.horizontalComponent.opposite + verticalComponent
@@ -284,7 +285,7 @@ value class DirectionMask(val mask : Int){
 
     //#endregion
 
-    fun toList(results : MutableList<Direction>) {
+    fun toList(results: MutableList<Direction>) {
         this.process {
             results.add(it)
         }
@@ -292,19 +293,19 @@ value class DirectionMask(val mask : Int){
 
     val count get() = mask.countOneBits()
 
-    operator fun plus(other : DirectionMask) : DirectionMask {
+    operator fun plus(other: DirectionMask): DirectionMask {
         return DirectionMask(this.mask or other.mask)
     }
 
-    operator fun plus(direction: Direction) : DirectionMask {
+    operator fun plus(direction: Direction): DirectionMask {
         return DirectionMask(this.mask or getBit(direction))
     }
 
-    operator fun minus(direction: Direction) : DirectionMask {
+    operator fun minus(direction: Direction): DirectionMask {
         return DirectionMask(this.mask and getBit(direction).inv())
     }
 
-    operator fun minus(mask : DirectionMask) : DirectionMask {
+    operator fun minus(mask: DirectionMask): DirectionMask {
         return DirectionMask(this.mask and mask.mask.inv())
     }
 }

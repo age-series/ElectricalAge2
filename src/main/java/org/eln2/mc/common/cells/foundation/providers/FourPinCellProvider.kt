@@ -1,18 +1,20 @@
 package org.eln2.mc.common.cells.foundation.providers
 
-import org.eln2.mc.common.space.RelativeRotationDirection
 import org.eln2.mc.common.cells.foundation.CellBase
 import org.eln2.mc.common.cells.foundation.CellPos
 import org.eln2.mc.common.cells.foundation.CellProvider
+import org.eln2.mc.common.space.RelativeRotationDirection
 
-class FourPinCellProvider(val factory : ((pos : CellPos) -> CellBase)) : CellProvider() {
+class FourPinCellProvider(val factory: ((pos: CellPos) -> CellBase)) : CellProvider() {
     init {
-        connectableDirections.addAll(listOf(
-            RelativeRotationDirection.Front,
-            RelativeRotationDirection.Back,
-            RelativeRotationDirection.Left,
-            RelativeRotationDirection.Right
-        ))
+        connectableDirections.addAll(
+            listOf(
+                RelativeRotationDirection.Front,
+                RelativeRotationDirection.Back,
+                RelativeRotationDirection.Left,
+                RelativeRotationDirection.Right
+            )
+        )
     }
 
     override fun createInstance(pos: CellPos): CellBase {

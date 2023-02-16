@@ -1,8 +1,8 @@
 package org.eln2.mc.common.parts.foundation
 
 import com.jozufozu.flywheel.core.materials.FlatLit
-import org.eln2.mc.client.render.MultipartBlockEntityInstance
 import org.eln2.mc.annotations.CrossThreadAccess
+import org.eln2.mc.client.render.MultipartBlockEntityInstance
 
 /**
  * This is the per-part renderer. One is created for every instance of a part.
@@ -28,7 +28,7 @@ interface IPartRenderer {
      * This happens when the light sources are changed.
      * @return A list of models that need relighting, or null if none do so.
      * */
-    fun relightModels() : List<FlatLit<*>>?
+    fun relightModels(): List<FlatLit<*>>?
 
     /**
      * Called when the renderer is no longer required.

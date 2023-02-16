@@ -15,12 +15,12 @@ import org.eln2.mc.extensions.QuaternionExtensions.times
 import org.eln2.mc.extensions.Vec3Extensions.times
 import org.eln2.mc.extensions.Vec3Extensions.toVec3
 
-class BasicPartRenderer(val part : Part, val model : PartialModel) : IPartRenderer {
+class BasicPartRenderer(val part: Part, val model: PartialModel) : IPartRenderer {
     var yRotation = 0f
     var downOffset = 0.0
 
-    private var modelInstance : ModelData? = null
-    private lateinit var multipart : MultipartBlockEntityInstance
+    private var modelInstance: ModelData? = null
+    private lateinit var multipart: MultipartBlockEntityInstance
 
     override fun setupRendering(multipart: MultipartBlockEntityInstance) {
         this.multipart = multipart
@@ -28,8 +28,8 @@ class BasicPartRenderer(val part : Part, val model : PartialModel) : IPartRender
         buildInstance()
     }
 
-    fun buildInstance(){
-        if(!this::multipart.isInitialized){
+    fun buildInstance() {
+        if (!this::multipart.isInitialized) {
             error("Multipart not initialized!")
         }
 
@@ -50,10 +50,10 @@ class BasicPartRenderer(val part : Part, val model : PartialModel) : IPartRender
         multipart.relightPart(part)
     }
 
-    override fun beginFrame() { }
+    override fun beginFrame() {}
 
     override fun relightModels(): List<FlatLit<*>>? {
-        if(modelInstance != null){
+        if (modelInstance != null) {
             return listOf(modelInstance!!)
         }
 

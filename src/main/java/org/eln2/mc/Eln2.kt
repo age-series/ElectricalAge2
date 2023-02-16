@@ -8,10 +8,10 @@ import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.eln2.mc.client.ClientEvents
 import org.eln2.mc.client.render.PartialModels
-import org.eln2.mc.common.configs.Configuration
-import org.eln2.mc.common.configs.ElectricalAgeConfiguration
 import org.eln2.mc.common.blocks.BlockRegistry
 import org.eln2.mc.common.cells.CellRegistry
+import org.eln2.mc.common.configs.Configuration
+import org.eln2.mc.common.configs.ElectricalAgeConfiguration
 import org.eln2.mc.common.containers.ContainerRegistry
 import org.eln2.mc.common.items.ItemRegistry
 import org.eln2.mc.common.network.ModStatistics
@@ -53,7 +53,7 @@ object Eln2 {
         }
     }
 
-    fun resource(path : String) : ResourceLocation{
+    fun resource(path: String): ResourceLocation {
         return ResourceLocation(MODID, path)
     }
 

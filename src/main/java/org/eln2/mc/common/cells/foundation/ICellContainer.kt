@@ -22,18 +22,18 @@ interface ICellContainer {
     /**
      * @return A list of cells in this container.
      * */
-    fun getCells() : ArrayList<CellInfo>
+    fun getCells(): ArrayList<CellInfo>
 
     /**
      * @return A cell that matches the specified query, or null, if no cell matches.
      * */
-    fun query(query: CellQuery) : CellInfo?
+    fun query(query: CellQuery): CellInfo?
 
     /**
      * Queries the neighbors of the specified cell.
      * @return A list of all the neighbors of the specified cell.
      * */
-    fun queryNeighbors(location : CellInfo) : ArrayList<CellNeighborInfo>
+    fun queryNeighbors(location: CellInfo): ArrayList<CellNeighborInfo>
 
     /**
      * Checks if the specified cell accepts connection from the specified direction.
@@ -41,21 +41,21 @@ interface ICellContainer {
      * @param direction The global direction.
      * @return A relative rotation, if the connection is accepted. Otherwise, null.
      * */
-    fun probeConnectionCandidate(location: CellInfo, direction: Direction) : RelativeRotationDirection?
+    fun probeConnectionCandidate(location: CellInfo, direction: Direction): RelativeRotationDirection?
 
     /**
      * Called by the connection manager when a connection is made.
      * @param location The cell that received the new connection.
      * @param direction The local direction towards the remote cell.
      * */
-    fun recordConnection(location : CellInfo, direction: RelativeRotationDirection, neighborSpace : CellInfo)
+    fun recordConnection(location: CellInfo, direction: RelativeRotationDirection, neighborSpace: CellInfo)
 
     /**
      * Called by the connection manager when a connection is destroyed.
      * @param location The cell whose connection was destroyed.
      * @param direction The local direction towards the remote cell.
      * */
-    fun recordDeletedConnection(location: CellInfo, direction : RelativeRotationDirection)
+    fun recordDeletedConnection(location: CellInfo, direction: RelativeRotationDirection)
 
     /**
      * Called by the connection manager when the graphs associated with this container have changed (completely different graph).
@@ -65,5 +65,5 @@ interface ICellContainer {
     /**
      * The manager responsible for the cells in this container (per dimension)
      * */
-    val manager : CellGraphManager
+    val manager: CellGraphManager
 }

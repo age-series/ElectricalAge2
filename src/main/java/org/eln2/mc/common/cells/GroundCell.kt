@@ -8,7 +8,7 @@ import org.eln2.mc.extensions.ComponentExtensions.connectToPinOf
 import org.eln2.mc.utility.UnitType
 import org.eln2.mc.utility.ValueText.valueText
 
-class GroundCell(pos : CellPos) : CellBase(pos) {
+class GroundCell(pos: CellPos) : CellBase(pos) {
 
     /*  R -> local resistors. Their first pin is grounded.
     *   C -> remote components. The second pin of the local resistors is used for them.
@@ -36,7 +36,7 @@ class GroundCell(pos : CellPos) : CellBase(pos) {
     }
 
     override fun buildConnections() {
-        connections.forEach{ adjacentCell ->
+        connections.forEach { adjacentCell ->
             val resistor = getOfferedComponent(adjacentCell).component
             resistor.ground(0) // ground one pin of our resistor
             // then connect the other pin to them

@@ -5,7 +5,7 @@ import kotlin.math.max
 import kotlin.math.min
 
 object Vectors {
-    fun componentMin(a : Vector3f, b : Vector3f) : Vector3f{
+    fun componentMin(a: Vector3f, b: Vector3f): Vector3f {
         return Vector3f(
             min(a.x(), b.x()),
             min(a.y(), b.y()),
@@ -13,7 +13,7 @@ object Vectors {
         )
     }
 
-    fun componentMax(a : Vector3f, b : Vector3f) : Vector3f{
+    fun componentMax(a: Vector3f, b: Vector3f): Vector3f {
         return Vector3f(
             max(a.x(), b.x()),
             max(a.y(), b.y()),
