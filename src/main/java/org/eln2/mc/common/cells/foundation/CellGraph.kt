@@ -11,12 +11,12 @@ import org.eln2.mc.extensions.NbtExtensions.putCellPos
 import java.util.*
 import kotlin.system.measureNanoTime
 
-class CellGraph(val id : UUID, val manager : CellGraphManager) {
+class CellGraph(val id: UUID, val manager: CellGraphManager) {
     val cells = ArrayList<CellBase>()
 
     private val posCells = HashMap<CellPos, CellBase>()
 
-    lateinit var circuit : Circuit
+    lateinit var circuit: Circuit
 
     private val hasCircuit get() = this::circuit.isInitialized
 
@@ -25,10 +25,10 @@ class CellGraph(val id : UUID, val manager : CellGraphManager) {
 
     var latestSolveTime = 0L
 
-    fun update(){
+    fun update() {
         latestSolveTime = 0
 
-        if(hasCircuit){
+        if (hasCircuit) {
             latestSolveTime = measureNanoTime {
                 successful = circuit.step(0.05)
             }
@@ -38,7 +38,7 @@ class CellGraph(val id : UUID, val manager : CellGraphManager) {
     fun buildSolver() {
         circuit = Circuit()
 
-        cells.forEach{ cell ->
+        cells.forEach { cell ->
             cell.clear()
         }
 
@@ -52,7 +52,7 @@ class CellGraph(val id : UUID, val manager : CellGraphManager) {
     fun getCell(pos: CellPos): CellBase {
         val result = posCells[pos]
 
-        if(result == null){
+        if (result == null) {
             Eln2.LOGGER.error("Could not get cell at $pos")
             error("")
         }
@@ -60,25 +60,25 @@ class CellGraph(val id : UUID, val manager : CellGraphManager) {
         return result
     }
 
-    fun removeCell(cell : CellBase) {
+    fun removeCell(cell: CellBase) {
         cells.remove(cell)
         posCells.remove(cell.pos)
         manager.setDirty()
     }
 
-    fun addCell(cell : CellBase) {
+    fun addCell(cell: CellBase) {
         cells.add(cell)
         cell.graph = this
         posCells[cell.pos] = cell
         manager.setDirty()
     }
 
-    fun connectCell(cell : CellBase){
+    fun connectCell(cell: CellBase) {
         cell.clear()
         cell.buildConnections()
     }
 
-    fun copyTo(graph : CellGraph){
+    fun copyTo(graph: CellGraph) {
         graph.cells.addAll(cells)
         manager.setDirty()
     }
@@ -88,19 +88,19 @@ class CellGraph(val id : UUID, val manager : CellGraphManager) {
         manager.setDirty()
     }
 
-    fun toNbt() : CompoundTag {
+    fun toNbt(): CompoundTag {
         val circuitCompound = CompoundTag()
         circuitCompound.putUUID("ID", id)
 
         val cellListTag = ListTag()
 
-        cells.forEach{ cell ->
+        cells.forEach { cell ->
             val cellTag = CompoundTag()
             val connectionsTag = ListTag()
 
             cell.connections.forEach { connections ->
                 val connectionCompound = CompoundTag()
-                connectionCompound.putCellPos("Position", connections .pos)
+                connectionCompound.putCellPos("Position", connections.pos)
                 connectionsTag.add(connectionCompound)
             }
 
@@ -117,7 +117,7 @@ class CellGraph(val id : UUID, val manager : CellGraphManager) {
     }
 
     companion object {
-        fun fromNbt(graphCompound : CompoundTag, manager : CellGraphManager) : CellGraph {
+        fun fromNbt(graphCompound: CompoundTag, manager: CellGraphManager): CellGraph {
             val id = graphCompound.getUUID("ID")
             val result = CellGraph(id, manager)
             val cellListTag = graphCompound.get("Cells") as ListTag?
@@ -127,7 +127,7 @@ class CellGraph(val id : UUID, val manager : CellGraphManager) {
             // used to assign the connections after all cells have been loaded
             val cellConnections = HashMap<CellBase, ArrayList<CellPos>>()
 
-            cellListTag.forEach{ cellNbt ->
+            cellListTag.forEach { cellNbt ->
                 val cellCompound = cellNbt as CompoundTag
                 val pos = cellCompound.getCellPos("Position")
                 val cellId = ResourceLocation.tryParse(cellCompound.getString("ID"))!!
@@ -151,7 +151,7 @@ class CellGraph(val id : UUID, val manager : CellGraphManager) {
 
             // now assign all connections and the graph
 
-            cellConnections.forEach{
+            cellConnections.forEach {
                 val cell = it.component1()
                 val connectionPositions = it.component2()
                 val connections = ArrayList(connectionPositions.map { pos -> result.getCell(pos) })

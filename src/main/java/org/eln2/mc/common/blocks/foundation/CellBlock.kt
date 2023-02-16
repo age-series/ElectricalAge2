@@ -35,19 +35,26 @@ abstract class CellBlock : HorizontalDirectionalBlock(Properties.of(Material.STO
     }
 
     override fun setPlacedBy(
-        level : Level,
-        pos : BlockPos,
-        blockState : BlockState,
-        entity : LivingEntity?,
-        itemStack : ItemStack
+        level: Level,
+        pos: BlockPos,
+        blockState: BlockState,
+        entity: LivingEntity?,
+        itemStack: ItemStack
     ) {
         val cellEntity = level.getBlockEntity(pos)!! as CellBlockEntity
-        cellEntity.setPlacedBy(level, pos, blockState, entity, itemStack, CellRegistry.registry.getValue(getCellProvider())?: error("Unable to get cell provider"))
+        cellEntity.setPlacedBy(
+            level,
+            pos,
+            blockState,
+            entity,
+            itemStack,
+            CellRegistry.registry.getValue(getCellProvider()) ?: error("Unable to get cell provider")
+        )
     }
 
 
     override fun onBlockExploded(blState: BlockState?, lvl: Level?, pos: BlockPos?, exp: Explosion?) {
-        destroy(lvl?: error("Level was null"), pos?: error("Position was null"))
+        destroy(lvl ?: error("Level was null"), pos ?: error("Position was null"))
         super.onBlockExploded(blState, lvl, pos, exp)
     }
 
@@ -59,11 +66,11 @@ abstract class CellBlock : HorizontalDirectionalBlock(Properties.of(Material.STO
         wh: Boolean,
         flState: FluidState?
     ): Boolean {
-        destroy(lvl?: error("Level was null"), pos?: error("Position was null"))
+        destroy(lvl ?: error("Level was null"), pos ?: error("Position was null"))
         return super.onDestroyedByPlayer(blState, lvl, pos, pl, wh, flState)
     }
 
-    private fun destroy(level: Level, pos: BlockPos){
+    private fun destroy(level: Level, pos: BlockPos) {
         if (!level.isClientSide) {
             val cellEntity = level.getBlockEntity(pos)!! as CellBlockEntity
             cellEntity.setDestroyed()
@@ -75,5 +82,5 @@ abstract class CellBlock : HorizontalDirectionalBlock(Properties.of(Material.STO
     }
 
     // override this:
-    abstract fun getCellProvider() : ResourceLocation
+    abstract fun getCellProvider(): ResourceLocation
 }

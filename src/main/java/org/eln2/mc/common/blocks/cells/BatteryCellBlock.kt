@@ -13,7 +13,7 @@ import org.eln2.mc.common.blocks.foundation.CellBlock
 import org.eln2.mc.common.cells.CellRegistry
 import org.eln2.mc.extensions.VoxelShapeExtensions.align
 
-class BatteryCellBlock: CellBlock() {
+class BatteryCellBlock : CellBlock() {
     override fun getCellProvider(): ResourceLocation {
         return CellRegistry.`12V_BATTERY_CELL`.id
     }
@@ -48,9 +48,9 @@ class BatteryCellBlock: CellBlock() {
 
         private val cache = HashMap<BlockState, VoxelShape>()
 
-        fun getFor(state : BlockState) : VoxelShape {
-            return cache.computeIfAbsent(state){
-                when(val facing = state.getValue(FACING)){
+        fun getFor(state: BlockState): VoxelShape {
+            return cache.computeIfAbsent(state) {
+                when (val facing = state.getValue(FACING)) {
                     Direction.NORTH -> shape
                     Direction.SOUTH -> shape
                     Direction.EAST -> shape.align(Direction.NORTH, Direction.EAST)

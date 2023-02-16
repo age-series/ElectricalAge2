@@ -7,17 +7,18 @@ import net.minecraft.world.InteractionResult
 import net.minecraft.world.phys.Vec3
 import org.eln2.mc.Eln2
 import org.eln2.mc.client.render.WirePartRenderer
-import org.eln2.mc.common.space.RelativeRotationDirection
 import org.eln2.mc.common.cells.CellRegistry
 import org.eln2.mc.common.parts.foundation.*
+import org.eln2.mc.common.space.RelativeRotationDirection
 import org.eln2.mc.extensions.NbtExtensions.getRelativeDirection
 import org.eln2.mc.extensions.NbtExtensions.setRelativeDirection
 
-class WirePart(id : ResourceLocation, context : PartPlacementContext) : CellPart(id, context, CellRegistry.WIRE_CELL.get()) {
+class WirePart(id: ResourceLocation, context: PartPlacementContext) :
+    CellPart(id, context, CellRegistry.WIRE_CELL.get()) {
     override val baseSize: Vec3 get() = Vec3(0.5, 0.25, 0.5)
 
     val connectedDirections = HashSet<RelativeRotationDirection>()
-    private var wireRenderer : WirePartRenderer? = null
+    private var wireRenderer: WirePartRenderer? = null
 
     override fun createRenderer(): IPartRenderer {
         wireRenderer = WirePartRenderer(this)
@@ -40,7 +41,7 @@ class WirePart(id : ResourceLocation, context : PartPlacementContext) : CellPart
     override fun onPlaced() {
         super.onPlaced()
 
-        if(!placementContext.level.isClientSide){
+        if (!placementContext.level.isClientSide) {
             syncChanges()
         }
     }
@@ -71,12 +72,12 @@ class WirePart(id : ResourceLocation, context : PartPlacementContext) : CellPart
         loadTag(tag)
     }
 
-    private fun createTag() : CompoundTag{
+    private fun createTag(): CompoundTag {
         val tag = CompoundTag()
 
         val directionList = ListTag()
 
-        connectedDirections.forEach{ direction ->
+        connectedDirections.forEach { direction ->
             val directionTag = CompoundTag()
 
             directionTag.setRelativeDirection("Direction", direction)
@@ -89,7 +90,7 @@ class WirePart(id : ResourceLocation, context : PartPlacementContext) : CellPart
         return tag
     }
 
-    private fun loadTag(tag : CompoundTag){
+    private fun loadTag(tag: CompoundTag) {
         connectedDirections.clear()
 
         val directionList = tag.get("Directions") as ListTag
@@ -100,16 +101,16 @@ class WirePart(id : ResourceLocation, context : PartPlacementContext) : CellPart
             connectedDirections.add(direction)
         }
 
-        if(placementContext.level.isClientSide){
+        if (placementContext.level.isClientSide) {
             applyRendererState()
         }
     }
 
-    private fun applyRendererState(){
+    private fun applyRendererState() {
         wireRenderer?.applyDirections(connectedDirections.toList())
     }
 
-    override fun recordConnection(direction: RelativeRotationDirection, mode : ConnectionMode) {
+    override fun recordConnection(direction: RelativeRotationDirection, mode: ConnectionMode) {
         Eln2.LOGGER.error("Wire $this record $direction : $mode")
         connectedDirections.add(direction)
         syncChanges()

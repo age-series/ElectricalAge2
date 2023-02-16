@@ -13,13 +13,13 @@ import org.eln2.mc.extensions.NbtExtensions.setStringMap
 
 
 @WailaPlugin(id = "${Eln2.MODID}:waila_plugin")
-class Eln2WailaPlugin: IWailaPlugin {
+class Eln2WailaPlugin : IWailaPlugin {
     override fun register(registrar: IRegistrar?) {
         if (registrar == null) {
             return
         }
 
-        val clientProvider: IBlockComponentProvider = object: IBlockComponentProvider {
+        val clientProvider: IBlockComponentProvider = object : IBlockComponentProvider {
             override fun appendBody(tooltip: ITooltip?, accessor: IBlockAccessor?, config: IPluginConfig?) {
                 super.appendBody(tooltip, accessor, config)
 
@@ -38,39 +38,41 @@ class Eln2WailaPlugin: IWailaPlugin {
         registrar.addComponent(clientProvider, TooltipPosition.BODY, CellBlockEntity::class.java)
         registrar.addComponent(clientProvider, TooltipPosition.BODY, MultipartBlockEntity::class.java)
 
-        val cellBlockServerProvider: IServerDataProvider<CellBlockEntity> = object: IServerDataProvider<CellBlockEntity> {
-            override fun appendServerData(
-                data: CompoundTag?,
-                accessor: IServerAccessor<CellBlockEntity>?,
-                config: IPluginConfig?
-            ) {
-                if (data == null || accessor == null){
-                    return
+        val cellBlockServerProvider: IServerDataProvider<CellBlockEntity> =
+            object : IServerDataProvider<CellBlockEntity> {
+                override fun appendServerData(
+                    data: CompoundTag?,
+                    accessor: IServerAccessor<CellBlockEntity>?,
+                    config: IPluginConfig?
+                ) {
+                    if (data == null || accessor == null) {
+                        return
+                    }
+
+                    val cellBlockEntity = accessor.target
+
+                    data.setStringMap("body", cellBlockEntity.getHudMap().mapKeys { "waila.eln2.${it.key}" })
                 }
-
-                val cellBlockEntity = accessor.target
-
-                data.setStringMap("body", cellBlockEntity.getHudMap().mapKeys { "waila.eln2.${it.key}" })
             }
-        }
 
         registrar.addBlockData(cellBlockServerProvider, CellBlockEntity::class.java)
 
-        val multipartServerProvider: IServerDataProvider<MultipartBlockEntity> = object: IServerDataProvider<MultipartBlockEntity> {
-            override fun appendServerData(
-                data: CompoundTag?,
-                accessor: IServerAccessor<MultipartBlockEntity>?,
-                config: IPluginConfig?
-            ) {
-                if(data == null || accessor == null){
-                    return
+        val multipartServerProvider: IServerDataProvider<MultipartBlockEntity> =
+            object : IServerDataProvider<MultipartBlockEntity> {
+                override fun appendServerData(
+                    data: CompoundTag?,
+                    accessor: IServerAccessor<MultipartBlockEntity>?,
+                    config: IPluginConfig?
+                ) {
+                    if (data == null || accessor == null) {
+                        return
+                    }
+
+                    val multipartBlockEntity = accessor.target
+
+                    data.setStringMap("body", multipartBlockEntity.getHudMap().mapKeys { "waila.eln2.${it.key}" })
                 }
-
-                val multipartBlockEntity = accessor.target
-
-                data.setStringMap("body", multipartBlockEntity.getHudMap().mapKeys { "waila.eln2.${it.key}" })
             }
-        }
 
         registrar.addBlockData(cellBlockServerProvider, CellBlockEntity::class.java)
         registrar.addBlockData(multipartServerProvider, MultipartBlockEntity::class.java)

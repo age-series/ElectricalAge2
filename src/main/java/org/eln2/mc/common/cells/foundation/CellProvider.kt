@@ -5,7 +5,7 @@ import net.minecraftforge.registries.ForgeRegistryEntry
 import org.eln2.mc.common.space.RelativeRotationDirection
 
 abstract class CellProvider : ForgeRegistryEntry<CellProvider>() {
-    val id : ResourceLocation get() = this.registryName ?: error("ID not available in CellProvider")
+    val id: ResourceLocation get() = this.registryName ?: error("ID not available in CellProvider")
 
     val connectableDirections = HashSet<RelativeRotationDirection>()
 
@@ -14,10 +14,10 @@ abstract class CellProvider : ForgeRegistryEntry<CellProvider>() {
      * or when the cell manager is loading cells from the disk.
      * @return Unique instance of the cell. If the cell is being created by the block, the setPlaced method will be called.
      * @see CellBase.onPlaced
-    */
-    protected abstract fun createInstance(pos : CellPos) : CellBase
+     */
+    protected abstract fun createInstance(pos: CellPos): CellBase
 
-    fun create(pos : CellPos) : CellBase {
+    fun create(pos: CellPos): CellBase {
         val instance = createInstance(pos)
 
         instance.id = id
@@ -28,11 +28,11 @@ abstract class CellProvider : ForgeRegistryEntry<CellProvider>() {
     /**
      * Used to check if a cell is valid for connection.
      * @return True if the connection is accepted. Otherwise, false.
-    */
-    abstract fun connectionPredicate(dir : RelativeRotationDirection) : Boolean
+     */
+    abstract fun connectionPredicate(dir: RelativeRotationDirection): Boolean
 
-    fun canConnectFrom(direction : RelativeRotationDirection) : Boolean {
-        if(!connectableDirections.contains(direction)){
+    fun canConnectFrom(direction: RelativeRotationDirection): Boolean {
+        if (!connectableDirections.contains(direction)) {
             return false;
         }
 

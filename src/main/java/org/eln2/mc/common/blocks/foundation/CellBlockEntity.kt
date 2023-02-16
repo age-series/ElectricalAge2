@@ -11,39 +11,38 @@ import net.minecraft.world.level.block.HorizontalDirectionalBlock
 import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.state.BlockState
 import org.eln2.mc.Eln2
-import org.eln2.mc.common.space.PlacementRotation
-import org.eln2.mc.common.space.RelativeRotationDirection
 import org.eln2.mc.common.blocks.BlockRegistry
 import org.eln2.mc.common.cells.*
 import org.eln2.mc.common.cells.foundation.*
+import org.eln2.mc.common.space.PlacementRotation
+import org.eln2.mc.common.space.RelativeRotationDirection
 import org.eln2.mc.extensions.BlockPosExtensions.plus
 import org.eln2.mc.extensions.DirectionExtensions.isVertical
 import java.util.*
-import kotlin.collections.ArrayList
 
-class CellBlockEntity(var pos : BlockPos, var state: BlockState)
-    : BlockEntity(BlockRegistry.CELL_BLOCK_ENTITY.get(), pos, state),
+class CellBlockEntity(var pos: BlockPos, var state: BlockState) :
+    BlockEntity(BlockRegistry.CELL_BLOCK_ENTITY.get(), pos, state),
     ICellContainer {
     // Initialized when placed or loading
 
     open val cellFace = Direction.UP
 
-    lateinit var graphManager : CellGraphManager
-    lateinit var cellProvider : CellProvider
+    lateinit var graphManager: CellGraphManager
+    lateinit var cellProvider: CellProvider
 
     // Used for loading
-    private lateinit var savedGraphID : UUID
+    private lateinit var savedGraphID: UUID
 
     // Cell is not available on the client.
-    var cell : CellBase? = null
+    var cell: CellBase? = null
 
     private val serverLevel get() = level as ServerLevel
 
-    private fun getPlacementRotation() : PlacementRotation {
-        return PlacementRotation (state.getValue(HorizontalDirectionalBlock.FACING))
+    private fun getPlacementRotation(): PlacementRotation {
+        return PlacementRotation(state.getValue(HorizontalDirectionalBlock.FACING))
     }
 
-    private fun getLocalDirection(globalDirection : Direction) : RelativeRotationDirection {
+    private fun getLocalDirection(globalDirection: Direction): RelativeRotationDirection {
         val placementRotation = getPlacementRotation()
 
         return placementRotation.getRelativeFromAbsolute(globalDirection)
@@ -51,16 +50,16 @@ class CellBlockEntity(var pos : BlockPos, var state: BlockState)
 
     @Suppress("UNUSED_PARAMETER") // Will very likely be needed later and helps to know the name of the args.
     fun setPlacedBy(
-        level : Level,
-        position : BlockPos,
-        blockState : BlockState,
-        entity : LivingEntity?,
-        itemStack : ItemStack,
+        level: Level,
+        position: BlockPos,
+        blockState: BlockState,
+        entity: LivingEntity?,
+        itemStack: ItemStack,
         cellProvider: CellProvider
     ) {
         this.cellProvider = cellProvider
 
-        if(level.isClientSide){
+        if (level.isClientSide) {
             return
         }
 
@@ -77,7 +76,7 @@ class CellBlockEntity(var pos : BlockPos, var state: BlockState)
     }
 
     fun setDestroyed() {
-        if(cell == null){
+        if (cell == null) {
             // This means we are on the client.
             // Otherwise, something is going on here.
 
@@ -88,7 +87,7 @@ class CellBlockEntity(var pos : BlockPos, var state: BlockState)
         CellConnectionManager.destroy(getCellSpace(), this)
     }
 
-    private fun canConnectFrom(dir : Direction) : Boolean {
+    private fun canConnectFrom(dir: Direction): Boolean {
         val localDirection = getLocalDirection(dir)
 
         return cellProvider.canConnectFrom(localDirection)
@@ -97,7 +96,7 @@ class CellBlockEntity(var pos : BlockPos, var state: BlockState)
     //#region Saving and Loading
 
     override fun saveAdditional(pTag: CompoundTag) {
-        if(level!!.isClientSide){
+        if (level!!.isClientSide) {
             // No saving is done on the client
 
             return
@@ -116,8 +115,7 @@ class CellBlockEntity(var pos : BlockPos, var state: BlockState)
         if (pTag.contains("GraphID")) {
             savedGraphID = UUID.fromString(pTag.getString("GraphID"))!!
             Eln2.LOGGER.info("Deserialized cell entity at $pos")
-        }
-        else{
+        } else {
             Eln2.LOGGER.warn("Cell entity at $pos does not have serialized data.")
         }
     }
@@ -173,14 +171,14 @@ class CellBlockEntity(var pos : BlockPos, var state: BlockState)
             result["Graph"] = cell?.graph?.id?.toString() ?: "GRAPH NULL"
 
             result
-          }
+        }
     }
 
-    private fun getCellSpace() : CellInfo {
+    private fun getCellSpace(): CellInfo {
         return CellInfo(cell!!, cellFace)
     }
 
-    private fun getCellPos() : CellPos {
+    private fun getCellPos(): CellPos {
         return CellPos(pos, cellFace)
     }
 
@@ -189,9 +187,9 @@ class CellBlockEntity(var pos : BlockPos, var state: BlockState)
     }
 
     override fun query(query: CellQuery): CellInfo? {
-        return if(canConnectFrom(query.connectionFace)){
+        return if (canConnectFrom(query.connectionFace)) {
             getCellSpace()
-        } else{
+        } else {
             null
         }
     }
@@ -204,7 +202,7 @@ class CellBlockEntity(var pos : BlockPos, var state: BlockState)
             .forEach { direction ->
                 val local = getLocalDirection(direction)
 
-                if(cellProvider.canConnectFrom(local)){
+                if (cellProvider.canConnectFrom(local)) {
                     val remoteContainer = level!!
                         .getBlockEntity(pos + direction)
                         as? ICellContainer
@@ -212,10 +210,11 @@ class CellBlockEntity(var pos : BlockPos, var state: BlockState)
 
                     val queryResult = remoteContainer.query(CellQuery(direction.opposite, Direction.UP))
 
-                    if(queryResult != null){
-                        val remoteRelative = remoteContainer.probeConnectionCandidate(getCellSpace(), direction.opposite)
+                    if (queryResult != null) {
+                        val remoteRelative =
+                            remoteContainer.probeConnectionCandidate(getCellSpace(), direction.opposite)
 
-                        if(remoteRelative != null){
+                        if (remoteRelative != null) {
                             results.add(CellNeighborInfo(queryResult, remoteContainer, local, remoteRelative))
                         }
 
@@ -231,15 +230,14 @@ class CellBlockEntity(var pos : BlockPos, var state: BlockState)
 
         val local = getLocalDirection(direction)
 
-        return if(cellProvider.canConnectFrom(local)){
+        return if (cellProvider.canConnectFrom(local)) {
             local
-        }
-        else{
+        } else {
             null
         }
     }
 
-    override fun recordConnection(location: CellInfo, direction: RelativeRotationDirection, neighborSpace : CellInfo) {
+    override fun recordConnection(location: CellInfo, direction: RelativeRotationDirection, neighborSpace: CellInfo) {
         Eln2.LOGGER.info("Cell Block recorded connection to the $direction")
     }
 

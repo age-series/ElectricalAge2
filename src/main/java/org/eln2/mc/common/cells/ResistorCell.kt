@@ -21,7 +21,7 @@ class ResistorCell(pos: CellPos) : CellBase(pos), ISingleElementGuiCell<Double> 
 
     override fun getOfferedComponent(neighbour: CellBase): ComponentInfo {
         val circuit = graph.circuit
-        if(!added) {
+        if (!added) {
             circuit.add(resistor)
             added = true
         }
@@ -29,7 +29,7 @@ class ResistorCell(pos: CellPos) : CellBase(pos), ISingleElementGuiCell<Double> 
     }
 
     override fun buildConnections() {
-        connections.forEach{remoteCell ->
+        connections.forEach { remoteCell ->
             val localInfo = getOfferedComponent(remoteCell)
             localInfo.component.connectToPinOf(localInfo.index, remoteCell.getOfferedComponent(this))
         }

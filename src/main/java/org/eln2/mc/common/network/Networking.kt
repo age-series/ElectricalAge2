@@ -54,7 +54,7 @@ object Networking {
 
     /**
      * Sends the message from the client to the server.
-    */
+     */
     fun sendToServer(message: Any?) {
         channel.sendToServer(message)
     }

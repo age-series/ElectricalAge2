@@ -48,7 +48,10 @@ class VoltageSourceCell(pos: CellPos) : CellBase(pos), ISingleElementGuiCell<Dou
 
         connections.forEach { remoteCell ->
             val localResistor = getOfferedComponent(remoteCell).component // get local resistor
-            localResistor.connectToPinOf(1,  remoteCell.getOfferedComponent(this)) // connect local resistor to remote component
+            localResistor.connectToPinOf(
+                1,
+                remoteCell.getOfferedComponent(this)
+            ) // connect local resistor to remote component
             localResistor.connect(0, source, 1) // connect local resistor to our voltage source
         }
     }

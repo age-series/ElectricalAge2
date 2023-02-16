@@ -14,7 +14,8 @@ object Configuration {
         try {
             if (configFile.isFile) {
                 LOGGER.info("[Electrical Age] Reading config from ${configFile.absoluteFile}")
-                config = Yaml.default.decodeFromStream(ElectricalAgeConfiguration.serializer(), configFile.inputStream())
+                config =
+                    Yaml.default.decodeFromStream(ElectricalAgeConfiguration.serializer(), configFile.inputStream())
             } else {
                 config = ElectricalAgeConfiguration()
                 saveConfig()
@@ -46,7 +47,7 @@ object Configuration {
  * They may be blank, but MUST be present. Thanks!
  */
 @Serializable
-data class ElectricalAgeConfiguration (
+data class ElectricalAgeConfiguration(
     var enableAnalytics: Boolean = true,
     // TODO: Replace with stats.age-series.org (but needs CAA certificates)
     var analyticsEndpoint: String = "https://ingz5drycg.execute-api.us-east-1.amazonaws.com/",

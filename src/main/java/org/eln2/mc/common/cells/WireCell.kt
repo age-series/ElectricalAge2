@@ -10,7 +10,7 @@ import org.eln2.mc.utility.ValueText
 import org.eln2.mc.utility.ValueText.valueText
 import kotlin.math.abs
 
-class WireCell(pos : CellPos) : CellBase(pos) {
+class WireCell(pos: CellPos) : CellBase(pos) {
     /*  R -> local resistors. Their first pins are interconnected.
     *   C -> remote components. The second pin of the local resistors is used for them.
     *
@@ -32,7 +32,7 @@ class WireCell(pos : CellPos) : CellBase(pos) {
             val resistor = Resistor()
             resistor.resistance = 0.001
             circuit.add(resistor)
-            if(neighbourToResistorLookup.isNotEmpty()){
+            if (neighbourToResistorLookup.isNotEmpty()) {
                 neighbourToResistorLookup.values.first().connect(0, resistor, 0)
             }
             resistor
@@ -40,7 +40,7 @@ class WireCell(pos : CellPos) : CellBase(pos) {
     }
 
     override fun buildConnections() {
-        connections.forEach{ adjacentCell ->
+        connections.forEach { adjacentCell ->
             val resistor = getOfferedComponent(adjacentCell).component
             resistor.connectToPinOf(1, adjacentCell.getOfferedComponent(this))
         }
@@ -68,7 +68,10 @@ class WireCell(pos : CellPos) : CellBase(pos) {
             }
             if (currentString.isNotEmpty())
                 current = currentString
-            voltage = valueText((getOfferedComponent(connections[0]).component as Resistor).pins[0].node?.potential ?: 0.0, UnitType.VOLT)
+            voltage = valueText(
+                (getOfferedComponent(connections[0]).component as Resistor).pins[0].node?.potential ?: 0.0,
+                UnitType.VOLT
+            )
         } catch (_: Exception) {
             // No results from simulator
         }

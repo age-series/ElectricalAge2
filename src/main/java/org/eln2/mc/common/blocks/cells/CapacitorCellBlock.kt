@@ -20,7 +20,7 @@ import org.eln2.mc.common.blocks.foundation.CellBlockEntity
 import org.eln2.mc.common.cells.CellRegistry
 import org.eln2.mc.common.containers.CapacitorCellContainer
 
-class CapacitorCellBlock: CellBlock() {
+class CapacitorCellBlock : CellBlock() {
     override fun getCellProvider(): ResourceLocation {
         return CellRegistry.CAPACITOR_CELL.id
     }

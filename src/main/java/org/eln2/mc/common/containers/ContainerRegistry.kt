@@ -31,7 +31,7 @@ object ContainerRegistry {
     ): RegistryObject<MenuType<T>> = CONTAINER_REGISTRY.register(name) { supplier() }
 
     val VOLTAGE_SOURCE_CELL_CONTAINER = registerGuiContainer(BlockRegistry.VOLTAGE_SOURCE_CELL.name) {
-        MenuType {id, inv ->
+        MenuType { id, inv ->
             VoltageSourceCellContainer(id, inv, inv.player)
         }
     }

@@ -25,8 +25,8 @@ import net.minecraft.world.phys.shapes.EntityCollisionContext
 import net.minecraft.world.phys.shapes.VoxelShape
 import org.eln2.mc.Eln2
 import org.eln2.mc.common.blocks.BlockRegistry
-import org.eln2.mc.common.parts.foundation.Part
 import org.eln2.mc.common.parts.PartRegistry
+import org.eln2.mc.common.parts.foundation.Part
 import java.util.*
 
 class MultipartBlock : BaseEntityBlock(Properties.of(Material.STONE).noOcclusion().destroyTime(0.2f)) {
@@ -82,39 +82,39 @@ class MultipartBlock : BaseEntityBlock(Properties.of(Material.STONE).noOcclusion
         willHarvest: Boolean,
         fluid: FluidState?
     ): Boolean {
-        if(pos == null){
+        if (pos == null) {
             return false
         }
 
-        if(level == null){
+        if (level == null) {
             return false
         }
 
-        if(player == null){
+        if (player == null) {
             return false
         }
 
         val multipart = level.getBlockEntity(pos) as? MultipartBlockEntity
 
-        if(multipart == null){
+        if (multipart == null) {
             Eln2.LOGGER.error("Multipart null at $pos")
             return false
         }
 
         val removedId =
             multipart.remove(player, level)
-            ?: return false
+                ?: return false
 
         val item = PartRegistry.getPartItem(removedId)
 
-        if(!player.isCreative){
+        if (!player.isCreative) {
             player.inventory.add(ItemStack(item))
         }
 
         // We want to destroy the multipart only if it is empty
         val multipartIsDestroyed = multipart.isEmpty
 
-        if(multipartIsDestroyed){
+        if (multipartIsDestroyed) {
             level.destroyBlock(pos, false)
         }
 
@@ -149,7 +149,7 @@ class MultipartBlock : BaseEntityBlock(Properties.of(Material.STONE).noOcclusion
 
         val completelyDestroyed = multipart.onNeighborDestroyed(pFromPos)
 
-        if(completelyDestroyed){
+        if (completelyDestroyed) {
             pLevel.destroyBlock(pPos, false)
         }
 
@@ -174,41 +174,41 @@ class MultipartBlock : BaseEntityBlock(Properties.of(Material.STONE).noOcclusion
 
     //#endregion
 
-    private fun getMultipartShape(level : BlockGetter, pos: BlockPos, context: CollisionContext) : VoxelShape{
+    private fun getMultipartShape(level: BlockGetter, pos: BlockPos, context: CollisionContext): VoxelShape {
         val multipart = level.getBlockEntity(pos) as? MultipartBlockEntity ?: return emptyBox
 
         return multipart.collisionShape
     }
 
-    private fun getPartShape(level : BlockGetter, pos: BlockPos, context: CollisionContext) : VoxelShape{
+    private fun getPartShape(level: BlockGetter, pos: BlockPos, context: CollisionContext): VoxelShape {
         val pickedPart = pickPart(level, pos, context)
             ?: return emptyBox
 
         return pickedPart.shape
     }
 
-    private fun pickPart(level : BlockGetter, pos : BlockPos, context: CollisionContext) : Part?{
-        if(context !is EntityCollisionContext){
+    private fun pickPart(level: BlockGetter, pos: BlockPos, context: CollisionContext): Part? {
+        if (context !is EntityCollisionContext) {
             Eln2.LOGGER.error("Collision context was not an entity collision context at $pos")
             return null
         }
 
-        if(context.entity !is LivingEntity){
+        if (context.entity !is LivingEntity) {
             return null
         }
 
         return pickPart(level, pos, (context.entity as LivingEntity))
     }
 
-    private fun pickPart(level : BlockGetter, pos : BlockPos, entity : LivingEntity) : Part?{
+    private fun pickPart(level: BlockGetter, pos: BlockPos, entity: LivingEntity): Part? {
         val multipart = level.getBlockEntity(pos)
 
-        if(multipart == null){
+        if (multipart == null) {
             Eln2.LOGGER.error("Multipart block failed to get entity at $pos")
             return null
         }
 
-        if(multipart !is MultipartBlockEntity){
+        if (multipart !is MultipartBlockEntity) {
             Eln2.LOGGER.error("Multipart block found other entity type at $pos")
             return null
         }
@@ -225,6 +225,7 @@ class MultipartBlock : BaseEntityBlock(Properties.of(Material.STONE).noOcclusion
         return createTickerHelper(
             pBlockEntityType,
             BlockRegistry.MULTIPART_BLOCK_ENTITY.get(),
-            MultipartBlockEntity.Companion::blockTick)
+            MultipartBlockEntity.Companion::blockTick
+        )
     }
 }

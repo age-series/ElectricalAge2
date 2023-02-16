@@ -7,15 +7,15 @@ import net.minecraft.world.phys.Vec3
 import org.eln2.mc.extensions.Vec3Extensions.toVector3f
 
 object Matrix {
-    fun translation(position : Vector3f) : Matrix4f{
+    fun translation(position: Vector3f): Matrix4f {
         return Matrix4f.createTranslateMatrix(position.x(), position.y(), position.z())
     }
 
-    fun translation(position: Vec3) : Matrix4f{
+    fun translation(position: Vec3): Matrix4f {
         return translation(position.toVector3f())
     }
 
-    fun rotation(quaternion: Quaternion) : Matrix4f{
+    fun rotation(quaternion: Quaternion): Matrix4f {
         return Matrix4f(quaternion)
     }
 }

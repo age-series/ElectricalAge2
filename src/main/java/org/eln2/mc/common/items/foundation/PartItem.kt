@@ -11,16 +11,17 @@ import org.eln2.mc.common.blocks.foundation.MultipartBlockEntity
 import org.eln2.mc.common.parts.foundation.PartProvider
 import org.eln2.mc.extensions.BlockPosExtensions.plus
 
-class PartItem(private val provider: PartProvider, tab : CreativeModeTab) : BlockItem(
+class PartItem(private val provider: PartProvider, tab: CreativeModeTab) : BlockItem(
     BlockRegistry.MULTIPART_BLOCK.block.get(),
-    Properties().tab(tab)) {
+    Properties().tab(tab)
+) {
 
     override fun useOn(pContext: UseOnContext): InteractionResult {
-        if(pContext.level.isClientSide){
+        if (pContext.level.isClientSide) {
             return InteractionResult.FAIL
         }
 
-        if(pContext.player == null){
+        if (pContext.player == null) {
             Eln2.LOGGER.error("Null player!")
             return InteractionResult.FAIL
         }
@@ -33,16 +34,15 @@ class PartItem(private val provider: PartProvider, tab : CreativeModeTab) : Bloc
 
         var entity = level.getBlockEntity(targetPos)
 
-        if(entity != null){
+        if (entity != null) {
             Eln2.LOGGER.info("Existing entity: $entity")
 
-            if(entity !is MultipartBlockEntity){
+            if (entity !is MultipartBlockEntity) {
                 Eln2.LOGGER.error("Non-multipart entity found!")
 
                 return InteractionResult.FAIL
             }
-        }
-        else {
+        } else {
             Eln2.LOGGER.error("Placing new multipart.")
 
             // Place multipart
@@ -53,7 +53,7 @@ class PartItem(private val provider: PartProvider, tab : CreativeModeTab) : Bloc
 
         Eln2.LOGGER.info("Target multipart entity: $entity")
 
-        if(entity == null){
+        if (entity == null) {
             return InteractionResult.FAIL
         }
 
@@ -62,10 +62,9 @@ class PartItem(private val provider: PartProvider, tab : CreativeModeTab) : Bloc
 
         // If the part was placed successfully, let us consume this item.
 
-        return if(placed){
+        return if (placed) {
             InteractionResult.SUCCESS
-        }
-        else{
+        } else {
             InteractionResult.FAIL
         }
     }

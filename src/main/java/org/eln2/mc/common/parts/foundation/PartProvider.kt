@@ -7,8 +7,8 @@ import net.minecraftforge.registries.ForgeRegistryEntry
 /**
  * This is a factory for parts.
  * */
-abstract class PartProvider : ForgeRegistryEntry<PartProvider>(){
-    val id : ResourceLocation get() = this.registryName ?: error("ID not available in PartProvider")
+abstract class PartProvider : ForgeRegistryEntry<PartProvider>() {
+    val id: ResourceLocation get() = this.registryName ?: error("ID not available in PartProvider")
 
     /**
      * Used to create a new instance of the part. Called when the part is placed
@@ -16,11 +16,11 @@ abstract class PartProvider : ForgeRegistryEntry<PartProvider>(){
      * @param context The placement context of this part.
      * @return Unique instance of the part.
      */
-    abstract fun create(context: PartPlacementContext) : Part
+    abstract fun create(context: PartPlacementContext): Part
 
     /**
      * This is the size used to validate placement. This is different from baseSize, because
      * you can implement a visual placement margin here.
      * */
-    abstract val placementCollisionSize : Vec3
+    abstract val placementCollisionSize: Vec3
 }
