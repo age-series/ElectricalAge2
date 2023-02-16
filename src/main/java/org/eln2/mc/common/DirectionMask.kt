@@ -21,7 +21,7 @@ value class DirectionMask(val mask : Int){
 
         val EMPTY = DirectionMask(0)
 
-        val ALL = DirectionMask(
+        val FULL = DirectionMask(
             Direction.values()
                 .map { getBit(it) }
                 .reduce { acc, b -> acc or b }
@@ -56,6 +56,10 @@ value class DirectionMask(val mask : Int){
         }
 
         fun ofRelatives(directions : List<RelativeRotationDirection>) : DirectionMask{
+            if(directions.isEmpty()){
+                return EMPTY
+            }
+
             return DirectionMask(directions
                 .map { getBit(it.directionAlias()) }
                 .reduce {acc, mask -> acc or mask }
@@ -86,25 +90,23 @@ value class DirectionMask(val mask : Int){
 
         private val perpendiculars = Direction.values()
             .map { direction ->
-                var result = 0;
+                var result = 0
 
                 Direction.values()
+                    .sortedBy { it.index() }
                     .filter { it != direction && it != direction.opposite }
                     .forEach { perpendicular ->
                         result = result or getBit(perpendicular)
                     }
 
                 return@map DirectionMask(result) }
-            .toMutableList()
-            .apply { this.add(0, EMPTY) }
-            .sortedBy { it.index }
             .toTypedArray()
 
         fun perpendicular(direction: Direction) : DirectionMask{
             return perpendiculars[direction.index()]
         }
 
-        private val allMasks = (0..ALL.mask)
+        private val allMasks = (0..FULL.mask)
             .map { DirectionMask(it) }
             .toList()
             .toTypedArray();
@@ -260,7 +262,7 @@ value class DirectionMask(val mask : Int){
     // We want these APIs to not affect vertical directions, and OPPOSITE would.
     // To do so, we get the opposite of the horizontal components, then combine that with the original vertical components
 
-    fun clockwise(steps : Int) : DirectionMask{
+    fun clockWise(steps : Int) : DirectionMask{
         return when(val remainder = steps % 4){
            0 -> this
            1 -> this.clockWise
@@ -270,7 +272,7 @@ value class DirectionMask(val mask : Int){
         }
     }
 
-    fun counterClockwise(steps : Int) : DirectionMask{
+    fun counterClockWise(steps : Int) : DirectionMask{
         return when(val remainder = steps % 4){
             0 -> this
             1 -> this.counterClockWise

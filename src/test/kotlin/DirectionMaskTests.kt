@@ -20,7 +20,7 @@ class DirectionMaskTests {
         assert(verticalsMask.hasVerticals && !verticalsMask.isHorizontal)
         assert(!verticalsMask.isHorizontal &&!verticalsMask.hasHorizontals)
 
-        assert(DirectionMask.ALL.hasHorizontals && DirectionMask.ALL.hasVerticals &&!DirectionMask.ALL.isVertical &&!DirectionMask.ALL.isHorizontal)
+        assert(DirectionMask.FULL.hasHorizontals && DirectionMask.FULL.hasVerticals &&!DirectionMask.FULL.isVertical &&!DirectionMask.FULL.isHorizontal)
 
         assert(!DirectionMask.EMPTY.isVertical &&! DirectionMask.EMPTY.isHorizontal);
     }
@@ -59,8 +59,8 @@ class DirectionMaskTests {
             }
         }
 
-        stepTransform({mask, steps -> mask.clockwise(steps)}, {it.clockWise}, DirectionMask.ALL_MASKS)
-        stepTransform({mask, steps -> mask.counterClockwise(steps)}, {it.counterClockWise}, DirectionMask.ALL_MASKS)
+        stepTransform({mask, steps -> mask.clockWise(steps)}, {it.clockWise}, DirectionMask.ALL_MASKS)
+        stepTransform({mask, steps -> mask.counterClockWise(steps)}, {it.counterClockWise}, DirectionMask.ALL_MASKS)
     }
 
     @Test
@@ -92,10 +92,10 @@ class DirectionMaskTests {
         assert(mask == DirectionMask.EMPTY)
 
         assert((DirectionMask.EMPTY + DirectionMask.EMPTY) == DirectionMask.EMPTY)
-        assert((DirectionMask.ALL + DirectionMask.ALL) == DirectionMask.ALL)
-        assert((DirectionMask.ALL - DirectionMask.ALL) == DirectionMask.EMPTY)
-        assert((DirectionMask.ALL - DirectionMask.EMPTY) == DirectionMask.ALL)
-        assert((DirectionMask.ALL + DirectionMask.EMPTY) == DirectionMask.ALL)
+        assert((DirectionMask.FULL + DirectionMask.FULL) == DirectionMask.FULL)
+        assert((DirectionMask.FULL - DirectionMask.FULL) == DirectionMask.EMPTY)
+        assert((DirectionMask.FULL - DirectionMask.EMPTY) == DirectionMask.FULL)
+        assert((DirectionMask.FULL + DirectionMask.EMPTY) == DirectionMask.FULL)
     }
 
     @Test
@@ -164,6 +164,17 @@ class DirectionMaskTests {
         masks : List<DirectionMask>){
 
         masks.forEach { testTransform(maskTransform, directionTransform, it) }
+    }
+
+    @Test
+    fun testPerpendiculars(){
+        Direction.values().forEach { direction ->
+            val perpendiculars = Direction.values().filter { it != direction && it != direction.opposite }
+
+            if(DirectionMask.of(perpendiculars) != DirectionMask.perpendicular(direction)){
+                fail("Perpendicular test failed")
+            }
+        }
     }
 
     private fun noop(){}
