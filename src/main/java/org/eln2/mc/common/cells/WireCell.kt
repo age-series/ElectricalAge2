@@ -64,7 +64,7 @@ class WireCell(pos: CellPos) : CellBase(pos) {
             } else {
                 // Branch currents. Print them all.
                 val currents = connections.map { (getOfferedComponent(it).component as Resistor).current }
-                currents.joinToString(", ") { ValueText.valueText(it, UnitType.AMPERE) }
+                currents.joinToString(", ") { valueText(it, UnitType.AMPERE) }
             }
             if (currentString.isNotEmpty())
                 current = currentString

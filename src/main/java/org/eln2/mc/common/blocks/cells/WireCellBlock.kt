@@ -9,7 +9,7 @@ import net.minecraft.world.level.LevelReader
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.level.block.state.StateDefinition
-import net.minecraft.world.level.block.state.properties.BooleanProperty;
+import net.minecraft.world.level.block.state.properties.BooleanProperty
 import net.minecraft.world.phys.shapes.CollisionContext
 import net.minecraft.world.phys.shapes.VoxelShape
 import org.eln2.mc.common.blocks.foundation.CellBlock
@@ -79,7 +79,7 @@ class WireCellBlock : CellBlock() {
 
 
     fun neChang(level: Level, pos: BlockPos, neighbor: BlockPos) {
-        val blockEntity = level.getBlockEntity(neighbor ?: error("Neighbor position was null"))
+        val blockEntity = level.getBlockEntity(neighbor)
         if (blockEntity != null) {
 
             // check if the blockentity is from this mod
@@ -141,7 +141,7 @@ class WireCellBlock : CellBlock() {
         var level = world as Level
 
         if (world != null && pos != null) {
-            if (!(world?.isClientSide ?: error("World was null"))) {
+            if (!world.isClientSide) {
                 if (neighbor != null && neighbor != pos) {
                     neChang(level, pos, neighbor)
                 }

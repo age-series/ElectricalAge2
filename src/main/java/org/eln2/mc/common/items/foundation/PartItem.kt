@@ -30,7 +30,7 @@ class PartItem(private val provider: PartProvider, tab: CreativeModeTab) : Block
 
         val targetPos = pContext.clickedPos + pContext.clickedFace
 
-        Eln2.LOGGER.info("Interacting with multipart at $targetPos");
+        Eln2.LOGGER.info("Interacting with multipart at $targetPos")
 
         var entity = level.getBlockEntity(targetPos)
 

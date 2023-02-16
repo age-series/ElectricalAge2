@@ -8,7 +8,7 @@ import net.minecraft.world.item.Item
 import net.minecraft.world.item.context.UseOnContext
 import org.eln2.mc.common.blocks.foundation.CellBlockEntity
 
-class VoltmeterItem(tab: CreativeModeTab?) : Item(Item.Properties().also { if (tab != null) it.tab(tab) }) {
+class VoltmeterItem(tab: CreativeModeTab?) : Item(Properties().also { if (tab != null) it.tab(tab) }) {
     override fun useOn(context: UseOnContext): InteractionResult {
         // If you try to dereference Cell on the client... lol it explodes violently.
         if (!context.level.isClientSide) {

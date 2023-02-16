@@ -25,17 +25,17 @@ object AABBExtensions {
 
         val distance = 5.0
 
-        val end = start + viewDirection * distance;
+        val end = start + viewDirection * distance
 
         return this.clip(start, end)
     }
 
     fun AABB.minVec3(): Vec3 {
-        return Vec3(this.minX, this.minY, this.minZ);
+        return Vec3(this.minX, this.minY, this.minZ)
     }
 
     fun AABB.maxVec3(): Vec3 {
-        return Vec3(this.maxX, this.maxY, this.maxZ);
+        return Vec3(this.maxX, this.maxY, this.maxZ)
     }
 
     fun AABB.size(): Vec3 {

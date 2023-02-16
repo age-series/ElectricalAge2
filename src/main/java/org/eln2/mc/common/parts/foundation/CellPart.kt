@@ -115,7 +115,7 @@ abstract class CellPart(
         cell.onEntityLoaded()
     }
 
-    open override val allowPlanarConnections = true
-    open override val allowInnerConnections = true
-    open override val allowWrappedConnections = true
+    override val allowPlanarConnections = true
+    override val allowInnerConnections = true
+    override val allowWrappedConnections = true
 }

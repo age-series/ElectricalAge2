@@ -31,7 +31,7 @@ import java.util.*
 
 class MultipartBlock : BaseEntityBlock(Properties.of(Material.STONE).noOcclusion().destroyTime(0.2f)) {
     private val epsilon = 0.00001
-    private val emptyBox = box(0.0, 0.0, 0.0, epsilon, epsilon, epsilon);
+    private val emptyBox = box(0.0, 0.0, 0.0, epsilon, epsilon, epsilon)
 
     //#region Block Methods
 

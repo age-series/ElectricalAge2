@@ -28,7 +28,7 @@ object BlockPosExtensions {
     }
 
     fun BlockPos.toVec3(): Vec3 {
-        return Vec3(this.x.toDouble(), this.y.toDouble(), this.z.toDouble());
+        return Vec3(this.x.toDouble(), this.y.toDouble(), this.z.toDouble())
     }
 
     fun BlockPos.directionTo(other: BlockPos): Direction? {
