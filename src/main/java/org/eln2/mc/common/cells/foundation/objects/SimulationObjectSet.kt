@@ -1,7 +1,9 @@
 package org.eln2.mc.common.cells.foundation.objects
 
 class SimulationObjectSet(objects: List<ISimulationObject>) {
-    private var electrical : IElectricalObject? = null
+    constructor(vararg objects: ISimulationObject) : this(objects.asList())
+
+    private var electrical : ElectricalObject? = null
 
     private val mask : SimulationObjectMask
 
@@ -19,7 +21,7 @@ class SimulationObjectSet(objects: List<ISimulationObject>) {
                         error("Duplicate electrical object")
                     }
 
-                    electrical = it as IElectricalObject
+                    electrical = it as ElectricalObject
                 }
             }
 
@@ -33,7 +35,7 @@ class SimulationObjectSet(objects: List<ISimulationObject>) {
         return mask.hasFlag(type)
     }
 
-    private fun getObject(type: SimulationObjectType): ISimulationObject{
+    fun getObject(type: SimulationObjectType): ISimulationObject{
         when(type){
             SimulationObjectType.Electrical -> {
                 if(electrical == null){
@@ -45,5 +47,11 @@ class SimulationObjectSet(objects: List<ISimulationObject>) {
         }
     }
 
-    val electricalObject get() = getObject(SimulationObjectType.Electrical) as IElectricalObject
+    val electricalObject get() = getObject(SimulationObjectType.Electrical) as ElectricalObject
+
+    fun process(function: ((ISimulationObject) -> Unit)){
+       if(electrical != null){
+           function(electrical!!)
+       }
+    }
 }

@@ -2,12 +2,12 @@ package org.eln2.mc.common.cells.foundation
 
 import net.minecraft.resources.ResourceLocation
 import net.minecraftforge.registries.ForgeRegistryEntry
+import org.eln2.mc.common.cells.foundation.objects.ISimulationObject
+import org.eln2.mc.common.cells.foundation.objects.SimulationObjectMask
 import org.eln2.mc.common.space.RelativeRotationDirection
 
 abstract class CellProvider : ForgeRegistryEntry<CellProvider>() {
     val id: ResourceLocation get() = this.registryName ?: error("ID not available in CellProvider")
-
-    val connectableDirections = HashSet<RelativeRotationDirection>()
 
     /**
      * Used to create a new instance of the cell. Called when the cell block is placed
@@ -25,17 +25,7 @@ abstract class CellProvider : ForgeRegistryEntry<CellProvider>() {
         return instance
     }
 
-    /**
-     * Used to check if a cell is valid for connection.
-     * @return True if the connection is accepted. Otherwise, false.
-     */
-    abstract fun connectionPredicate(dir: RelativeRotationDirection): Boolean
-
-    fun canConnectFrom(direction: RelativeRotationDirection): Boolean {
-        if (!connectableDirections.contains(direction)) {
-            return false
-        }
-
-        return connectionPredicate(direction)
+    open fun canConnectFrom(direction: RelativeRotationDirection): Boolean {
+        return true
     }
 }

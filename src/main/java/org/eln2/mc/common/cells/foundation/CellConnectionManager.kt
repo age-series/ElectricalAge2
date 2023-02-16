@@ -25,7 +25,7 @@ object CellConnectionManager {
 
         // This is common logic for all cases.
         neighborCells.forEach { neighborInfo ->
-            neighborInfo.neighborInfo.cell.connections.remove(cell)
+            neighborInfo.neighborInfo.cell.removeConnection(cell)
             neighborInfo.neighborContainer.recordDeletedConnection(
                 neighborInfo.neighborInfo,
                 neighborInfo.neighborDirection
@@ -85,12 +85,12 @@ object CellConnectionManager {
 
         // This is common logic for all cases
 
-        cell.connections = ArrayList(neighborInfos.map { it.neighborInfo.cell })
+        cell.connections = ArrayList(neighborInfos.map { CellConnectionInfo(it.neighborInfo.cell, it.sourceDirection) })
 
         neighborInfos.forEach { neighborInfo ->
             Eln2.LOGGER.info("Neighbor $neighborInfo")
 
-            neighborInfo.neighborInfo.cell.connections.add(cell)
+            neighborInfo.neighborInfo.cell.connections.add(CellConnectionInfo(cell, neighborInfo.neighborDirection))
             neighborInfo.neighborContainer.recordConnection(
                 neighborInfo.neighborInfo,
                 neighborInfo.neighborDirection,
@@ -120,10 +120,7 @@ object CellConnectionManager {
                 neighborInfo.neighborInfo.cell.update(connectionsChanged = true, graphChanged = false)
             }
 
-            graph.connectCell(cell)
-
-            // todo: do we need to rebuild the solver?
-            //graph.buildSolver()
+            graph.buildSolver()
         } else {
             // Case 4. We need to create a new circuit, with all cells and this one.
 
@@ -231,11 +228,11 @@ object CellConnectionManager {
                 graph.addCell(cell)
 
                 // Enqueue neighbors (excluding the cell we are removing) for processing
-                cell.connections.forEach { connectedCell ->
+                cell.connections.forEach { connectedCellInfo ->
                     // This must be handled above.
-                    assert(connectedCell != removedCell)
+                    assert(connectedCellInfo.cell != removedCell)
 
-                    bfsQueue.add(connectedCell)
+                    bfsQueue.add(connectedCellInfo.cell)
                 }
             }
 

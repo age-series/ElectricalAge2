@@ -5,10 +5,16 @@ import net.minecraft.nbt.ListTag
 import net.minecraft.resources.ResourceLocation
 import org.ageseries.libage.sim.electrical.mna.Circuit
 import org.eln2.mc.Eln2
+import org.eln2.mc.Eln2.LOGGER
 import org.eln2.mc.common.cells.CellRegistry
+import org.eln2.mc.common.cells.foundation.objects.SimulationObjectType
+import org.eln2.mc.common.space.RelativeRotationDirection
 import org.eln2.mc.extensions.NbtExtensions.getCellPos
+import org.eln2.mc.extensions.NbtExtensions.getRelativeDirection
 import org.eln2.mc.extensions.NbtExtensions.putCellPos
+import org.eln2.mc.extensions.NbtExtensions.putRelativeDirection
 import java.util.*
+import kotlin.collections.ArrayDeque
 import kotlin.system.measureNanoTime
 
 class CellGraph(val id: UUID, val manager: CellGraphManager) {
@@ -16,9 +22,7 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
 
     private val posCells = HashMap<CellPos, CellBase>()
 
-    lateinit var circuit: Circuit
-
-    private val hasCircuit get() = this::circuit.isInitialized
+    private val circuits = ArrayList<Circuit>()
 
     var successful = false
         private set
@@ -26,27 +30,86 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
     var latestSolveTime = 0L
 
     fun update() {
-        latestSolveTime = 0
+        latestSolveTime = measureNanoTime {
+            successful = true
 
-        if (hasCircuit) {
-            latestSolveTime = measureNanoTime {
-                successful = circuit.step(0.05)
+            circuits.forEach {
+                successful = successful && it.step(0.05)
             }
         }
     }
 
     fun buildSolver() {
-        circuit = Circuit()
+        cells.forEach { it.clearObjectConnections() }
+        cells.forEach { it.recordObjectConnections() }
+        cells.forEach { it.build() }
 
-        cells.forEach { cell ->
-            cell.clear()
+        realizeElectrical()
+    }
+
+    private fun realizeElectrical(){
+        LOGGER.info("Realizing electrical components.")
+
+        circuits.clear()
+
+        realizeComponents(SimulationObjectType.Electrical) { set ->
+            val circuit = Circuit()
+
+            set.forEach { it.electricalObject.setNewCircuit(circuit) }
+
+            circuits.add(circuit)
+
+            LOGGER.info("Found circuit with ${circuit.components.size} components")
         }
+    }
 
-        cells.forEach { cell ->
-            cell.buildConnections()
+    /**
+     * This algorithm first creates a set with all cells that have the specified simulation type.
+     * Then, it does a search through the cells, only taking into account connected nodes that have that simulation type.
+     * When a cell is discovered, it is removed from the pending set.
+     * At the end of the search, a connected component is realized.
+     * The search is repeated until the pending set is exhausted.
+     *
+     * @param type The simulation type to search for.
+     * @param factory A factory method to generate the subset from the discovered cells.
+     * */
+    private fun <TComponent> realizeComponents(
+        type: SimulationObjectType,
+        factory: ((HashSet<CellBase>) -> TComponent)) {
+
+        val pending = HashSet(cells.filter { it.hasObject(type) })
+        val queue = ArrayDeque<CellBase>()
+
+        // todo: can we use pending instead?
+        val visited = HashSet<CellBase>()
+
+        val results = ArrayList<TComponent>()
+
+        while(pending.size > 0){
+            assert(queue.size == 0)
+
+            visited.clear()
+
+            queue.add(pending.first())
+
+            while(queue.size > 0){
+                val cell = queue.removeFirst()
+
+                if(!visited.add(cell)){
+                    continue
+                }
+
+                pending.remove(cell)
+
+                cell.connections.forEach { connectedCellInfo ->
+                    if(connectedCellInfo.cell.hasObject(type)){
+                        queue.add(connectedCellInfo.cell)
+                    }
+                }
+            }
+
+            results.add(factory(visited))
         }
-
-        Eln2.LOGGER.info("Built circuit! component count: ${circuit.components.count()}, graph cell count: ${cells.count()}")
     }
 
     fun getCell(pos: CellPos): CellBase {
@@ -73,11 +136,6 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
         manager.setDirty()
     }
 
-    fun connectCell(cell: CellBase) {
-        cell.clear()
-        cell.buildConnections()
-    }
-
     fun copyTo(graph: CellGraph) {
         graph.cells.addAll(cells)
         manager.setDirty()
@@ -98,9 +156,10 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
             val cellTag = CompoundTag()
             val connectionsTag = ListTag()
 
-            cell.connections.forEach { connections ->
+            cell.connections.forEach { connectionInfo ->
                 val connectionCompound = CompoundTag()
-                connectionCompound.putCellPos("Position", connections.pos)
+                connectionCompound.putCellPos("Position", connectionInfo.cell.pos)
+                connectionCompound.putRelativeDirection("Direction", connectionInfo.sourceDirection)
                 connectionsTag.add(connectionCompound)
             }
 
@@ -116,6 +175,8 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
         return circuitCompound
     }
 
+    data class ConnectionInfoCell(val cellPos: CellPos, val direction: RelativeRotationDirection)
+
     companion object {
         fun fromNbt(graphCompound: CompoundTag, manager: CellGraphManager): CellGraph {
             val id = graphCompound.getUUID("ID")
@@ -125,20 +186,21 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
                 return result
 
             // used to assign the connections after all cells have been loaded
-            val cellConnections = HashMap<CellBase, ArrayList<CellPos>>()
+            val cellConnections = HashMap<CellBase, ArrayList<ConnectionInfoCell>>()
 
             cellListTag.forEach { cellNbt ->
                 val cellCompound = cellNbt as CompoundTag
                 val pos = cellCompound.getCellPos("Position")
                 val cellId = ResourceLocation.tryParse(cellCompound.getString("ID"))!!
 
-                val connectionPositions = ArrayList<CellPos>()
+                val connectionPositions = ArrayList<ConnectionInfoCell>()
                 val connectionsTag = cellCompound.get("Connections") as ListTag
 
                 connectionsTag.forEach {
                     val connectionCompound = it as CompoundTag
                     val connectionPos = connectionCompound.getCellPos("Position")
-                    connectionPositions.add(connectionPos)
+                    val connectionDirection = connectionCompound.getRelativeDirection("Direction")
+                    connectionPositions.add(ConnectionInfoCell(connectionPos, connectionDirection))
                 }
 
                 val cell = CellRegistry.getProvider(cellId).create(pos)
@@ -151,10 +213,13 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
 
             // now assign all connections and the graph
 
-            cellConnections.forEach {
-                val cell = it.component1()
-                val connectionPositions = it.component2()
-                val connections = ArrayList(connectionPositions.map { pos -> result.getCell(pos) })
+            cellConnections.forEach { connectionEntry ->
+                val cell = connectionEntry.component1()
+                val connectionPositions = connectionEntry.component2()
+
+                val connections = ArrayList(connectionPositions.map {
+                    CellConnectionInfo(result.getCell(it.cellPos), it.direction)
+                })
 
                 // now set graph and connection
                 cell.graph = result

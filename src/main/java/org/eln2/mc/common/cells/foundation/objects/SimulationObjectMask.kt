@@ -1,7 +1,7 @@
 package org.eln2.mc.common.cells.foundation.objects
 
 @JvmInline
-value class SimulationObjectMask(val mask: Int) {
+value class SimulationObjectMask(private val mask: Int) {
     companion object{
         private fun getBit(type: SimulationObjectType): Int {
             return when(type){

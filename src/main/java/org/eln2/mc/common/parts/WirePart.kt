@@ -1,5 +1,5 @@
 package org.eln2.mc.common.parts
-
+/*
 import mcp.mobius.waila.api.IPluginConfig
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.nbt.ListTag
@@ -15,6 +15,7 @@ import org.eln2.mc.extensions.NbtExtensions.getRelativeDirection
 import org.eln2.mc.extensions.NbtExtensions.putRelativeDirection
 import org.eln2.mc.integration.waila.IWailaProvider
 import org.eln2.mc.integration.waila.TooltipBuilder
+
 
 class WirePart(id: ResourceLocation, context: PartPlacementContext) :
     CellPart(id, context, CellRegistry.WIRE_CELL.get()) {
@@ -134,3 +135,4 @@ class WirePart(id: ResourceLocation, context: PartPlacementContext) :
     override val allowInnerConnections = true
     override val allowWrappedConnections = true
 }
+*/
