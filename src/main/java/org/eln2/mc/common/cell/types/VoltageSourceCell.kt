@@ -4,13 +4,14 @@ import net.minecraft.core.BlockPos
 import org.ageseries.libage.sim.electrical.mna.component.Resistor
 import org.ageseries.libage.sim.electrical.mna.component.VoltageSource
 import org.eln2.mc.common.cell.CellBase
+import org.eln2.mc.common.cell.CellPos
 import org.eln2.mc.common.cell.ComponentInfo
 import org.eln2.mc.common.cell.ISingleElementGuiCell
 import org.eln2.mc.extensions.ComponentExtensions.connectToPinOf
 import org.eln2.mc.utility.UnitType
 import org.eln2.mc.utility.ValueText.valueText
 
-class VoltageSourceCell(pos: BlockPos) : CellBase(pos), ISingleElementGuiCell<Double> {
+class VoltageSourceCell(pos: CellPos) : CellBase(pos), ISingleElementGuiCell<Double> {
 
     /*  R -> local resistors. Their first pin is connected to the voltage source.
     *   C -> remote components. The second pin of the local resistors is used for them.

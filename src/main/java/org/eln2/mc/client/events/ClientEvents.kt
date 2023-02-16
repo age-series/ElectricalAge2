@@ -4,6 +4,7 @@ import net.minecraft.client.gui.screens.MenuScreens
 import net.minecraftforge.eventbus.api.SubscribeEvent
 import net.minecraftforge.fml.common.Mod.EventBusSubscriber
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent
+import org.eln2.mc.client.flywheel.FlywheelRegistry
 import org.eln2.mc.client.screens.CapacitorCellScreen
 import org.eln2.mc.client.screens.InductorCellScreen
 import org.eln2.mc.client.screens.ResistorCellScreen
@@ -29,7 +30,8 @@ object ClientEvents {
             MenuScreens.register(RESISTOR_CELL_CONTAINER.get(), ::ResistorCellScreen)
             MenuScreens.register(CAPACITOR_CELL_CONTAINER.get(), ::CapacitorCellScreen)
             MenuScreens.register(INDUCTOR_CELL_CONTAINER.get(), ::InductorCellScreen)
+
+            FlywheelRegistry.initialize()
         }
     }
-
 }

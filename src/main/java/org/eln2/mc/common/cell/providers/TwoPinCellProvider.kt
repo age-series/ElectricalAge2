@@ -4,9 +4,10 @@ import net.minecraft.core.BlockPos
 import org.eln2.mc.Eln2
 import org.eln2.mc.common.RelativeRotationDirection
 import org.eln2.mc.common.cell.CellBase
+import org.eln2.mc.common.cell.CellPos
 import org.eln2.mc.common.cell.CellProvider
 
-class TwoPinCellProvider(val factory : ((pos : BlockPos) -> CellBase)) : CellProvider() {
+class TwoPinCellProvider(val factory : ((pos : CellPos) -> CellBase)) : CellProvider() {
     init {
         connectableDirections.addAll(listOf(
             RelativeRotationDirection.Front,
@@ -14,7 +15,7 @@ class TwoPinCellProvider(val factory : ((pos : BlockPos) -> CellBase)) : CellPro
         ))
     }
 
-    override fun create(pos: BlockPos): CellBase {
+    override fun createInstance(pos: CellPos): CellBase {
         return factory(pos)
     }
 

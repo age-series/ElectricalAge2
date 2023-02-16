@@ -1,10 +1,13 @@
 package org.eln2.mc.common.cell
 
 import net.minecraft.core.BlockPos
+import net.minecraft.resources.ResourceLocation
 import net.minecraftforge.registries.ForgeRegistryEntry
 import org.eln2.mc.common.RelativeRotationDirection
 
 abstract class CellProvider : ForgeRegistryEntry<CellProvider>() {
+    val id : ResourceLocation get() = this.registryName ?: error("ID not available in CellProvider")
+
     val connectableDirections = HashSet<RelativeRotationDirection>()
 
     /**
@@ -13,7 +16,15 @@ abstract class CellProvider : ForgeRegistryEntry<CellProvider>() {
      * @return Unique instance of the cell. If the cell is being created by the block, the setPlaced method will be called.
      * @see CellBase.onPlaced
     */
-    abstract fun create(pos : BlockPos) : CellBase
+    protected abstract fun createInstance(pos : CellPos) : CellBase
+
+    fun create(pos : CellPos) : CellBase{
+        val instance = createInstance(pos)
+
+        instance.id = id
+
+        return instance
+    }
 
     /**
      * Used to check if a cell is valid for connection.

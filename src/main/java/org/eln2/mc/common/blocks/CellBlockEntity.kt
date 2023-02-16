@@ -14,12 +14,21 @@ import org.eln2.mc.Eln2
 import org.eln2.mc.common.PlacementRotation
 import org.eln2.mc.common.RelativeRotationDirection
 import org.eln2.mc.common.cell.*
-import org.eln2.mc.extensions.BlockEntityExtensions.getNeighborEntity
+import org.eln2.mc.common.cell.container.CellNeighborInfo
+import org.eln2.mc.common.cell.container.CellSpaceLocation
+import org.eln2.mc.common.cell.container.CellSpaceQuery
+import org.eln2.mc.common.cell.container.ICellContainer
+import org.eln2.mc.extensions.BlockPosExtensions.plus
+import org.eln2.mc.extensions.DirectionExtensions.isVertical
 import java.util.*
 import kotlin.collections.ArrayList
 
-class CellBlockEntity(var pos : BlockPos, var state: BlockState): BlockEntity(BlockRegistry.CELL_BLOCK_ENTITY.get(), pos, state) {
+class CellBlockEntity(var pos : BlockPos, var state: BlockState)
+    : BlockEntity(BlockRegistry.CELL_BLOCK_ENTITY.get(), pos, state),
+    ICellContainer {
     // Initialized when placed or loading
+
+    open val cellFace = Direction.UP
 
     lateinit var graphManager : CellGraphManager
     lateinit var cellProvider : CellProvider
@@ -57,7 +66,14 @@ class CellBlockEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Bl
             return
         }
 
-        cell = CellEntityWorldManager.place(this)
+        // Create the cell based on the provider.
+
+        cell = cellProvider.create(getCellPos())
+
+        cell!!.container = this
+        cell!!.id = cellProvider.registryName!!
+
+        CellConnectionManager.connect(this, getCellSpace())
 
         setChanged()
     }
@@ -71,44 +87,13 @@ class CellBlockEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Bl
             return
         }
 
-        CellEntityWorldManager.destroy(this)
+        CellConnectionManager.destroy(getCellSpace(), this)
     }
 
     private fun canConnectFrom(dir : Direction) : Boolean {
         val localDirection = getLocalDirection(dir)
 
         return cellProvider.canConnectFrom(localDirection)
-    }
-
-    private fun getCandidateNeighborEntities() : ArrayList<CellBlockEntity>{
-        val results = ArrayList<CellBlockEntity>()
-
-        Direction.values().forEach { direction ->
-            val entity = this.getNeighborEntity<CellBlockEntity>(direction)
-
-            if(entity != null && entity.canConnectFrom(direction.opposite)){
-                results.add(entity)
-            }
-        }
-
-        return results
-    }
-
-    fun getNeighborCells() : ArrayList<CellBase>{
-        val results = ArrayList<CellBase>();
-
-        getCandidateNeighborEntities().forEach { entity ->
-            if(entity.cell == null){
-                // The method may be called when the entity is being placed, and the circuits are being built.
-                // The cell will be null. We ignore it here.
-
-                return@forEach
-            }
-
-            results.add(entity.cell!!)
-        }
-
-        return results;
     }
 
     //#region Saving and Loading
@@ -146,7 +131,7 @@ class CellBlockEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Bl
             cell!!.onEntityUnloaded()
 
             // GC reference tracking
-            cell!!.entity = null
+            cell!!.container = null
         }
     }
 
@@ -168,11 +153,11 @@ class CellBlockEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Bl
             // fetch cell instance
             println("Loading cell at location $pos")
 
-            cell = graph.getCell(pos)
+            cell = graph.getCell(getCellPos())
 
             cellProvider = CellRegistry.getProvider(cell!!.id)
 
-            cell!!.entity = this
+            cell!!.container = this
             cell!!.onEntityLoaded()
         }
     }
@@ -192,4 +177,83 @@ class CellBlockEntity(var pos : BlockPos, var state: BlockState): BlockEntity(Bl
             result
           }
     }
+
+    private fun getCellSpace() : CellSpaceLocation{
+        return CellSpaceLocation(cell!!, cellFace)
+    }
+
+    private fun getCellPos() : CellPos{
+        return CellPos(pos, cellFace)
+    }
+
+    override fun getCells(): ArrayList<CellSpaceLocation> {
+        return arrayListOf(getCellSpace())
+    }
+
+    override fun query(query: CellSpaceQuery): CellSpaceLocation? {
+        return if(canConnectFrom(query.connectionFace)){
+            getCellSpace()
+        } else{
+            null
+        }
+    }
+
+    override fun queryNeighbors(location: CellSpaceLocation): ArrayList<CellNeighborInfo> {
+        val results = ArrayList<CellNeighborInfo>()
+
+        Direction.values()
+            .filter { !it.isVertical() }
+            .forEach { direction ->
+                val local = getLocalDirection(direction)
+
+                if(cellProvider.canConnectFrom(local)){
+                    val remoteContainer = level!!
+                        .getBlockEntity(pos + direction)
+                        as? ICellContainer
+                        ?: return@forEach
+
+                    val queryResult = remoteContainer.query(CellSpaceQuery(direction.opposite, Direction.UP))
+
+                    if(queryResult != null){
+                        val remoteRelative = remoteContainer.probeConnectionCandidate(getCellSpace(), direction.opposite)
+
+                        if(remoteRelative != null){
+                            results.add(CellNeighborInfo(queryResult, remoteContainer, local, remoteRelative))
+                        }
+
+                    }
+                }
+            }
+
+        return results
+    }
+
+    override fun probeConnectionCandidate(location: CellSpaceLocation, direction: Direction): RelativeRotationDirection? {
+        assert(location.cell == cell!!)
+
+        val local = getLocalDirection(direction)
+
+        return if(cellProvider.canConnectFrom(local)){
+            local
+        }
+        else{
+            null
+        }
+    }
+
+    override fun recordConnection(location: CellSpaceLocation, direction: RelativeRotationDirection, neighborSpace : CellSpaceLocation) {
+        Eln2.LOGGER.info("Cell Block recorded connection to the $direction")
+    }
+
+    override fun recordDeletedConnection(location: CellSpaceLocation, direction: RelativeRotationDirection) {
+        Eln2.LOGGER.info("Cell Block recorded deleted to the $direction")
+    }
+
+    override fun topologyChanged() {
+        setChanged()
+    }
+
+
+    override val manager: CellGraphManager
+        get() = CellGraphManager.getFor(serverLevel)
 }

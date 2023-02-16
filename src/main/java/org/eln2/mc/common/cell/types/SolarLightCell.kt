@@ -2,9 +2,10 @@ package org.eln2.mc.common.cell.types
 
 import net.minecraft.core.BlockPos
 import org.eln2.mc.common.cell.CellBase
+import org.eln2.mc.common.cell.CellPos
 import org.eln2.mc.common.cell.ComponentInfo
 
-class SolarLightCell(pos : BlockPos) : CellBase(pos) {
+class SolarLightCell(pos : CellPos) : CellBase(pos) {
 
     override fun clear() {}
 

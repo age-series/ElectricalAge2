@@ -1,0 +1,6 @@
+{
+    "textures": {
+        "all": "eln2:block/invisible",
+        "particle": "eln2:block/invisible"
+    }
+}

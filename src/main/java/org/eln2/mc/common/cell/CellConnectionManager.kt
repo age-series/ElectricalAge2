@@ -1,64 +1,44 @@
 package org.eln2.mc.common.cell
 
-import net.minecraft.server.level.ServerLevel
-import org.eln2.mc.common.blocks.CellBlockEntity
+import org.eln2.mc.Eln2
+import org.eln2.mc.common.cell.container.CellNeighborInfo
+import org.eln2.mc.common.cell.container.CellSpaceLocation
+import org.eln2.mc.common.cell.container.ICellContainer
 
-object CellEntityWorldManager {
-    fun place(entity : CellBlockEntity) : CellBase{
-        val provider = entity.cellProvider
+object CellConnectionManager {
+    fun connect(container : ICellContainer, cellSpace : CellSpaceLocation){
+        cellSpace.cell.onPlaced()
 
-        // Create the cell based on the provider.
-        val cell = provider.create(entity.pos)
-
-        cell.entity = entity
-        cell.id = provider.registryName!!
-
-        //val direction = PlacementRotation (entity.state.getValue(HorizontalDirectionalBlock.FACING))
-
-        val graphManager = CellGraphManager.getFor(entity.level as ServerLevel)
-
-        entity.graphManager = graphManager
-
-        // Handle updating/creating graphs using the new cell.
-        registerCell(cell)
+        registerCell(cellSpace, container)
 
         // Notify the cell of the new placement.
-        cell.onPlaced()
-
-        // Finally, build the solver.
-        cell.graph.build()
-
-        return cell
     }
 
-    fun destroy(entity : CellBlockEntity){
-        val cell = entity.cell!!
-
-        removeCell(cell)
-
-        cell.onDestroyed()
+    fun destroy(cellSpace: CellSpaceLocation, container: ICellContainer){
+        removeCell(cellSpace, container)
+        cellSpace.cell.onDestroyed()
     }
 
-    private fun removeCell(cell : CellBase){
-        val entity = cell.entity!!
-        val manager = entity.graphManager
-        val neighborCells = entity.getNeighborCells()
+    private fun removeCell(cellSpace : CellSpaceLocation, container: ICellContainer){
+        val cell = cellSpace.cell
+        val manager = container.manager
+        val neighborCells = container.queryNeighbors(cellSpace)
 
         val graph = cell.graph
 
         // This is common logic for all cases.
-        neighborCells.forEach { neighbor ->
-            neighbor.connections.remove(cell)
+        neighborCells.forEach { neighborInfo ->
+            neighborInfo.neighborSpace.cell.connections.remove(cell)
+            neighborInfo.neighborContainer.recordDeletedConnection(neighborInfo.neighborSpace, neighborInfo.neighborDirection)
         }
 
-        /*
-        * Cases:
+        /* Cases:
         *   1. We don't have any neighbors. We can destroy the circuit.
         *   2. We have a single neighbor. We can remove ourselves from the circuit.
         *   3. We have multiple neighbors, and we are not a cut vertex. We can remove ourselves from the circuit.
         *   4. We have multiple neighbors, and we are a cut vertex. We need to remove ourselves, find the new disjoint graphs,
         *        and rebuild the circuits.
-        * */
+        */
 
         if(neighborCells.isEmpty()){
             // Case 1. Destroy this circuit.
@@ -74,9 +54,13 @@ object CellEntityWorldManager {
             // Remove the cell from the circuit.
             graph.removeCell(cell)
 
-            val neighbor = neighborCells[0]
+            val neighbor = neighborCells[0].neighborSpace
 
-            neighbor.update(connectionsChanged = true, graphChanged = false)
+            neighbor.cell.update(connectionsChanged = true, graphChanged = false)
+
+            // todo: do we need to rebuild the solver?
+
+            graph.buildSolver()
         }
         else{
             // Case 3 and 4. Implement a more sophisticated algorithm, if necessary.
@@ -86,10 +70,11 @@ object CellEntityWorldManager {
         }
     }
 
-    private fun registerCell(cell : CellBase){
-        val entity = cell.entity!!
-        val manager = entity.graphManager
-        val neighborCells = entity.getNeighborCells()
+    private fun registerCell(cellSpace : CellSpaceLocation, container: ICellContainer){
+        val manager = container.manager
+        val cell = cellSpace.cell
+        val neighborInfos = container.queryNeighbors(cellSpace)
+        val neighborCells = neighborInfos.map { it.neighborSpace.cell }.toHashSet()
 
         /*
         * Cases:
@@ -102,36 +87,48 @@ object CellEntityWorldManager {
 
         // This is common logic for all cases
 
-        cell.connections = neighborCells
+        cell.connections = ArrayList(neighborInfos.map { it.neighborSpace.cell })
 
-        neighborCells.forEach { neighbor ->
-            neighbor.connections.add(cell)
+        neighborInfos.forEach { neighborInfo ->
+            Eln2.LOGGER.info("Neighbor $neighborInfo")
+
+            neighborInfo.neighborSpace.cell.connections.add(cell)
+            neighborInfo.neighborContainer.recordConnection(neighborInfo.neighborSpace, neighborInfo.neighborDirection, cellSpace)
+
+            container.recordConnection(cellSpace, neighborInfo.sourceDirection, neighborInfo.neighborSpace)
         }
 
-        if(neighborCells.isEmpty()){
+        if(neighborInfos.isEmpty()){
             // Case 1. Create new circuit
 
             val graph = manager.createGraph()
+
             graph.addCell(cell)
+            graph.buildSolver()
         }
-        else if(haveCommonCircuit(neighborCells)){
+        else if(haveCommonCircuit(neighborInfos)){
             // Case 2 and 3. Join the existing circuit.
 
-            val graph = neighborCells[0].graph
+            val graph = neighborInfos[0].neighborSpace.cell.graph
 
             graph.addCell(cell)
 
             // Add this cell to the neighbors' connections.
 
-            neighborCells.forEach { neighborCell ->
-                neighborCell.update(connectionsChanged = true, graphChanged = false)
+            neighborInfos.forEach { neighborInfo ->
+                neighborInfo.neighborSpace.cell.update(connectionsChanged = true, graphChanged = false)
             }
+
+            graph.connectCell(cell)
+
+            // todo: do we need to rebuild the solver?
+            //graph.buildSolver()
         }
         else{
             // Case 4. We need to create a new circuit, with all cells and this one.
 
             // Identify separate circuits.
-            val disjointGraphs = neighborCells.map { it.graph }.distinct()
+            val disjointGraphs = neighborInfos.map { it.neighborSpace.cell.graph }.distinct()
 
             // Create new circuit.
             val graph = manager.createGraph()
@@ -155,25 +152,29 @@ object CellEntityWorldManager {
                     val isNeighbor = neighborCells.contains(cell)
 
                     cell.update(connectionsChanged = isNeighbor, graphChanged = true)
+                    cell.container?.topologyChanged()
                 }
 
                 existingGraph.destroy()
             }
+
+            graph.buildSolver()
         }
 
         // This cell had a complete update.
         cell.update(connectionsChanged = true, graphChanged = true)
+        cell.container?.topologyChanged()
     }
 
-    private fun haveCommonCircuit(neighbors : ArrayList<CellBase>) : Boolean{
+    private fun haveCommonCircuit(neighbors : ArrayList<CellNeighborInfo>) : Boolean{
         if(neighbors.size < 2){
             return true
         }
 
-        val graph = neighbors[0].graph
+        val graph = neighbors[0].neighborSpace.cell.graph
 
-        neighbors.drop(1).forEach {cell ->
-            if(cell.graph != graph){
+        neighbors.drop(1).forEach {info ->
+            if(info.neighborSpace.cell.graph != graph){
                 return false
             }
         }
@@ -181,7 +182,7 @@ object CellEntityWorldManager {
         return true
     }
 
-    private fun rebuildTopologies(neighbors: ArrayList<CellBase>, removedCell : CellBase, manager: CellGraphManager){
+    private fun rebuildTopologies(neighborInfos: ArrayList<CellNeighborInfo>, removedCell : CellBase, manager: CellGraphManager){
         /*
         * For now, we use this simple algorithm.:
         *   We enqueue all neighbors for visitation. We perform searches through their graphs,
@@ -193,6 +194,7 @@ object CellEntityWorldManager {
         *   After a queue element has been processed, we build a new circuit with the cells we found.
         * */
 
+        val neighbors = neighborInfos.map { it.neighborSpace.cell }.toHashSet()
         val neighborQueue = ArrayDeque<CellBase>()
         neighborQueue.addAll(neighbors)
 
@@ -240,11 +242,12 @@ object CellEntityWorldManager {
                 val isNeighbor = neighbors.contains(cell)
 
                 cell.update(connectionsChanged = isNeighbor, graphChanged = true)
+                cell.container?.topologyChanged()
             }
 
             // Finally, build the solver.
 
-            graph.build()
+            graph.buildSolver()
 
             // We don't need to keep the cells, we have already traversed all the connected ones.
             bfsVisited.clear()

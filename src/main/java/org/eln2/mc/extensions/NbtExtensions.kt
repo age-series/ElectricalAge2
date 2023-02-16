@@ -1,7 +1,12 @@
 package org.eln2.mc.extensions
 
 import net.minecraft.core.BlockPos
+import net.minecraft.core.Direction
 import net.minecraft.nbt.CompoundTag
+import net.minecraft.resources.ResourceLocation
+import org.eln2.mc.common.RelativeRotationDirection
+import org.eln2.mc.common.cell.CellPos
+import org.eln2.mc.common.parts.PartUpdateType
 
 object NbtExtensions {
     fun CompoundTag.putBlockPos(key : String, pos : BlockPos) {
@@ -19,6 +24,21 @@ object NbtExtensions {
         val z = dataTag.getInt("Z")
 
         return BlockPos(x, y, z)
+    }
+
+    fun CompoundTag.putCellPos(key : String, pos : CellPos){
+        val dataTag = CompoundTag()
+        dataTag.putBlockPos("Pos", pos.blockPos)
+        dataTag.setDirection("Face", pos.face)
+        this.put(key, dataTag)
+    }
+
+    fun CompoundTag.getCellPos(key : String) : CellPos{
+        val dataTag = this.get(key) as CompoundTag
+        val blockPos = dataTag.getBlockPos("Pos")
+        val face = dataTag.getDirection("Face")
+
+        return CellPos(blockPos, face)
     }
 
     fun CompoundTag.getStringList(key: String): List<String> {
@@ -51,5 +71,53 @@ object NbtExtensions {
             tag.putString(k, v)
         }
         this.put(key, tag)
+    }
+
+    fun CompoundTag.setResourceLocation(key : String, resourceLocation: ResourceLocation){
+        this.putString(key, resourceLocation.toString())
+    }
+
+    fun CompoundTag.tryGetResourceLocation(key : String) : ResourceLocation?{
+        val str = this.getString(key)
+
+        return ResourceLocation.tryParse(str)
+    }
+
+    fun CompoundTag.getResourceLocation(key : String) : ResourceLocation{
+        return this.tryGetResourceLocation(key) ?: error("Invalid resource location with key $key")
+    }
+
+    fun CompoundTag.setDirection(key : String, direction: Direction){
+        this.putInt(key, direction.get3DDataValue())
+    }
+
+    fun CompoundTag.getDirection(key : String) : Direction{
+        val data3d = this.getInt(key)
+
+        return Direction.from3DDataValue(data3d)
+    }
+
+    fun CompoundTag.setRelativeDirection(key : String, direction : RelativeRotationDirection){
+        val data = direction.id
+
+        this.putInt(key, data)
+    }
+
+    fun CompoundTag.getRelativeDirection(key : String) : RelativeRotationDirection{
+        val data = this.getInt(key)
+
+        return RelativeRotationDirection.fromId(data)
+    }
+
+    fun CompoundTag.setPartUpdateType(key : String, type : PartUpdateType){
+        val data = type.id
+
+        this.putInt(key, data)
+    }
+
+    fun CompoundTag.getPartUpdateType(key : String) : PartUpdateType{
+        val data = this.getInt(key)
+
+        return PartUpdateType.fromId(data)
     }
 }

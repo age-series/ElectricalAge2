@@ -1,14 +1,74 @@
 package org.eln2.mc.common
 
+import com.mojang.math.Matrix4f
 import net.minecraft.core.Direction
+import org.eln2.mc.extensions.DirectionExtensions.isVertical
 
-enum class RelativeRotationDirection {
-    Front,
-    Back,
-    Left,
-    Right,
-    Up,
-    Down
+enum class RelativeRotationDirection(val id : Int) {
+    Front(1),
+    Back(2),
+    Left(3),
+    Right(4),
+    Up(5),
+    Down(6);
+
+    val opposite get() = when(this){
+        Front -> Back
+        Back -> Front
+        Left -> Right
+        Right -> Left
+        Up -> Down
+        Down -> Up
+    }
+    val isHorizontal get() = this != Up && this != Down
+    val isVertical get() = this == Up || this == Down
+
+    companion object{
+        fun fromForwardUp(facing : Direction, normal : Direction, direction: Direction) : RelativeRotationDirection{
+            if(facing.isVertical()){
+                error("Facing cannot be vertical")
+            }
+
+            if(direction == normal){
+                return Up
+            }
+
+            if(direction == normal.opposite){
+                return Down
+            }
+
+            val adjustedFacing = Direction.rotate(Matrix4f(normal.rotation), facing)
+
+            var result = when(direction){
+                adjustedFacing -> Front
+                adjustedFacing.opposite -> Back
+                adjustedFacing.getClockWise(normal.axis) -> Right
+                adjustedFacing.getCounterClockWise(normal.axis) -> Left
+                else -> error("Adjusted facing did not match")
+            }
+
+            if(normal.axisDirection == Direction.AxisDirection.NEGATIVE){
+                if(result == Left || result == Right){
+                    result = result.opposite
+                }
+            }
+
+            return result
+        }
+
+        fun fromId(id : Int) : RelativeRotationDirection{
+            return when(id){
+                Front.id -> Front
+                Back.id -> Back
+                Left.id -> Left
+                Right.id -> Right
+                Up.id -> Up
+                Down.id -> Down
+
+                else -> error("Invalid local direction id: $id")
+            }
+        }
+    }
 }
 
 class PlacementRotation(val placementDirection : Direction) {
