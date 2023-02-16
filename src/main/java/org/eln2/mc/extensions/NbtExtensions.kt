@@ -4,7 +4,7 @@ import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.resources.ResourceLocation
-import org.eln2.mc.common.RelativeRotationDirection
+import org.eln2.mc.common.space.RelativeRotationDirection
 import org.eln2.mc.common.cells.foundation.CellPos
 import org.eln2.mc.common.parts.foundation.PartUpdateType
 
@@ -103,7 +103,7 @@ object NbtExtensions {
         this.putInt(key, data)
     }
 
-    fun CompoundTag.getRelativeDirection(key : String) : RelativeRotationDirection{
+    fun CompoundTag.getRelativeDirection(key : String) : RelativeRotationDirection {
         val data = this.getInt(key)
 
         return RelativeRotationDirection.fromId(data)

@@ -1,4 +1,4 @@
-package org.eln2.mc.client.render.foundation
+package org.eln2.mc.client.render
 
 import com.jozufozu.flywheel.core.PartialModel
 import org.eln2.mc.Eln2

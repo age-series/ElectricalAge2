@@ -11,8 +11,8 @@ import net.minecraft.world.level.block.HorizontalDirectionalBlock
 import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.state.BlockState
 import org.eln2.mc.Eln2
-import org.eln2.mc.common.PlacementRotation
-import org.eln2.mc.common.RelativeRotationDirection
+import org.eln2.mc.common.space.PlacementRotation
+import org.eln2.mc.common.space.RelativeRotationDirection
 import org.eln2.mc.common.blocks.BlockRegistry
 import org.eln2.mc.common.cells.*
 import org.eln2.mc.common.cells.foundation.*
@@ -39,11 +39,11 @@ class CellBlockEntity(var pos : BlockPos, var state: BlockState)
 
     private val serverLevel get() = level as ServerLevel
 
-    private fun getPlacementRotation() : PlacementRotation{
+    private fun getPlacementRotation() : PlacementRotation {
         return PlacementRotation (state.getValue(HorizontalDirectionalBlock.FACING))
     }
 
-    private fun getLocalDirection(globalDirection : Direction) : RelativeRotationDirection{
+    private fun getLocalDirection(globalDirection : Direction) : RelativeRotationDirection {
         val placementRotation = getPlacementRotation()
 
         return placementRotation.getRelativeFromAbsolute(globalDirection)

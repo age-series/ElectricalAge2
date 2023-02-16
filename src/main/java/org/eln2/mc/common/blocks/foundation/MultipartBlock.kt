@@ -26,7 +26,7 @@ import net.minecraft.world.phys.shapes.VoxelShape
 import org.eln2.mc.Eln2
 import org.eln2.mc.common.blocks.BlockRegistry
 import org.eln2.mc.common.parts.foundation.Part
-import org.eln2.mc.common.parts.foundation.PartRegistry
+import org.eln2.mc.common.parts.PartRegistry
 import java.util.*
 
 class MultipartBlock : BaseEntityBlock(Properties.of(Material.STONE).noOcclusion().destroyTime(0.2f)) {

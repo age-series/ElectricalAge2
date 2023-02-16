@@ -1,4 +1,4 @@
-package org.eln2.mc.common
+package org.eln2.mc.common.tabs
 
 import net.minecraft.world.item.CreativeModeTab
 import net.minecraft.world.item.ItemStack

@@ -10,12 +10,12 @@ import net.minecraftforge.registries.DeferredRegister
 import net.minecraftforge.registries.ForgeRegistries
 import net.minecraftforge.registries.RegistryObject
 import org.eln2.mc.Eln2
+import org.eln2.mc.common.blocks.cells.*
 import org.eln2.mc.common.blocks.foundation.CellBlock
 import org.eln2.mc.common.blocks.foundation.CellBlockEntity
 import org.eln2.mc.common.blocks.foundation.MultipartBlock
 import org.eln2.mc.common.blocks.foundation.MultipartBlockEntity
-import org.eln2.mc.common.blocks.cells.*
-import org.eln2.mc.common.eln2Tab
+import org.eln2.mc.common.tabs.eln2Tab
 
 object BlockRegistry {
     private val BLOCK_REGISTRY = DeferredRegister.create(ForgeRegistries.BLOCKS, Eln2.MODID)!! // Yeah, if this fails blow up the game
@@ -50,7 +50,7 @@ object BlockRegistry {
         val item: RegistryObject<BlockItem>
     )
 
-    private fun registerCellBlock(name : String, tab: CreativeModeTab? = null, supplier : () -> CellBlock) : CellBlockRegistryItem{
+    private fun registerCellBlock(name : String, tab: CreativeModeTab? = null, supplier : () -> CellBlock) : CellBlockRegistryItem {
         val block = BLOCK_REGISTRY.register(name) { supplier() }
         val item = BLOCK_ITEM_REGISTRY.register(name) { BlockItem(block.get(), Item.Properties().also {if (tab != null) it.tab(tab)}) }
         return CellBlockRegistryItem(name, block, item)

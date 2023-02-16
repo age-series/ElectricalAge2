@@ -1,6 +1,6 @@
 package org.eln2.mc.extensions
 
-import org.eln2.mc.common.DirectionMask
+import org.eln2.mc.common.space.DirectionMask
 
 object DirectionMaskExtensions {
     /**

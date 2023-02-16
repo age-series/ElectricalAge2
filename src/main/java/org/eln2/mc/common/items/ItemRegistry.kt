@@ -9,7 +9,7 @@ import net.minecraftforge.registries.ForgeRegistries
 import net.minecraftforge.registries.RegistryObject
 import org.eln2.mc.Eln2
 import org.eln2.mc.Eln2.LOGGER
-import org.eln2.mc.common.eln2Tab
+import org.eln2.mc.common.tabs.eln2Tab
 
 object ItemRegistry {
     @Suppress("MemberVisibilityCanBePrivate") // Used for item registration and fetching

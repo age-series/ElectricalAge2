@@ -4,7 +4,7 @@ import net.minecraft.client.gui.screens.MenuScreens
 import net.minecraftforge.eventbus.api.SubscribeEvent
 import net.minecraftforge.fml.common.Mod.EventBusSubscriber
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent
-import org.eln2.mc.client.render.foundation.FlywheelRegistry
+import org.eln2.mc.client.render.FlywheelRegistry
 import org.eln2.mc.client.screens.CapacitorCellScreen
 import org.eln2.mc.client.screens.InductorCellScreen
 import org.eln2.mc.client.screens.ResistorCellScreen

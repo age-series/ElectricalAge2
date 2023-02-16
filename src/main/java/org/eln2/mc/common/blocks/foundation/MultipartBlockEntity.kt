@@ -23,9 +23,8 @@ import net.minecraft.world.phys.shapes.Shapes
 import net.minecraft.world.phys.shapes.VoxelShape
 import org.eln2.mc.Eln2
 import org.eln2.mc.client.render.MultipartBlockEntityInstance
-import org.eln2.mc.common.DirectionMask
-import org.eln2.mc.common.RelativeRotationDirection
-import org.eln2.mc.common.blocks.BlockRegistry
+import org.eln2.mc.common.space.DirectionMask
+import org.eln2.mc.common.space.RelativeRotationDirection
 import org.eln2.mc.common.cells.foundation.CellConnectionManager
 import org.eln2.mc.common.cells.foundation.CellGraphManager
 import org.eln2.mc.common.cells.foundation.CellNeighborInfo
@@ -49,6 +48,8 @@ import org.eln2.mc.extensions.NbtExtensions.setResourceLocation
 import org.eln2.mc.utility.AABBUtilities
 import org.eln2.mc.annotations.ClientOnly
 import org.eln2.mc.annotations.ServerOnly
+import org.eln2.mc.common.blocks.BlockRegistry
+import org.eln2.mc.common.parts.PartRegistry
 import java.util.concurrent.ConcurrentLinkedQueue
 
 /**

@@ -1,4 +1,4 @@
-package org.eln2.mc.common
+package org.eln2.mc.common.space
 
 import net.minecraft.core.Direction
 import org.eln2.mc.extensions.DirectionExtensions.directionAlias
@@ -32,15 +32,15 @@ value class DirectionMask(val mask : Int){
             .map { DirectionMask(getBit(it)) }
             .toTypedArray()
 
-        fun of(direction: Direction) : DirectionMask{
+        fun of(direction: Direction) : DirectionMask {
             return perDirection[direction.index()]
         }
 
-        fun ofRelative(direction: RelativeRotationDirection) : DirectionMask{
+        fun ofRelative(direction: RelativeRotationDirection) : DirectionMask {
             return of(direction.directionAlias())
         }
 
-        fun of(directions : List<Direction>) : DirectionMask{
+        fun of(directions : List<Direction>) : DirectionMask {
             if(directions.isEmpty()){
                 return EMPTY
             }
@@ -51,11 +51,11 @@ value class DirectionMask(val mask : Int){
             )
         }
 
-        fun of(vararg directions : Direction) : DirectionMask{
+        fun of(vararg directions : Direction) : DirectionMask {
             return of(directions.asList())
         }
 
-        fun ofRelatives(directions : List<RelativeRotationDirection>) : DirectionMask{
+        fun ofRelatives(directions : List<RelativeRotationDirection>) : DirectionMask {
             if(directions.isEmpty()){
                 return EMPTY
             }
@@ -66,7 +66,7 @@ value class DirectionMask(val mask : Int){
             )
         }
 
-        fun ofRelatives(vararg directions : RelativeRotationDirection) : DirectionMask{
+        fun ofRelatives(vararg directions : RelativeRotationDirection) : DirectionMask {
             return ofRelatives(directions.asList())
         }
 
@@ -102,7 +102,7 @@ value class DirectionMask(val mask : Int){
                 return@map DirectionMask(result) }
             .toTypedArray()
 
-        fun perpendicular(direction: Direction) : DirectionMask{
+        fun perpendicular(direction: Direction) : DirectionMask {
             return perpendiculars[direction.index()]
         }
 
@@ -134,11 +134,11 @@ value class DirectionMask(val mask : Int){
         }
 
         private val clockwiseMasks = allMasks
-            .map { mask -> mask.transformed({ dir -> dir.clockWise }, ::horizontalFilter) }
+            .map { mask -> mask.transformed({ dir -> dir.clockWise }, Companion::horizontalFilter) }
             .toTypedArray()
 
         private val counterClockwiseMasks = allMasks
-            .map { mask -> mask.transformed({ dir -> dir.counterClockWise }, ::horizontalFilter) }
+            .map { mask -> mask.transformed({ dir -> dir.counterClockWise }, Companion::horizontalFilter) }
             .toTypedArray()
 
         private val oppositeMasks = allMasks
@@ -232,7 +232,7 @@ value class DirectionMask(val mask : Int){
 
     //#region Transformations
 
-    private fun transformed(transform : ((Direction) -> Direction)) : DirectionMask{
+    private fun transformed(transform : ((Direction) -> Direction)) : DirectionMask {
         if(isEmpty){
             // REQUIRED
             return EMPTY
@@ -245,7 +245,7 @@ value class DirectionMask(val mask : Int){
      * Applies the specified transform function to the mask's directions, if they match the filter, and returns the transformed mask.
      * If they do not match the filter, the direction remains unaffected.
      * */
-    fun transformed(transform : ((Direction) -> Direction), filter : ((Direction) -> Boolean)) : DirectionMask{
+    fun transformed(transform : ((Direction) -> Direction), filter : ((Direction) -> Boolean)) : DirectionMask {
         if(isEmpty){
             // REQUIRED
             return EMPTY
@@ -262,7 +262,7 @@ value class DirectionMask(val mask : Int){
     // We want these APIs to not affect vertical directions, and OPPOSITE would.
     // To do so, we get the opposite of the horizontal components, then combine that with the original vertical components
 
-    fun clockWise(steps : Int) : DirectionMask{
+    fun clockWise(steps : Int) : DirectionMask {
         return when(val remainder = steps % 4){
            0 -> this
            1 -> this.clockWise
@@ -272,7 +272,7 @@ value class DirectionMask(val mask : Int){
         }
     }
 
-    fun counterClockWise(steps : Int) : DirectionMask{
+    fun counterClockWise(steps : Int) : DirectionMask {
         return when(val remainder = steps % 4){
             0 -> this
             1 -> this.counterClockWise
@@ -292,19 +292,19 @@ value class DirectionMask(val mask : Int){
 
     val count get() = mask.countOneBits()
 
-    operator fun plus(other : DirectionMask) : DirectionMask{
+    operator fun plus(other : DirectionMask) : DirectionMask {
         return DirectionMask(this.mask or other.mask)
     }
 
-    operator fun plus(direction: Direction) : DirectionMask{
+    operator fun plus(direction: Direction) : DirectionMask {
         return DirectionMask(this.mask or getBit(direction))
     }
 
-    operator fun minus(direction: Direction) : DirectionMask{
+    operator fun minus(direction: Direction) : DirectionMask {
         return DirectionMask(this.mask and getBit(direction).inv())
     }
 
-    operator fun minus(mask : DirectionMask) : DirectionMask{
+    operator fun minus(mask : DirectionMask) : DirectionMask {
         return DirectionMask(this.mask and mask.mask.inv())
     }
 }
