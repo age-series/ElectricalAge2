@@ -6,7 +6,6 @@ import org.eln2.mc.common.cells.foundation.CellPos
 import org.eln2.mc.common.cells.foundation.ComponentInfo
 import org.eln2.mc.extensions.ComponentExtensions.connectToPinOf
 import org.eln2.mc.utility.UnitType
-import org.eln2.mc.utility.ValueText
 import org.eln2.mc.utility.ValueText.valueText
 import kotlin.math.abs
 

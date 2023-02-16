@@ -10,9 +10,6 @@ import org.eln2.mc.Eln2
 import org.eln2.mc.common.blocks.BlockRegistry
 
 object ContainerRegistry {
-    /**
-     * Remember to also register your GUI's Screens on the client in [org.eln2.mc.client.events.ClientEvents.clientSetup]
-     */
     @JvmStatic
     val CONTAINER_REGISTRY: DeferredRegister<MenuType<*>> = DeferredRegister.create(
         ForgeRegistries.CONTAINERS,
