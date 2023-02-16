@@ -51,12 +51,6 @@ abstract class CellBase(val pos: CellPos) {
     open fun update(connectionsChanged: Boolean, graphChanged: Boolean) {}
 
     /**
-     * Called to get a map of key value pairs of circuit properties for the WAILA clone and the plotter.
-     * @return Map of circuit property (eg, "voltage") and value (eg, "5.0V")
-     */
-    abstract fun getHudMap(): Map<String, String>
-
-    /**
      * This method is called before the Circuit is being rebuilt.
      */
     abstract fun clear()

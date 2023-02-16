@@ -1,5 +1,6 @@
 package org.eln2.mc.common.parts
 
+import mcp.mobius.waila.api.IPluginConfig
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.nbt.ListTag
 import net.minecraft.resources.ResourceLocation
@@ -12,6 +13,8 @@ import org.eln2.mc.common.parts.foundation.*
 import org.eln2.mc.common.space.RelativeRotationDirection
 import org.eln2.mc.extensions.NbtExtensions.getRelativeDirection
 import org.eln2.mc.extensions.NbtExtensions.putRelativeDirection
+import org.eln2.mc.integration.waila.IWailaProvider
+import org.eln2.mc.integration.waila.TooltipBuilder
 
 class WirePart(id: ResourceLocation, context: PartPlacementContext) :
     CellPart(id, context, CellRegistry.WIRE_CELL.get()) {
@@ -113,14 +116,12 @@ class WirePart(id: ResourceLocation, context: PartPlacementContext) :
     override fun recordConnection(direction: RelativeRotationDirection, mode: ConnectionMode) {
         Eln2.LOGGER.error("Wire $this record $direction : $mode")
         connectedDirections.add(direction)
-        syncChanges()
-        invalidateSave()
+        syncAndSave()
     }
 
     override fun recordDeletedConnection(direction: RelativeRotationDirection) {
         connectedDirections.remove(direction)
-        syncChanges()
-        invalidateSave()
+        syncAndSave()
     }
 
     override fun onUsedBy(context: PartUseContext): InteractionResult {

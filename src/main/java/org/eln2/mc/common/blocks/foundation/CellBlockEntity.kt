@@ -1,5 +1,6 @@
 package org.eln2.mc.common.blocks.foundation
 
+import mcp.mobius.waila.api.IPluginConfig
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
 import net.minecraft.nbt.CompoundTag
@@ -18,11 +19,14 @@ import org.eln2.mc.common.space.PlacementRotation
 import org.eln2.mc.common.space.RelativeRotationDirection
 import org.eln2.mc.extensions.BlockPosExtensions.plus
 import org.eln2.mc.extensions.DirectionExtensions.isVertical
+import org.eln2.mc.integration.waila.IWailaProvider
+import org.eln2.mc.integration.waila.TooltipBuilder
 import java.util.*
 
 class CellBlockEntity(var pos: BlockPos, var state: BlockState) :
     BlockEntity(BlockRegistry.CELL_BLOCK_ENTITY.get(), pos, state),
-    ICellContainer {
+    ICellContainer,
+    IWailaProvider {
     // Initialized when placed or loading
 
     open val cellFace = Direction.UP
@@ -160,20 +164,6 @@ class CellBlockEntity(var pos: BlockPos, var state: BlockState) :
 
     //#endregion
 
-    fun getHudMap(): Map<String, String> {
-        return if (cell == null) {
-            Eln2.LOGGER.warn("You're trying to reference cell in getHudMap from the client side, where cell is always null!")
-            mapOf()
-        } else {
-            // fixme: debug data
-
-            val result = cell!!.getHudMap().toMutableMap()
-            result["Graph"] = cell?.graph?.id?.toString() ?: "GRAPH NULL"
-
-            result
-        }
-    }
-
     private fun getCellSpace(): CellInfo {
         return CellInfo(cell!!, cellFace)
     }
@@ -249,7 +239,14 @@ class CellBlockEntity(var pos: BlockPos, var state: BlockState) :
         setChanged()
     }
 
-
     override val manager: CellGraphManager
         get() = CellGraphManager.getFor(serverLevel)
+
+    override fun appendBody(builder: TooltipBuilder, config: IPluginConfig?) {
+        val cell = this.cell
+
+        if(cell is IWailaProvider){
+            cell.appendBody(builder, config)
+        }
+    }
 }
