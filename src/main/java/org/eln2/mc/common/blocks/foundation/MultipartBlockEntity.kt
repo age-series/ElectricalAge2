@@ -1,5 +1,6 @@
 package org.eln2.mc.common.blocks.foundation
 
+import mcp.mobius.waila.api.IPluginConfig
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
 import net.minecraft.nbt.CompoundTag
@@ -44,6 +45,8 @@ import org.eln2.mc.extensions.NbtExtensions.putBlockPos
 import org.eln2.mc.extensions.NbtExtensions.putDirection
 import org.eln2.mc.extensions.NbtExtensions.putPartUpdateType
 import org.eln2.mc.extensions.NbtExtensions.putResourceLocation
+import org.eln2.mc.integration.waila.IWailaProvider
+import org.eln2.mc.integration.waila.TooltipBuilder
 import org.eln2.mc.utility.BoundingBox
 import java.util.concurrent.ConcurrentLinkedQueue
 
@@ -57,7 +60,8 @@ import java.util.concurrent.ConcurrentLinkedQueue
  * */
 class MultipartBlockEntity(var pos: BlockPos, var state: BlockState) :
     BlockEntity(BlockRegistry.MULTIPART_BLOCK_ENTITY.get(), pos, state),
-    ICellContainer {
+    ICellContainer,
+    IWailaProvider {
 
     private val parts = HashMap<Direction, Part>()
 
@@ -985,6 +989,16 @@ class MultipartBlockEntity(var pos: BlockPos, var state: BlockState) :
             }
 
             Eln2.LOGGER.info("Multipart tick")
+        }
+    }
+
+    override fun appendBody(builder: TooltipBuilder, config: IPluginConfig?) {
+        parts.values.forEach { part ->
+            if(part !is IWailaProvider){
+                return@forEach
+            }
+
+            part.appendBody(builder, config)
         }
     }
 }
