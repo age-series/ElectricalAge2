@@ -1,10 +1,13 @@
 package org.eln2.mc.common.cells
 
+import mcp.mobius.waila.api.IPluginConfig
 import org.ageseries.libage.sim.electrical.mna.component.Resistor
 import org.eln2.mc.common.cells.foundation.CellBase
 import org.eln2.mc.common.cells.foundation.CellPos
 import org.eln2.mc.common.cells.foundation.ComponentInfo
 import org.eln2.mc.extensions.ComponentExtensions.connect
+import org.eln2.mc.integration.waila.IWailaProvider
+import org.eln2.mc.integration.waila.TooltipBuilder
 import org.eln2.mc.utility.UnitType
 import org.eln2.mc.utility.ValueText
 
@@ -45,24 +48,4 @@ class LightCell(pos: CellPos) : CellBase(pos) {
     }
 
     private val neighbourToResistorLookup = HashMap<CellBase, Resistor>()
-
-    override fun getHudMap(): Map<String, String> {
-        val voltage: String = ValueText.valueText(0.0, UnitType.VOLT)
-        var current: String = ValueText.valueText(0.0, UnitType.AMPERE)
-        val map = mutableMapOf<String, String>()
-
-        try {
-            val currents = connections.map { (getOfferedComponent(it).component as Resistor).current }
-            val currentString = currents.joinToString(", ") { ValueText.valueText(it, UnitType.AMPERE) }
-            if (currentString.isNotEmpty())
-                current = currentString
-        } catch (_: Exception) {
-            // don't care, sim is in a bad/unready state
-        }
-
-        map["voltage"] = voltage
-        map["current"] = current
-
-        return map
-    }
 }

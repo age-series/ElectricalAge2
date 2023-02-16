@@ -1,15 +1,18 @@
 package org.eln2.mc.common.cells
 
+import mcp.mobius.waila.api.IPluginConfig
 import org.ageseries.libage.sim.electrical.mna.component.Capacitor
 import org.eln2.mc.common.cells.foundation.CellBase
 import org.eln2.mc.common.cells.foundation.CellPos
 import org.eln2.mc.common.cells.foundation.ComponentInfo
 import org.eln2.mc.common.cells.foundation.ISingleElementGuiCell
 import org.eln2.mc.extensions.ComponentExtensions.connect
+import org.eln2.mc.integration.waila.IWailaProvider
+import org.eln2.mc.integration.waila.TooltipBuilder
 import org.eln2.mc.utility.UnitType
 import org.eln2.mc.utility.ValueText.valueText
 
-class CapacitorCell(pos: CellPos) : CellBase(pos), ISingleElementGuiCell<Double> {
+class CapacitorCell(pos: CellPos) : CellBase(pos), ISingleElementGuiCell<Double>, IWailaProvider {
     lateinit var capacitor: Capacitor
     var added = false
 
@@ -35,34 +38,23 @@ class CapacitorCell(pos: CellPos) : CellBase(pos), ISingleElementGuiCell<Double>
         }
     }
 
-    override fun getHudMap(): Map<String, String> {
-        var voltage: String = valueText(0.0, UnitType.VOLT)
-        var current: String = valueText(0.0, UnitType.AMPERE)
-        val capacitance: String = valueText(capacitor.capacitance, UnitType.FARAD)
-        var joules: String = valueText(0.0, UnitType.JOULE)
-        val map = mutableMapOf<String, String>()
-
-        try {
-            current = valueText(capacitor.current, UnitType.AMPERE)
-            joules = valueText(capacitor.energy, UnitType.JOULE)
-            voltage = capacitor.pins.joinToString(", ") { valueText(it.node?.potential ?: 0.0, UnitType.VOLT) }
-        } catch (_: Exception) {
-            // No results from simulator
-        }
-
-        map["voltage"] = voltage
-        map["current"] = current
-        map["capacitance"] = capacitance
-        map["energy"] = joules
-
-        return map
-    }
-
     override fun getGuiValue(): Double {
         return capacitor.capacitance
     }
 
     override fun setGuiValue(value: Double) {
         capacitor.capacitance = value
+    }
+
+    override fun appendBody(builder: TooltipBuilder, config: IPluginConfig?) {
+        builder.capacitance(capacitor.capacitance)
+
+        try {
+            builder.current(capacitor.current)
+            builder.energy(capacitor.energy)
+            builder.pinVoltages(capacitor.pins)
+        } catch (_: Exception) {
+            // No results from simulator
+        }
     }
 }

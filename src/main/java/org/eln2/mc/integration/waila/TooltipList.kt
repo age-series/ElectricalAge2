@@ -6,6 +6,7 @@ import net.minecraft.nbt.CompoundTag
 import net.minecraft.nbt.ListTag
 import net.minecraft.network.chat.TextComponent
 import net.minecraft.network.chat.TranslatableComponent
+import org.ageseries.libage.sim.electrical.mna.component.Pin
 import org.eln2.mc.integration.waila.TooltipEntryType.Companion.getTooltipEntryType
 import org.eln2.mc.integration.waila.TooltipEntryType.Companion.putTooltipEntryType
 import org.eln2.mc.utility.UnitType
@@ -121,8 +122,16 @@ class TooltipBuilder {
         return this
     }
 
+    fun mode(value : String) : TooltipBuilder{
+        return translateText("mode", value)
+    }
+
     fun current(value : Double) : TooltipBuilder{
         return translateText("current", ValueText.valueText(value, UnitType.AMPERE))
+    }
+
+    fun energy(value: Double) : TooltipBuilder{
+        return translateText("energy", ValueText.valueText(value, UnitType.JOULE))
     }
 
     fun voltage(value : Double) : TooltipBuilder{
@@ -143,6 +152,10 @@ class TooltipBuilder {
 
     fun power(value : Double) : TooltipBuilder{
         return translateText("power", ValueText.valueText(value, UnitType.WATT))
+    }
+
+    fun pinVoltages(pins : MutableList<Pin>){
+        pins.forEach { voltage(it.node?.potential ?: 0.0) }
     }
 
     fun build() : TooltipList{

@@ -160,20 +160,6 @@ class CellBlockEntity(var pos: BlockPos, var state: BlockState) :
 
     //#endregion
 
-    fun getHudMap(): Map<String, String> {
-        return if (cell == null) {
-            Eln2.LOGGER.warn("You're trying to reference cell in getHudMap from the client side, where cell is always null!")
-            mapOf()
-        } else {
-            // fixme: debug data
-
-            val result = cell!!.getHudMap().toMutableMap()
-            result["Graph"] = cell?.graph?.id?.toString() ?: "GRAPH NULL"
-
-            result
-        }
-    }
-
     private fun getCellSpace(): CellInfo {
         return CellInfo(cell!!, cellFace)
     }

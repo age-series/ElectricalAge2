@@ -1,5 +1,6 @@
 package org.eln2.mc.common.parts.foundation
 
+import mcp.mobius.waila.api.IPluginConfig
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.level.ServerLevel
@@ -9,6 +10,8 @@ import org.eln2.mc.common.cells.foundation.CellBase
 import org.eln2.mc.common.cells.foundation.CellGraphManager
 import org.eln2.mc.common.cells.foundation.CellPos
 import org.eln2.mc.common.cells.foundation.CellProvider
+import org.eln2.mc.integration.waila.IWailaProvider
+import org.eln2.mc.integration.waila.TooltipBuilder
 import java.util.*
 
 /**
@@ -21,7 +24,8 @@ abstract class CellPart(
 ) :
 
     Part(id, placementContext),
-    IPartCellContainer {
+    IPartCellContainer,
+    IWailaProvider {
 
     /**
      * The actual cell contained within this part.
@@ -113,6 +117,16 @@ abstract class CellPart(
 
         cell.container = placementContext.multipart
         cell.onEntityLoaded()
+    }
+
+    override fun appendBody(builder: TooltipBuilder, config: IPluginConfig?) {
+        if(hasCell){
+            val cell = this.cell
+
+            if(cell is IWailaProvider){
+                cell.appendBody(builder, config)
+            }
+        }
     }
 
     override val allowPlanarConnections = true

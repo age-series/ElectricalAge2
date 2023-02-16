@@ -13,8 +13,4 @@ class SolarLightCell(pos: CellPos) : CellBase(pos) {
     }
 
     override fun buildConnections() {}
-
-    override fun getHudMap(): Map<String, String> {
-        return mapOf()
-    }
 }

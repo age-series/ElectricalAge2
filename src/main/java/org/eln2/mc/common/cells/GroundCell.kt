@@ -1,14 +1,17 @@
 package org.eln2.mc.common.cells
 
+import mcp.mobius.waila.api.IPluginConfig
 import org.ageseries.libage.sim.electrical.mna.component.Resistor
 import org.eln2.mc.common.cells.foundation.CellBase
 import org.eln2.mc.common.cells.foundation.CellPos
 import org.eln2.mc.common.cells.foundation.ComponentInfo
 import org.eln2.mc.extensions.ComponentExtensions.connect
+import org.eln2.mc.integration.waila.IWailaProvider
+import org.eln2.mc.integration.waila.TooltipBuilder
 import org.eln2.mc.utility.UnitType
 import org.eln2.mc.utility.ValueText.valueText
 
-class GroundCell(pos: CellPos) : CellBase(pos) {
+class GroundCell(pos: CellPos) : CellBase(pos), IWailaProvider {
 
     /*  R -> local resistors. Their first pin is grounded.
     *   C -> remote components. The second pin of the local resistors is used for them.
@@ -46,23 +49,13 @@ class GroundCell(pos: CellPos) : CellBase(pos) {
 
     private val neighbourToResistorLookup = HashMap<CellBase, Resistor>()
 
-    override fun getHudMap(): Map<String, String> {
-        val voltage: String = valueText(0.0, UnitType.VOLT)
-        var current: String = valueText(0.0, UnitType.AMPERE)
-        val map = mutableMapOf<String, String>()
-
+    override fun appendBody(builder: TooltipBuilder, config: IPluginConfig?) {
         try {
-            val currents = connections.map { (getOfferedComponent(it).component as Resistor).current }
-            val currentString = currents.joinToString(", ") { valueText(it, UnitType.AMPERE) }
-            if (currentString.isNotEmpty())
-                current = currentString
+            connections
+                .map { (getOfferedComponent(it).component as Resistor).current }
+                .forEach { builder.current(it) }
         } catch (_: Exception) {
             // don't care, sim is in a bad/unready state
         }
-
-        map["voltage"] = voltage
-        map["current"] = current
-
-        return map
     }
 }
