@@ -8,17 +8,16 @@ import com.mojang.math.Quaternion
 import com.mojang.math.Vector3f
 import net.minecraft.world.phys.Vec3
 import org.eln2.mc.Eln2
-import org.eln2.mc.client.flywheel.instances.MultipartBlockEntityInstance
 import org.eln2.mc.client.render.PartialModels.WIRE_CORNER
 import org.eln2.mc.client.render.PartialModels.WIRE_CROSSING
 import org.eln2.mc.client.render.PartialModels.WIRE_CROSSING_EMPTY
 import org.eln2.mc.client.render.PartialModels.WIRE_CROSSING_FULL
 import org.eln2.mc.client.render.PartialModels.WIRE_CROSSING_SINGLE_WIRE
 import org.eln2.mc.client.render.PartialModels.WIRE_STRAIGHT
-import org.eln2.mc.common.DirectionMask
-import org.eln2.mc.common.RelativeRotationDirection
-import org.eln2.mc.common.parts.IPartRenderer
-import org.eln2.mc.common.parts.part.WirePart
+import org.eln2.mc.common.parts.WirePart
+import org.eln2.mc.common.parts.foundation.IPartRenderer
+import org.eln2.mc.common.space.DirectionMask
+import org.eln2.mc.common.space.RelativeRotationDirection
 import org.eln2.mc.extensions.DirectionMaskExtensions.matchCounterClockWise
 import org.eln2.mc.extensions.ModelDataExtensions.blockCenter
 import org.eln2.mc.extensions.ModelDataExtensions.zeroCenter
@@ -27,8 +26,8 @@ import org.eln2.mc.extensions.Vec3Extensions.times
 import org.eln2.mc.extensions.Vec3Extensions.toVec3
 import java.util.concurrent.atomic.AtomicReference
 
-class WirePartRenderer(val part : WirePart) : IPartRenderer {
-    companion object{
+class WirePartRenderer(val part: WirePart) : IPartRenderer {
+    companion object {
         // P.S. these are also written in respect to the model rotation.
 
         private val caseMap = mapOf(
@@ -41,13 +40,13 @@ class WirePartRenderer(val part : WirePart) : IPartRenderer {
         )
     }
 
-    private lateinit var multipartInstance : MultipartBlockEntityInstance
-    private var modelInstance : ModelData? = null
+    private lateinit var multipartInstance: MultipartBlockEntityInstance
+    private var modelInstance: ModelData? = null
 
     // Reset on every frame
     private var latestDirections = AtomicReference<List<RelativeRotationDirection>>()
 
-    fun applyDirections(directions : List<RelativeRotationDirection>){
+    fun applyDirections(directions: List<RelativeRotationDirection>) {
         latestDirections.set(directions)
     }
 
@@ -55,14 +54,14 @@ class WirePartRenderer(val part : WirePart) : IPartRenderer {
         multipartInstance = multipart
     }
 
-    override fun beginFrame(){
+    override fun beginFrame() {
         selectModel()
     }
 
-    private fun selectModel(){
+    private fun selectModel() {
         val directions =
             latestDirections.getAndSet(null)
-            ?: return
+                ?: return
 
         val mask = DirectionMask.ofRelatives(directions)
 
@@ -72,7 +71,7 @@ class WirePartRenderer(val part : WirePart) : IPartRenderer {
         caseMap.forEach { (mappingMask, model) ->
             val match = mappingMask.matchCounterClockWise(mask)
 
-            if(match != -1){
+            if (match != -1) {
                 found = true
 
                 updateInstance(model, Vector3f.YP.rotationDegrees(90f * match))
@@ -81,12 +80,12 @@ class WirePartRenderer(val part : WirePart) : IPartRenderer {
             }
         }
 
-        if(!found){
+        if (!found) {
             Eln2.LOGGER.error("Wire did not handle cases: $directions")
         }
     }
 
-    private fun updateInstance(model : PartialModel, rotation : Quaternion){
+    private fun updateInstance(model: PartialModel, rotation: Quaternion) {
         modelInstance?.delete()
 
         // Conversion equation:
@@ -112,7 +111,7 @@ class WirePartRenderer(val part : WirePart) : IPartRenderer {
     }
 
     override fun relightModels(): List<FlatLit<*>> {
-        if(modelInstance != null){
+        if (modelInstance != null) {
             return listOf(modelInstance!!)
         }
 

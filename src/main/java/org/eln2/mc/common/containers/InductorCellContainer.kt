@@ -3,8 +3,8 @@ package org.eln2.mc.common.containers
 import net.minecraft.server.level.ServerPlayer
 import net.minecraft.world.entity.player.Inventory
 import net.minecraft.world.entity.player.Player
-import org.eln2.mc.common.blocks.CellBlockEntity
-import org.eln2.mc.common.cell.types.InductorCell
+import org.eln2.mc.common.blocks.foundation.CellBlockEntity
+import org.eln2.mc.common.cells.InductorCell
 import org.eln2.mc.common.containers.ContainerRegistry.INDUCTOR_CELL_CONTAINER
 import org.eln2.mc.common.network.Networking
 import org.eln2.mc.common.network.serverToClient.SingleDoubleElementGuiOpenPacket

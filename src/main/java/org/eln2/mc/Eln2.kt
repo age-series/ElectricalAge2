@@ -1,25 +1,22 @@
 package org.eln2.mc
 
-import net.minecraft.core.Direction
 import net.minecraft.resources.ResourceLocation
 import net.minecraftforge.api.distmarker.Dist
 import net.minecraftforge.fml.common.Mod
 import net.minecraftforge.fml.loading.FMLEnvironment
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
-import org.eln2.mc.client.events.ClientEvents
+import org.eln2.mc.client.ClientEvents
 import org.eln2.mc.client.render.PartialModels
-import org.eln2.mc.common.Configuration
-import org.eln2.mc.common.ElectricalAgeConfiguration
-import org.eln2.mc.common.RelativeRotationDirection
 import org.eln2.mc.common.blocks.BlockRegistry
-import org.eln2.mc.common.cell.CellRegistry
+import org.eln2.mc.common.cells.CellRegistry
+import org.eln2.mc.common.configs.Configuration
+import org.eln2.mc.common.configs.ElectricalAgeConfiguration
 import org.eln2.mc.common.containers.ContainerRegistry
 import org.eln2.mc.common.items.ItemRegistry
 import org.eln2.mc.common.network.ModStatistics
 import org.eln2.mc.common.network.Networking
 import org.eln2.mc.common.parts.PartRegistry
-import org.eln2.mc.extensions.DirectionExtensions.isVertical
 import thedarkcolour.kotlinforforge.forge.MOD_BUS
 
 @Mod(Eln2.MODID)
@@ -56,8 +53,7 @@ object Eln2 {
         }
     }
 
-    fun resource(path : String) : ResourceLocation{
+    fun resource(path: String): ResourceLocation {
         return ResourceLocation(MODID, path)
     }
-
 }

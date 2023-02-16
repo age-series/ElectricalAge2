@@ -10,9 +10,6 @@ import org.eln2.mc.Eln2
 import org.eln2.mc.common.blocks.BlockRegistry
 
 object ContainerRegistry {
-    /**
-     * Remember to also register your GUI's Screens on the client in [org.eln2.mc.client.events.ClientEvents.clientSetup]
-     */
     @JvmStatic
     val CONTAINER_REGISTRY: DeferredRegister<MenuType<*>> = DeferredRegister.create(
         ForgeRegistries.CONTAINERS,
@@ -31,7 +28,7 @@ object ContainerRegistry {
     ): RegistryObject<MenuType<T>> = CONTAINER_REGISTRY.register(name) { supplier() }
 
     val VOLTAGE_SOURCE_CELL_CONTAINER = registerGuiContainer(BlockRegistry.VOLTAGE_SOURCE_CELL.name) {
-        MenuType {id, inv ->
+        MenuType { id, inv ->
             VoltageSourceCellContainer(id, inv, inv.player)
         }
     }

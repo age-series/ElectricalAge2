@@ -1,6 +1,6 @@
 import net.minecraft.core.Direction
-import org.eln2.mc.common.DirectionMask
-import org.eln2.mc.common.RelativeRotationDirection
+import org.eln2.mc.common.space.DirectionMask
+import org.eln2.mc.common.space.RelativeRotationDirection
 import org.eln2.mc.extensions.DirectionExtensions.isHorizontal
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.fail
@@ -147,7 +147,8 @@ class DirectionMaskTests {
     private fun testTransform(
         maskTransform : ((DirectionMask) -> DirectionMask),
         directionTransform : ((Direction) -> Direction),
-        mask : DirectionMask){
+        mask : DirectionMask
+    ){
 
         val transformedDirections = maskTransform(mask).directionList
 
