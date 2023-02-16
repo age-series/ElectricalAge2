@@ -13,6 +13,7 @@ class McColor(val r: UByte, val g: UByte, val b: UByte, val a: UByte) {
     constructor(r: Int, g: Int, b: Int) : this(r, g, b, 255)
 
     constructor(r: UByte, g: UByte, b: UByte) : this(r, g, b, 255u)
+
     constructor(binary: Int) : this(
         (binary shr 16 and 0xFF).toUByte(),
         (binary shr 8 and 0xFF).toUByte(),
