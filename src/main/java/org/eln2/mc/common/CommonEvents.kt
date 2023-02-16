@@ -14,7 +14,7 @@ import net.minecraftforge.fml.common.Mod
 import net.minecraftforge.fml.loading.FMLPaths
 import net.minecraftforge.server.ServerLifecycleHooks
 import org.eln2.mc.Eln2
-import org.eln2.mc.common.cell.CellGraphManager
+import org.eln2.mc.common.cells.foundation.CellGraphManager
 import org.eln2.mc.utility.AnalyticsAcknowledgementsData
 import java.io.IOException
 

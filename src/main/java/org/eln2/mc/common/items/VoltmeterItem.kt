@@ -6,7 +6,7 @@ import net.minecraft.world.InteractionResult
 import net.minecraft.world.item.CreativeModeTab
 import net.minecraft.world.item.Item
 import net.minecraft.world.item.context.UseOnContext
-import org.eln2.mc.common.blocks.CellBlockEntity
+import org.eln2.mc.common.blocks.foundation.CellBlockEntity
 
 class VoltmeterItem(tab: CreativeModeTab?): Item(Item.Properties().also {if(tab != null) it.tab(tab)}) {
     override fun useOn(context: UseOnContext): InteractionResult {
