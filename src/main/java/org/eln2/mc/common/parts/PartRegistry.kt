@@ -55,6 +55,7 @@ object PartRegistry {
         return ForgeRegistries.ITEMS.getValue(id) as PartItem
     }
 
-    val WIRE_PART = part("wire_part", BasicPartProvider(::WirePart, Vec3(0.1, 0.1, 0.1)))
-    val BATTERY_PART = part("battery_part", BasicPartProvider(::BatteryPart, Vec3(0.8, 0.8, 0.8)))
+    //val WIRE_PART = part("wire_part", BasicPartProvider(::WirePart, Vec3(0.1, 0.1, 0.1)))
+    //val BATTERY_PART = part("battery_part", BasicPartProvider(::BatteryPart, Vec3(0.8, 0.8, 0.8)))
+    val RESISTOR_PART = part("resistor_part", BasicPartProvider(::ResistorPart, Vec3(1.0, 1.0, 1.0)))
 }

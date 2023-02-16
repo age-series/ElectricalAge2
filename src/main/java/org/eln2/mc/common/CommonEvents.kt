@@ -36,26 +36,6 @@ object CommonEvents {
     }
 
     @SubscribeEvent
-    fun onChat(event: ServerChatEvent) {
-        when (event.message) {
-            "build" -> {
-                CellGraphManager.getFor(event.player.level as ServerLevel).graphs.values.forEach { it.buildSolver() }
-            }
-
-            "circuits" -> {
-                CellGraphManager.getFor(event.player.level as ServerLevel).graphs.values.forEach {
-                    Eln2.LOGGER.info("Circuit:")
-                    Eln2.LOGGER.info(
-                        it.circuit.components.map { comp ->
-                            "\n    ${comp.detail()}${comp.pins.map { pin -> pin.node?.index }}"
-                        }
-                    )
-                }
-            }
-        }
-    }
-
-    @SubscribeEvent
     fun onEntityJoinedWorld(event: EntityJoinWorldEvent) {
         //Warn new users that we collect analytics
         if (event.world.isClientSide && event.entity is Player) {

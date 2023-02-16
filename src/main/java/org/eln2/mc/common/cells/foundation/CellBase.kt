@@ -1,16 +1,41 @@
 package org.eln2.mc.common.cells.foundation
 
 import net.minecraft.resources.ResourceLocation
-import org.ageseries.libage.sim.electrical.mna.component.Component
+import org.eln2.mc.Eln2.LOGGER
+import org.eln2.mc.common.cells.foundation.objects.ElectricalObject
+import org.eln2.mc.common.cells.foundation.objects.SimulationObjectSet
+import org.eln2.mc.common.cells.foundation.objects.SimulationObjectType
+import org.eln2.mc.common.space.RelativeRotationDirection
 
-class ComponentInfo(val component: Component, val index: Int)
+data class CellConnectionInfo(val cell: CellBase, val sourceDirection: RelativeRotationDirection)
 
 abstract class CellBase(val pos: CellPos) {
     lateinit var id: ResourceLocation
     lateinit var graph: CellGraph
-    lateinit var connections: ArrayList<CellBase>
+    lateinit var connections: ArrayList<CellConnectionInfo>
+
+    val hasGraph get() = this::graph.isInitialized
+
+    fun removeConnection(cell : CellBase){
+        val target: CellConnectionInfo = connections.firstOrNull { it.cell == cell }
+            ?: error("Tried to remove non-existent connection")
+
+        connections.remove(target)
+    }
 
     var container: ICellContainer? = null
+
+    private var createdSet : SimulationObjectSet? = null
+
+    abstract fun createObjectSet(): SimulationObjectSet
+
+    private val objectSet : SimulationObjectSet get() {
+        if(createdSet == null){
+            createdSet = createObjectSet()
+        }
+
+        return createdSet!!
+    }
 
     /**
      * Called when the tile entity is being unloaded.
@@ -41,7 +66,9 @@ abstract class CellBase(val pos: CellPos) {
     /**
      * Called when the tile entity is destroyed.
      */
-    open fun onDestroyed() {}
+    open fun onDestroyed() {
+        objectSet.process { it.destroy() }
+    }
 
     /**
      * Called when the graph and/or neighbouring cells are updated. This method is called after completeDiskLoad and setPlaced
@@ -50,19 +77,43 @@ abstract class CellBase(val pos: CellPos) {
      */
     open fun update(connectionsChanged: Boolean, graphChanged: Boolean) {}
 
-    /**
-     * This method is called before the Circuit is being rebuilt.
-     */
-    abstract fun clear()
+    fun clearObjectConnections(){
+        objectSet.process { it.clear() }
+    }
 
-    /**
-     * This method is used to return the component and the pin for a remote cell to connect to.
-     */
-    abstract fun getOfferedComponent(neighbour: CellBase): ComponentInfo
+    fun recordObjectConnections(){
+        objectSet.process {
+            LOGGER.info("Process $it")
 
-    /**
-     * This method is called after each cell's clear method has been called.
-     * It must be used to create the circuit's connections.
-     */
-    abstract fun buildConnections()
+            connections.forEach { neighborInfo ->
+                if(neighborInfo.cell.hasObject(it.type)){
+                    // We can form a connection here.
+
+                    when(it.type){
+                        SimulationObjectType.Electrical ->{
+                            val localElectrical = it as ElectricalObject
+                            val remoteElectrical = neighborInfo.cell.objectSet.electricalObject
+
+                            localElectrical.addConnection(remoteElectrical)
+                            remoteElectrical.addConnection(localElectrical)
+
+                            LOGGER.info("Recording connection.")
+                        }
+
+                        else -> error("Unhandled simulation object type ${it.type}")
+                    }
+                }
+            }
+        }
+    }
+
+    fun build(){
+        objectSet.process { it.build() }
+    }
+
+    fun hasObject(type: SimulationObjectType): Boolean{
+        return objectSet.hasObject(type)
+    }
+
+    val electricalObject get() = objectSet.electricalObject
 }

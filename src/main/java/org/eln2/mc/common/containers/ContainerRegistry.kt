@@ -26,28 +26,4 @@ object ContainerRegistry {
         name: String,
         supplier: () -> MenuType<T>
     ): RegistryObject<MenuType<T>> = CONTAINER_REGISTRY.register(name) { supplier() }
-
-    val VOLTAGE_SOURCE_CELL_CONTAINER = registerGuiContainer(BlockRegistry.VOLTAGE_SOURCE_CELL.name) {
-        MenuType { id, inv ->
-            VoltageSourceCellContainer(id, inv, inv.player)
-        }
-    }
-
-    val RESISTOR_CELL_CONTAINER = registerGuiContainer(BlockRegistry.RESISTOR_CELL.name) {
-        MenuType { id, inv ->
-            ResistorCellContainer(id, inv, inv.player)
-        }
-    }
-
-    val CAPACITOR_CELL_CONTAINER = registerGuiContainer(BlockRegistry.CAPACITOR_CELL.name) {
-        MenuType { id, inv ->
-            CapacitorCellContainer(id, inv, inv.player)
-        }
-    }
-
-    val INDUCTOR_CELL_CONTAINER = registerGuiContainer(BlockRegistry.INDUCTOR_CELL.name) {
-        MenuType { id, inv ->
-            InductorCellContainer(id, inv, inv.player)
-        }
-    }
 }

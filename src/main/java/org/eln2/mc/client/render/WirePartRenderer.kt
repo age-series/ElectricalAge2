@@ -1,4 +1,5 @@
 package org.eln2.mc.client.render
+/*
 
 import com.jozufozu.flywheel.core.Materials
 import com.jozufozu.flywheel.core.PartialModel
@@ -122,3 +123,4 @@ class WirePartRenderer(val part: WirePart) : IPartRenderer {
         modelInstance?.delete()
     }
 }
+*/

@@ -29,7 +29,6 @@ import org.eln2.mc.client.render.MultipartBlockEntityInstance
 import org.eln2.mc.common.blocks.BlockRegistry
 import org.eln2.mc.common.cells.foundation.*
 import org.eln2.mc.common.parts.PartRegistry
-import org.eln2.mc.common.parts.WirePart
 import org.eln2.mc.common.parts.foundation.*
 import org.eln2.mc.common.space.DirectionMask
 import org.eln2.mc.common.space.RelativeRotationDirection
@@ -745,7 +744,7 @@ class MultipartBlockEntity(var pos: BlockPos, var state: BlockState) :
             val partRelative = part.getRelativeDirection(searchDirection)
 
             if (!part.provider.canConnectFrom(partRelative)) {
-                Eln2.LOGGER.info("Part rejected connection on $partRelative")
+                Eln2.LOGGER.info("Part rejected connection on $partRelative - ${part.provider}")
                 return@process
             }
 
@@ -878,26 +877,6 @@ class MultipartBlockEntity(var pos: BlockPos, var state: BlockState) :
         get() = CellGraphManager.getFor(
             level as? ServerLevel ?: error("Tried to get multipart cell provider on the client")
         )
-
-    fun getHudMap(): Map<String, String> {
-        val result = LinkedHashMap<String, String>()
-
-        parts.values.forEach { part ->
-            if (part is IPartCellContainer) {
-                if (part.hasCell) {
-                    result[part.placementContext.face.getName()] = part.cell.graph.id.toString()
-
-                    if (part is WirePart) {
-                        result["neighbors"] = part.connectedDirections.joinToString(" ")
-                    }
-
-                    result["facing"] = part.placementContext.horizontalFacing.getName()
-                }
-            }
-        }
-
-        return result
-    }
 
     fun use(player: Player, hand: InteractionHand): InteractionResult {
         val part = pickPart(player)
