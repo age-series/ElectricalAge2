@@ -4,7 +4,7 @@ import org.ageseries.libage.sim.electrical.mna.component.IdealDiode
 import org.eln2.mc.common.cells.foundation.CellBase
 import org.eln2.mc.common.cells.foundation.CellPos
 import org.eln2.mc.common.cells.foundation.ComponentInfo
-import org.eln2.mc.extensions.ComponentExtensions.connectToPinOf
+import org.eln2.mc.extensions.ComponentExtensions.connect
 import org.eln2.mc.utility.UnitType
 import org.eln2.mc.utility.ValueText.valueText
 
@@ -29,7 +29,7 @@ class DiodeCell(pos: CellPos) : CellBase(pos) {
     override fun buildConnections() {
         connections.forEach { remoteCell ->
             val localInfo = getOfferedComponent(remoteCell)
-            localInfo.component.connectToPinOf(localInfo.index, remoteCell.getOfferedComponent(this))
+            localInfo.component.connect(localInfo.index, remoteCell.getOfferedComponent(this))
         }
     }
 

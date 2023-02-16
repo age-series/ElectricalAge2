@@ -6,7 +6,7 @@ import org.eln2.mc.common.cells.foundation.CellBase
 import org.eln2.mc.common.cells.foundation.CellPos
 import org.eln2.mc.common.cells.foundation.ComponentInfo
 import org.eln2.mc.common.cells.foundation.ISingleElementGuiCell
-import org.eln2.mc.extensions.ComponentExtensions.connectToPinOf
+import org.eln2.mc.extensions.ComponentExtensions.connect
 import org.eln2.mc.utility.UnitType
 import org.eln2.mc.utility.ValueText.valueText
 
@@ -48,7 +48,7 @@ class VoltageSourceCell(pos: CellPos) : CellBase(pos), ISingleElementGuiCell<Dou
 
         connections.forEach { remoteCell ->
             val localResistor = getOfferedComponent(remoteCell).component // get local resistor
-            localResistor.connectToPinOf(
+            localResistor.connect(
                 1,
                 remoteCell.getOfferedComponent(this)
             ) // connect local resistor to remote component

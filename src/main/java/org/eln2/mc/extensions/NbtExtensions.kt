@@ -29,7 +29,7 @@ object NbtExtensions {
     fun CompoundTag.putCellPos(key: String, pos: CellPos) {
         val dataTag = CompoundTag()
         dataTag.putBlockPos("Pos", pos.blockPos)
-        dataTag.setDirection("Face", pos.face)
+        dataTag.putDirection("Face", pos.face)
         this.put(key, dataTag)
     }
 
@@ -46,7 +46,7 @@ object NbtExtensions {
         return tag.allKeys.map { tag.getString(it) }
     }
 
-    fun CompoundTag.setStringList(key: String, list: List<String>) {
+    fun CompoundTag.putStringList(key: String, list: List<String>) {
         val tag = CompoundTag()
         list.forEachIndexed { index, it ->
             tag.putString("$index", it)
@@ -64,7 +64,7 @@ object NbtExtensions {
         return map
     }
 
-    fun CompoundTag.setStringMap(key: String, map: Map<String, String>) {
+    fun CompoundTag.putStringMap(key: String, map: Map<String, String>) {
         val tag = CompoundTag()
         map.forEach { (k, v) ->
             tag.putString(k, v)
@@ -72,7 +72,7 @@ object NbtExtensions {
         this.put(key, tag)
     }
 
-    fun CompoundTag.setResourceLocation(key: String, resourceLocation: ResourceLocation) {
+    fun CompoundTag.putResourceLocation(key: String, resourceLocation: ResourceLocation) {
         this.putString(key, resourceLocation.toString())
     }
 
@@ -86,7 +86,7 @@ object NbtExtensions {
         return this.tryGetResourceLocation(key) ?: error("Invalid resource location with key $key")
     }
 
-    fun CompoundTag.setDirection(key: String, direction: Direction) {
+    fun CompoundTag.putDirection(key: String, direction: Direction) {
         this.putInt(key, direction.get3DDataValue())
     }
 
@@ -96,7 +96,7 @@ object NbtExtensions {
         return Direction.from3DDataValue(data3d)
     }
 
-    fun CompoundTag.setRelativeDirection(key: String, direction: RelativeRotationDirection) {
+    fun CompoundTag.putRelativeDirection(key: String, direction: RelativeRotationDirection) {
         val data = direction.id
 
         this.putInt(key, data)
@@ -108,7 +108,7 @@ object NbtExtensions {
         return RelativeRotationDirection.fromId(data)
     }
 
-    fun CompoundTag.setPartUpdateType(key: String, type: PartUpdateType) {
+    fun CompoundTag.putPartUpdateType(key: String, type: PartUpdateType) {
         val data = type.id
 
         this.putInt(key, data)

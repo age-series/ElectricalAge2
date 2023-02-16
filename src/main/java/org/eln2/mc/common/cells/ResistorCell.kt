@@ -5,7 +5,7 @@ import org.eln2.mc.common.cells.foundation.CellBase
 import org.eln2.mc.common.cells.foundation.CellPos
 import org.eln2.mc.common.cells.foundation.ComponentInfo
 import org.eln2.mc.common.cells.foundation.ISingleElementGuiCell
-import org.eln2.mc.extensions.ComponentExtensions.connectToPinOf
+import org.eln2.mc.extensions.ComponentExtensions.connect
 import org.eln2.mc.utility.UnitType
 import org.eln2.mc.utility.ValueText.valueText
 
@@ -31,7 +31,7 @@ class ResistorCell(pos: CellPos) : CellBase(pos), ISingleElementGuiCell<Double> 
     override fun buildConnections() {
         connections.forEach { remoteCell ->
             val localInfo = getOfferedComponent(remoteCell)
-            localInfo.component.connectToPinOf(localInfo.index, remoteCell.getOfferedComponent(this))
+            localInfo.component.connect(localInfo.index, remoteCell.getOfferedComponent(this))
         }
     }
 
