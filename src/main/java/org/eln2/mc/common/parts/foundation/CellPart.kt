@@ -120,10 +120,10 @@ abstract class CellPart(
     }
 
     override fun appendBody(builder: TooltipBuilder, config: IPluginConfig?) {
-        if(hasCell){
+        if (hasCell) {
             val cell = this.cell
 
-            if(cell is IWailaProvider){
+            if (cell is IWailaProvider) {
                 cell.appendBody(builder, config)
             }
         }

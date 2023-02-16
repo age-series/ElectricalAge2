@@ -12,18 +12,18 @@ import org.eln2.mc.integration.waila.TooltipEntryType.Companion.putTooltipEntryT
 import org.eln2.mc.utility.UnitType
 import org.eln2.mc.utility.ValueText
 
-enum class TooltipEntryType(val id : Int){
+enum class TooltipEntryType(val id: Int) {
     TranslatableTranslatable(0),
     TranslatableText(1),
     TextText(2);
 
-    companion object{
-        fun CompoundTag.putTooltipEntryType(key: String, type : TooltipEntryType){
+    companion object {
+        fun CompoundTag.putTooltipEntryType(key: String, type: TooltipEntryType) {
             this.putInt(key, type.id)
         }
 
-        fun CompoundTag.getTooltipEntryType(key: String) : TooltipEntryType{
-            return when(val data = this.getInt(key)){
+        fun CompoundTag.getTooltipEntryType(key: String): TooltipEntryType {
+            return when (val data = this.getInt(key)) {
                 TranslatableTranslatable.id -> TranslatableTranslatable
                 TranslatableText.id -> TranslatableText
                 TextText.id -> TextText
@@ -33,9 +33,9 @@ enum class TooltipEntryType(val id : Int){
     }
 }
 
-data class TooltipEntry(val key: String, val value: String, val type : TooltipEntryType){
-    companion object{
-        fun fromNbt(nbt: CompoundTag): TooltipEntry{
+data class TooltipEntry(val key: String, val value: String, val type: TooltipEntryType) {
+    companion object {
+        fun fromNbt(nbt: CompoundTag): TooltipEntry {
             val key = nbt.getString("Key")
             val value = nbt.getString("Value")
             val type = nbt.getTooltipEntryType("Type")
@@ -44,7 +44,7 @@ data class TooltipEntry(val key: String, val value: String, val type : TooltipEn
         }
     }
 
-    fun createNbt() : CompoundTag{
+    fun createNbt(): CompoundTag {
         val result = CompoundTag()
 
         result.putString("Key", key)
@@ -54,25 +54,37 @@ data class TooltipEntry(val key: String, val value: String, val type : TooltipEn
         return result
     }
 
-    fun write(tooltip : ITooltip){
-        when(type){
-            TooltipEntryType.TranslatableTranslatable -> tooltip.addLine(PairComponent(TranslatableComponent(key), TranslatableComponent(value)))
-            TooltipEntryType.TranslatableText -> tooltip.addLine(PairComponent(TranslatableComponent(key), TextComponent(value)))
+    fun write(tooltip: ITooltip) {
+        when (type) {
+            TooltipEntryType.TranslatableTranslatable -> tooltip.addLine(
+                PairComponent(
+                    TranslatableComponent(key),
+                    TranslatableComponent(value)
+                )
+            )
+
+            TooltipEntryType.TranslatableText -> tooltip.addLine(
+                PairComponent(
+                    TranslatableComponent(key),
+                    TextComponent(value)
+                )
+            )
+
             TooltipEntryType.TextText -> tooltip.addLine(PairComponent(TextComponent(key), TextComponent(value)))
         }
     }
 }
 
-data class TooltipList(val values: List<TooltipEntry>){
-    companion object{
-        fun builder(): TooltipBuilder{
+data class TooltipList(val values: List<TooltipEntry>) {
+    companion object {
+        fun builder(): TooltipBuilder {
             return TooltipBuilder()
         }
 
-        fun fromNbt(nbt: CompoundTag): TooltipList{
+        fun fromNbt(nbt: CompoundTag): TooltipList {
             val listTag = nbt.get("TooltipEntries") as? ListTag
 
-            if(listTag == null || listTag.size == 0){
+            if (listTag == null || listTag.size == 0) {
                 return TooltipList(listOf())
             }
 
@@ -86,7 +98,7 @@ data class TooltipList(val values: List<TooltipEntry>){
         }
     }
 
-    fun toNbt(tag: CompoundTag){
+    fun toNbt(tag: CompoundTag) {
         val listTag = ListTag()
 
         values.forEach { listTag.add(it.createNbt()) }
@@ -98,67 +110,73 @@ data class TooltipList(val values: List<TooltipEntry>){
 class TooltipBuilder {
     private val entries = ArrayList<TooltipEntry>()
 
-    private fun getTranslationKey(identifier : String) : String{
+    private fun getTranslationKey(identifier: String): String {
         return "waila.eln2.$identifier"
     }
 
-    fun translate(key : String, value : String) : TooltipBuilder{
-        entries.add(TooltipEntry(getTranslationKey(key), getTranslationKey(value), TooltipEntryType.TranslatableTranslatable))
+    fun translate(key: String, value: String): TooltipBuilder {
+        entries.add(
+            TooltipEntry(
+                getTranslationKey(key),
+                getTranslationKey(value),
+                TooltipEntryType.TranslatableTranslatable
+            )
+        )
         return this
     }
 
-    fun translateText(key : String, value : String) : TooltipBuilder{
+    fun translateText(key: String, value: String): TooltipBuilder {
         entries.add(TooltipEntry("waila.eln2.$key", value, TooltipEntryType.TranslatableText))
         return this
     }
 
-    fun text(key : String, value : String) : TooltipBuilder{
+    fun text(key: String, value: String): TooltipBuilder {
         entries.add(TooltipEntry(key, value, TooltipEntryType.TextText))
         return this
     }
 
-    fun text(key : String, value : Any) : TooltipBuilder{
+    fun text(key: String, value: Any): TooltipBuilder {
         entries.add(TooltipEntry(key, value.toString(), TooltipEntryType.TextText))
         return this
     }
 
-    fun mode(value : String) : TooltipBuilder{
+    fun mode(value: String): TooltipBuilder {
         return translateText("mode", value)
     }
 
-    fun current(value : Double) : TooltipBuilder{
+    fun current(value: Double): TooltipBuilder {
         return translateText("current", ValueText.valueText(value, UnitType.AMPERE))
     }
 
-    fun energy(value: Double) : TooltipBuilder{
+    fun energy(value: Double): TooltipBuilder {
         return translateText("energy", ValueText.valueText(value, UnitType.JOULE))
     }
 
-    fun voltage(value : Double) : TooltipBuilder{
+    fun voltage(value: Double): TooltipBuilder {
         return translateText("voltage", ValueText.valueText(value, UnitType.VOLT))
     }
 
-    fun resistance(value : Double) : TooltipBuilder{
+    fun resistance(value: Double): TooltipBuilder {
         return translateText("resistance", ValueText.valueText(value, UnitType.OHM))
     }
 
-    fun inductance(value : Double) : TooltipBuilder{
+    fun inductance(value: Double): TooltipBuilder {
         return translateText("inductance", ValueText.valueText(value, UnitType.HENRY))
     }
 
-    fun capacitance(value : Double) : TooltipBuilder{
+    fun capacitance(value: Double): TooltipBuilder {
         return translateText("capacitance", ValueText.valueText(value, UnitType.FARAD))
     }
 
-    fun power(value : Double) : TooltipBuilder{
+    fun power(value: Double): TooltipBuilder {
         return translateText("power", ValueText.valueText(value, UnitType.WATT))
     }
 
-    fun pinVoltages(pins : MutableList<Pin>){
+    fun pinVoltages(pins: MutableList<Pin>) {
         pins.forEach { voltage(it.node?.potential ?: 0.0) }
     }
 
-    fun build() : TooltipList{
+    fun build(): TooltipList {
         return TooltipList(entries.toList())
     }
 }

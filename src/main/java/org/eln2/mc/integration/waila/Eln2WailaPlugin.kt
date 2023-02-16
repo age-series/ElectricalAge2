@@ -1,10 +1,7 @@
 package org.eln2.mc.integration.waila
 
 import mcp.mobius.waila.api.*
-import mcp.mobius.waila.api.component.PairComponent
 import net.minecraft.nbt.CompoundTag
-import net.minecraft.network.chat.TextComponent
-import net.minecraft.network.chat.TranslatableComponent
 import net.minecraft.world.level.block.entity.BlockEntity
 import org.eln2.mc.Eln2
 
@@ -29,7 +26,7 @@ class Eln2WailaPlugin : IWailaPlugin {
             }
         }, TooltipPosition.BODY, BlockEntity::class.java)
 
-        registrar.addBlockData(object: IServerDataProvider<BlockEntity>{
+        registrar.addBlockData(object : IServerDataProvider<BlockEntity> {
             override fun appendServerData(
                 data: CompoundTag?,
                 accessor: IServerAccessor<BlockEntity>?,
@@ -41,7 +38,7 @@ class Eln2WailaPlugin : IWailaPlugin {
 
                 val blockEntity = accessor.target
 
-                if(blockEntity !is IWailaProvider){
+                if (blockEntity !is IWailaProvider) {
                     return
                 }
 

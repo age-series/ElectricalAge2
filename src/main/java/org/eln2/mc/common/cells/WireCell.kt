@@ -57,8 +57,7 @@ class WireCell(pos: CellPos) : CellBase(pos), IWailaProvider {
                 // Straight through wire. Just give absolute value I guess since directionality is ~ meaningless for wires.
 
                 builder.current(abs((getOfferedComponent(connections[0]).component as Resistor).current))
-            }
-            else {
+            } else {
                 // Branch currents. Print them all.
 
                 connections
