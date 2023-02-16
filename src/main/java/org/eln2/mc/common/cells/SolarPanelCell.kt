@@ -55,24 +55,4 @@ class SolarPanelCell(pos: CellPos) : CellBase(pos) {
     }
 
     private val neighbourToResistorLookup = HashMap<CellBase, Resistor>()
-
-    override fun getHudMap(): Map<String, String> {
-        val voltage: String = ValueText.valueText(source.potential, UnitType.VOLT)
-        var current: String = ValueText.valueText(0.0, UnitType.AMPERE)
-        var power: String = ValueText.valueText(0.0, UnitType.WATT)
-        val map = mutableMapOf<String, String>()
-
-        try {
-            current = ValueText.valueText(source.current, UnitType.AMPERE)
-            power = ValueText.valueText(source.potential * source.current, UnitType.WATT)
-        } catch (_: Exception) {
-            // No results from simulator
-        }
-
-        map["voltage"] = voltage
-        map["current"] = current
-        map["power"] = power
-
-        return map
-    }
 }

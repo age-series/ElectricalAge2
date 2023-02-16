@@ -29,6 +29,4 @@ object ItemRegistry {
         val item = REGISTRY.register(name) { supplier() }
         return ItemRegistryItem(name, item)
     }
-
-    val VOLTMETER_ITEM = registerBasicItem("voltmeter") { VoltmeterItem(eln2Tab) }
 }
