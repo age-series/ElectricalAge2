@@ -7,8 +7,8 @@ import net.minecraft.world.entity.player.Player
 import net.minecraft.world.inventory.AbstractContainerMenu
 import net.minecraft.world.inventory.ContainerListener
 import net.minecraft.world.inventory.MenuType
-import org.eln2.mc.common.blocks.CellBlockEntity
-import org.eln2.mc.common.cell.ISingleElementGuiCell
+import org.eln2.mc.common.blocks.foundation.CellBlockEntity
+import org.eln2.mc.common.cells.foundation.ISingleElementGuiCell
 
 abstract class SingleValueCellContainer<C : ISingleElementGuiCell<N>, N : Number>(
     id: Int,

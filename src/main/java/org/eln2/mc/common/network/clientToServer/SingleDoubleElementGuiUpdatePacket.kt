@@ -4,8 +4,8 @@ import net.minecraft.core.BlockPos
 import net.minecraft.network.FriendlyByteBuf
 import net.minecraft.server.level.ServerPlayer
 import net.minecraftforge.network.NetworkEvent
-import org.eln2.mc.common.blocks.CellBlockEntity
-import org.eln2.mc.common.cell.ISingleElementGuiCell
+import org.eln2.mc.common.blocks.foundation.CellBlockEntity
+import org.eln2.mc.common.cells.foundation.ISingleElementGuiCell
 import java.util.function.Supplier
 
 /**

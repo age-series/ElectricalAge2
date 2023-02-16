@@ -6,7 +6,7 @@ import net.minecraft.network.FriendlyByteBuf
 import net.minecraftforge.api.distmarker.Dist
 import net.minecraftforge.fml.loading.FMLEnvironment
 import net.minecraftforge.network.NetworkEvent
-import org.eln2.mc.common.cell.ISingleElementGuiCell
+import org.eln2.mc.common.cells.foundation.ISingleElementGuiCell
 import org.eln2.mc.common.containers.SingleValueCellContainer
 import java.util.function.Supplier
 

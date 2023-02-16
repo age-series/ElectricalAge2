@@ -13,7 +13,7 @@ import org.eln2.mc.extensions.Vec3Extensions.toVec3
 import org.eln2.mc.extensions.Vec3Extensions.toVector3f
 import org.eln2.mc.extensions.Vec3Extensions.toVector4f
 import org.eln2.mc.extensions.Vector4fExtensions.toVector3f
-import org.eln2.mc.utility.VectorUtilities
+import org.eln2.mc.utility.Vectors
 import java.util.Optional
 import kotlin.collections.ArrayList
 
@@ -78,8 +78,8 @@ object AABBExtensions {
 
             corner.transform(quaternion)
 
-            min = VectorUtilities.componentMin(min, corner)
-            max = VectorUtilities.componentMax(max, corner)
+            min = Vectors.componentMin(min, corner)
+            max = Vectors.componentMax(max, corner)
         }
 
         return AABB(min.toVec3(), max.toVec3())
@@ -96,8 +96,8 @@ object AABBExtensions {
 
             val coordinates = corner.toVector3f()
 
-            min = VectorUtilities.componentMin(min, coordinates)
-            max = VectorUtilities.componentMax(max, coordinates)
+            min = Vectors.componentMin(min, coordinates)
+            max = Vectors.componentMax(max, coordinates)
         }
 
         return AABB(min.toVec3(), max.toVec3())
