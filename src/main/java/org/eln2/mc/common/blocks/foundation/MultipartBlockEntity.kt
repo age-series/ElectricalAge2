@@ -994,7 +994,7 @@ class MultipartBlockEntity(var pos: BlockPos, var state: BlockState) :
 
     override fun appendBody(builder: TooltipBuilder, config: IPluginConfig?) {
         parts.values.forEach { part ->
-            if(part !is IWailaProvider){
+            if (part !is IWailaProvider) {
                 return@forEach
             }
 
