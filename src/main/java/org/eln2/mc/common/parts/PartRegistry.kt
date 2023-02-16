@@ -12,16 +12,15 @@ import org.eln2.mc.common.tabs.eln2Tab
 import java.util.function.Supplier
 
 object PartRegistry {
-    private val PART_REGISTRY = DeferredRegister.create<PartProvider>(ResourceLocation("eln2:parts"), Eln2.MODID)
-    private val PART_ITEM_REGISTRY =
-        DeferredRegister.create(ForgeRegistries.ITEMS, Eln2.MODID)!! // Yeah, if this fails blow up the game
+    private val PARTS = DeferredRegister.create<PartProvider>(Eln2.resource("parts"), Eln2.MODID)
+    private val PART_ITEMS = DeferredRegister.create(ForgeRegistries.ITEMS, Eln2.MODID)!!
 
     private lateinit var partRegistry: Supplier<IForgeRegistry<PartProvider>>
 
     fun setup(bus: IEventBus) {
-        partRegistry = PART_REGISTRY.makeRegistry(PartProvider::class.java) { RegistryBuilder() }
-        PART_REGISTRY.register(bus)
-        PART_ITEM_REGISTRY.register(bus)
+        partRegistry = PARTS.makeRegistry(PartProvider::class.java) { RegistryBuilder() }
+        PARTS.register(bus)
+        PART_ITEMS.register(bus)
 
         Eln2.LOGGER.info("Prepared part registry.")
     }
@@ -42,8 +41,8 @@ object PartRegistry {
      *  @param provider The part provider that will be used to create the part.
      * */
     private fun part(name: String, provider: PartProvider): PartRegistryItem {
-        val part = PART_REGISTRY.register(name) { provider }
-        val item = PART_ITEM_REGISTRY.register(name) { PartItem(provider, eln2Tab) }
+        val part = PARTS.register(name) { provider }
+        val item = PART_ITEMS.register(name) { PartItem(provider, eln2Tab) }
 
         return PartRegistryItem(name, part, item)
     }

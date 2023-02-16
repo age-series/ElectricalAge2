@@ -2,7 +2,6 @@ package org.eln2.mc.common.cells
 
 import net.minecraft.resources.ResourceLocation
 import net.minecraftforge.eventbus.api.IEventBus
-import net.minecraftforge.eventbus.api.SubscribeEvent
 import net.minecraftforge.fml.common.Mod
 import net.minecraftforge.registries.*
 import org.eln2.mc.Eln2
@@ -13,11 +12,25 @@ import org.eln2.mc.common.cells.foundation.providers.NoPinCellProvider
 import org.eln2.mc.common.cells.foundation.providers.TwoPinCellProvider
 import java.util.function.Supplier
 
-@Mod.EventBusSubscriber(bus = Mod.EventBusSubscriber.Bus.MOD)
 object CellRegistry {
-    private val CELLS = DeferredRegister.create(CellProvider::class.java, Eln2.MODID)
-    private var REGISTRY: Supplier<IForgeRegistry<CellProvider>?>? = null
-    val registry get() = REGISTRY!!.get()!!
+    private val CELLS = DeferredRegister.create<CellProvider>(Eln2.resource("cells"), Eln2.MODID)
+
+    private lateinit var cellRegistry: Supplier<IForgeRegistry<CellProvider>>
+
+    fun setup(bus: IEventBus) {
+        cellRegistry = CELLS.makeRegistry(CellProvider::class.java) { RegistryBuilder() }
+        CELLS.register(bus)
+
+        LOGGER.info("Prepared cell registry.")
+    }
+
+    private fun register(id: String, provider: CellProvider): RegistryObject<CellProvider> {
+        return CELLS.register(id) { provider }
+    }
+
+    fun getProvider(id: ResourceLocation): CellProvider {
+        return cellRegistry.get().getValue(id) ?: error("Could not get cell provider with id $id")
+    }
 
     val RESISTOR_CELL = register("resistor", TwoPinCellProvider { ResistorCell(it) })
     val WIRE_CELL = register("wire", FourPinCellProvider { WireCell(it) })
@@ -26,30 +39,8 @@ object CellRegistry {
     val CAPACITOR_CELL = register("capacitor", TwoPinCellProvider { CapacitorCell(it) })
     val INDUCTOR_CELL = register("inductor", TwoPinCellProvider { InductorCell(it) })
     val DIODE_CELL = register("diode", TwoPinCellProvider { DiodeCell(it) })
-    val `12V_BATTERY_CELL` = register("12v_battery", TwoPinCellProvider { `12VBatteryCell`(it) })
+    val BATTERY_CELL = register("12v_battery", TwoPinCellProvider { `12VBatteryCell`(it) })
     val LIGHT_CELL = register("light", FourPinCellProvider { LightCell(it) })
     val SOLAR_LIGHT_CELL = register("solar_light", NoPinCellProvider { SolarLightCell(it) })
     val SOLAR_PANEL_CELL = register("solar_panel", TwoPinCellProvider { SolarPanelCell(it) })
-
-    fun setup(bus: IEventBus) {
-        CELLS.register(bus)
-        LOGGER.info("Prepared cell registry.")
-    }
-
-    @SubscribeEvent
-    fun createRegistry(event: NewRegistryEvent) {
-        val reg = RegistryBuilder<CellProvider>()
-        reg.setName(ResourceLocation(Eln2.MODID, "cells"))
-        reg.type = CellProvider::class.java
-        REGISTRY = event.create(reg)
-        LOGGER.info("Created cell registry!")
-    }
-
-    private fun register(id: String, provider: CellProvider): RegistryObject<CellProvider> {
-        return CELLS.register(id) { provider }
-    }
-
-    fun getProvider(id: ResourceLocation): CellProvider {
-        return registry.getValue(id) ?: error("Could not get cell provider with id $id")
-    }
 }
