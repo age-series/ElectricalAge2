@@ -7,7 +7,7 @@ import org.eln2.mc.common.cells.foundation.CellProvider
 import org.eln2.mc.common.space.DirectionMask
 import org.eln2.mc.common.space.RelativeRotationDirection
 
-class BasicProvider(private val directionMask : DirectionMask, private val factory: ICellFactory) : CellProvider() {
+class BasicProvider(private val directionMask: DirectionMask, private val factory: ICellFactory) : CellProvider() {
     override fun createInstance(pos: CellPos, id: ResourceLocation): CellBase {
         return factory.create(pos, id)
     }
@@ -20,14 +20,14 @@ class BasicProvider(private val directionMask : DirectionMask, private val facto
         /**
          * Creates a basic provider that accepts connections from the front and back of the cell.
          * */
-        fun polar(factory: ICellFactory): BasicProvider{
+        fun polar(factory: ICellFactory): BasicProvider {
             return BasicProvider(DirectionMask.FRONT + DirectionMask.BACK, factory)
         }
 
         /**
          * Creates a basic provider that accepts connections from all 4 horizontal directions.
          * */
-        fun fourPin(factory: ICellFactory): BasicProvider{
+        fun fourPin(factory: ICellFactory): BasicProvider {
             return BasicProvider(DirectionMask.HORIZONTALS, factory)
         }
     }

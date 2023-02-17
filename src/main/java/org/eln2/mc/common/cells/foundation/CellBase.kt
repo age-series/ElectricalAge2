@@ -11,13 +11,13 @@ import org.eln2.mc.integration.waila.TooltipBuilder
 
 data class CellConnectionInfo(val cell: CellBase, val sourceDirection: RelativeRotationDirection)
 
-abstract class CellBase(val pos: CellPos, val id: ResourceLocation) : IWailaProvider{
+abstract class CellBase(val pos: CellPos, val id: ResourceLocation) : IWailaProvider {
     lateinit var graph: CellGraph
     lateinit var connections: ArrayList<CellConnectionInfo>
 
     val hasGraph get() = this::graph.isInitialized
 
-    fun removeConnection(cell : CellBase){
+    fun removeConnection(cell: CellBase) {
         val target: CellConnectionInfo = connections.firstOrNull { it.cell == cell }
             ?: error("Tried to remove non-existent connection")
 
@@ -26,7 +26,7 @@ abstract class CellBase(val pos: CellPos, val id: ResourceLocation) : IWailaProv
 
     var container: ICellContainer? = null
 
-    private var createdSet : SimulationObjectSet? = null
+    private var createdSet: SimulationObjectSet? = null
 
     /**
      * Called once when the object set is requested. The result is then cached.
@@ -34,13 +34,14 @@ abstract class CellBase(val pos: CellPos, val id: ResourceLocation) : IWailaProv
      * */
     abstract fun createObjectSet(): SimulationObjectSet
 
-    private val objectSet : SimulationObjectSet get() {
-        if(createdSet == null){
-            createdSet = createObjectSet()
-        }
+    private val objectSet: SimulationObjectSet
+        get() {
+            if (createdSet == null) {
+                createdSet = createObjectSet()
+            }
 
-        return createdSet!!
-    }
+            return createdSet!!
+        }
 
     /**
      * Called when the tile entity is being unloaded.
@@ -81,21 +82,21 @@ abstract class CellBase(val pos: CellPos, val id: ResourceLocation) : IWailaProv
     /**
      * Called when the solver is being built, in order to clear and prepare the objects.
      * */
-    fun clearObjectConnections(){
+    fun clearObjectConnections() {
         objectSet.process { it.clear() }
     }
 
     /**
      * Called when the solver is being built, in order to record all object-object connections.
      * */
-    fun recordObjectConnections(){
+    fun recordObjectConnections() {
         objectSet.process {
             connections.forEach { neighborInfo ->
-                if(neighborInfo.cell.hasObject(it.type)){
+                if (neighborInfo.cell.hasObject(it.type)) {
                     // We can form a connection here.
 
-                    when(it.type){
-                        SimulationObjectType.Electrical ->{
+                    when (it.type) {
+                        SimulationObjectType.Electrical -> {
                             val localElectrical = it as ElectricalObject
                             val remoteElectrical = neighborInfo.cell.objectSet.electricalObject
 
@@ -114,25 +115,25 @@ abstract class CellBase(val pos: CellPos, val id: ResourceLocation) : IWailaProv
      * Called when the solver is being built, in order to finish setting up the underlying components in the
      * simulation objects.
      * */
-    fun build(){
+    fun build() {
         objectSet.process { it.build() }
     }
 
-    fun hasObject(type: SimulationObjectType): Boolean{
+    fun hasObject(type: SimulationObjectType): Boolean {
         return objectSet.hasObject(type)
     }
 
     val electricalObject get() = objectSet.electricalObject
 
     override fun appendBody(builder: TooltipBuilder, config: IPluginConfig?) {
-        if(hasGraph){
+        if (hasGraph) {
             builder.text("Graph", graph.id)
         }
 
         builder.text("Connections", connections.map { it.sourceDirection }.joinToString(" "))
 
         objectSet.process {
-            if(it is IWailaProvider){
+            if (it is IWailaProvider) {
                 it.appendBody(builder, config)
             }
         }

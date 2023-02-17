@@ -14,7 +14,7 @@ abstract class ElectricalObject : ISimulationObject {
      * It is initialized while the solver is being built.
      * @see setNewCircuit
      * */
-    var circuit : Circuit? = null
+    var circuit: Circuit? = null
         private set
 
     protected val connections = ArrayList<ElectricalObject>()
@@ -30,7 +30,7 @@ abstract class ElectricalObject : ISimulationObject {
      * Called by the building logic when the electrical object is made part of a circuit.
      * Also calls the *registerComponents* method.
      * */
-    fun setNewCircuit(circuit: Circuit){
+    fun setNewCircuit(circuit: Circuit) {
         this.circuit = circuit
 
         registerComponents(circuit)
@@ -39,7 +39,7 @@ abstract class ElectricalObject : ISimulationObject {
     /**
      * Called by the cell when a valid connection candidate is discovered.
      * */
-    fun addConnection(other: ElectricalObject){
+    fun addConnection(other: ElectricalObject) {
         connections.add(other)
     }
 

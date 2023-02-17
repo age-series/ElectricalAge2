@@ -2,7 +2,7 @@ package org.eln2.mc.utility
 
 class AveragingList(private val sampleCount: Int) {
     init {
-        if(sampleCount <= 0){
+        if (sampleCount <= 0) {
             error("Invalid sample count $sampleCount")
         }
     }
