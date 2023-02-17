@@ -19,7 +19,7 @@ abstract class ElectricalObject : ISimulationObject {
 
     protected val connections = ArrayList<ElectricalObject>()
 
-    final override val type: SimulationObjectType get() = SimulationObjectType.Electrical
+    final override val type = SimulationObjectType.Electrical
 
     /**
      * Called by electrical objects to fetch a connection candidate.
@@ -28,6 +28,7 @@ abstract class ElectricalObject : ISimulationObject {
 
     /**
      * Called by the building logic when the electrical object is made part of a circuit.
+     * Also calls the *registerComponents* method.
      * */
     fun setNewCircuit(circuit: Circuit){
         this.circuit = circuit
@@ -46,7 +47,7 @@ abstract class ElectricalObject : ISimulationObject {
      * Called when this object is destroyed. Connections are also cleaned up.
      * */
     override fun destroy() {
-        connections.forEach {it.connections.remove(this) }
+        connections.forEach { it.connections.remove(this) }
     }
 
     override fun update(connectionsChanged: Boolean, graphChanged: Boolean) {}

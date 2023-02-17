@@ -72,7 +72,6 @@ class CellBlockEntity(var pos: BlockPos, var state: BlockState) :
         cell = cellProvider.create(getCellPos())
 
         cell!!.container = this
-        cell!!.id = cellProvider.registryName!!
 
         CellConnectionManager.connect(this, getCellSpace())
 

@@ -1,6 +1,7 @@
 package org.eln2.mc.common.cells
 
 import mcp.mobius.waila.api.IPluginConfig
+import net.minecraft.resources.ResourceLocation
 import org.eln2.mc.common.cells.foundation.CellBase
 import org.eln2.mc.common.cells.foundation.CellPos
 import org.eln2.mc.common.cells.foundation.objects.SimulationObjectSet
@@ -8,7 +9,7 @@ import org.eln2.mc.common.cells.objects.ResistorObject
 import org.eln2.mc.integration.waila.IWailaProvider
 import org.eln2.mc.integration.waila.TooltipBuilder
 
-class ResistorCell(pos: CellPos) : CellBase(pos), IWailaProvider {
+class ResistorCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id), IWailaProvider {
     override fun createObjectSet(): SimulationObjectSet {
         return SimulationObjectSet(ResistorObject())
     }
