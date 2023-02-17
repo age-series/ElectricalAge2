@@ -2,8 +2,11 @@ package org.eln2.mc.common.cells.foundation.objects
 
 import org.ageseries.libage.sim.electrical.mna.Circuit
 import org.ageseries.libage.sim.electrical.mna.component.Component
+import org.eln2.mc.Eln2
+import org.eln2.mc.common.space.RelativeRotationDirection
 
-class ComponentInfo(val component: Component, val index: Int)
+data class ComponentInfo(val component: Component, val index: Int)
+data class ConnectionInfo(val obj: ElectricalObject, val direction: RelativeRotationDirection)
 
 /**
  * Represents an object that is part of an electrical simulation.
@@ -17,9 +20,25 @@ abstract class ElectricalObject : ISimulationObject {
     var circuit: Circuit? = null
         private set
 
-    protected val connections = ArrayList<ElectricalObject>()
+    protected val connections = ArrayList<ConnectionInfo>()
 
     final override val type = SimulationObjectType.Electrical
+
+    protected fun indexOf(obj: ElectricalObject): Int {
+        val index = connections.indexOfFirst { it.obj == obj }
+
+        if(index == -1){
+            error("Connections did not have $obj")
+        }
+
+        return index
+    }
+
+    protected fun directionOf(obj: ElectricalObject): RelativeRotationDirection{
+        val index = indexOf(obj)
+
+        return connections[index].direction
+    }
 
     /**
      * Called by electrical objects to fetch a connection candidate.
@@ -39,15 +58,21 @@ abstract class ElectricalObject : ISimulationObject {
     /**
      * Called by the cell when a valid connection candidate is discovered.
      * */
-    fun addConnection(other: ElectricalObject) {
-        connections.add(other)
+    fun addConnection(connectionInfo: ConnectionInfo) {
+        if(connections.contains(connectionInfo)){
+            error("Duplicate connection")
+        }
+
+        connections.add(connectionInfo)
+
+        Eln2.LOGGER.info("Recorded connection on ${connectionInfo.direction} with ${connectionInfo.obj}")
     }
 
     /**
      * Called when this object is destroyed. Connections are also cleaned up.
      * */
     override fun destroy() {
-        connections.forEach { it.connections.remove(this) }
+        connections.forEach { it.obj.connections.removeAll { conn -> conn.obj == this } }
     }
 
     override fun update(connectionsChanged: Boolean, graphChanged: Boolean) {}

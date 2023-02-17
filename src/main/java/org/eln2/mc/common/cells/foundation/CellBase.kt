@@ -2,6 +2,7 @@ package org.eln2.mc.common.cells.foundation
 
 import mcp.mobius.waila.api.IPluginConfig
 import net.minecraft.resources.ResourceLocation
+import org.eln2.mc.common.cells.foundation.objects.ConnectionInfo
 import org.eln2.mc.common.cells.foundation.objects.ElectricalObject
 import org.eln2.mc.common.cells.foundation.objects.SimulationObjectSet
 import org.eln2.mc.common.cells.foundation.objects.SimulationObjectType
@@ -105,11 +106,10 @@ abstract class CellBase(val pos: CellPos, val id: ResourceLocation) : IWailaProv
                             val localElectrical = it as ElectricalObject
                             val remoteElectrical = neighborInfo.cell.objectSet.electricalObject
 
-                            localElectrical.addConnection(remoteElectrical)
-                            remoteElectrical.addConnection(localElectrical)
+                            localElectrical.addConnection(ConnectionInfo(
+                                remoteElectrical,
+                                neighborInfo.sourceDirection))
                         }
-
-                        else -> error("Unhandled simulation object type ${it.type}")
                     }
                 }
             }

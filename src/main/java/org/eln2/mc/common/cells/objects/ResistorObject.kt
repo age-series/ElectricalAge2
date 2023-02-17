@@ -13,7 +13,7 @@ class ResistorObject : ElectricalObject(), IWailaProvider {
     private lateinit var resistor: Resistor
 
     override fun offerComponent(neighbour: ElectricalObject): ComponentInfo {
-        return ComponentInfo(resistor, connections.indexOf(neighbour))
+        return ComponentInfo(resistor, indexOf(neighbour))
     }
 
     override fun recreateComponents() {
@@ -26,7 +26,8 @@ class ResistorObject : ElectricalObject(), IWailaProvider {
     }
 
     override fun build() {
-        connections.forEach { remote ->
+        connections.forEach { connectionInfo ->
+            val remote = connectionInfo.obj
             val localInfo = offerComponent(remote)
             val remoteInfo = remote.offerComponent(this)
 
