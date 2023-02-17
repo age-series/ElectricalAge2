@@ -17,6 +17,12 @@ import java.util.*
 import kotlin.collections.ArrayDeque
 import kotlin.system.measureNanoTime
 
+/**
+ * The cell graph represents a physical network of cells.
+ * It may have multiple simulation subsets, formed between objects in the cells of this graph.
+ * The cell graph manages the solver and simulation.
+ * It also has serialization/deserialization logic for saving to the disk using NBT.
+ * */
 class CellGraph(val id: UUID, val manager: CellGraphManager) {
     val cells = ArrayList<CellBase>()
 
@@ -24,10 +30,17 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
 
     private val circuits = ArrayList<Circuit>()
 
+    /**
+     * True, if the solution was found last tick. Otherwise, false.
+     * */
     var successful = false
         private set
 
+    /**
+     * Gets the last tick time (in nanoseconds).
+     * */
     var latestSolveTime = 0L
+        private set
 
     fun update() {
         latestSolveTime = measureNanoTime {
@@ -39,6 +52,9 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
         }
     }
 
+    /**
+     * This realizes the object subsets and creates the underlying simulations.
+     * */
     fun buildSolver() {
         cells.forEach { it.clearObjectConnections() }
         cells.forEach { it.recordObjectConnections() }
@@ -48,7 +64,7 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
     }
 
     /**
-     * This method realizes the electrical circuits for all cells in the graph.
+     * This method realizes the electrical circuits for all cells that have electrical object.
      * */
     private fun realizeElectrical() {
         LOGGER.info("Realizing electrical components.")
@@ -67,6 +83,7 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
     }
 
     /**
+     * Realizes a subset of simulation objects that share the same simulation type.
      * This algorithm first creates a set with all cells that have the specified simulation type.
      * Then, it does a search through the cells, only taking into account connected nodes that have that simulation type.
      * When a cell is discovered, it is removed from the pending set.
@@ -116,6 +133,10 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
         }
     }
 
+    /**
+     * Gets the cell at the specified CellPos.
+     * @return The cell, if found, or throws an exception, if the cell does not exist.
+     * */
     fun getCell(pos: CellPos): CellBase {
         val result = posCells[pos]
 
@@ -127,12 +148,24 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
         return result
     }
 
+    /**
+     * Removes a cell from the internal sets, and invalidates the saved data.
+     * **This does not update the solver!
+     * It is assumed that multiple operations of this type will be performed, then,
+     * the solver update will occur explicitly.**
+     * */
     fun removeCell(cell: CellBase) {
         cells.remove(cell)
         posCells.remove(cell.pos)
         manager.setDirty()
     }
 
+    /**
+     * Adds a cell to the internal sets, assigns its graph, and invalidates the saved data.
+     * **This does not update the solver!
+     * It is assumed that multiple operations of this type will be performed, then,
+     * the solver update will occur explicitly.**
+     * */
     fun addCell(cell: CellBase) {
         cells.add(cell)
         cell.graph = this
@@ -140,11 +173,17 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
         manager.setDirty()
     }
 
+    /**
+     * Copies the cells of this graph to the other graph, and invalidates the saved data.
+     * */
     fun copyTo(graph: CellGraph) {
         graph.cells.addAll(cells)
         manager.setDirty()
     }
 
+    /**
+     * Removes the graph from tracking and invalidates the saved data.
+     * */
     fun destroy() {
         manager.removeGraph(this)
         manager.setDirty()
@@ -179,7 +218,7 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
         return circuitCompound
     }
 
-    data class ConnectionInfoCell(val cellPos: CellPos, val direction: RelativeRotationDirection)
+    private data class ConnectionInfoCell(val cellPos: CellPos, val direction: RelativeRotationDirection)
 
     companion object {
         fun fromNbt(graphCompound: CompoundTag, manager: CellGraphManager): CellGraph {

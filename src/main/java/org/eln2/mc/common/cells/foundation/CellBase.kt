@@ -11,6 +11,11 @@ import org.eln2.mc.integration.waila.TooltipBuilder
 
 data class CellConnectionInfo(val cell: CellBase, val sourceDirection: RelativeRotationDirection)
 
+/**
+ * The cell is a physical unit, that may participate in multiple simulations. Each simulation will
+ * have a Simulation Object associated with it.
+ * Cells create connections with other cells, and objects create connections with other objects of the same simulation type.
+ * */
 abstract class CellBase(val pos: CellPos, val id: ResourceLocation) : IWailaProvider {
     lateinit var graph: CellGraph
     lateinit var connections: ArrayList<CellConnectionInfo>
@@ -119,13 +124,25 @@ abstract class CellBase(val pos: CellPos, val id: ResourceLocation) : IWailaProv
         objectSet.process { it.build() }
     }
 
+    /**
+     * Checks if this cell has the specified simulation object type.
+     * @return True if this cell has the required object. Otherwise, false.
+     * */
     fun hasObject(type: SimulationObjectType): Boolean {
         return objectSet.hasObject(type)
     }
 
+    /**
+     * Gets the electrical object. Only call if it has been ensured that this cell has an electrical object.
+     * */
     val electricalObject get() = objectSet.electricalObject
 
+    /**
+     * By default, the cell just passes down the call to objects that implement the WAILA provider.
+     * */
     override fun appendBody(builder: TooltipBuilder, config: IPluginConfig?) {
+        // The following 2 calls are debug and will be removed in the future:
+
         if (hasGraph) {
             builder.text("Graph", graph.id)
         }
