@@ -15,9 +15,11 @@ import org.eln2.mc.common.space.RelativeRotationDirection
 
 class ResistorPart(
     id: ResourceLocation,
-    placementContext: PartPlacementContext) : CellPart(id, placementContext,
+    placementContext: PartPlacementContext
+) : CellPart(
+    id, placementContext,
     CellRegistry.RESISTOR_CELL.get()
-){
+) {
 
     override val baseSize = Vec3(1.0, 1.0, 1.0)
 

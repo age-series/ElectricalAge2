@@ -50,7 +50,7 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
     /**
      * This method realizes the electrical circuits for all cells in the graph.
      * */
-    private fun realizeElectrical(){
+    private fun realizeElectrical() {
         LOGGER.info("Realizing electrical components.")
 
         circuits.clear()
@@ -78,7 +78,8 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
      * */
     private fun <TComponent> realizeComponents(
         type: SimulationObjectType,
-        factory: ((HashSet<CellBase>) -> TComponent)) {
+        factory: ((HashSet<CellBase>) -> TComponent)
+    ) {
 
         val pending = HashSet(cells.filter { it.hasObject(type) })
         val queue = ArrayDeque<CellBase>()
@@ -88,24 +89,24 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
 
         val results = ArrayList<TComponent>()
 
-        while(pending.size > 0){
+        while (pending.size > 0) {
             assert(queue.size == 0)
 
             visited.clear()
 
             queue.add(pending.first())
 
-            while(queue.size > 0){
+            while (queue.size > 0) {
                 val cell = queue.removeFirst()
 
-                if(!visited.add(cell)){
+                if (!visited.add(cell)) {
                     continue
                 }
 
                 pending.remove(cell)
 
                 cell.connections.forEach { connectedCellInfo ->
-                    if(connectedCellInfo.cell.hasObject(type)){
+                    if (connectedCellInfo.cell.hasObject(type)) {
                         queue.add(connectedCellInfo.cell)
                     }
                 }

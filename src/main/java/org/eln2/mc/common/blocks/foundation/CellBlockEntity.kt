@@ -244,7 +244,7 @@ class CellBlockEntity(var pos: BlockPos, var state: BlockState) :
     override fun appendBody(builder: TooltipBuilder, config: IPluginConfig?) {
         val cell = this.cell
 
-        if(cell is IWailaProvider){
+        if (cell is IWailaProvider) {
             cell.appendBody(builder, config)
         }
     }

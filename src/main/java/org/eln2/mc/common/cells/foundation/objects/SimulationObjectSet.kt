@@ -8,21 +8,21 @@ package org.eln2.mc.common.cells.foundation.objects
 class SimulationObjectSet(objects: List<ISimulationObject>) {
     constructor(vararg objects: ISimulationObject) : this(objects.asList())
 
-    private var electrical : ElectricalObject? = null
+    private var electrical: ElectricalObject? = null
 
-    private val mask : SimulationObjectMask
+    private val mask: SimulationObjectMask
 
     init {
-        if(objects.isEmpty()){
+        if (objects.isEmpty()) {
             error("Tried to create empty simulation object set.")
         }
 
         var objectMask = SimulationObjectMask.EMPTY
 
         objects.forEach {
-            when(it.type){
+            when (it.type) {
                 SimulationObjectType.Electrical -> {
-                    if(electrical != null){
+                    if (electrical != null) {
                         error("Duplicate electrical object")
                     }
 
@@ -36,14 +36,14 @@ class SimulationObjectSet(objects: List<ISimulationObject>) {
         mask = objectMask
     }
 
-    fun hasObject(type: SimulationObjectType): Boolean{
+    fun hasObject(type: SimulationObjectType): Boolean {
         return mask.hasFlag(type)
     }
 
-    private fun getObject(type: SimulationObjectType): ISimulationObject{
-        when(type){
+    private fun getObject(type: SimulationObjectType): ISimulationObject {
+        when (type) {
             SimulationObjectType.Electrical -> {
-                if(electrical == null){
+                if (electrical == null) {
                     error("Tried to get electrical component, which was null")
                 }
 
@@ -54,9 +54,9 @@ class SimulationObjectSet(objects: List<ISimulationObject>) {
 
     val electricalObject get() = getObject(SimulationObjectType.Electrical) as ElectricalObject
 
-    fun process(function: ((ISimulationObject) -> Unit)){
-       if(electrical != null){
-           function(electrical!!)
-       }
+    fun process(function: ((ISimulationObject) -> Unit)) {
+        if (electrical != null) {
+            function(electrical!!)
+        }
     }
 }

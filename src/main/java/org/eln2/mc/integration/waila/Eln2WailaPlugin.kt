@@ -46,8 +46,7 @@ class Eln2WailaPlugin : IWailaPlugin {
 
                 try {
                     blockEntity.appendBody(builder, config)
-                }
-                catch (_: Exception){
+                } catch (_: Exception) {
                     // Handle errors caused by simulator
                     // Make sure you add a breakpoint here if you aren't getting your toolip properly
                 }
