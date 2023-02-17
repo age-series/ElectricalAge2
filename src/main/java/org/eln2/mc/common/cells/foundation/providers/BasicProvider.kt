@@ -7,6 +7,9 @@ import org.eln2.mc.common.cells.foundation.CellProvider
 import org.eln2.mc.common.space.DirectionMask
 import org.eln2.mc.common.space.RelativeRotationDirection
 
+/**
+ * The Basic Provider is a cell provider that filters connections based on a direction mask.
+ * */
 class BasicProvider(private val directionMask: DirectionMask, private val factory: ICellFactory) : CellProvider() {
     override fun createInstance(pos: CellPos, id: ResourceLocation): CellBase {
         return factory.create(pos, id)

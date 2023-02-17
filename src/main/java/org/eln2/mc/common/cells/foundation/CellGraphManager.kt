@@ -12,13 +12,18 @@ import java.util.*
 import java.util.concurrent.ExecutorCompletionService
 import java.util.concurrent.Executors
 
-
+/**
+ * The Cell Graph Manager tracks the cell graphs for a single dimension.
+ * It delegates updates to the graphs.
+ * This is a **server-only** construct. Simulations never have to occur on the client.
+ * */
 class CellGraphManager(val level: Level) : SavedData() {
+    // todo: proper parallel execution, after the objects are done
     private val executor = Executors.newWorkStealingPool(12)
     private val completionService = ExecutorCompletionService<Long>(executor)
     private val averageSeconds = AveragingList(100)
 
-    val graphs = HashMap<UUID, CellGraph>()
+    private val graphs = HashMap<UUID, CellGraph>()
 
     // Could also use graph count, but let's be safe.
     private var runningTasks = 0
@@ -63,15 +68,25 @@ class CellGraphManager(val level: Level) : SavedData() {
         }
     */
 
+    /**
+     * Checks whether this manager is tracking the specified graph.
+     * @return True, if the graph is being tracked by this manager. Otherwise, false.
+     * */
     fun contains(id: UUID): Boolean {
         return graphs.containsKey(id)
     }
 
+    /**
+     * Begins tracking a graph, and invalidates the saved data.
+     * */
     fun addGraph(graph: CellGraph) {
         graphs[graph.id] = graph
         setDirty()
     }
 
+    /**
+     * Creates a fresh graph, starts tracking it, and invalidates the saved data.
+     * */
     fun createGraph(): CellGraph {
         val graph = CellGraph(UUID.randomUUID(), this)
         addGraph(graph)
@@ -79,6 +94,10 @@ class CellGraphManager(val level: Level) : SavedData() {
         return graph
     }
 
+    /**
+     * Removes a graph, and invalidates the saved data.
+     * **This does not call any _destroy_ methods on the graph!**
+     * */
     fun removeGraph(graph: CellGraph) {
         graphs.remove(graph.id)
         Eln2.LOGGER.info("Removed graph ${graph.id}!")
@@ -128,6 +147,9 @@ class CellGraphManager(val level: Level) : SavedData() {
             return manager
         }
 
+        /**
+         * Gets or creates a graph manager for the specified level.
+         * */
         fun getFor(level: ServerLevel): CellGraphManager {
             return level.dataStorage.computeIfAbsent({ load(it, level) }, { CellGraphManager(level) }, "CellManager")
         }

@@ -7,16 +7,18 @@ import org.eln2.mc.common.space.RelativeRotationDirection
  * Cell container
  *  - Holds a set of cells that exist in a block space
  *  - Implemented by block entities
- *  - Is used by the connection logic to form connections with cells from different block entities
+ *  - Is used by the connection logic to form connections with cells from different containers, and the same container (inner connections).
  *  - Example:
  *      1. A furnace
- *          Such a machine would contain a cell (a ballast) that drains power from the network.
+ *          - Such a machine would contain a cell (a ballast) that drains power from the network.
  *          getCells would return the ballast cell, and getNeighbors would look for cells adjacent to the power input side.
  *      2. A multipart container
- *          The multipart container is a block entity that stores "parts", which represent some smaller components
+ *          - The multipart container is a block entity that stores "parts", which represent some smaller components
  *          (e.g. wires) that exist in the same block space.
  *          There would be one part per inner face, and getNeighbors would look for other parts and cells in other containers.
- *
+ *  - Cell containers are expected to react to connection changes (e.g. to update the visual representation of the device)
+ *  - Cells are accessed via queries. The implementation is likely to access the game world, to scan for neighbors and match them against the query.
+ *  @see CellQuery
  * */
 interface ICellContainer {
     /**
@@ -25,12 +27,14 @@ interface ICellContainer {
     fun getCells(): ArrayList<CellInfo>
 
     /**
+     * Performs a directed query. Only one cell can match a given query.
      * @return A cell that matches the specified query, or null, if no cell matches.
      * */
     fun query(query: CellQuery): CellInfo?
 
     /**
-     * Queries the neighbors of the specified cell.
+     * Queries the neighbors of the specified cell. These neighbors may be part of this container, or other containers.
+     * It **must** be guaranteed that this method returns the same results, if the state is not changed.
      * @return A list of all the neighbors of the specified cell.
      * */
     fun queryNeighbors(location: CellInfo): ArrayList<CellNeighborInfo>
@@ -39,12 +43,12 @@ interface ICellContainer {
      * Checks if the specified cell accepts connection from the specified direction.
      * @param location The cell to check candidates for.
      * @param direction The global direction.
-     * @return A relative rotation, if the connection is accepted. Otherwise, null.
+     * @return A relative rotation, if the connection is possible. Otherwise, null.
      * */
     fun probeConnectionCandidate(location: CellInfo, direction: Direction): RelativeRotationDirection?
 
     /**
-     * Called by the connection manager when a connection is made.
+     * Called by the connection manager when a connection is made. Containers may react to this in order to e.g. update the view.
      * @param location The cell that received the new connection.
      * @param direction The local direction towards the remote cell.
      * */
@@ -63,7 +67,7 @@ interface ICellContainer {
     fun topologyChanged()
 
     /**
-     * The manager responsible for the cells in this container (per dimension)
+     * The manager responsible for the cells in this container (per dimension).
      * */
     val manager: CellGraphManager
 }
