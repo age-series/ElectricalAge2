@@ -1,5 +1,10 @@
 package org.eln2.mc.common.cells.foundation.objects
 
+/**
+ * This represents an immutable set of simulation objects.
+ * All possible simulation objects are stored in fields, because there won't be many (probably only electrical, thermal and mechanical),
+ * so there is no reason not to skip an allocation for a map/array.
+ * */
 class SimulationObjectSet(objects: List<ISimulationObject>) {
     constructor(vararg objects: ISimulationObject) : this(objects.asList())
 
@@ -35,7 +40,7 @@ class SimulationObjectSet(objects: List<ISimulationObject>) {
         return mask.hasFlag(type)
     }
 
-    fun getObject(type: SimulationObjectType): ISimulationObject{
+    private fun getObject(type: SimulationObjectType): ISimulationObject{
         when(type){
             SimulationObjectType.Electrical -> {
                 if(electrical == null){
