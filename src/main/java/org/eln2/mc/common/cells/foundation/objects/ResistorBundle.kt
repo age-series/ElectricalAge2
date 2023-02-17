@@ -21,12 +21,12 @@ class ResistorBundle(private val resistance: Double) {
             error("Already prepared")
         }
 
-        prepared = true
-
         connections.forEach {
             val resistor = getResistor(it.direction)
             circuit.add(resistor)
         }
+
+        prepared = true
     }
 
     /**
