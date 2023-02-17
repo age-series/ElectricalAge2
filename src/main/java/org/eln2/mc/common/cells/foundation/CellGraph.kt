@@ -58,9 +58,10 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
     fun buildSolver() {
         cells.forEach { it.clearObjectConnections() }
         cells.forEach { it.recordObjectConnections() }
-        cells.forEach { it.build() }
 
         realizeElectrical()
+
+        cells.forEach { it.build() }
     }
 
     /**

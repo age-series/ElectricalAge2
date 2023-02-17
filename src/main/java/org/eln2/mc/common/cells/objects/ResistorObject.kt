@@ -3,6 +3,7 @@ package org.eln2.mc.common.cells.objects
 import mcp.mobius.waila.api.IPluginConfig
 import org.ageseries.libage.sim.electrical.mna.Circuit
 import org.ageseries.libage.sim.electrical.mna.component.Resistor
+import org.eln2.mc.Eln2
 import org.eln2.mc.common.cells.foundation.objects.ComponentInfo
 import org.eln2.mc.common.cells.foundation.objects.ElectricalObject
 import org.eln2.mc.extensions.TooltipBuilderExtensions.resistor
@@ -32,6 +33,8 @@ class ResistorObject : ElectricalObject(), IWailaProvider {
             val remoteInfo = remote.offerComponent(this)
 
             localInfo.component.connect(localInfo.index, remoteInfo.component, remoteInfo.index)
+
+            Eln2.LOGGER.info("Resistor ${localInfo.index} -> ${remoteInfo.component}:${remoteInfo.index}")
         }
     }
 
