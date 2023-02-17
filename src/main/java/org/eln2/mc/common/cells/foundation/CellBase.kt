@@ -1,15 +1,17 @@
 package org.eln2.mc.common.cells.foundation
 
+import mcp.mobius.waila.api.IPluginConfig
 import net.minecraft.resources.ResourceLocation
-import org.eln2.mc.Eln2.LOGGER
 import org.eln2.mc.common.cells.foundation.objects.ElectricalObject
 import org.eln2.mc.common.cells.foundation.objects.SimulationObjectSet
 import org.eln2.mc.common.cells.foundation.objects.SimulationObjectType
 import org.eln2.mc.common.space.RelativeRotationDirection
+import org.eln2.mc.integration.waila.IWailaProvider
+import org.eln2.mc.integration.waila.TooltipBuilder
 
 data class CellConnectionInfo(val cell: CellBase, val sourceDirection: RelativeRotationDirection)
 
-abstract class CellBase(val pos: CellPos, val id: ResourceLocation) {
+abstract class CellBase(val pos: CellPos, val id: ResourceLocation) : IWailaProvider{
     lateinit var graph: CellGraph
     lateinit var connections: ArrayList<CellConnectionInfo>
 
@@ -121,4 +123,18 @@ abstract class CellBase(val pos: CellPos, val id: ResourceLocation) {
     }
 
     val electricalObject get() = objectSet.electricalObject
+
+    override fun appendBody(builder: TooltipBuilder, config: IPluginConfig?) {
+        if(hasGraph){
+            builder.text("Graph", graph.id)
+        }
+
+        builder.text("Connections", connections.map { it.sourceDirection }.joinToString(" "))
+
+        objectSet.process {
+            if(it is IWailaProvider){
+                it.appendBody(builder, config)
+            }
+        }
+    }
 }
