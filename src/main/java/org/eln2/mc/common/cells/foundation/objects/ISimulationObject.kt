@@ -13,11 +13,12 @@ interface ISimulationObject {
 
     /**
      * Called when the solver is being built.
+     * Here, the previous state should be cleared so that the object is ready to join a new simulation.
      * */
     fun clear()
 
     /**
-     * Called when the solver is being built, after clear.
+     * Called when the solver is being built, after *clear*.
      * */
     fun build()
 

@@ -9,8 +9,7 @@ import org.eln2.mc.common.space.RelativeRotationDirection
 
 data class CellConnectionInfo(val cell: CellBase, val sourceDirection: RelativeRotationDirection)
 
-abstract class CellBase(val pos: CellPos) {
-    lateinit var id: ResourceLocation
+abstract class CellBase(val pos: CellPos, val id: ResourceLocation) {
     lateinit var graph: CellGraph
     lateinit var connections: ArrayList<CellConnectionInfo>
 

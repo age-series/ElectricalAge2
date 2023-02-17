@@ -6,7 +6,7 @@ import net.minecraftforge.registries.*
 import org.eln2.mc.Eln2
 import org.eln2.mc.Eln2.LOGGER
 import org.eln2.mc.common.cells.foundation.CellProvider
-import org.eln2.mc.common.cells.foundation.providers.PolarProvider
+import org.eln2.mc.common.cells.foundation.providers.BasicProvider
 import java.util.function.Supplier
 
 object CellRegistry {
@@ -29,5 +29,5 @@ object CellRegistry {
         return cellRegistry.get().getValue(id) ?: error("Could not get cell provider with id $id")
     }
 
-    val RESISTOR_CELL = register("resistor_cell", PolarProvider{ ResistorCell(it) })
+    val RESISTOR_CELL = register("resistor_cell", BasicProvider.polar(::ResistorCell))
 }

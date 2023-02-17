@@ -210,7 +210,6 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
 
                 cellConnections[cell] = connectionPositions
 
-                cell.id = cellId
                 result.addCell(cell)
             }
 
