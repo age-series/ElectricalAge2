@@ -47,6 +47,9 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
         realizeElectrical()
     }
 
+    /**
+     * This method realizes the electrical circuits for all cells in the graph.
+     * */
     private fun realizeElectrical(){
         LOGGER.info("Realizing electrical components.")
 
@@ -116,7 +119,7 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
         val result = posCells[pos]
 
         if (result == null) {
-            Eln2.LOGGER.error("Could not get cell at $pos")
+            LOGGER.error("Could not get cell at $pos")
             error("")
         }
 

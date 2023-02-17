@@ -106,7 +106,7 @@ class CellBlockEntity(var pos: BlockPos, var state: BlockState) :
             return
         }
 
-        if (cell!!.hasGraph()) {
+        if (cell!!.hasGraph) {
             pTag.putString("GraphID", cell!!.graph.id.toString())
         } else {
             Eln2.LOGGER.info("Save additional: graph null")

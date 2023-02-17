@@ -27,6 +27,10 @@ abstract class CellBase(val pos: CellPos) {
 
     private var createdSet : SimulationObjectSet? = null
 
+    /**
+     * Called once when the object set is requested. The result is then cached.
+     * @return A new object set, with all the desired objects.
+     * */
     abstract fun createObjectSet(): SimulationObjectSet
 
     private val objectSet : SimulationObjectSet get() {
@@ -48,10 +52,6 @@ abstract class CellBase(val pos: CellPos) {
      * The field is assigned before this is called.
      */
     open fun onEntityLoaded() {}
-
-    fun hasGraph(): Boolean {
-        return this::graph.isInitialized
-    }
 
     /**
      * Called when the graph manager completed loading this cell from the disk.
@@ -77,14 +77,18 @@ abstract class CellBase(val pos: CellPos) {
      */
     open fun update(connectionsChanged: Boolean, graphChanged: Boolean) {}
 
+    /**
+     * Called when the solver is being built, in order to clear and prepare the objects.
+     * */
     fun clearObjectConnections(){
         objectSet.process { it.clear() }
     }
 
+    /**
+     * Called when the solver is being built, in order to record all object-object connections.
+     * */
     fun recordObjectConnections(){
         objectSet.process {
-            LOGGER.info("Process $it")
-
             connections.forEach { neighborInfo ->
                 if(neighborInfo.cell.hasObject(it.type)){
                     // We can form a connection here.
@@ -96,8 +100,6 @@ abstract class CellBase(val pos: CellPos) {
 
                             localElectrical.addConnection(remoteElectrical)
                             remoteElectrical.addConnection(localElectrical)
-
-                            LOGGER.info("Recording connection.")
                         }
 
                         else -> error("Unhandled simulation object type ${it.type}")
@@ -107,6 +109,10 @@ abstract class CellBase(val pos: CellPos) {
         }
     }
 
+    /**
+     * Called when the solver is being built, in order to finish setting up the underlying components in the
+     * simulation objects.
+     * */
     fun build(){
         objectSet.process { it.build() }
     }
