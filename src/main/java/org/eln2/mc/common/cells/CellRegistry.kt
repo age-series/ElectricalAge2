@@ -30,4 +30,6 @@ object CellRegistry {
     }
 
     val RESISTOR_CELL = register("resistor_cell", BasicProvider.polar(::ResistorCell))
+    val VOLTAGE_SOURCE_CELL = register("voltage_source_cell", BasicProvider.fourPin(::VoltageSourceCell))
+    val GROUND_CELL = register("ground_cell", BasicProvider.fourPin(::GroundCell))
 }

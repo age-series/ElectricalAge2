@@ -58,7 +58,7 @@ abstract class ElectricalObject : ISimulationObject {
     /**
      * Called by the cell when a valid connection candidate is discovered.
      * */
-    fun addConnection(connectionInfo: ConnectionInfo) {
+    open fun addConnection(connectionInfo: ConnectionInfo) {
         if(connections.contains(connectionInfo)){
             error("Duplicate connection")
         }
