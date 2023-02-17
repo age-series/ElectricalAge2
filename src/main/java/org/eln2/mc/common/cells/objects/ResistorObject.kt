@@ -33,8 +33,6 @@ class ResistorObject : ElectricalObject(), IWailaProvider {
             val remoteInfo = remote.offerComponent(this)
 
             localInfo.component.connect(localInfo.index, remoteInfo.component, remoteInfo.index)
-
-            Eln2.LOGGER.info("Resistor ${localInfo.index} -> ${remoteInfo.component}:${remoteInfo.index}")
         }
     }
 
