@@ -24,9 +24,8 @@ object CellConnectionManager {
      * topological changes to related networks.
      * */
     fun connect(container: ICellContainer, cellSpace: CellInfo) {
-        cellSpace.cell.onPlaced()
-
         registerCell(cellSpace, container)
+        cellSpace.cell.onPlaced()
     }
 
     /**
