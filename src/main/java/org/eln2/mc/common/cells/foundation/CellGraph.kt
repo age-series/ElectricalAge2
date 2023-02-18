@@ -3,14 +3,13 @@ package org.eln2.mc.common.cells.foundation
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.nbt.ListTag
 import net.minecraft.resources.ResourceLocation
-import net.minecraft.server.MinecraftServer
 import net.minecraftforge.server.ServerLifecycleHooks
 import org.ageseries.libage.sim.electrical.mna.Circuit
-import org.eln2.mc.Eln2
 import org.eln2.mc.Eln2.LOGGER
 import org.eln2.mc.annotations.CrossThreadAccess
 import org.eln2.mc.common.cells.CellRegistry
 import org.eln2.mc.common.cells.foundation.objects.SimulationObjectType
+import org.eln2.mc.common.configs.Configuration
 import org.eln2.mc.common.space.RelativeRotationDirection
 import org.eln2.mc.extensions.NbtExtensions.getCellPos
 import org.eln2.mc.extensions.NbtExtensions.getRelativeDirection
@@ -304,7 +303,16 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
     private data class ConnectionInfoCell(val cellPos: CellPos, val direction: RelativeRotationDirection)
 
     companion object {
-        private val pool = Executors.newScheduledThreadPool(4)
+        init {
+            // We do get an exception from thread pool creation, but explicit handling is better here.
+            if(Configuration.config.simulationThreads == 0){
+                error("Simulation threads is 0")
+            }
+
+            LOGGER.info("Using ${Configuration.config.simulationThreads} simulation threads")
+        }
+
+        private val pool = Executors.newScheduledThreadPool(Configuration.config.simulationThreads)
 
         fun fromNbt(graphCompound: CompoundTag, manager: CellGraphManager): CellGraph {
             val id = graphCompound.getUUID("ID")
