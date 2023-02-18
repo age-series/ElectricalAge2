@@ -18,55 +18,7 @@ import java.util.concurrent.Executors
  * This is a **server-only** construct. Simulations never have to occur on the client.
  * */
 class CellGraphManager(val level: Level) : SavedData() {
-    // todo: proper parallel execution, after the objects are done
-    private val executor = Executors.newWorkStealingPool(12)
-    private val completionService = ExecutorCompletionService<Long>(executor)
-    private val averageSeconds = AveragingList(100)
-
     private val graphs = HashMap<UUID, CellGraph>()
-
-    // Could also use graph count, but let's be safe.
-    private var runningTasks = 0
-
-    private var logCountdown = 100
-
-    fun beginUpdate() {
-        graphs.values.forEach { graph ->
-            completionService.submit {
-                graph.update()
-
-                return@submit graph.latestSolveTime
-            }
-
-            runningTasks++
-        }
-    }
-
-    fun endUpdate() {
-        var totalTime = 0.0
-
-        while (runningTasks-- > 0) {
-            val nanoseconds = completionService.take().get()
-
-            totalTime += Time.toSeconds(nanoseconds)
-        }
-
-        runningTasks = 0
-
-        averageSeconds.addSample(totalTime)
-
-        if (--logCountdown == 0) {
-            logCountdown = 100
-
-            Eln2.LOGGER.info("Average simulation time: ${averageSeconds.calculate() * 1000}ms")
-        }
-    }
-    /*
-
-        fun update(){
-            graphs.values.forEach{ it.update() }
-        }
-    */
 
     /**
      * Checks whether this manager is tracking the specified graph.
@@ -141,7 +93,9 @@ class CellGraphManager(val level: Level) : SavedData() {
 
                 manager.addGraph(graph)
                 Eln2.LOGGER.info("Loaded ${graph.cells.count()} cells for ${graph.id}!")
+
                 graph.buildSolver()
+                graph.startSimulation()
             }
 
             return manager

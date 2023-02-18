@@ -23,19 +23,6 @@ object CommonEvents {
     private const val THIRTY_DAYS_AS_MILLISECONDS: Long = 2_592_000_000L
 
     @SubscribeEvent
-    fun onServerTick(event: TickEvent.ServerTickEvent) {
-        if (event.phase == TickEvent.Phase.START) {
-            ServerLifecycleHooks.getCurrentServer().allLevels.forEach {
-                CellGraphManager.getFor(it).beginUpdate()
-            }
-        } else if (event.phase == TickEvent.Phase.END) {
-            ServerLifecycleHooks.getCurrentServer().allLevels.forEach {
-                CellGraphManager.getFor(it).endUpdate()
-            }
-        }
-    }
-
-    @SubscribeEvent
     fun onEntityJoinedWorld(event: EntityJoinWorldEvent) {
         //Warn new users that we collect analytics
         if (event.world.isClientSide && event.entity is Player) {

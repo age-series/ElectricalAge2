@@ -64,8 +64,6 @@ abstract class ElectricalObject : ISimulationObject {
         }
 
         connections.add(connectionInfo)
-
-        Eln2.LOGGER.info("Recorded connection on ${connectionInfo.direction} with ${connectionInfo.obj}")
     }
 
     /**
