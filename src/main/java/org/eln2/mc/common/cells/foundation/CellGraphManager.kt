@@ -6,7 +6,9 @@ import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.saveddata.SavedData
 import org.eln2.mc.Eln2
+import org.eln2.mc.Eln2.LOGGER
 import org.eln2.mc.utility.AveragingList
+import org.eln2.mc.utility.Stopwatch
 import org.eln2.mc.utility.Time
 import java.util.*
 import java.util.concurrent.ExecutorCompletionService
@@ -19,6 +21,14 @@ import java.util.concurrent.Executors
  * */
 class CellGraphManager(val level: Level) : SavedData() {
     private val graphs = HashMap<UUID, CellGraph>()
+
+    private val statisticsWatch = Stopwatch()
+
+    fun getTickRate(): Double{
+        val elapsedSeconds = statisticsWatch.sample()
+
+        return graphs.values.sumOf { it.sampleElapsedUpdates() } / elapsedSeconds
+    }
 
     /**
      * Checks whether this manager is tracking the specified graph.
