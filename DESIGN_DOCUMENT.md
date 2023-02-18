@@ -474,3 +474,48 @@ Current) will result in an exception if the simulation is in an unready
 state. Without implicit handling, every WAILA contract implementation 
 would have to do its own error handling, which would just be the same 
 everywhere.
+
+# Parallel Simulation
+
+The simulation is separate from the game. As such, it is simple to delegate it to other threads. A high degree of parallelism is possible. It is projected that minimal to no synchronization will be required in the future, when functioning devices will be implemented.
+
+The proposed implementation entails the following:
+
+- A fixed thread pool is used for simulation (the number of threads is configurable)
+  
+- The only sync points occur when mutating the simulation (e.g. cells are added and removed)
+  
+- Most game-simulation communication will be done via event queues and atomic operations (an Event Scheduler is proposed)
+  
+- The simulation can be started/stopped. Stopping the simulation will wait for the currently running iteration to finish, before cancelling the scheduled task.
+  
+- Parallelism only occurs at the cell network level
+  
+
+### Event Scheduler
+
+The event scheduler is used to enqueue events from various threads (e.g. the simulation threads) that will be consumed on the game thread, at a later time.
+
+#### Event Manager
+
+The first major component is the *Event Manager*. It is analogous to an **event dispatcher**. Event Handlers are methods which receive an event. Events are data classes that implement the event marker interface.
+
+The dispatcher has a `send` routine, which can be used to send an event to all subscribed handlers.
+
+#### Event Queue
+
+The second major component is the **event queue**. An *Event Listener* (Block Entity or Part) that needs to receive events will create an event queue. This event queue can be accessed by other threads in order to schedule events. Listeners will be given an Event Manager created specifically for their event queue, which may be used to register handlers for the events they are interested in receiving. On every game tick, the scheduler walks the queue and sends the events to the Event Manager.
+
+To summarize, events may be scheduled to be sent on the next tick.
+
+In the context of Block Entities and Parts, these events could certainly be used to e.g. schedule game ticks based on a change in the simulation state. The current optimization paradigm removes polling (constantly accessing the simulation state from the game thread). This is why Parts have an API to Suspend/Resume ticks.
+
+This *reactive* approach is a good optimization solution. For example, this sytem could be used to activate the ticker of a game object. The simulations are dispatched in parallel, and as such, all polling and intensive operations can happen outside the game thread, on those simulation threads, then events can be sent to finally cause game updates.
+
+### Future Work
+
+- Strategy for adjusting tick rates, to further improve performance
+  
+  - Finding the optimal step size
+    
+- Two-way events
