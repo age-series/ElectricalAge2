@@ -8,6 +8,7 @@ import net.minecraftforge.server.ServerLifecycleHooks
 import org.ageseries.libage.sim.electrical.mna.Circuit
 import org.eln2.mc.Eln2
 import org.eln2.mc.Eln2.LOGGER
+import org.eln2.mc.annotations.CrossThreadAccess
 import org.eln2.mc.common.cells.CellRegistry
 import org.eln2.mc.common.cells.foundation.objects.SimulationObjectType
 import org.eln2.mc.common.space.RelativeRotationDirection
@@ -38,6 +39,18 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
 
     private val simulationStopLock = ReentrantLock()
     private var runningTask: ScheduledFuture<*>? = null
+
+    @CrossThreadAccess
+    private var updates = 0L
+
+    private var updatesCheckpoint = 0L
+
+    fun sampleElapsedUpdates(): Long{
+        val elapsed = updates - updatesCheckpoint
+        updatesCheckpoint += elapsed
+
+        return elapsed
+    }
 
     /**
      * True, if the solution was found last tick. Otherwise, false.
@@ -71,6 +84,8 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
                 successful = successful && it.step(0.05)
             }
         }
+
+        updates++
 
         simulationStopLock.unlock()
     }

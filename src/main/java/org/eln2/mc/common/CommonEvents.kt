@@ -14,13 +14,35 @@ import net.minecraftforge.fml.common.Mod
 import net.minecraftforge.fml.loading.FMLPaths
 import net.minecraftforge.server.ServerLifecycleHooks
 import org.eln2.mc.Eln2
+import org.eln2.mc.Eln2.LOGGER
 import org.eln2.mc.common.cells.foundation.CellGraphManager
 import org.eln2.mc.utility.AnalyticsAcknowledgementsData
+import org.eln2.mc.utility.AveragingList
 import java.io.IOException
 
 @Mod.EventBusSubscriber
 object CommonEvents {
     private const val THIRTY_DAYS_AS_MILLISECONDS: Long = 2_592_000_000L
+    private val upsAveragingList = AveragingList(100)
+    private var logCountdown = 0
+    private const val logInterval = 100
+
+    @SubscribeEvent
+    fun onServerTick(event: TickEvent.ServerTickEvent) {
+        if (event.phase == TickEvent.Phase.END) {
+            val tickRate = ServerLifecycleHooks.getCurrentServer().allLevels.sumOf {
+                CellGraphManager.getFor(it).getTickRate()
+            }
+
+            upsAveragingList.addSample(tickRate)
+
+            if(logCountdown-- == 0){
+                logCountdown = logInterval
+
+                LOGGER.info("Total simulation rate: ${upsAveragingList.calculate()} Updates/Second")
+            }
+        }
+    }
 
     @SubscribeEvent
     fun onEntityJoinedWorld(event: EntityJoinWorldEvent) {
