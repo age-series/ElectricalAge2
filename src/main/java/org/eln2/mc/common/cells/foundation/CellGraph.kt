@@ -3,6 +3,8 @@ package org.eln2.mc.common.cells.foundation
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.nbt.ListTag
 import net.minecraft.resources.ResourceLocation
+import net.minecraft.server.MinecraftServer
+import net.minecraftforge.server.ServerLifecycleHooks
 import org.ageseries.libage.sim.electrical.mna.Circuit
 import org.eln2.mc.Eln2
 import org.eln2.mc.Eln2.LOGGER
@@ -14,6 +16,10 @@ import org.eln2.mc.extensions.NbtExtensions.getRelativeDirection
 import org.eln2.mc.extensions.NbtExtensions.putCellPos
 import org.eln2.mc.extensions.NbtExtensions.putRelativeDirection
 import java.util.*
+import java.util.concurrent.Executors
+import java.util.concurrent.ScheduledFuture
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.locks.ReentrantLock
 import kotlin.collections.ArrayDeque
 import kotlin.system.measureNanoTime
 
@@ -30,6 +36,9 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
 
     private val circuits = ArrayList<Circuit>()
 
+    private val simulationStopLock = ReentrantLock()
+    private var runningTask: ScheduledFuture<*>? = null
+
     /**
      * True, if the solution was found last tick. Otherwise, false.
      * */
@@ -42,7 +51,19 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
     var latestSolveTime = 0L
         private set
 
-    fun update() {
+    private fun validateAccess(){
+        if(runningTask != null){
+            error("Tried to mutate the simulation while it was running")
+        }
+
+        if(Thread.currentThread() != ServerLifecycleHooks.getCurrentServer().runningThread){
+            error("Illegal cross-thread access into the cell graph")
+        }
+    }
+
+    private fun update() {
+        simulationStopLock.lock()
+
         latestSolveTime = measureNanoTime {
             successful = true
 
@@ -50,12 +71,16 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
                 successful = successful && it.step(0.05)
             }
         }
+
+        simulationStopLock.unlock()
     }
 
     /**
      * This realizes the object subsets and creates the underlying simulations.
      * */
     fun buildSolver() {
+        validateAccess()
+
         cells.forEach { it.clearObjectConnections() }
         cells.forEach { it.recordObjectConnections() }
 
@@ -156,6 +181,8 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
      * the solver update will occur explicitly.**
      * */
     fun removeCell(cell: CellBase) {
+        validateAccess()
+
         cells.remove(cell)
         posCells.remove(cell.pos)
         manager.setDirty()
@@ -168,6 +195,8 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
      * the solver update will occur explicitly.**
      * */
     fun addCell(cell: CellBase) {
+        validateAccess()
+
         cells.add(cell)
         cell.graph = this
         posCells[cell.pos] = cell
@@ -178,6 +207,8 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
      * Copies the cells of this graph to the other graph, and invalidates the saved data.
      * */
     fun copyTo(graph: CellGraph) {
+        validateAccess()
+
         graph.cells.addAll(cells)
         manager.setDirty()
     }
@@ -186,11 +217,45 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
      * Removes the graph from tracking and invalidates the saved data.
      * */
     fun destroy() {
+        validateAccess()
+
         manager.removeGraph(this)
         manager.setDirty()
     }
 
+    /**
+     * Stops the simulation. This is a sync point, so usage of this should be sparse.
+     * Will result in an error if it was not running.
+     * */
+    fun stopSimulation(){
+        if(runningTask == null){
+            error("Tried to stop simulation, but it was not running")
+        }
+
+        simulationStopLock.lock()
+        runningTask!!.cancel(true)
+        runningTask = null
+        simulationStopLock.unlock()
+
+        LOGGER.info("Stopped simulation for $this")
+    }
+
+    /**
+     * Starts the simulation. Will result in an error if it is already running.,
+     * */
+    fun startSimulation(){
+        if(runningTask != null){
+            error("Tried to start simulation, but it was already running")
+        }
+
+        runningTask = pool.scheduleAtFixedRate(this::update, 0, 10, TimeUnit.MILLISECONDS)
+
+        LOGGER.info("Started simulation for $this")
+    }
+
     fun toNbt(): CompoundTag {
+        stopSimulation()
+
         val circuitCompound = CompoundTag()
         circuitCompound.putUUID("ID", id)
 
@@ -216,12 +281,16 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
 
         circuitCompound.put("Cells", cellListTag)
 
+        startSimulation()
+
         return circuitCompound
     }
 
     private data class ConnectionInfoCell(val cellPos: CellPos, val direction: RelativeRotationDirection)
 
     companion object {
+        private val pool = Executors.newScheduledThreadPool(4)
+
         fun fromNbt(graphCompound: CompoundTag, manager: CellGraphManager): CellGraph {
             val id = graphCompound.getUUID("ID")
             val result = CellGraph(id, manager)

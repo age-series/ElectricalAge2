@@ -44,6 +44,9 @@ object CellConnectionManager {
 
         val graph = cell.graph
 
+        // Stop Simulation
+        graph.stopSimulation()
+
         // This is common logic for all cases.
         neighborCells.forEach { neighborInfo ->
             neighborInfo.neighborInfo.cell.removeConnection(cell)
@@ -81,6 +84,7 @@ object CellConnectionManager {
             // todo: do we need to rebuild the solver?
 
             graph.buildSolver()
+            graph.startSimulation()
         } else {
             // Case 3 and 4. Implement a more sophisticated algorithm, if necessary.
 
@@ -94,6 +98,12 @@ object CellConnectionManager {
         val cell = cellSpace.cell
         val neighborInfoList = container.queryNeighbors(cellSpace)
         val neighborCells = neighborInfoList.map { it.neighborInfo.cell }.toHashSet()
+
+        // Stop all running simulations
+
+        neighborCells.map { it.graph }.distinct().forEach {
+            it.stopSimulation()
+        }
 
         /*
         * Cases:
@@ -127,7 +137,6 @@ object CellConnectionManager {
             val graph = manager.createGraph()
 
             graph.addCell(cell)
-            graph.buildSolver()
         } else if (haveCommonCircuit(neighborInfoList)) {
             // Case 2 and 3. Join the existing circuit.
 
@@ -140,8 +149,6 @@ object CellConnectionManager {
             neighborInfoList.forEach { neighborInfo ->
                 neighborInfo.neighborInfo.cell.update(connectionsChanged = true, graphChanged = false)
             }
-
-            graph.buildSolver()
         } else {
             // Case 4. We need to create a new circuit, with all cells and this one.
 
@@ -175,13 +182,15 @@ object CellConnectionManager {
 
                 existingGraph.destroy()
             }
-
-            graph.buildSolver()
         }
+
+        cell.graph.buildSolver()
 
         // This cell had a complete update.
         cell.update(connectionsChanged = true, graphChanged = true)
         cell.container?.topologyChanged()
+
+        cell.graph.startSimulation()
     }
 
     /**
@@ -278,9 +287,10 @@ object CellConnectionManager {
                 cell.container?.topologyChanged()
             }
 
-            // Finally, build the solver.
+            // Finally, build the solver and start simulation.
 
             graph.buildSolver()
+            graph.startSimulation()
 
             // We don't need to keep the cells, we have already traversed all the connected ones.
             bfsVisited.clear()
