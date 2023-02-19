@@ -15,6 +15,7 @@ import org.eln2.mc.extensions.NbtExtensions.getCellPos
 import org.eln2.mc.extensions.NbtExtensions.getRelativeDirection
 import org.eln2.mc.extensions.NbtExtensions.putCellPos
 import org.eln2.mc.extensions.NbtExtensions.putRelativeDirection
+import org.eln2.mc.utility.Time
 import java.util.*
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledFuture
@@ -44,6 +45,10 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
 
     private var updatesCheckpoint = 0L
 
+    @CrossThreadAccess
+    var lastTickTime = 0.0
+        private set
+
     fun sampleElapsedUpdates(): Long{
         val elapsed = updates - updatesCheckpoint
         updatesCheckpoint += elapsed
@@ -55,12 +60,6 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
      * True, if the solution was found last tick. Otherwise, false.
      * */
     var successful = false
-        private set
-
-    /**
-     * Gets the last tick time (in nanoseconds).
-     * */
-    var latestSolveTime = 0L
         private set
 
     private fun validateAccess(){
@@ -76,13 +75,13 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
     private fun update() {
         simulationStopLock.lock()
 
-        latestSolveTime = measureNanoTime {
+        lastTickTime = Time.toSeconds(measureNanoTime {
             successful = true
 
             circuits.forEach {
                 successful = successful && it.step(0.05)
             }
-        }
+        })
 
         updates++
 

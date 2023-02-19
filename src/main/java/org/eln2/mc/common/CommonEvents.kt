@@ -4,9 +4,7 @@ import com.charleskorn.kaml.Yaml
 import net.minecraft.ChatFormatting
 import net.minecraft.Util
 import net.minecraft.network.chat.TranslatableComponent
-import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.entity.player.Player
-import net.minecraftforge.event.ServerChatEvent
 import net.minecraftforge.event.TickEvent
 import net.minecraftforge.event.entity.EntityJoinWorldEvent
 import net.minecraftforge.eventbus.api.SubscribeEvent
@@ -24,22 +22,31 @@ import java.io.IOException
 object CommonEvents {
     private const val THIRTY_DAYS_AS_MILLISECONDS: Long = 2_592_000_000L
     private val upsAveragingList = AveragingList(100)
+    private val tickTimeAveragingList = AveragingList(100)
     private var logCountdown = 0
     private const val logInterval = 100
 
     @SubscribeEvent
     fun onServerTick(event: TickEvent.ServerTickEvent) {
         if (event.phase == TickEvent.Phase.END) {
-            val tickRate = ServerLifecycleHooks.getCurrentServer().allLevels.sumOf {
-                CellGraphManager.getFor(it).getTickRate()
+            var tickRate = 0.0
+            var tickTime = 0.0
+
+            ServerLifecycleHooks.getCurrentServer().allLevels.forEach() {
+                val graph = CellGraphManager.getFor(it)
+
+                tickRate += graph.sampleTickRate()
+                tickTime += graph.totalSpentTime
             }
 
             upsAveragingList.addSample(tickRate)
+            tickTimeAveragingList.addSample(tickTime)
 
             if(logCountdown-- == 0){
                 logCountdown = logInterval
 
                 LOGGER.info("Total simulation rate: ${upsAveragingList.calculate()} Updates/Second")
+                LOGGER.info("Total simulation time: ${tickTimeAveragingList.calculate()}")
             }
         }
     }
