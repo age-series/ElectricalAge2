@@ -7,6 +7,7 @@ import org.eln2.mc.Eln2
 import org.eln2.mc.Eln2.LOGGER
 import org.eln2.mc.common.cells.foundation.CellProvider
 import org.eln2.mc.common.cells.foundation.providers.BasicProvider
+import org.eln2.mc.common.content.WireCell
 import java.util.function.Supplier
 
 object CellRegistry {
@@ -32,4 +33,5 @@ object CellRegistry {
     val RESISTOR_CELL = register("resistor_cell", BasicProvider.polar(::ResistorCell))
     val VOLTAGE_SOURCE_CELL = register("voltage_source_cell", BasicProvider.fourPin(::VoltageSourceCell))
     val GROUND_CELL = register("ground_cell", BasicProvider.fourPin(::GroundCell))
+    val WIRE_CELL = register("wire_cell", BasicProvider.fourPin(::WireCell))
 }
