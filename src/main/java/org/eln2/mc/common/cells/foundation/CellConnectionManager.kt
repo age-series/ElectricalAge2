@@ -2,30 +2,153 @@ package org.eln2.mc.common.cells.foundation
 
 import org.eln2.mc.Eln2
 
+/**
+ * The Cell Connection Manager has all Cell-Cell connection logic, I.E. is responsible for building *physical* networks.
+ * There are two key algorithms here:
+ * - Cell Insertion
+ *      - Inserts a cell into the world, and may form connections with other cells.
+ *
+ * - Cell Deletion
+ *      - Deletes a cell from the world, and may result in many topological changes to the associated graph.
+ *        An example would be the removal (deletion) of a cut vertex. This would result in the graph splintering into multiple disjoint graphs.
+ *        This is the most intensive part of the algorithm. It may be optimized (the algorithm implemented here is certainly suboptimal),
+ *        but it has been determined that this is not a cause for concern,
+ *        as it only represents a small slice of the performance impact caused by network updates.
+ *
+ *
+ * @see <a href="https://en.wikipedia.org/wiki/Biconnected_component">Wikipedia - Bi-connected component</a>
+ * */
 object CellConnectionManager {
-    fun connect(container: ICellContainer, cellSpace: CellInfo) {
-        cellSpace.cell.onPlaced()
-
-        registerCell(cellSpace, container)
-
-        // Notify the cell of the new placement.
+    /**
+     * Inserts a cell into a graph. It may create connections with other cells, and cause
+     * topological changes to related networks.
+     * */
+    fun connect(container: ICellContainer, cellInfo: CellInfo) {
+        connectCell(cellInfo, container)
+        cellInfo.cell.onCreated()
     }
 
-    fun destroy(cellSpace: CellInfo, container: ICellContainer) {
-        removeCell(cellSpace, container)
-        cellSpace.cell.onDestroyed()
+    /**
+     * Removes a cell from the graph. It may cause topological changes to the graph, as outlined in the top document.
+     * */
+    fun destroy(cellInfo: CellInfo, container: ICellContainer) {
+        disconnectCell(cellInfo, container)
+        cellInfo.cell.onDestroyed()
     }
 
-    private fun removeCell(cellSpace: CellInfo, container: ICellContainer) {
+    private fun connectCell(cellSpace: CellInfo, container: ICellContainer) {
+        val manager = container.manager
+        val cell = cellSpace.cell
+        val neighborInfoList = container.queryNeighbors(cellSpace)
+        val neighborCells = neighborInfoList.map { it.neighborInfo.cell }.toHashSet()
+
+        // Stop all running simulations
+
+        neighborCells.map { it.graph }.distinct().forEach {
+            it.stopSimulation()
+        }
+
+        /*
+        * Cases:
+        *   1. We don't have any neighbors. We must create a new circuit.
+        *   2. We have a single neighbor. We can add this cell to their circuit.
+        *   3. We have multiple neighbors, but they are part of the same circuit. We can add this cell to the common circuit.
+        *   4. We have multiple neighbors, and they are part of different circuits. We need to create a new circuit,
+        *       that contains the cells of the other circuits, plus this one.
+        * */
+
+        // This is common logic for all cases
+
+        cell.connections = ArrayList(neighborInfoList.map { CellConnectionInfo(it.neighborInfo.cell, it.sourceDirection) })
+
+        neighborInfoList.forEach { neighborInfo ->
+            Eln2.LOGGER.info("Neighbor $neighborInfo")
+
+            neighborInfo.neighborInfo.cell.connections.add(CellConnectionInfo(cell, neighborInfo.neighborDirection))
+            neighborInfo.neighborContainer.recordConnection(
+                neighborInfo.neighborInfo,
+                neighborInfo.neighborDirection,
+                cellSpace
+            )
+
+            container.recordConnection(cellSpace, neighborInfo.sourceDirection, neighborInfo.neighborInfo)
+        }
+
+        if (neighborInfoList.isEmpty()) {
+            // Case 1. Create new circuit
+
+            val graph = manager.createGraph()
+
+            graph.addCell(cell)
+        } else if (isCommonGraph(neighborInfoList)) {
+            // Case 2 and 3. Join the existing circuit.
+
+            val graph = neighborInfoList[0].neighborInfo.cell.graph
+
+            graph.addCell(cell)
+
+            // Add this cell to the neighbors' connections.
+
+            neighborInfoList.forEach { neighborInfo ->
+                neighborInfo.neighborInfo.cell.update(connectionsChanged = true, graphChanged = false)
+            }
+        } else {
+            // Case 4. We need to create a new circuit, with all cells and this one.
+
+            // Identify separate circuits.
+            val disjointGraphs = neighborInfoList.map { it.neighborInfo.cell.graph }.distinct()
+
+            // Create new circuit.
+            val graph = manager.createGraph()
+
+            // Register current cell
+
+            graph.addCell(cell)
+
+            // Copy cells over to the new circuit and destroy previous circuits.
+            disjointGraphs.forEach { existingGraph ->
+                existingGraph.copyTo(graph)
+
+                // We also need to refit the existing cells
+
+                existingGraph.cells.forEach { cell ->
+                    cell.graph = graph
+
+                    // We need this for the update method.
+                    // We set connectionsChanged to true only if this cell is also
+                    // a neighbor of the cell we are inserting.
+                    val isNeighbor = neighborCells.contains(cell)
+
+                    cell.update(connectionsChanged = isNeighbor, graphChanged = true)
+                    cell.container?.topologyChanged()
+                }
+
+                existingGraph.destroy()
+            }
+        }
+
+        cell.graph.buildSolver()
+
+        // This cell had a complete update.
+        cell.update(connectionsChanged = true, graphChanged = true)
+        cell.container?.topologyChanged()
+
+        cell.graph.startSimulation()
+    }
+
+    private fun disconnectCell(cellSpace: CellInfo, container: ICellContainer) {
         val cell = cellSpace.cell
         val manager = container.manager
         val neighborCells = container.queryNeighbors(cellSpace)
 
         val graph = cell.graph
 
+        // Stop Simulation
+        graph.stopSimulation()
+
         // This is common logic for all cases.
         neighborCells.forEach { neighborInfo ->
-            neighborInfo.neighborInfo.cell.connections.remove(cell)
+            neighborInfo.neighborInfo.cell.removeConnection(cell)
             neighborInfo.neighborContainer.recordDeletedConnection(
                 neighborInfo.neighborInfo,
                 neighborInfo.neighborDirection
@@ -57,9 +180,8 @@ object CellConnectionManager {
 
             neighbor.cell.update(connectionsChanged = true, graphChanged = false)
 
-            // todo: do we need to rebuild the solver?
-
             graph.buildSolver()
+            graph.startSimulation()
         } else {
             // Case 3 and 4. Implement a more sophisticated algorithm, if necessary.
 
@@ -68,105 +190,11 @@ object CellConnectionManager {
         }
     }
 
-    private fun registerCell(cellSpace: CellInfo, container: ICellContainer) {
-        val manager = container.manager
-        val cell = cellSpace.cell
-        val neighborInfos = container.queryNeighbors(cellSpace)
-        val neighborCells = neighborInfos.map { it.neighborInfo.cell }.toHashSet()
-
-        /*
-        * Cases:
-        *   1. We don't have any neighbors. We must create a new circuit.
-        *   2. We have a single neighbor. We can add this cell to their circuit.
-        *   3. We have multiple neighbors, but they are part of the same circuit. We can add this cell to the common circuit.
-        *   4. We have multiple neighbors, and they are part of different circuits. We need to create a new circuit,
-        *       that contains the cells of the other circuits, plus this one.
-        * */
-
-        // This is common logic for all cases
-
-        cell.connections = ArrayList(neighborInfos.map { it.neighborInfo.cell })
-
-        neighborInfos.forEach { neighborInfo ->
-            Eln2.LOGGER.info("Neighbor $neighborInfo")
-
-            neighborInfo.neighborInfo.cell.connections.add(cell)
-            neighborInfo.neighborContainer.recordConnection(
-                neighborInfo.neighborInfo,
-                neighborInfo.neighborDirection,
-                cellSpace
-            )
-
-            container.recordConnection(cellSpace, neighborInfo.sourceDirection, neighborInfo.neighborInfo)
-        }
-
-        if (neighborInfos.isEmpty()) {
-            // Case 1. Create new circuit
-
-            val graph = manager.createGraph()
-
-            graph.addCell(cell)
-            graph.buildSolver()
-        } else if (haveCommonCircuit(neighborInfos)) {
-            // Case 2 and 3. Join the existing circuit.
-
-            val graph = neighborInfos[0].neighborInfo.cell.graph
-
-            graph.addCell(cell)
-
-            // Add this cell to the neighbors' connections.
-
-            neighborInfos.forEach { neighborInfo ->
-                neighborInfo.neighborInfo.cell.update(connectionsChanged = true, graphChanged = false)
-            }
-
-            graph.connectCell(cell)
-
-            // todo: do we need to rebuild the solver?
-            //graph.buildSolver()
-        } else {
-            // Case 4. We need to create a new circuit, with all cells and this one.
-
-            // Identify separate circuits.
-            val disjointGraphs = neighborInfos.map { it.neighborInfo.cell.graph }.distinct()
-
-            // Create new circuit.
-            val graph = manager.createGraph()
-
-            // Register current cell
-
-            graph.addCell(cell)
-
-            // Copy cells over to the new circuit and destroy previous circuits.
-            disjointGraphs.forEach { existingGraph ->
-                existingGraph.copyTo(graph)
-
-                // We also need to refit the existing cells
-
-                existingGraph.cells.forEach { cell ->
-                    cell.graph = graph
-
-                    // We need this for the update method.
-                    // We set connectionsChanged to true only if this cell is also
-                    // a neighbor of the cell we are inserting.
-                    val isNeighbor = neighborCells.contains(cell)
-
-                    cell.update(connectionsChanged = isNeighbor, graphChanged = true)
-                    cell.container?.topologyChanged()
-                }
-
-                existingGraph.destroy()
-            }
-
-            graph.buildSolver()
-        }
-
-        // This cell had a complete update.
-        cell.update(connectionsChanged = true, graphChanged = true)
-        cell.container?.topologyChanged()
-    }
-
-    private fun haveCommonCircuit(neighbors: ArrayList<CellNeighborInfo>): Boolean {
+    /**
+     * Checks whether the cells share the same graph.
+     * @return True, if the specified cells share the same graph. Otherwise, false.
+     * */
+    private fun isCommonGraph(neighbors: ArrayList<CellNeighborInfo>): Boolean {
         if (neighbors.size < 2) {
             return true
         }
@@ -182,8 +210,15 @@ object CellConnectionManager {
         return true
     }
 
+    /**
+     * Rebuilds the topology of a graph, presumably after a cell has been removed.
+     * This will handle cases such as the graph splitting, because a cut vertex was removed.
+     * This is a performance intensive operation, because it is likely to perform a search through the cells.
+     * There is a case, though, that will complete in constant time: removing a cell that has zero or one neighbors.
+     * Keep in mind that the simulation logic likely won't complete in constant time, in any case.
+     * */
     private fun rebuildTopologies(
-        neighborInfos: ArrayList<CellNeighborInfo>,
+        neighborInfoList: ArrayList<CellNeighborInfo>,
         removedCell: CellBase,
         manager: CellGraphManager
     ) {
@@ -198,7 +233,7 @@ object CellConnectionManager {
         *   After a queue element has been processed, we build a new circuit with the cells we found.
         * */
 
-        val neighbors = neighborInfos.map { it.neighborInfo.cell }.toHashSet()
+        val neighbors = neighborInfoList.map { it.neighborInfo.cell }.toHashSet()
         val neighborQueue = ArrayDeque<CellBase>()
         neighborQueue.addAll(neighbors)
 
@@ -231,11 +266,11 @@ object CellConnectionManager {
                 graph.addCell(cell)
 
                 // Enqueue neighbors (excluding the cell we are removing) for processing
-                cell.connections.forEach { connectedCell ->
+                cell.connections.forEach { connectedCellInfo ->
                     // This must be handled above.
-                    assert(connectedCell != removedCell)
+                    assert(connectedCellInfo.cell != removedCell)
 
-                    bfsQueue.add(connectedCell)
+                    bfsQueue.add(connectedCellInfo.cell)
                 }
             }
 
@@ -249,9 +284,10 @@ object CellConnectionManager {
                 cell.container?.topologyChanged()
             }
 
-            // Finally, build the solver.
+            // Finally, build the solver and start simulation.
 
             graph.buildSolver()
+            graph.startSimulation()
 
             // We don't need to keep the cells, we have already traversed all the connected ones.
             bfsVisited.clear()

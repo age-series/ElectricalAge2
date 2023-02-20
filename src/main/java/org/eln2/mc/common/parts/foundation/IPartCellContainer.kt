@@ -5,7 +5,7 @@ import org.eln2.mc.common.cells.foundation.CellProvider
 import org.eln2.mc.common.space.RelativeRotationDirection
 
 /**
- * Represents a part that is a member of the simulation network.
+ * Represents a part that has a cell, and will join a graph.
  * */
 interface IPartCellContainer {
     /**
@@ -19,26 +19,25 @@ interface IPartCellContainer {
     val hasCell: Boolean
 
     /**
-     * This is the provider associated with the cell.
+     * @return The provider associated with the cell.
      * */
     val provider: CellProvider
 
     /**
-     * Indicates if this part allows planar connections.
-     * These are connections that form between parts placed on the same plane.
+     * Indicates whether this part allows planar connections.
+     * @see ConnectionMode.Planar
      * */
     val allowPlanarConnections: Boolean
 
     /**
-     * Indicates if this part allows inner / interior connections.
-     * These are connections that form between parts in the same container.
-     * The connection forms inside corners. Parts placed on parallel faces shall not be included in this scan.
+     * Indicates whether if this part allows inner connections.
+     * @see ConnectionMode.Inner
      * */
     val allowInnerConnections: Boolean
 
     /**
-     * Indicates if this part allows connections with cells placed on different faces of the block.
-     * These connections wrap around the corner of the block.
+     * Indicates if this part allows wrapped connections.
+     * @see ConnectionMode.Wrapped
      * */
     val allowWrappedConnections: Boolean
 

@@ -3,6 +3,7 @@ package org.eln2.mc.common.cells.foundation
 /**
  * ISingleElementGuiCell is a Cell with a single numerical value that will be synced to the client for GUI use
  */
+// todo: remove this, if a better solution is found
 interface ISingleElementGuiCell<N : Number> {
 
     /**

@@ -7,15 +7,8 @@ import net.minecraft.server.level.ServerPlayer
 import net.minecraftforge.network.NetworkDirection
 import net.minecraftforge.network.NetworkRegistry
 import org.eln2.mc.Eln2
-import org.eln2.mc.common.network.clientToServer.SingleDoubleElementGuiUpdatePacket
-import org.eln2.mc.common.network.serverToClient.SingleDoubleElementGuiOpenPacket
 
-enum class PacketType(val id: Int) {
-    CIRCUIT_EXPLORER_OPEN_PACKET(0),
-    CIRCUIT_EXPLORER_CONTEXT_PACKET(1),
-    SINGLE_DOUBLE_ELEMENT_GUI_UPDATE_PACKET(2),
-    SINGLE_DOUBLE_ELEMENT_GUI_OPEN_PACKET(3),
-}
+enum class PacketType(val id: Int)
 
 object Networking {
     private const val protocolVersion = "1"
@@ -27,20 +20,6 @@ object Networking {
         { it == protocolVersion })
 
     fun setup() {
-        channel.registerMessage(
-            PacketType.SINGLE_DOUBLE_ELEMENT_GUI_UPDATE_PACKET.id,
-            SingleDoubleElementGuiUpdatePacket::class.java,
-            SingleDoubleElementGuiUpdatePacket::encode,
-            SingleDoubleElementGuiUpdatePacket::decode,
-            SingleDoubleElementGuiUpdatePacket::handle
-        )
-        channel.registerMessage(
-            PacketType.SINGLE_DOUBLE_ELEMENT_GUI_OPEN_PACKET.id,
-            SingleDoubleElementGuiOpenPacket::class.java,
-            SingleDoubleElementGuiOpenPacket::encode,
-            SingleDoubleElementGuiOpenPacket::decode,
-            SingleDoubleElementGuiOpenPacket::handle
-        )
         Eln2.LOGGER.info("Network packets registered")
     }
 

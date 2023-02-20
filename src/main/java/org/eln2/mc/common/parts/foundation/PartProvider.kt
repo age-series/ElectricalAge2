@@ -5,7 +5,7 @@ import net.minecraft.world.phys.Vec3
 import net.minecraftforge.registries.ForgeRegistryEntry
 
 /**
- * This is a factory for parts.
+ * This is a factory for parts. It also has the size used to validate placement (part-part collisions).
  * */
 abstract class PartProvider : ForgeRegistryEntry<PartProvider>() {
     val id: ResourceLocation get() = this.registryName ?: error("ID not available in PartProvider")

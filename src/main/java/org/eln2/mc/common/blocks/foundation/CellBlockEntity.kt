@@ -72,7 +72,6 @@ class CellBlockEntity(var pos: BlockPos, var state: BlockState) :
         cell = cellProvider.create(getCellPos())
 
         cell!!.container = this
-        cell!!.id = cellProvider.registryName!!
 
         CellConnectionManager.connect(this, getCellSpace())
 
@@ -106,7 +105,7 @@ class CellBlockEntity(var pos: BlockPos, var state: BlockState) :
             return
         }
 
-        if (cell!!.hasGraph()) {
+        if (cell!!.hasGraph) {
             pTag.putString("GraphID", cell!!.graph.id.toString())
         } else {
             Eln2.LOGGER.info("Save additional: graph null")
@@ -128,7 +127,7 @@ class CellBlockEntity(var pos: BlockPos, var state: BlockState) :
         super.onChunkUnloaded()
 
         if (!level!!.isClientSide) {
-            cell!!.onEntityUnloaded()
+            cell!!.onContainerUnloaded()
 
             // GC reference tracking
             cell!!.container = null
@@ -148,7 +147,7 @@ class CellBlockEntity(var pos: BlockPos, var state: BlockState) :
 
         if (this::savedGraphID.isInitialized && graphManager.contains(savedGraphID)) {
             // fetch graph with ID
-            val graph = graphManager.getGraphWithId(savedGraphID)
+            val graph = graphManager.getGraph(savedGraphID)
 
             // fetch cell instance
             println("Loading cell at location $pos")
@@ -158,7 +157,7 @@ class CellBlockEntity(var pos: BlockPos, var state: BlockState) :
             cellProvider = CellRegistry.getProvider(cell!!.id)
 
             cell!!.container = this
-            cell!!.onEntityLoaded()
+            cell!!.onContainerLoaded()
         }
     }
 
@@ -245,7 +244,7 @@ class CellBlockEntity(var pos: BlockPos, var state: BlockState) :
     override fun appendBody(builder: TooltipBuilder, config: IPluginConfig?) {
         val cell = this.cell
 
-        if(cell is IWailaProvider){
+        if (cell is IWailaProvider) {
             cell.appendBody(builder, config)
         }
     }

@@ -15,8 +15,19 @@ import org.eln2.mc.extensions.QuaternionExtensions.times
 import org.eln2.mc.extensions.Vec3Extensions.times
 import org.eln2.mc.extensions.Vec3Extensions.toVec3
 
+/**
+ * The basic part renderer is used to render a single partial model.
+ * */
 class BasicPartRenderer(val part: Part, val model: PartialModel) : IPartRenderer {
+    /**
+     * Useful if the model needs to be rotated to match the networked behavior.
+     * Alternatively, the model may be rotated in the 3D editor.
+     * */
     var yRotation = 0f
+
+    /**
+     * Required in order to "place" the model on the mounting surface. Usually, this offset is calculated using information from the 3D editor.
+     * */
     var downOffset = 0.0
 
     private var modelInstance: ModelData? = null

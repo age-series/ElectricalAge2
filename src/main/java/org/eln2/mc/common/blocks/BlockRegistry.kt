@@ -10,7 +10,6 @@ import net.minecraftforge.registries.DeferredRegister
 import net.minecraftforge.registries.ForgeRegistries
 import net.minecraftforge.registries.RegistryObject
 import org.eln2.mc.Eln2
-import org.eln2.mc.common.blocks.cells.*
 import org.eln2.mc.common.blocks.foundation.CellBlock
 import org.eln2.mc.common.blocks.foundation.CellBlockEntity
 import org.eln2.mc.common.blocks.foundation.MultipartBlock
@@ -83,15 +82,4 @@ object BlockRegistry {
     }
 
     val MULTIPART_BLOCK = registerBasicBlock("multipart", tab = null) { MultipartBlock() }
-    val RESISTOR_CELL = registerCellBlock("resistor", eln2Tab) { ResistorCellBlock() }
-    val WIRE_CELL = registerCellBlock("wire", eln2Tab) { WireCellBlock() }
-    val VOLTAGE_SOURCE_CELL = registerCellBlock("voltage_source", eln2Tab) { VoltageSourceCellBlock() }
-    val GROUND_CELL = registerCellBlock("ground", eln2Tab) { GroundCellBlock() }
-    val CAPACITOR_CELL = registerCellBlock("capacitor", eln2Tab) { CapacitorCellBlock() }
-    val INDUCTOR_CELL = registerCellBlock("inductor", eln2Tab) { InductorCellBlock() }
-    val DIODE_CELL = registerCellBlock("diode", eln2Tab) { DiodeCellBlock() }
-    val BATTERY_CELL = registerCellBlock("12v_battery", eln2Tab) { BatteryCellBlock() }
-    val LIGHT_CELL = registerCellBlock("light") { LightCellBlock() }
-    val SOLAR_LIGHT_CELL = registerCellBlock("solar_light") { SolarLightCellBlock() }
-    val SOLAR_PANEL_CELL = registerCellBlock("solar_panel", eln2Tab) { SolarPanelCellBlock() }
 }

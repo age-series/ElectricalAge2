@@ -4,9 +4,7 @@ import com.charleskorn.kaml.Yaml
 import net.minecraft.ChatFormatting
 import net.minecraft.Util
 import net.minecraft.network.chat.TranslatableComponent
-import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.entity.player.Player
-import net.minecraftforge.event.ServerChatEvent
 import net.minecraftforge.event.TickEvent
 import net.minecraftforge.event.entity.EntityJoinWorldEvent
 import net.minecraftforge.eventbus.api.SubscribeEvent
@@ -14,43 +12,41 @@ import net.minecraftforge.fml.common.Mod
 import net.minecraftforge.fml.loading.FMLPaths
 import net.minecraftforge.server.ServerLifecycleHooks
 import org.eln2.mc.Eln2
+import org.eln2.mc.Eln2.LOGGER
 import org.eln2.mc.common.cells.foundation.CellGraphManager
 import org.eln2.mc.utility.AnalyticsAcknowledgementsData
+import org.eln2.mc.utility.AveragingList
 import java.io.IOException
 
 @Mod.EventBusSubscriber
 object CommonEvents {
     private const val THIRTY_DAYS_AS_MILLISECONDS: Long = 2_592_000_000L
+    private val upsAveragingList = AveragingList(100)
+    private val tickTimeAveragingList = AveragingList(100)
+    private var logCountdown = 0
+    private const val logInterval = 100
 
     @SubscribeEvent
     fun onServerTick(event: TickEvent.ServerTickEvent) {
-        if (event.phase == TickEvent.Phase.START) {
-            ServerLifecycleHooks.getCurrentServer().allLevels.forEach {
-                CellGraphManager.getFor(it).beginUpdate()
-            }
-        } else if (event.phase == TickEvent.Phase.END) {
-            ServerLifecycleHooks.getCurrentServer().allLevels.forEach {
-                CellGraphManager.getFor(it).endUpdate()
-            }
-        }
-    }
+        if (event.phase == TickEvent.Phase.END) {
+            var tickRate = 0.0
+            var tickTime = 0.0
 
-    @SubscribeEvent
-    fun onChat(event: ServerChatEvent) {
-        when (event.message) {
-            "build" -> {
-                CellGraphManager.getFor(event.player.level as ServerLevel).graphs.values.forEach { it.buildSolver() }
+            ServerLifecycleHooks.getCurrentServer().allLevels.forEach {
+                val graph = CellGraphManager.getFor(it)
+
+                tickRate += graph.sampleTickRate()
+                tickTime += graph.totalSpentTime
             }
 
-            "circuits" -> {
-                CellGraphManager.getFor(event.player.level as ServerLevel).graphs.values.forEach {
-                    Eln2.LOGGER.info("Circuit:")
-                    Eln2.LOGGER.info(
-                        it.circuit.components.map { comp ->
-                            "\n    ${comp.detail()}${comp.pins.map { pin -> pin.node?.index }}"
-                        }
-                    )
-                }
+            upsAveragingList.addSample(tickRate)
+            tickTimeAveragingList.addSample(tickTime)
+
+            if (logCountdown-- == 0) {
+                logCountdown = logInterval
+
+                LOGGER.info("Total simulation rate: ${upsAveragingList.calculate()} Updates/Second")
+                LOGGER.info("Total simulation time: ${tickTimeAveragingList.calculate()}")
             }
         }
     }
@@ -75,8 +71,8 @@ object CommonEvents {
                     } catch (ex: Exception) {
                         when (ex) {
                             is IOException, is SecurityException -> {
-                                Eln2.LOGGER.warn("Unable to write default analytics acknowledgements config")
-                                Eln2.LOGGER.warn(ex.localizedMessage)
+                                LOGGER.warn("Unable to write default analytics acknowledgements config")
+                                LOGGER.warn(ex.localizedMessage)
                             }
 
                             else -> throw ex
@@ -111,8 +107,8 @@ object CommonEvents {
                 } catch (ex: Exception) {
                     when (ex) {
                         is IOException, is SecurityException -> {
-                            Eln2.LOGGER.warn("Unable to save analytics acknowledgements")
-                            Eln2.LOGGER.warn(ex.localizedMessage)
+                            LOGGER.warn("Unable to save analytics acknowledgements")
+                            LOGGER.warn(ex.localizedMessage)
 
                             event.entity.sendMessage(
                                 TranslatableComponent("misc.eln2.analytics_save_failure").withStyle(

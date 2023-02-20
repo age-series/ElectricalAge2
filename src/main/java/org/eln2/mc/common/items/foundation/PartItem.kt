@@ -11,10 +11,12 @@ import org.eln2.mc.common.blocks.foundation.MultipartBlockEntity
 import org.eln2.mc.common.parts.foundation.PartProvider
 import org.eln2.mc.extensions.BlockPosExtensions.plus
 
+/**
+ * The Part Item delegates the placement of a Part to the Multipart Container.
+ * */
 class PartItem(private val provider: PartProvider, tab: CreativeModeTab) : BlockItem(
     BlockRegistry.MULTIPART_BLOCK.block.get(),
-    Properties().tab(tab)
-) {
+    Properties().tab(tab)) {
 
     override fun useOn(pContext: UseOnContext): InteractionResult {
         if (pContext.level.isClientSide) {

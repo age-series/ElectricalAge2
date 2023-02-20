@@ -1,32 +1,65 @@
 package org.eln2.mc.common.cells.foundation
 
+import mcp.mobius.waila.api.IPluginConfig
 import net.minecraft.resources.ResourceLocation
-import org.ageseries.libage.sim.electrical.mna.component.Component
+import org.eln2.mc.common.cells.foundation.objects.ElectricalConnectionInfo
+import org.eln2.mc.common.cells.foundation.objects.ElectricalObject
+import org.eln2.mc.common.cells.foundation.objects.SimulationObjectSet
+import org.eln2.mc.common.cells.foundation.objects.SimulationObjectType
+import org.eln2.mc.common.space.RelativeRotationDirection
+import org.eln2.mc.integration.waila.IWailaProvider
+import org.eln2.mc.integration.waila.TooltipBuilder
 
-class ComponentInfo(val component: Component, val index: Int)
+data class CellConnectionInfo(val cell: CellBase, val sourceDirection: RelativeRotationDirection)
 
-abstract class CellBase(val pos: CellPos) {
-    lateinit var id: ResourceLocation
+/**
+ * The cell is a physical unit, that may participate in multiple simulations. Each simulation will
+ * have a Simulation Object associated with it.
+ * Cells create connections with other cells, and objects create connections with other objects of the same simulation type.
+ * */
+abstract class CellBase(val pos: CellPos, val id: ResourceLocation) : IWailaProvider {
     lateinit var graph: CellGraph
-    lateinit var connections: ArrayList<CellBase>
+    lateinit var connections: ArrayList<CellConnectionInfo>
+
+    val hasGraph get() = this::graph.isInitialized
+
+    fun removeConnection(cell: CellBase) {
+        val target: CellConnectionInfo = connections.firstOrNull { it.cell == cell }
+            ?: error("Tried to remove non-existent connection")
+
+        connections.remove(target)
+    }
 
     var container: ICellContainer? = null
+
+    private var createdSet: SimulationObjectSet? = null
+
+    /**
+     * Called once when the object set is requested. The result is then cached.
+     * @return A new object set, with all the desired objects.
+     * */
+    abstract fun createObjectSet(): SimulationObjectSet
+
+    private val objectSet: SimulationObjectSet
+        get() {
+            if (createdSet == null) {
+                createdSet = createObjectSet()
+            }
+
+            return createdSet!!
+        }
 
     /**
      * Called when the tile entity is being unloaded.
      * After this method is called, the field will become null.
      */
-    open fun onEntityUnloaded() {}
+    open fun onContainerUnloaded() {}
 
     /**
-     * Called when the tile entity is being loaded.
+     * Called when the block entity is being loaded.
      * The field is assigned before this is called.
      */
-    open fun onEntityLoaded() {}
-
-    fun hasGraph(): Boolean {
-        return this::graph.isInitialized
-    }
+    open fun onContainerLoaded() {}
 
     /**
      * Called when the graph manager completed loading this cell from the disk.
@@ -34,14 +67,16 @@ abstract class CellBase(val pos: CellPos) {
     open fun onLoadedFromDisk() {}
 
     /**
-     *   Called when the block entity placing is complete.
+     * Called after the cell was created.
      */
-    open fun onPlaced() {}
+    open fun onCreated() {}
 
     /**
-     * Called when the tile entity is destroyed.
+     * Called after the cell was destroyed.
      */
-    open fun onDestroyed() {}
+    open fun onDestroyed() {
+        objectSet.process { it.destroy() }
+    }
 
     /**
      * Called when the graph and/or neighbouring cells are updated. This method is called after completeDiskLoad and setPlaced
@@ -51,18 +86,76 @@ abstract class CellBase(val pos: CellPos) {
     open fun update(connectionsChanged: Boolean, graphChanged: Boolean) {}
 
     /**
-     * This method is called before the Circuit is being rebuilt.
-     */
-    abstract fun clear()
+     * Called when the solver is being built, in order to clear and prepare the objects.
+     * */
+    fun clearObjectConnections() {
+        objectSet.process { it.clear() }
+    }
 
     /**
-     * This method is used to return the component and the pin for a remote cell to connect to.
-     */
-    abstract fun getOfferedComponent(neighbour: CellBase): ComponentInfo
+     * Called when the solver is being built, in order to record all object-object connections.
+     * */
+    fun recordObjectConnections() {
+        objectSet.process {
+            connections.forEach { neighborInfo ->
+                if (neighborInfo.cell.hasObject(it.type)) {
+                    // We can form a connection here.
+
+                    when (it.type) {
+                        SimulationObjectType.Electrical -> {
+                            val localElectrical = it as ElectricalObject
+                            val remoteElectrical = neighborInfo.cell.objectSet.electricalObject
+
+                            localElectrical.addConnection(
+                                ElectricalConnectionInfo(
+                                    remoteElectrical,
+                                    neighborInfo.sourceDirection
+                                )
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     /**
-     * This method is called after each cell's clear method has been called.
-     * It must be used to create the circuit's connections.
-     */
-    abstract fun buildConnections()
+     * Called when the solver is being built, in order to finish setting up the underlying components in the
+     * simulation objects.
+     * */
+    fun build() {
+        objectSet.process { it.build() }
+    }
+
+    /**
+     * Checks if this cell has the specified simulation object type.
+     * @return True if this cell has the required object. Otherwise, false.
+     * */
+    fun hasObject(type: SimulationObjectType): Boolean {
+        return objectSet.hasObject(type)
+    }
+
+    /**
+     * Gets the electrical object. Only call if it has been ensured that this cell has an electrical object.
+     * */
+    val electricalObject get() = objectSet.electricalObject
+
+    /**
+     * By default, the cell just passes down the call to objects that implement the WAILA provider.
+     * */
+    override fun appendBody(builder: TooltipBuilder, config: IPluginConfig?) {
+        // The following 2 calls are debug and will be removed in the future:
+
+        if (hasGraph) {
+            builder.text("Graph", graph.id)
+        }
+
+        builder.text("Connections", connections.map { it.sourceDirection }.joinToString(" "))
+
+        objectSet.process {
+            if (it is IWailaProvider) {
+                it.appendBody(builder, config)
+            }
+        }
+    }
 }

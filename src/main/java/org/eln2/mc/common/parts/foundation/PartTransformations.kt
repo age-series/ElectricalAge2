@@ -11,7 +11,13 @@ import org.eln2.mc.extensions.AABBExtensions.transformed
 import org.eln2.mc.extensions.Vec3Extensions.div
 import org.eln2.mc.utility.BoundingBox
 
+/**
+ * The part space APIs, moved here because they were needed before parts are actually created.
+ * */
 object PartTransformations {
+    /**
+     * @see Part.modelBoundingBox
+     * */
     fun modelBoundingBox(baseSize: Vec3, horizontalFacing: Direction, face: Direction): AABB {
         return BoundingBox
             .fromSize(baseSize)
@@ -20,10 +26,16 @@ object PartTransformations {
             .move(offset(baseSize, face))
     }
 
+    /**
+     * @see Part.facingRotation
+     * */
     fun facingRotation(horizontalFacing: Direction): Quaternion {
         return Vector3f.YP.rotationDegrees(facingRotationDegrees(horizontalFacing))
     }
 
+    /**
+     * @see Part.facingRotationDegrees
+     * */
     fun facingRotationDegrees(horizontalFacing: Direction): Float {
         val offset = 0
 
@@ -36,6 +48,9 @@ object PartTransformations {
         }
     }
 
+    /**
+     * @see Part.offset
+     * */
     fun offset(baseSize: Vec3, face: Direction): Vec3 {
         val halfSize = baseSize / 2.0
 
@@ -65,15 +80,24 @@ object PartTransformations {
         }
     }
 
+    /**
+     * @see Part.gridBoundingBox
+     * */
     fun gridBoundingBox(baseSize: Vec3, horizontalFacing: Direction, face: Direction, pos: BlockPos): AABB {
         return modelBoundingBox(baseSize, horizontalFacing, face).move(pos)
     }
 
+    /**
+     * @see Part.worldBoundingBox
+     * */
     fun worldBoundingBox(baseSize: Vec3, horizontalFacing: Direction, face: Direction, pos: BlockPos): AABB {
         return gridBoundingBox(baseSize, horizontalFacing, face, pos).move(Vec3(-0.5, 0.0, -0.5))
     }
 
-    fun getRelativeRotation(
+    /**
+     * @see Part.getRelativeDirection
+     * */
+    fun getRelativeDirection(
         horizontalFacing: Direction,
         face: Direction,
         global: Direction

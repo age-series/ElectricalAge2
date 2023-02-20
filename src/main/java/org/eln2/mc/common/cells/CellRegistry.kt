@@ -6,9 +6,11 @@ import net.minecraftforge.registries.*
 import org.eln2.mc.Eln2
 import org.eln2.mc.Eln2.LOGGER
 import org.eln2.mc.common.cells.foundation.CellProvider
-import org.eln2.mc.common.cells.foundation.providers.FourPinCellProvider
-import org.eln2.mc.common.cells.foundation.providers.NoPinCellProvider
-import org.eln2.mc.common.cells.foundation.providers.TwoPinCellProvider
+import org.eln2.mc.common.cells.foundation.providers.BasicCellProvider
+import org.eln2.mc.common.content.GroundCell
+import org.eln2.mc.common.content.ResistorCell
+import org.eln2.mc.common.content.VoltageSourceCell
+import org.eln2.mc.common.content.WireCell
 import java.util.function.Supplier
 
 object CellRegistry {
@@ -23,23 +25,22 @@ object CellRegistry {
         LOGGER.info("Prepared cell registry.")
     }
 
+    /**
+     * Registers a cell using the specified ID and Provider.
+     * */
     private fun register(id: String, provider: CellProvider): RegistryObject<CellProvider> {
         return CELLS.register(id) { provider }
     }
 
+    /**
+     * Gets the Cell Provider with the specified ID, or produces an error.
+     * */
     fun getProvider(id: ResourceLocation): CellProvider {
         return cellRegistry.get().getValue(id) ?: error("Could not get cell provider with id $id")
     }
 
-    val RESISTOR_CELL = register("resistor", TwoPinCellProvider { ResistorCell(it) })
-    val WIRE_CELL = register("wire", FourPinCellProvider { WireCell(it) })
-    val VOLTAGE_SOURCE_CELL = register("voltage_source", FourPinCellProvider { VoltageSourceCell(it) })
-    val GROUND_CELL = register("ground", FourPinCellProvider { GroundCell(it) })
-    val CAPACITOR_CELL = register("capacitor", TwoPinCellProvider { CapacitorCell(it) })
-    val INDUCTOR_CELL = register("inductor", TwoPinCellProvider { InductorCell(it) })
-    val DIODE_CELL = register("diode", TwoPinCellProvider { DiodeCell(it) })
-    val BATTERY_CELL = register("12v_battery", TwoPinCellProvider { BatteryCell(it) })
-    val LIGHT_CELL = register("light", FourPinCellProvider { LightCell(it) })
-    val SOLAR_LIGHT_CELL = register("solar_light", NoPinCellProvider { SolarLightCell(it) })
-    val SOLAR_PANEL_CELL = register("solar_panel", TwoPinCellProvider { SolarPanelCell(it) })
+    val RESISTOR_CELL = register("resistor_cell", BasicCellProvider.polar(::ResistorCell))
+    val VOLTAGE_SOURCE_CELL = register("voltage_source_cell", BasicCellProvider.fourPin(::VoltageSourceCell))
+    val GROUND_CELL = register("ground_cell", BasicCellProvider.fourPin(::GroundCell))
+    val WIRE_CELL = register("wire_cell", BasicCellProvider.fourPin(::WireCell))
 }
