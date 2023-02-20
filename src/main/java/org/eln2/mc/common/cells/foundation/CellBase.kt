@@ -2,7 +2,7 @@ package org.eln2.mc.common.cells.foundation
 
 import mcp.mobius.waila.api.IPluginConfig
 import net.minecraft.resources.ResourceLocation
-import org.eln2.mc.common.cells.foundation.objects.ConnectionInfo
+import org.eln2.mc.common.cells.foundation.objects.ElectricalConnectionInfo
 import org.eln2.mc.common.cells.foundation.objects.ElectricalObject
 import org.eln2.mc.common.cells.foundation.objects.SimulationObjectSet
 import org.eln2.mc.common.cells.foundation.objects.SimulationObjectType
@@ -53,13 +53,13 @@ abstract class CellBase(val pos: CellPos, val id: ResourceLocation) : IWailaProv
      * Called when the tile entity is being unloaded.
      * After this method is called, the field will become null.
      */
-    open fun onEntityUnloaded() {}
+    open fun onContainerUnloaded() {}
 
     /**
-     * Called when the tile entity is being loaded.
+     * Called when the block entity is being loaded.
      * The field is assigned before this is called.
      */
-    open fun onEntityLoaded() {}
+    open fun onContainerLoaded() {}
 
     /**
      * Called when the graph manager completed loading this cell from the disk.
@@ -67,12 +67,12 @@ abstract class CellBase(val pos: CellPos, val id: ResourceLocation) : IWailaProv
     open fun onLoadedFromDisk() {}
 
     /**
-     *   Called when the block entity placing is complete.
+     * Called after the cell was created.
      */
-    open fun onPlaced() {}
+    open fun onCreated() {}
 
     /**
-     * Called when the tile entity is destroyed.
+     * Called after the cell was destroyed.
      */
     open fun onDestroyed() {
         objectSet.process { it.destroy() }
@@ -107,7 +107,7 @@ abstract class CellBase(val pos: CellPos, val id: ResourceLocation) : IWailaProv
                             val remoteElectrical = neighborInfo.cell.objectSet.electricalObject
 
                             localElectrical.addConnection(
-                                ConnectionInfo(
+                                ElectricalConnectionInfo(
                                     remoteElectrical,
                                     neighborInfo.sourceDirection
                                 )

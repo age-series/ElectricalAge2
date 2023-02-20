@@ -58,7 +58,7 @@ abstract class CellPart(
      * */
     override fun onUnloaded() {
         if (hasCell) {
-            cell.onEntityUnloaded()
+            cell.onContainerUnloaded()
             cell.container = null
         }
     }
@@ -111,12 +111,12 @@ abstract class CellPart(
 
             CellGraphManager
                 .getFor(placementContext.level as ServerLevel)
-                .getGraphWithId(loadGraphId)
+                .getGraph(loadGraphId)
                 .getCell(cellPos)
         }
 
         cell.container = placementContext.multipart
-        cell.onEntityLoaded()
+        cell.onContainerLoaded()
     }
 
     override fun appendBody(builder: TooltipBuilder, config: IPluginConfig?) {

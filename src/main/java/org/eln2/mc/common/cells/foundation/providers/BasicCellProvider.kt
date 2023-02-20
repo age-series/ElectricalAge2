@@ -10,7 +10,7 @@ import org.eln2.mc.common.space.RelativeRotationDirection
 /**
  * The Basic Provider is a cell provider that filters connections based on a direction mask.
  * */
-class BasicProvider(private val directionMask: DirectionMask, private val factory: ICellFactory) : CellProvider() {
+class BasicCellProvider(private val directionMask: DirectionMask, private val factory: ICellFactory) : CellProvider() {
     override fun createInstance(pos: CellPos, id: ResourceLocation): CellBase {
         return factory.create(pos, id)
     }
@@ -23,15 +23,15 @@ class BasicProvider(private val directionMask: DirectionMask, private val factor
         /**
          * Creates a basic provider that accepts connections from the front and back of the cell.
          * */
-        fun polar(factory: ICellFactory): BasicProvider {
-            return BasicProvider(DirectionMask.FRONT + DirectionMask.BACK, factory)
+        fun polar(factory: ICellFactory): BasicCellProvider {
+            return BasicCellProvider(DirectionMask.FRONT + DirectionMask.BACK, factory)
         }
 
         /**
          * Creates a basic provider that accepts connections from all 4 horizontal directions.
          * */
-        fun fourPin(factory: ICellFactory): BasicProvider {
-            return BasicProvider(DirectionMask.HORIZONTALS, factory)
+        fun fourPin(factory: ICellFactory): BasicCellProvider {
+            return BasicCellProvider(DirectionMask.HORIZONTALS, factory)
         }
     }
 }

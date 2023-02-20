@@ -6,10 +6,17 @@ import net.minecraft.world.level.Level
 import org.eln2.mc.common.blocks.foundation.MultipartBlockEntity
 
 /**
- * Encapsulates all the data associated with a part's placement, position, ...
+ * Encapsulates all the data associated with a part's placement.
  * */
 data class PartPlacementContext(
+    /**
+     * The final position of the part. It is one block along the normal, starting from the clicked block.
+     * */
     val pos: BlockPos,
+
+    /**
+     * The clicked face of the block.
+     * */
     val face: Direction,
     val horizontalFacing: Direction,
     val level: Level,

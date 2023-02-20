@@ -11,7 +11,6 @@ import java.util.*
 
 /**
  * The Cell Graph Manager tracks the cell graphs for a single dimension.
- * It delegates updates to the graphs.
  * This is a **server-only** construct. Simulations never have to occur on the client.
  * */
 class CellGraphManager(val level: Level) : SavedData() {
@@ -75,8 +74,11 @@ class CellGraphManager(val level: Level) : SavedData() {
         return tag
     }
 
-    fun getGraphWithId(id: UUID): CellGraph {
-        return graphs[id] ?: throw IndexOutOfBoundsException("Graph ID was not found in the cell graph ${graphs}: $id")
+    /**
+     * Gets the graph with the specified ID, or throws an exception.
+     * */
+    fun getGraph(id: UUID): CellGraph {
+        return graphs[id] ?: error("Graph with id $id not found")
     }
 
     companion object {
