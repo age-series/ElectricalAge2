@@ -6,11 +6,8 @@ import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.saveddata.SavedData
 import org.eln2.mc.Eln2
-import org.eln2.mc.utility.AveragingList
-import org.eln2.mc.utility.Time
+import org.eln2.mc.utility.Stopwatch
 import java.util.*
-import java.util.concurrent.ExecutorCompletionService
-import java.util.concurrent.Executors
 
 /**
  * The Cell Graph Manager tracks the cell graphs for a single dimension.
@@ -18,55 +15,17 @@ import java.util.concurrent.Executors
  * This is a **server-only** construct. Simulations never have to occur on the client.
  * */
 class CellGraphManager(val level: Level) : SavedData() {
-    // todo: proper parallel execution, after the objects are done
-    private val executor = Executors.newWorkStealingPool(12)
-    private val completionService = ExecutorCompletionService<Long>(executor)
-    private val averageSeconds = AveragingList(100)
-
     private val graphs = HashMap<UUID, CellGraph>()
 
-    // Could also use graph count, but let's be safe.
-    private var runningTasks = 0
+    private val statisticsWatch = Stopwatch()
 
-    private var logCountdown = 100
+    fun sampleTickRate(): Double{
+        val elapsedSeconds = statisticsWatch.sample()
 
-    fun beginUpdate() {
-        graphs.values.forEach { graph ->
-            completionService.submit {
-                graph.update()
-
-                return@submit graph.latestSolveTime
-            }
-
-            runningTasks++
-        }
+        return graphs.values.sumOf { it.sampleElapsedUpdates() } / elapsedSeconds
     }
 
-    fun endUpdate() {
-        var totalTime = 0.0
-
-        while (runningTasks-- > 0) {
-            val nanoseconds = completionService.take().get()
-
-            totalTime += Time.toSeconds(nanoseconds)
-        }
-
-        runningTasks = 0
-
-        averageSeconds.addSample(totalTime)
-
-        if (--logCountdown == 0) {
-            logCountdown = 100
-
-            Eln2.LOGGER.info("Average simulation time: ${averageSeconds.calculate() * 1000}ms")
-        }
-    }
-    /*
-
-        fun update(){
-            graphs.values.forEach{ it.update() }
-        }
-    */
+    val totalSpentTime get() = graphs.values.sumOf { it.lastTickTime }
 
     /**
      * Checks whether this manager is tracking the specified graph.
@@ -141,7 +100,9 @@ class CellGraphManager(val level: Level) : SavedData() {
 
                 manager.addGraph(graph)
                 Eln2.LOGGER.info("Loaded ${graph.cells.count()} cells for ${graph.id}!")
+
                 graph.buildSolver()
+                graph.startSimulation()
             }
 
             return manager

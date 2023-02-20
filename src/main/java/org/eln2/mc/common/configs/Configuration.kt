@@ -51,5 +51,6 @@ data class ElectricalAgeConfiguration(
     var enableAnalytics: Boolean = true,
     // TODO: Replace with stats.age-series.org (but needs CAA certificates)
     var analyticsEndpoint: String = "https://ingz5drycg.execute-api.us-east-1.amazonaws.com/",
-    var analyticsUuid: String = UUID.randomUUID().toString()
+    var analyticsUuid: String = UUID.randomUUID().toString(),
+    var simulationThreads: Int = 8
 )

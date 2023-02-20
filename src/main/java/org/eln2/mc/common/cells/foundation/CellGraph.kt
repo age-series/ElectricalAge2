@@ -3,17 +3,24 @@ package org.eln2.mc.common.cells.foundation
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.nbt.ListTag
 import net.minecraft.resources.ResourceLocation
+import net.minecraftforge.server.ServerLifecycleHooks
 import org.ageseries.libage.sim.electrical.mna.Circuit
-import org.eln2.mc.Eln2
 import org.eln2.mc.Eln2.LOGGER
+import org.eln2.mc.annotations.CrossThreadAccess
 import org.eln2.mc.common.cells.CellRegistry
 import org.eln2.mc.common.cells.foundation.objects.SimulationObjectType
+import org.eln2.mc.common.configs.Configuration
 import org.eln2.mc.common.space.RelativeRotationDirection
 import org.eln2.mc.extensions.NbtExtensions.getCellPos
 import org.eln2.mc.extensions.NbtExtensions.getRelativeDirection
 import org.eln2.mc.extensions.NbtExtensions.putCellPos
 import org.eln2.mc.extensions.NbtExtensions.putRelativeDirection
+import org.eln2.mc.utility.Time
 import java.util.*
+import java.util.concurrent.Executors
+import java.util.concurrent.ScheduledFuture
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.locks.ReentrantLock
 import kotlin.collections.ArrayDeque
 import kotlin.system.measureNanoTime
 
@@ -30,32 +37,63 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
 
     private val circuits = ArrayList<Circuit>()
 
+    private val simulationStopLock = ReentrantLock()
+    private var runningTask: ScheduledFuture<*>? = null
+
+    @CrossThreadAccess
+    private var updates = 0L
+
+    private var updatesCheckpoint = 0L
+
+    @CrossThreadAccess
+    var lastTickTime = 0.0
+        private set
+
+    fun sampleElapsedUpdates(): Long{
+        val elapsed = updates - updatesCheckpoint
+        updatesCheckpoint += elapsed
+
+        return elapsed
+    }
+
     /**
      * True, if the solution was found last tick. Otherwise, false.
      * */
     var successful = false
         private set
 
-    /**
-     * Gets the last tick time (in nanoseconds).
-     * */
-    var latestSolveTime = 0L
-        private set
+    private fun validateAccess(){
+        if(runningTask != null){
+            error("Tried to mutate the simulation while it was running")
+        }
 
-    fun update() {
-        latestSolveTime = measureNanoTime {
+        if(Thread.currentThread() != ServerLifecycleHooks.getCurrentServer().runningThread){
+            error("Illegal cross-thread access into the cell graph")
+        }
+    }
+
+    private fun update() {
+        simulationStopLock.lock()
+
+        lastTickTime = Time.toSeconds(measureNanoTime {
             successful = true
 
             circuits.forEach {
                 successful = successful && it.step(0.05)
             }
-        }
+        })
+
+        updates++
+
+        simulationStopLock.unlock()
     }
 
     /**
      * This realizes the object subsets and creates the underlying simulations.
      * */
     fun buildSolver() {
+        validateAccess()
+
         cells.forEach { it.clearObjectConnections() }
         cells.forEach { it.recordObjectConnections() }
 
@@ -156,6 +194,8 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
      * the solver update will occur explicitly.**
      * */
     fun removeCell(cell: CellBase) {
+        validateAccess()
+
         cells.remove(cell)
         posCells.remove(cell.pos)
         manager.setDirty()
@@ -168,6 +208,8 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
      * the solver update will occur explicitly.**
      * */
     fun addCell(cell: CellBase) {
+        validateAccess()
+
         cells.add(cell)
         cell.graph = this
         posCells[cell.pos] = cell
@@ -178,6 +220,8 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
      * Copies the cells of this graph to the other graph, and invalidates the saved data.
      * */
     fun copyTo(graph: CellGraph) {
+        validateAccess()
+
         graph.cells.addAll(cells)
         manager.setDirty()
     }
@@ -186,11 +230,45 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
      * Removes the graph from tracking and invalidates the saved data.
      * */
     fun destroy() {
+        validateAccess()
+
         manager.removeGraph(this)
         manager.setDirty()
     }
 
+    /**
+     * Stops the simulation. This is a sync point, so usage of this should be sparse.
+     * Will result in an error if it was not running.
+     * */
+    fun stopSimulation(){
+        if(runningTask == null){
+            error("Tried to stop simulation, but it was not running")
+        }
+
+        simulationStopLock.lock()
+        runningTask!!.cancel(true)
+        runningTask = null
+        simulationStopLock.unlock()
+
+        LOGGER.info("Stopped simulation for $this")
+    }
+
+    /**
+     * Starts the simulation. Will result in an error if it is already running.,
+     * */
+    fun startSimulation(){
+        if(runningTask != null){
+            error("Tried to start simulation, but it was already running")
+        }
+
+        runningTask = pool.scheduleAtFixedRate(this::update, 0, 10, TimeUnit.MILLISECONDS)
+
+        LOGGER.info("Started simulation for $this")
+    }
+
     fun toNbt(): CompoundTag {
+        stopSimulation()
+
         val circuitCompound = CompoundTag()
         circuitCompound.putUUID("ID", id)
 
@@ -216,12 +294,25 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
 
         circuitCompound.put("Cells", cellListTag)
 
+        startSimulation()
+
         return circuitCompound
     }
 
     private data class ConnectionInfoCell(val cellPos: CellPos, val direction: RelativeRotationDirection)
 
     companion object {
+        init {
+            // We do get an exception from thread pool creation, but explicit handling is better here.
+            if(Configuration.config.simulationThreads == 0){
+                error("Simulation threads is 0")
+            }
+
+            LOGGER.info("Using ${Configuration.config.simulationThreads} simulation threads")
+        }
+
+        private val pool = Executors.newScheduledThreadPool(Configuration.config.simulationThreads)
+
         fun fromNbt(graphCompound: CompoundTag, manager: CellGraphManager): CellGraph {
             val id = graphCompound.getUUID("ID")
             val result = CellGraph(id, manager)
