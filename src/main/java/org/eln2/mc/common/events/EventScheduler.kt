@@ -24,16 +24,29 @@ object EventScheduler {
             ?: error("Could not find event queue for $listener")
     }
 
+    /**
+     * Gets the Event Manager of the queue of the specified listener.
+     * */
     fun getManager(listener: IEventListener): EventManager {
         return getEventQueue(listener).manager
     }
 
+    /**
+     * Creates an event queue for the specified listener.
+     * Only one queue can exist per listener. An error will be raised if this listener already registered a queue.
+     * This queue can be subsequently accessed, and events can be enqueued for the next tick.
+     * */
     fun register(listener: IEventListener) {
         if (eventQueues.put(listener, EventQueue(listener)) != null) {
             error("Duplicate add $listener")
         }
     }
 
+    /**
+     * Gets a queue access to the specified listener.
+     * This may be used concurrently.
+     * Events enqueued using this access will be sent to the listener on the next tick.
+     * */
     fun getEventAccess(listener: IEventListener): (IEvent) -> Unit {
         val eventQueue = getEventQueue(listener)
 
@@ -46,15 +59,24 @@ object EventScheduler {
         }
     }
 
+    /**
+     * Gets the event access for the specified listener, and enqueues an event for the next tick.
+     * */
     fun enqueueEvent(listener: IEventListener, event: IEvent) {
         getEventAccess(listener).invoke(event)
     }
 
+    /**
+     * Destroys the event queue of the specified listener. Results in an exception if the listener was not registered beforehand.
+     * */
     fun remove(listener: IEventListener) {
         val removed = eventQueues.remove(listener) ?: error("Could not find queue for $listener")
         removed.valid = false
     }
 
+    /**
+     * On every tick, we traverse all event queues, and send the events to the Event Manager.
+     * */
     @SubscribeEvent
     fun onServerTick(event: TickEvent.ServerTickEvent) {
         if (event.phase == TickEvent.Phase.START) {

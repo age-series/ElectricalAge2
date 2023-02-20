@@ -1,4 +1,4 @@
-package org.eln2.mc.common.cells.objects
+package org.eln2.mc.common.cells.foundation
 
 /**
  * These are some convention constants.

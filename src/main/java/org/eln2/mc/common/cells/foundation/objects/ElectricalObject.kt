@@ -2,11 +2,10 @@ package org.eln2.mc.common.cells.foundation.objects
 
 import org.ageseries.libage.sim.electrical.mna.Circuit
 import org.ageseries.libage.sim.electrical.mna.component.Component
-import org.eln2.mc.Eln2
 import org.eln2.mc.common.space.RelativeRotationDirection
 
-data class ComponentInfo(val component: Component, val index: Int)
-data class ConnectionInfo(val obj: ElectricalObject, val direction: RelativeRotationDirection)
+data class ElectricalComponentInfo(val component: Component, val index: Int)
+data class ElectricalConnectionInfo(val obj: ElectricalObject, val direction: RelativeRotationDirection)
 
 /**
  * Represents an object that is part of an electrical simulation.
@@ -20,9 +19,15 @@ abstract class ElectricalObject : ISimulationObject {
     var circuit: Circuit? = null
         private set
 
-    protected val connections = ArrayList<ConnectionInfo>()
+    protected val connections = ArrayList<ElectricalConnectionInfo>()
 
     final override val type = SimulationObjectType.Electrical
+
+    /**
+     * This is used to validate new connections.
+     * If more connections than what is specified are created, an error will occur.
+     * */
+    open val maxConnections = Int.MAX_VALUE
 
     protected fun indexOf(obj: ElectricalObject): Int {
         val index = connections.indexOfFirst { it.obj == obj }
@@ -43,7 +48,7 @@ abstract class ElectricalObject : ISimulationObject {
     /**
      * Called by electrical objects to fetch a connection candidate.
      * */
-    abstract fun offerComponent(neighbour: ElectricalObject): ComponentInfo
+    abstract fun offerComponent(neighbour: ElectricalObject): ElectricalComponentInfo
 
     /**
      * Called by the building logic when the electrical object is made part of a circuit.
@@ -58,12 +63,16 @@ abstract class ElectricalObject : ISimulationObject {
     /**
      * Called by the cell when a valid connection candidate is discovered.
      * */
-    open fun addConnection(connectionInfo: ConnectionInfo) {
+    open fun addConnection(connectionInfo: ElectricalConnectionInfo) {
         if (connections.contains(connectionInfo)) {
             error("Duplicate connection")
         }
 
         connections.add(connectionInfo)
+
+        if(connections.size > maxConnections){
+            error("Electrical object received more connections than were allowed")
+        }
     }
 
     /**

@@ -19,18 +19,17 @@ import org.eln2.mc.client.render.PartialModels
 import org.eln2.mc.common.cells.CellRegistry
 import org.eln2.mc.common.cells.foundation.CellBase
 import org.eln2.mc.common.cells.foundation.CellPos
-import org.eln2.mc.common.cells.foundation.objects.ComponentInfo
+import org.eln2.mc.common.cells.foundation.objects.ElectricalComponentInfo
 import org.eln2.mc.common.cells.foundation.objects.ElectricalObject
 import org.eln2.mc.common.cells.foundation.objects.ResistorBundle
 import org.eln2.mc.common.cells.foundation.objects.SimulationObjectSet
-import org.eln2.mc.common.cells.objects.Conventions
+import org.eln2.mc.common.cells.foundation.Conventions
 import org.eln2.mc.common.parts.foundation.CellPart
 import org.eln2.mc.common.parts.foundation.ConnectionMode
 import org.eln2.mc.common.parts.foundation.IPartRenderer
 import org.eln2.mc.common.parts.foundation.PartPlacementContext
 import org.eln2.mc.common.space.DirectionMask
 import org.eln2.mc.common.space.RelativeRotationDirection
-import org.eln2.mc.extensions.DirectionMaskExtensions.matchCounterClockWise
 import org.eln2.mc.extensions.ModelDataExtensions.blockCenter
 import org.eln2.mc.extensions.ModelDataExtensions.zeroCenter
 import org.eln2.mc.extensions.NbtExtensions.getRelativeDirection
@@ -46,10 +45,24 @@ import kotlin.math.abs
 // This organisation approach is inspired by a suggestion from jrddunbr.
 // Having the content in one file does help navigate more easily.
 
+/**
+ * The Wire Object has a single resistor bundle. The Internal Pins of the bundle are connected to each other, and
+ * the External Pins are exported to other Electrical Objects.
+ * */
 class WireObject : ElectricalObject(), IWailaProvider {
     private val resistors = ResistorBundle(0.05)
 
-    override fun offerComponent(neighbour: ElectricalObject): ComponentInfo {
+    /**
+     * Gets or sets the resistance of the bundle.
+     * Only applied when the circuit is re-built.
+     * */
+    var resistance : Double = resistors.resistance
+        set(value) {
+            field = value
+            resistors.resistance = value
+        }
+
+    override fun offerComponent(neighbour: ElectricalObject): ElectricalComponentInfo {
         return resistors.getOfferedResistor(directionOf(neighbour))
     }
 
@@ -202,10 +215,6 @@ class WirePart(id: ResourceLocation, context: PartPlacementContext) :
         connectedDirections.remove(direction)
         syncAndSave()
     }
-
-    override val allowPlanarConnections = true
-    override val allowInnerConnections = true
-    override val allowWrappedConnections = true
 }
 
 class WirePartRenderer(val part: WirePart) : IPartRenderer {

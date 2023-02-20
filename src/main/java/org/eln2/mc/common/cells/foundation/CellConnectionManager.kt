@@ -23,76 +23,20 @@ object CellConnectionManager {
      * Inserts a cell into a graph. It may create connections with other cells, and cause
      * topological changes to related networks.
      * */
-    fun connect(container: ICellContainer, cellSpace: CellInfo) {
-        registerCell(cellSpace, container)
-        cellSpace.cell.onPlaced()
+    fun connect(container: ICellContainer, cellInfo: CellInfo) {
+        connectCell(cellInfo, container)
+        cellInfo.cell.onCreated()
     }
 
     /**
      * Removes a cell from the graph. It may cause topological changes to the graph, as outlined in the top document.
      * */
-    fun destroy(cellSpace: CellInfo, container: ICellContainer) {
-        removeCell(cellSpace, container)
-        cellSpace.cell.onDestroyed()
+    fun destroy(cellInfo: CellInfo, container: ICellContainer) {
+        disconnectCell(cellInfo, container)
+        cellInfo.cell.onDestroyed()
     }
 
-    private fun removeCell(cellSpace: CellInfo, container: ICellContainer) {
-        val cell = cellSpace.cell
-        val manager = container.manager
-        val neighborCells = container.queryNeighbors(cellSpace)
-
-        val graph = cell.graph
-
-        // Stop Simulation
-        graph.stopSimulation()
-
-        // This is common logic for all cases.
-        neighborCells.forEach { neighborInfo ->
-            neighborInfo.neighborInfo.cell.removeConnection(cell)
-            neighborInfo.neighborContainer.recordDeletedConnection(
-                neighborInfo.neighborInfo,
-                neighborInfo.neighborDirection
-            )
-        }
-
-        /* Cases:
-        *   1. We don't have any neighbors. We can destroy the circuit.
-        *   2. We have a single neighbor. We can remove ourselves from the circuit.
-        *   3. We have multiple neighbors, and we are not a cut vertex. We can remove ourselves from the circuit.
-        *   4. We have multiple neighbors, and we are a cut vertex. We need to remove ourselves, find the new disjoint graphs,
-        *        and rebuild the circuits.
-        */
-
-        if (neighborCells.isEmpty()) {
-            // Case 1. Destroy this circuit.
-
-            // Make sure we don't make any logic errors somewhere else.
-            assert(graph.cells.size == 1)
-
-            graph.destroy()
-        } else if (neighborCells.size == 1) {
-            // Case 2.
-
-            // Remove the cell from the circuit.
-            graph.removeCell(cell)
-
-            val neighbor = neighborCells[0].neighborInfo
-
-            neighbor.cell.update(connectionsChanged = true, graphChanged = false)
-
-            // todo: do we need to rebuild the solver?
-
-            graph.buildSolver()
-            graph.startSimulation()
-        } else {
-            // Case 3 and 4. Implement a more sophisticated algorithm, if necessary.
-
-            graph.destroy()
-            rebuildTopologies(neighborCells, cell, manager)
-        }
-    }
-
-    private fun registerCell(cellSpace: CellInfo, container: ICellContainer) {
+    private fun connectCell(cellSpace: CellInfo, container: ICellContainer) {
         val manager = container.manager
         val cell = cellSpace.cell
         val neighborInfoList = container.queryNeighbors(cellSpace)
@@ -136,7 +80,7 @@ object CellConnectionManager {
             val graph = manager.createGraph()
 
             graph.addCell(cell)
-        } else if (haveCommonCircuit(neighborInfoList)) {
+        } else if (isCommonGraph(neighborInfoList)) {
             // Case 2 and 3. Join the existing circuit.
 
             val graph = neighborInfoList[0].neighborInfo.cell.graph
@@ -192,11 +136,65 @@ object CellConnectionManager {
         cell.graph.startSimulation()
     }
 
+    private fun disconnectCell(cellSpace: CellInfo, container: ICellContainer) {
+        val cell = cellSpace.cell
+        val manager = container.manager
+        val neighborCells = container.queryNeighbors(cellSpace)
+
+        val graph = cell.graph
+
+        // Stop Simulation
+        graph.stopSimulation()
+
+        // This is common logic for all cases.
+        neighborCells.forEach { neighborInfo ->
+            neighborInfo.neighborInfo.cell.removeConnection(cell)
+            neighborInfo.neighborContainer.recordDeletedConnection(
+                neighborInfo.neighborInfo,
+                neighborInfo.neighborDirection
+            )
+        }
+
+        /* Cases:
+        *   1. We don't have any neighbors. We can destroy the circuit.
+        *   2. We have a single neighbor. We can remove ourselves from the circuit.
+        *   3. We have multiple neighbors, and we are not a cut vertex. We can remove ourselves from the circuit.
+        *   4. We have multiple neighbors, and we are a cut vertex. We need to remove ourselves, find the new disjoint graphs,
+        *        and rebuild the circuits.
+        */
+
+        if (neighborCells.isEmpty()) {
+            // Case 1. Destroy this circuit.
+
+            // Make sure we don't make any logic errors somewhere else.
+            assert(graph.cells.size == 1)
+
+            graph.destroy()
+        } else if (neighborCells.size == 1) {
+            // Case 2.
+
+            // Remove the cell from the circuit.
+            graph.removeCell(cell)
+
+            val neighbor = neighborCells[0].neighborInfo
+
+            neighbor.cell.update(connectionsChanged = true, graphChanged = false)
+
+            graph.buildSolver()
+            graph.startSimulation()
+        } else {
+            // Case 3 and 4. Implement a more sophisticated algorithm, if necessary.
+
+            graph.destroy()
+            rebuildTopologies(neighborCells, cell, manager)
+        }
+    }
+
     /**
      * Checks whether the cells share the same graph.
      * @return True, if the specified cells share the same graph. Otherwise, false.
      * */
-    private fun haveCommonCircuit(neighbors: ArrayList<CellNeighborInfo>): Boolean {
+    private fun isCommonGraph(neighbors: ArrayList<CellNeighborInfo>): Boolean {
         if (neighbors.size < 2) {
             return true
         }

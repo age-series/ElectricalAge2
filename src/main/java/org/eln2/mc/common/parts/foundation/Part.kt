@@ -33,7 +33,7 @@ abstract class Part(val id: ResourceLocation, val placementContext: PartPlacemen
      * @return The relative direction towards the global direction.
      * */
     fun getRelativeDirection(global: Direction): RelativeRotationDirection {
-        return PartTransformations.getRelativeRotation(placementContext.horizontalFacing, placementContext.face, global)
+        return PartTransformations.getRelativeDirection(placementContext.horizontalFacing, placementContext.face, global)
     }
 
     /**
@@ -44,17 +44,20 @@ abstract class Part(val id: ResourceLocation, val placementContext: PartPlacemen
         get() = PartTransformations.modelBoundingBox(baseSize, placementContext.horizontalFacing, placementContext.face)
 
     /**
-     * This gets the local Y rotation due to facing.
+     * @return The local Y rotation due to facing.
      * */
     val facingRotation: Quaternion
         get() = PartTransformations.facingRotation(placementContext.horizontalFacing)
 
     /**
-     * This calculates the local Y rotation degrees due to facing.
+     * @return The local Y rotation degrees due to facing.
      * */
     private val facingRotationDegrees: Float
         get() = PartTransformations.facingRotationDegrees(placementContext.horizontalFacing)
 
+    /**
+     * @return The offset towards the placement face, calculated using the base size.
+     * */
     private val offset: Vec3 get() = PartTransformations.offset(baseSize, placementContext.face)
 
     /**
@@ -118,7 +121,7 @@ abstract class Part(val id: ResourceLocation, val placementContext: PartPlacemen
 
     /**
      * This method is called when this part is invalidated, and in need of synchronization to clients.
-     * You will receive this tag in handleSyncTag on the client, _if_ the tag is not null.
+     * You will receive this tag in *handleSyncTag* on the client, _if_ the tag is not null.
      * @return A compound tag with all part updates. You may return null, but that might indicate an error in logic.
      * This method is called only when an update is _requested_, so there should be data in need of synchronization.
      *
@@ -133,8 +136,7 @@ abstract class Part(val id: ResourceLocation, val placementContext: PartPlacemen
      * @param tag The custom data tag, as returned by the getSyncTag method on the server.
      * */
     @ClientOnly
-    open fun handleSyncTag(tag: CompoundTag) {
-    }
+    open fun handleSyncTag(tag: CompoundTag) {}
 
     /**
      * This method invalidates the saved data of the part.
@@ -151,7 +153,7 @@ abstract class Part(val id: ResourceLocation, val placementContext: PartPlacemen
 
     /**
      * This method synchronizes all changes from the server to the client.
-     * It calls the getSyncTag (server) / handleSyncTag(client) combo.
+     * It results in calls to the *getSyncTag* **(server)** / *handleSyncTag* **(client)** combo.
      * */
     @ServerOnly
     fun syncChanges() {
@@ -177,15 +179,13 @@ abstract class Part(val id: ResourceLocation, val placementContext: PartPlacemen
      *  Called on the server when the part is placed.
      * */
     @ServerOnly
-    open fun onPlaced() {
-    }
+    open fun onPlaced() {}
 
     /**
      * Called on the server when the part finished loading from disk
      * */
     @ServerOnly
-    open fun onLoaded() {
-    }
+    open fun onLoaded() {}
 
     /**
      * Called when this part is added to a multipart.
@@ -207,9 +207,11 @@ abstract class Part(val id: ResourceLocation, val placementContext: PartPlacemen
      * */
     open fun onRemoved() {}
 
+    /**
+     * Called when this part is received and added to the client multipart, just before rendering set-up is enqueued.
+     * */
     @ClientOnly
-    open fun onAddedToClient() {
-    }
+    open fun onAddedToClient() {}
 
     @ClientOnly
     private var cachedRenderer: IPartRenderer? = null

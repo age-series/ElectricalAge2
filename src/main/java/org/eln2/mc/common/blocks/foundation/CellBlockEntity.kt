@@ -127,7 +127,7 @@ class CellBlockEntity(var pos: BlockPos, var state: BlockState) :
         super.onChunkUnloaded()
 
         if (!level!!.isClientSide) {
-            cell!!.onEntityUnloaded()
+            cell!!.onContainerUnloaded()
 
             // GC reference tracking
             cell!!.container = null
@@ -147,7 +147,7 @@ class CellBlockEntity(var pos: BlockPos, var state: BlockState) :
 
         if (this::savedGraphID.isInitialized && graphManager.contains(savedGraphID)) {
             // fetch graph with ID
-            val graph = graphManager.getGraphWithId(savedGraphID)
+            val graph = graphManager.getGraph(savedGraphID)
 
             // fetch cell instance
             println("Loading cell at location $pos")
@@ -157,7 +157,7 @@ class CellBlockEntity(var pos: BlockPos, var state: BlockState) :
             cellProvider = CellRegistry.getProvider(cell!!.id)
 
             cell!!.container = this
-            cell!!.onEntityLoaded()
+            cell!!.onContainerLoaded()
         }
     }
 

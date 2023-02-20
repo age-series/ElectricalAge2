@@ -38,6 +38,8 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
     private val circuits = ArrayList<Circuit>()
 
     private val simulationStopLock = ReentrantLock()
+
+    // This is the simulation task. It will be null if the simulation is stopped
     private var runningTask: ScheduledFuture<*>? = null
 
     @CrossThreadAccess
@@ -49,6 +51,9 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
     var lastTickTime = 0.0
         private set
 
+    /**
+     * Gets the number of updates that have occurred since the last call to this method.
+     * */
     fun sampleElapsedUpdates(): Long {
         val elapsed = updates - updatesCheckpoint
         updatesCheckpoint += elapsed
@@ -57,12 +62,16 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
     }
 
     /**
-     * True, if the solution was found last tick. Otherwise, false.
+     * True, if the solution was found last simulation tick. Otherwise, false.
      * */
     var successful = false
         private set
 
-    private fun validateAccess() {
+    /**
+     * Checks if the simulation is running. Presumably, this is used by logic that wants to mutate the graph.
+     * It also checks if the caller is the server thread.
+     * */
+    private fun validateMutationAccess() {
         if (runningTask != null) {
             error("Tried to mutate the simulation while it was running")
         }
@@ -72,6 +81,10 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
         }
     }
 
+    /**
+     * Runs one simulation step. This is called from the update thread.
+     * */
+    @CrossThreadAccess
     private fun update() {
         simulationStopLock.lock()
 
@@ -90,9 +103,11 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
 
     /**
      * This realizes the object subsets and creates the underlying simulations.
+     * The simulation must be suspended before calling this method.
+     * @see stopSimulation
      * */
     fun buildSolver() {
-        validateAccess()
+        validateMutationAccess()
 
         cells.forEach { it.clearObjectConnections() }
         cells.forEach { it.recordObjectConnections() }
@@ -103,7 +118,7 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
     }
 
     /**
-     * This method realizes the electrical circuits for all cells that have electrical object.
+     * This method realizes the electrical circuits for all cells that have an electrical object.
      * */
     private fun realizeElectrical() {
         LOGGER.info("Realizing electrical components.")
@@ -123,6 +138,12 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
 
     /**
      * Realizes a subset of simulation objects that share the same simulation type.
+     * This is a group of objects that:
+     *  1. Are in cells that are connected (physically connected)
+     *  2. Participate in the same simulation type (Electrical, Thermal, Mechanical)
+     *
+     * A separate solver/simulator may be created using this subset.
+     *
      * This algorithm first creates a set with all cells that have the specified simulation type.
      * Then, it does a search through the cells, only taking into account connected nodes that have that simulation type.
      * When a cell is discovered, it is removed from the pending set.
@@ -192,9 +213,10 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
      * **This does not update the solver!
      * It is assumed that multiple operations of this type will be performed, then,
      * the solver update will occur explicitly.**
+     * The simulation must be stopped before calling this.
      * */
     fun removeCell(cell: CellBase) {
-        validateAccess()
+        validateMutationAccess()
 
         cells.remove(cell)
         posCells.remove(cell.pos)
@@ -206,9 +228,10 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
      * **This does not update the solver!
      * It is assumed that multiple operations of this type will be performed, then,
      * the solver update will occur explicitly.**
+     * The simulation must be stopped before calling this.
      * */
     fun addCell(cell: CellBase) {
-        validateAccess()
+        validateMutationAccess()
 
         cells.add(cell)
         cell.graph = this
@@ -218,9 +241,10 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
 
     /**
      * Copies the cells of this graph to the other graph, and invalidates the saved data.
+     * The simulation must be stopped before calling this.
      * */
     fun copyTo(graph: CellGraph) {
-        validateAccess()
+        validateMutationAccess()
 
         graph.cells.addAll(cells)
         manager.setDirty()
@@ -228,9 +252,10 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
 
     /**
      * Removes the graph from tracking and invalidates the saved data.
+     * The simulation must be stopped before calling this.
      * */
     fun destroy() {
-        validateAccess()
+        validateMutationAccess()
 
         manager.removeGraph(this)
         manager.setDirty()
