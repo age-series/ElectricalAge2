@@ -28,15 +28,15 @@ class EventManager {
      * Removes an event handler for events of type TEvent.
      * */
     @Suppress("UNCHECKED_CAST")
-    inline fun <reified TEvent : IEvent> unregisterHandler(handler: IEventHandler<TEvent>){
+    inline fun <reified TEvent : IEvent> unregisterHandler(handler: IEventHandler<TEvent>) {
         unregisterHandler(TEvent::class, handler as IEventHandler<IEvent>)
     }
 
-    fun unregisterHandler(eventClass: KClass<*>, handler: IEventHandler<IEvent>){
+    fun unregisterHandler(eventClass: KClass<*>, handler: IEventHandler<IEvent>) {
         val handlers = handlers[eventClass]
             ?: error("Could not find handlers for $eventClass")
 
-        if(!handlers.remove(handler)){
+        if (!handlers.remove(handler)) {
             error("Could not remove handler $handler")
         }
     }

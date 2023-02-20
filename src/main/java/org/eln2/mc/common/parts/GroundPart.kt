@@ -11,8 +11,8 @@ import org.eln2.mc.common.parts.foundation.IPartRenderer
 import org.eln2.mc.common.parts.foundation.PartPlacementContext
 import org.eln2.mc.common.space.RelativeRotationDirection
 
-class GroundPart(id: ResourceLocation, placementContext: PartPlacementContext)
-    : CellPart(id, placementContext, CellRegistry.GROUND_CELL.get()) {
+class GroundPart(id: ResourceLocation, placementContext: PartPlacementContext) :
+    CellPart(id, placementContext, CellRegistry.GROUND_CELL.get()) {
     override val baseSize = Vec3(1.0, 1.0, 1.0)
     override fun createRenderer(): IPartRenderer {
         return BasicPartRenderer(this, PartialModels.WIRE_CROSSING_EMPTY)

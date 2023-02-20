@@ -11,7 +11,7 @@ import java.util.concurrent.ConcurrentLinkedQueue
  * */
 @Mod.EventBusSubscriber
 object EventScheduler {
-    private class EventQueue(listener: IEventListener){
+    private class EventQueue(listener: IEventListener) {
         val manager = EventManager()
         val queue = ConcurrentLinkedQueue<IEvent>()
         var valid = true
@@ -19,17 +19,17 @@ object EventScheduler {
 
     private val eventQueues = ConcurrentHashMap<IEventListener, EventQueue>()
 
-    private fun getEventQueue(listener: IEventListener): EventQueue{
+    private fun getEventQueue(listener: IEventListener): EventQueue {
         return eventQueues[listener]
             ?: error("Could not find event queue for $listener")
     }
 
-    fun getManager(listener: IEventListener): EventManager{
+    fun getManager(listener: IEventListener): EventManager {
         return getEventQueue(listener).manager
     }
 
     fun register(listener: IEventListener) {
-        if(eventQueues.put(listener, EventQueue(listener)) != null){
+        if (eventQueues.put(listener, EventQueue(listener)) != null) {
             error("Duplicate add $listener")
         }
     }
@@ -38,7 +38,7 @@ object EventScheduler {
         val eventQueue = getEventQueue(listener)
 
         return {
-            if(!eventQueue.valid){
+            if (!eventQueue.valid) {
                 error("Tried to send event after queue became invalid")
             }
 
@@ -46,11 +46,11 @@ object EventScheduler {
         }
     }
 
-    fun enqueueEvent(listener: IEventListener, event: IEvent){
+    fun enqueueEvent(listener: IEventListener, event: IEvent) {
         getEventAccess(listener).invoke(event)
     }
 
-    fun remove(listener: IEventListener){
+    fun remove(listener: IEventListener) {
         val removed = eventQueues.remove(listener) ?: error("Could not find queue for $listener")
         removed.valid = false
     }
@@ -62,7 +62,7 @@ object EventScheduler {
                 val queue = it.queue
                 val manager = it.manager
 
-                while (true){
+                while (true) {
                     manager.send(queue.poll() ?: break)
                 }
             }

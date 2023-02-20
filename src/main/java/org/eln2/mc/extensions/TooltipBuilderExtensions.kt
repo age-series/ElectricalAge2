@@ -14,7 +14,7 @@ object TooltipBuilderExtensions {
         return this
     }
 
-    fun TooltipBuilder.voltageSource(source: VoltageSource): TooltipBuilder{
+    fun TooltipBuilder.voltageSource(source: VoltageSource): TooltipBuilder {
         this.voltage(source.potential)
         this.current(source.current)
 

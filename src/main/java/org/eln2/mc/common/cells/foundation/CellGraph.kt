@@ -49,7 +49,7 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
     var lastTickTime = 0.0
         private set
 
-    fun sampleElapsedUpdates(): Long{
+    fun sampleElapsedUpdates(): Long {
         val elapsed = updates - updatesCheckpoint
         updatesCheckpoint += elapsed
 
@@ -62,12 +62,12 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
     var successful = false
         private set
 
-    private fun validateAccess(){
-        if(runningTask != null){
+    private fun validateAccess() {
+        if (runningTask != null) {
             error("Tried to mutate the simulation while it was running")
         }
 
-        if(Thread.currentThread() != ServerLifecycleHooks.getCurrentServer().runningThread){
+        if (Thread.currentThread() != ServerLifecycleHooks.getCurrentServer().runningThread) {
             error("Illegal cross-thread access into the cell graph")
         }
     }
@@ -240,8 +240,8 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
      * Stops the simulation. This is a sync point, so usage of this should be sparse.
      * Will result in an error if it was not running.
      * */
-    fun stopSimulation(){
-        if(runningTask == null){
+    fun stopSimulation() {
+        if (runningTask == null) {
             error("Tried to stop simulation, but it was not running")
         }
 
@@ -256,8 +256,8 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
     /**
      * Starts the simulation. Will result in an error if it is already running.,
      * */
-    fun startSimulation(){
-        if(runningTask != null){
+    fun startSimulation() {
+        if (runningTask != null) {
             error("Tried to start simulation, but it was already running")
         }
 
@@ -304,7 +304,7 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
     companion object {
         init {
             // We do get an exception from thread pool creation, but explicit handling is better here.
-            if(Configuration.config.simulationThreads == 0){
+            if (Configuration.config.simulationThreads == 0) {
                 error("Simulation threads is 0")
             }
 

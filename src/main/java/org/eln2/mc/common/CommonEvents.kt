@@ -32,7 +32,7 @@ object CommonEvents {
             var tickRate = 0.0
             var tickTime = 0.0
 
-            ServerLifecycleHooks.getCurrentServer().allLevels.forEach() {
+            ServerLifecycleHooks.getCurrentServer().allLevels.forEach {
                 val graph = CellGraphManager.getFor(it)
 
                 tickRate += graph.sampleTickRate()
@@ -42,7 +42,7 @@ object CommonEvents {
             upsAveragingList.addSample(tickRate)
             tickTimeAveragingList.addSample(tickTime)
 
-            if(logCountdown-- == 0){
+            if (logCountdown-- == 0) {
                 logCountdown = logInterval
 
                 LOGGER.info("Total simulation rate: ${upsAveragingList.calculate()} Updates/Second")
@@ -71,8 +71,8 @@ object CommonEvents {
                     } catch (ex: Exception) {
                         when (ex) {
                             is IOException, is SecurityException -> {
-                                Eln2.LOGGER.warn("Unable to write default analytics acknowledgements config")
-                                Eln2.LOGGER.warn(ex.localizedMessage)
+                                LOGGER.warn("Unable to write default analytics acknowledgements config")
+                                LOGGER.warn(ex.localizedMessage)
                             }
 
                             else -> throw ex
@@ -107,8 +107,8 @@ object CommonEvents {
                 } catch (ex: Exception) {
                     when (ex) {
                         is IOException, is SecurityException -> {
-                            Eln2.LOGGER.warn("Unable to save analytics acknowledgements")
-                            Eln2.LOGGER.warn(ex.localizedMessage)
+                            LOGGER.warn("Unable to save analytics acknowledgements")
+                            LOGGER.warn(ex.localizedMessage)
 
                             event.entity.sendMessage(
                                 TranslatableComponent("misc.eln2.analytics_save_failure").withStyle(

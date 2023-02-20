@@ -71,7 +71,7 @@ class WireObject : ElectricalObject(), IWailaProvider {
 
         resistors.process { a ->
             resistors.process { b ->
-                if(a != b){
+                if (a != b) {
                     a.connect(Conventions.INTERNAL_PIN, b, Conventions.INTERNAL_PIN)
                 }
             }
@@ -85,8 +85,7 @@ class WireObject : ElectricalObject(), IWailaProvider {
             val sampleResistor = resistors.getOfferedResistor(connections[0].direction).component as Resistor
 
             builder.current(abs(sampleResistor.current))
-        }
-        else {
+        } else {
             // Branch currents. Print them all.
 
             connections
@@ -102,7 +101,8 @@ class WireCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) {
     }
 }
 
-class WirePart(id: ResourceLocation, context: PartPlacementContext) : CellPart(id, context, CellRegistry.WIRE_CELL.get()) {
+class WirePart(id: ResourceLocation, context: PartPlacementContext) :
+    CellPart(id, context, CellRegistry.WIRE_CELL.get()) {
     override val baseSize: Vec3 get() = Vec3(0.5, 0.25, 0.5)
 
     private val connectedDirections = HashSet<RelativeRotationDirection>()
