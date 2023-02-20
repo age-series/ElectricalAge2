@@ -11,8 +11,8 @@ import org.eln2.mc.common.parts.foundation.IPartRenderer
 import org.eln2.mc.common.parts.foundation.PartPlacementContext
 import org.eln2.mc.common.space.RelativeRotationDirection
 
-class VoltageSourcePart(id: ResourceLocation, placementContext: PartPlacementContext)
-    : CellPart(id, placementContext, CellRegistry.VOLTAGE_SOURCE_CELL.get()) {
+class VoltageSourcePart(id: ResourceLocation, placementContext: PartPlacementContext) :
+    CellPart(id, placementContext, CellRegistry.VOLTAGE_SOURCE_CELL.get()) {
     override val baseSize = Vec3(1.0, 1.0, 1.0)
 
     override fun createRenderer(): IPartRenderer {

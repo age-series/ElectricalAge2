@@ -106,9 +106,12 @@ abstract class CellBase(val pos: CellPos, val id: ResourceLocation) : IWailaProv
                             val localElectrical = it as ElectricalObject
                             val remoteElectrical = neighborInfo.cell.objectSet.electricalObject
 
-                            localElectrical.addConnection(ConnectionInfo(
-                                remoteElectrical,
-                                neighborInfo.sourceDirection))
+                            localElectrical.addConnection(
+                                ConnectionInfo(
+                                    remoteElectrical,
+                                    neighborInfo.sourceDirection
+                                )
+                            )
                         }
                     }
                 }

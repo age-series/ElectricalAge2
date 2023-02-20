@@ -27,14 +27,14 @@ abstract class ElectricalObject : ISimulationObject {
     protected fun indexOf(obj: ElectricalObject): Int {
         val index = connections.indexOfFirst { it.obj == obj }
 
-        if(index == -1){
+        if (index == -1) {
             error("Connections did not have $obj")
         }
 
         return index
     }
 
-    protected fun directionOf(obj: ElectricalObject): RelativeRotationDirection{
+    protected fun directionOf(obj: ElectricalObject): RelativeRotationDirection {
         val index = indexOf(obj)
 
         return connections[index].direction
@@ -59,7 +59,7 @@ abstract class ElectricalObject : ISimulationObject {
      * Called by the cell when a valid connection candidate is discovered.
      * */
     open fun addConnection(connectionInfo: ConnectionInfo) {
-        if(connections.contains(connectionInfo)){
+        if (connections.contains(connectionInfo)) {
             error("Duplicate connection")
         }
 

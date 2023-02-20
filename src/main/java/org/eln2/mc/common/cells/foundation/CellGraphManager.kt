@@ -19,7 +19,7 @@ class CellGraphManager(val level: Level) : SavedData() {
 
     private val statisticsWatch = Stopwatch()
 
-    fun sampleTickRate(): Double{
+    fun sampleTickRate(): Double {
         val elapsedSeconds = statisticsWatch.sample()
 
         return graphs.values.sumOf { it.sampleElapsedUpdates() } / elapsedSeconds

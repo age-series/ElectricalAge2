@@ -16,8 +16,8 @@ class ResistorBundle(private val resistance: Double) {
     /**
      * This must be called once the circuit is made available, in order to register the resistors.
      * */
-    fun register(connections: List<ConnectionInfo>, circuit: Circuit){
-        if(prepared){
+    fun register(connections: List<ConnectionInfo>, circuit: Circuit) {
+        if (prepared) {
             error("Already prepared")
         }
 
@@ -32,8 +32,8 @@ class ResistorBundle(private val resistance: Double) {
     /**
      * This must be called after "prepare", to finalize connections.
      * */
-    fun connect(connections: List<ConnectionInfo>, sender: ElectricalObject){
-        if(!prepared){
+    fun connect(connections: List<ConnectionInfo>, sender: ElectricalObject) {
+        if (!prepared) {
             error("Not prepared")
         }
 
@@ -44,9 +44,9 @@ class ResistorBundle(private val resistance: Double) {
         }
     }
 
-    private fun getResistor(direction: RelativeRotationDirection): Resistor{
-        return resistors.computeIfAbsent(direction){
-            if(prepared){
+    private fun getResistor(direction: RelativeRotationDirection): Resistor {
+        return resistors.computeIfAbsent(direction) {
+            if (prepared) {
                 error("Tried to create resistors after bundle was prepared")
             }
 
@@ -57,15 +57,15 @@ class ResistorBundle(private val resistance: Double) {
         }
     }
 
-    fun getOfferedResistor(direction: RelativeRotationDirection): ComponentInfo{
+    fun getOfferedResistor(direction: RelativeRotationDirection): ComponentInfo {
         return ComponentInfo(getResistor(direction), Conventions.EXTERNAL_PIN)
     }
 
-    fun process(action: ((Resistor) -> Unit)){
+    fun process(action: ((Resistor) -> Unit)) {
         resistors.values.forEach { action(it) }
     }
 
-    fun clear(){
+    fun clear() {
         resistors.clear()
         prepared = false
     }

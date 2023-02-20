@@ -4,7 +4,7 @@ class Stopwatch {
     private val initialTimeStamp = System.nanoTime()
     private var lastTimeStamp = initialTimeStamp
 
-    fun sample(): Double{
+    fun sample(): Double {
         val current = System.nanoTime()
         val elapsedNanoseconds = current - lastTimeStamp
         lastTimeStamp = current
