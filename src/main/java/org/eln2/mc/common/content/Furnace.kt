@@ -21,6 +21,7 @@ import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.entity.BlockEntityTicker
 import net.minecraft.world.level.block.entity.BlockEntityType
 import net.minecraft.world.level.block.state.BlockState
+import net.minecraft.world.phys.Vec3
 import net.minecraftforge.common.capabilities.Capability
 import net.minecraftforge.common.util.LazyOptional
 import net.minecraftforge.items.CapabilityItemHandler
@@ -38,6 +39,10 @@ import org.eln2.mc.common.cells.foundation.HeatBody
 import org.eln2.mc.common.cells.foundation.objects.SimulationObjectSet
 import org.eln2.mc.control.PIDCoefficients
 import org.eln2.mc.control.PIDController
+import org.eln2.mc.extensions.LevelExtensions.addParticle
+import org.eln2.mc.extensions.LevelExtensions.playLocalSound
+import org.eln2.mc.extensions.Vec3Extensions.plus
+import org.eln2.mc.extensions.Vec3Extensions.toVec3
 import org.eln2.mc.integration.waila.TooltipBuilder
 import java.util.*
 import java.util.concurrent.atomic.AtomicReference
@@ -473,25 +478,19 @@ class FurnaceBlock : CellBlock() {
         return BlockEntityTicker(FurnaceBlockEntity::tick)
     }
 
-    override fun animateTick(pState: BlockState, pLevel: Level, pPos: BlockPos, pRandom: Random) {
-        val entity = pLevel.getBlockEntity(pPos) as? FurnaceBlockEntity
+    override fun animateTick(blockState: BlockState, level: Level, pos: BlockPos, random: Random) {
+        val entity = level.getBlockEntity(pos) as? FurnaceBlockEntity
             ?: return
 
         if(!entity.clientBurning){
             return
         }
 
-        // TODO: this is copied vanilla code. Clean this up
+        val sidePos = pos.toVec3() + Vec3(0.5, 0.0, 0.5)
 
-        val d0 = pPos.x.toDouble() + 0.5
-        val d1 = pPos.y.toDouble()
-        val d2 = pPos.z.toDouble() + 0.5
-
-        if (pRandom.nextDouble() < 0.1) {
-            pLevel.playLocalSound(
-                d0,
-                d1,
-                d2,
+        if (random.nextDouble() < 0.1) {
+            level.playLocalSound(
+                sidePos,
                 SoundEvents.FURNACE_FIRE_CRACKLE,
                 SoundSource.BLOCKS,
                 1.0f,
@@ -499,13 +498,18 @@ class FurnaceBlock : CellBlock() {
                 false)
         }
 
-        val direction = pState.getValue(FACING)
-        val directionAxis = direction.axis
-        val d4: Double = pRandom.nextDouble() * 0.6 - 0.3
-        val d5 = if (directionAxis === Direction.Axis.X) direction.stepX.toDouble() * 0.52 else d4
-        val d6: Double = pRandom.nextDouble() * 6.0 / 16.0
-        val d7 = if (directionAxis === Direction.Axis.Z) direction.stepZ.toDouble() * 0.52 else d4
-        pLevel.addParticle(ParticleTypes.SMOKE, d0 + d5, d1 + d6, d2 + d7, 0.0, 0.0, 0.0)
-        pLevel.addParticle(ParticleTypes.FLAME, d0 + d5, d1 + d6, d2 + d7, 0.0, 0.0, 0.0)
+        val facing = blockState.getValue(FACING)
+        val axis = facing.axis
+        val randomOffset = random.nextDouble() * 0.6 - 0.3
+
+        val randomOffset3 = Vec3(
+            if (axis === Direction.Axis.X) facing.stepX.toDouble() * 0.52 else randomOffset,
+            random.nextDouble() * 6.0 / 16.0,
+            if (axis === Direction.Axis.Z) facing.stepZ.toDouble() * 0.52 else randomOffset)
+
+        val particlePos = sidePos + randomOffset3
+
+        level.addParticle(ParticleTypes.SMOKE, particlePos, 0.0, 0.0, 0.0)
+        level.addParticle(ParticleTypes.FLAME, particlePos, 0.0, 0.0, 0.0)
     }
 }

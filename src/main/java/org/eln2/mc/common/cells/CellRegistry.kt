@@ -36,9 +36,9 @@ object CellRegistry {
         return cellRegistry.get().getValue(id) ?: error("Could not get cell provider with id $id")
     }
 
-    val RESISTOR_CELL = register("resistor_cell", BasicCellProvider.polar(::ResistorCell))
+    val RESISTOR_CELL = register("resistor_cell", BasicCellProvider.polarFB(::ResistorCell))
     val VOLTAGE_SOURCE_CELL = register("voltage_source_cell", BasicCellProvider.fourPin(::VoltageSourceCell))
     val GROUND_CELL = register("ground_cell", BasicCellProvider.fourPin(::GroundCell))
     val WIRE_CELL = register("wire_cell", BasicCellProvider.fourPin(::WireCell))
-    val FURNACE_CELL = register("furnace_cell", BasicCellProvider.polar(::FurnaceCell))
+    val FURNACE_CELL = register("furnace_cell", BasicCellProvider.polarLR(::FurnaceCell))
 }
