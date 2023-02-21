@@ -5,13 +5,21 @@ import net.minecraft.nbt.CompoundTag
 import org.eln2.mc.integration.waila.IWailaProvider
 import org.eln2.mc.integration.waila.TooltipBuilder
 
+interface IHeatBodyView {
+    val thermalEnergy: Double
+    val temperature: Double
+    val specificHeat: Double
+    val mass: Double
+    fun convertToEnergy(temperature: Double): Double
+}
+
 /**
  * Temporary utility for heat storage calculations.
  * */
-class HeatBody(var specificHeat: Double, var mass: Double) : IWailaProvider {
-    var thermalEnergy = 0.0
+class HeatBody(override var specificHeat: Double, override var mass: Double) : IHeatBodyView, IWailaProvider {
+    override var thermalEnergy = 0.0
 
-    var temperature
+    override var temperature
         get() = thermalEnergy / (mass * specificHeat)
         set(value) { thermalEnergy = convertToEnergy(value) }
 
@@ -37,7 +45,7 @@ class HeatBody(var specificHeat: Double, var mass: Double) : IWailaProvider {
         private const val THERMAL_ENERGY = "thermalEnergy"
     }
 
-    fun convertToEnergy(temperature: Double): Double {
+    override fun convertToEnergy(temperature: Double): Double {
         return temperature * mass * specificHeat
     }
 
