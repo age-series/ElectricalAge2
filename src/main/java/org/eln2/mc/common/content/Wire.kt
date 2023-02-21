@@ -67,11 +67,11 @@ class WireObject : ElectricalObject(), IWailaProvider {
         return resistors.getOfferedResistor(directionOf(neighbour))
     }
 
-    override fun recreateComponents() {
+    override fun clearComponents() {
         resistors.clear()
     }
 
-    override fun registerComponents(circuit: Circuit) {
+    override fun addComponents(circuit: Circuit) {
         resistors.register(connections, circuit)
     }
 

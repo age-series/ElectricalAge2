@@ -57,7 +57,7 @@ abstract class ElectricalObject : ISimulationObject {
     fun setNewCircuit(circuit: Circuit) {
         this.circuit = circuit
 
-        registerComponents(circuit)
+        addComponents(circuit)
     }
 
     /**
@@ -86,17 +86,17 @@ abstract class ElectricalObject : ISimulationObject {
 
     override fun clear() {
         connections.clear()
-        recreateComponents()
+        clearComponents()
     }
 
     /**
      * Called when the solver is being built, and the components need to be re-created (or refreshed)
      * The connections are not available at this stage.
      * */
-    protected abstract fun recreateComponents()
+    protected abstract fun clearComponents()
 
     /**
      * Called when the circuit must be updated with the components owned by this object.
      * */
-    protected abstract fun registerComponents(circuit: Circuit)
+    protected abstract fun addComponents(circuit: Circuit)
 }
