@@ -37,8 +37,9 @@ import org.eln2.mc.common.blocks.foundation.CellBlockEntity
 import org.eln2.mc.common.cells.CellRegistry
 import org.eln2.mc.common.cells.foundation.CellBase
 import org.eln2.mc.common.cells.foundation.CellPos
-import org.eln2.mc.common.cells.foundation.HeatBody
+import org.eln2.mc.common.cells.foundation.thermodynamics.HeatBody
 import org.eln2.mc.common.cells.foundation.objects.SimulationObjectSet
+import org.eln2.mc.common.cells.foundation.thermodynamics.HeatBodySystem
 import org.eln2.mc.common.events.AtomicUpdate
 import org.eln2.mc.control.PIDCoefficients
 import org.eln2.mc.control.PIDController
@@ -68,70 +69,136 @@ data class HeatingElementData(
     }
 }
 
-interface IFurnaceCellContainer {
-    val needsBurn: Boolean
+data class FurnaceOptions(
+    var idleResistance: Double,
+    var temperatureThreshold: Double,
+    var targetTemperature: Double,
+    var surfaceArea: Double,
+    var minResistance: Double,
+    var maxResistance: Double,
+    var temperatureLossRate: Double){
+
+    fun serializeNbt(): CompoundTag {
+        val tag = CompoundTag()
+
+        tag.putDouble(IDLE_RES, idleResistance)
+        tag.putDouble(TEMP_THRESH, temperatureThreshold)
+        tag.putDouble(TARGET_TEMP, targetTemperature)
+        tag.putDouble(SURFACE_AREA, surfaceArea)
+        tag.putDouble(MIN_RES, minResistance)
+        tag.putDouble(MAX_RES, maxResistance)
+        tag.putDouble(TEMP_LOSS_RATE, temperatureLossRate)
+
+        return tag
+    }
+
+    fun deserializeNbt(tag: CompoundTag) {
+        fun serializeNbt(){
+            val tag = CompoundTag()
+
+            idleResistance = tag.getDouble(IDLE_RES)
+            temperatureThreshold = tag.getDouble(TEMP_THRESH)
+            targetTemperature = tag.getDouble(TARGET_TEMP)
+            surfaceArea = tag.getDouble(SURFACE_AREA)
+            minResistance = tag.getDouble(MIN_RES)
+            maxResistance = tag.getDouble(MAX_RES)
+            temperatureLossRate = tag.getDouble(TEMP_LOSS_RATE)
+        }
+    }
+
+    companion object{
+        private const val IDLE_RES = "idleRes"
+        private const val MIN_RES = "minRes"
+        private const val MAX_RES = "maxRes"
+        private const val TARGET_TEMP = "targetTemp"
+        private const val TEMP_THRESH = "tempThresh"
+        private const val SURFACE_AREA = "surfaceArea"
+        private const val TEMP_LOSS_RATE = "tempLossRate"
+    }
+
 }
 
 class FurnaceCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) {
     companion object {
-        private const val IDLE_RES = "idleRes"
-        private const val MIN_RES = "minRes"
-        private const val MAX_RES = "maxRes"
+        private const val OPTIONS = "options"
         private const val PID = "pid"
-        private const val TARGET_TEMP = "targetTemp"
-        private const val TEMP_THRESH = "tempThresh"
-        private const val HEAT_BODY = "heatBody"
+        private const val RESISTOR_BODY = "heatBody"
     }
 
     fun serializeNbt(): CompoundTag{
         val tag = CompoundTag()
 
-        tag.putDouble(IDLE_RES, idleResistance)
-        tag.putDouble(MIN_RES, minResistance)
-        tag.putDouble(MAX_RES, maxResistance)
+        tag.put(OPTIONS, options.serializeNbt())
         tag.put(PID, pidCoefficients.serializeNbt())
-        tag.putDouble(TARGET_TEMP, targetTemperature)
-        tag.putDouble(TEMP_THRESH, temperatureThreshold)
-        tag.put(HEAT_BODY, resistorHeatBody.serializeNbt())
+        tag.put(RESISTOR_BODY, resistorHeatBody.serializeNbt())
 
         return tag
     }
 
     fun deserializeNbt(tag: CompoundTag){
-        idleResistance = tag.getDouble(IDLE_RES)
-        minResistance = tag.getDouble(MIN_RES)
-        maxResistance = tag.getDouble(MAX_RES)
+        options.deserializeNbt(tag.get(OPTIONS) as CompoundTag)
         pidCoefficients.deserializeNbt(tag.get(PID) as CompoundTag)
-        targetTemperature = tag.getDouble(TARGET_TEMP)
-        temperatureThreshold = tag.getDouble(TEMP_THRESH)
-        resistorHeatBodyUpdate.setLatest(HeatBody.fromNbt(tag.get(HEAT_BODY) as CompoundTag))
+        resistorHeatBodyUpdate.setLatest(HeatBody.fromNbt(tag.get(RESISTOR_BODY) as CompoundTag))
     }
 
-    var idleResistance = 1000000.0
-    var temperatureThreshold = 300.0
-    var targetTemperature = 500.0
+    val options = FurnaceOptions(
+        1000000.0,
+        300.0,
+        500.0,
+        1.0,
+        25.0,
+        10000.0,
+        0.05)
 
+    private data class BodyPair(val resistor: HeatBody, val smelting: HeatBody)
+
+    private var resistorHeatBody = HeatBody.iron(1.0)
     private val resistorHeatBodyUpdate = AtomicUpdate<HeatBody>()
-    private var resistorHeatBody = HeatBody.iron(5.0)
+
+    //private var smeltingHeatBody = HeatBody.iron(10.0)
+
+    // Used to track the body added to the system.
+    // We only mutate this ref on our simulation thread.
+    private var knownSmeltingBody: HeatBody? = null
+
+    // Used to hold the target smelting body. Mutated from e.g. the game object.
+    // In our simulation thread, we implemented a state machine using this.
+    // 1. If the external heating body is null, but our known (in-system) body is not, we remove the know body,
+    // and update its reference, to be null
+    // 2. If the external heating body is not null, and the known body is not equal to it, we update the body in the system.
+    // To update, we first check if the known body is not null. If that is so, we remove it from the simulation. This cleans up the previous body.
+    // Then, we set its reference to the new one, and insert it into the simulation, also setting up connections.
+    private var externalSmeltingBody: HeatBody? = null
+
+    fun loadSmeltingBody(body: HeatBody) {
+        externalSmeltingBody = body
+    }
+
+    fun unloadSmeltingBody(){
+        externalSmeltingBody = null
+    }
+
+    val needsBurn get() = knownSmeltingBody != null
+
+    private val system = HeatBodySystem().also {
+        it.insertBody(resistorHeatBody)
+    }
 
     private val pidCoefficients = PIDCoefficients(
         1.5,
         0.05,
         0.000001)
 
-    var minResistance = 25.0
-    var maxResistance = 10000.0
 
-    private val pid = PIDController(pidCoefficients)
+    // Use normalized control
+    private val pid = PIDController(pidCoefficients).also {
+        it.setPoint = 1.0
+        it.minControl = 0.0
+        it.maxControl = 1.0
+    }
 
-    var temperatureLossRate = 1.0
-
-    private val resistorTemperatureUpdate = AtomicUpdate<Double>()
-    var resistorTemperature
-        get() = resistorHeatBody.temperature
-        set(value) { resistorTemperatureUpdate.setLatest(value) }
-
-    val isHot get() = resistorTemperature >= temperatureThreshold
+    var isHot: Boolean = false
+        private set
 
     override fun createObjectSet(): SimulationObjectSet {
         return SimulationObjectSet(ResistorObject())
@@ -146,28 +213,25 @@ class FurnaceCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) {
     }
 
     private fun idle() {
-        resistorObject.resistance = idleResistance
+        resistorObject.resistance = options.idleResistance
+        isHot = false
         pid.unwind()
     }
 
-    private fun updatePlant(dt: Double){
-        pid.setPoint = 1.0
-        pid.minControl = 0.0
-        pid.maxControl = 1.0
-
-        val control = pid.update(resistorTemperature / targetTemperature, dt)
+    private fun applyControlSignal(dt: Double){
+        val signal = pid.update(resistorHeatBody.temperature / options.targetTemperature, dt)
 
         resistorObject.resistance = map(
-            pid.maxControl - control, // Invert because smaller resistance -> more power
+            pid.maxControl - signal, // Invert because smaller resistance -> more power
             pid.minControl,
             pid.maxControl,
-            minResistance,
-            maxResistance)
+            options.minResistance,
+            options.maxResistance)
     }
 
-    private fun simulateThermalBody(dt: Double) {
+    private fun simulateThermalResistor(dt: Double){
         // Remove dissipated energy from the system
-        resistorHeatBody.temperature -= temperatureLossRate * dt
+        resistorHeatBody.temperature -= options.temperatureLossRate * dt
 
         // Ensure our energy is not negative
         resistorHeatBody.ensureNotNegative()
@@ -176,34 +240,102 @@ class FurnaceCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) {
         resistorHeatBody.thermalEnergy += resistorObject.power * dt
     }
 
-    private fun applyExternalChanges() {
-        resistorHeatBodyUpdate.consume { resistorHeatBody = it }
-        resistorTemperatureUpdate.consume { resistorHeatBody.temperature = it }
+    private fun simulateThermalTransfer(dt: Double){
+        system.conduction(dt)
+    }
+
+    private fun updateBurnState(){
+        // Known is not mutated outside
+
+        if(knownSmeltingBody == null) {
+            isHot = false
+        }
+        else{
+            isHot = knownSmeltingBody!!.temperature > options.temperatureThreshold
+        }
+    }
+
+    private fun runThermalSimulation(dt: Double) {
+        simulateThermalResistor(dt)
+        simulateThermalTransfer(dt)
+        updateBurnState()
+    }
+
+    private fun applyExternalUpdates() {
+        resistorHeatBodyUpdate.consume {
+            if(resistorHeatBody == it){
+                // weird.
+                return@consume
+            }
+
+            system.removeBody(resistorHeatBody)
+            resistorHeatBody = it
+            system.insertBody(resistorHeatBody)
+
+            // Also refit the connection with the smelting body, if it exists
+            // Works because knownSmeltingBody reference is not mutated outside our simulation thread
+
+            if(knownSmeltingBody != null){
+                system.makeConnection(resistorHeatBody, knownSmeltingBody!!){
+                    options.surfaceArea
+                }
+            }
+        }
+
+        // externalSmeltingBody is mutated outside, so we copy it
+
+        // This state machine basically adds/removes the body from the System
+
+        val external = externalSmeltingBody
+
+        // This can be simplified, but makes more sense to me.
+
+        if(external == null){
+            // We want to remove the body from the system, if it is in the system.
+
+            if(knownSmeltingBody != null) {
+                system.removeBody(knownSmeltingBody!!)
+                knownSmeltingBody = null
+            }
+        }
+        else {
+            if(external != knownSmeltingBody){
+                // We only want updates if the body we have in the system is not the same as the external one
+
+                if(knownSmeltingBody != null){
+                    // Remove old body
+
+                    system.removeBody(knownSmeltingBody!!)
+                }
+
+                // Apply one update here.
+
+                knownSmeltingBody = external
+                system.insertBody(external)
+                system.makeConnection(external, resistorHeatBody) {
+                    options.surfaceArea
+                }
+            }
+        }
     }
 
     private fun simulationTick(elapsed: Double){
-        applyExternalChanges()
+        applyExternalUpdates()
 
-        simulateThermalBody(elapsed)
+        runThermalSimulation(elapsed)
 
-        if (container == null) {
+        if (!needsBurn) {
             idle()
 
             return
         }
 
-        val user = container as? IFurnaceCellContainer
-            ?: error("Container was not furnace user")
-
-        if(user.needsBurn) {
-            updatePlant(elapsed)
-        } else {
-            idle()
-        }
+        applyControlSignal(elapsed)
     }
 
     override fun appendBody(builder: TooltipBuilder, config: IPluginConfig?) {
         resistorHeatBody.appendBody(builder, config)
+        knownSmeltingBody?.appendBody(builder, config)
 
         super.appendBody(builder, config)
     }
@@ -212,7 +344,7 @@ class FurnaceCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) {
 }
 
 class FurnaceBlockEntity(pos: BlockPos, state: BlockState) :
-    CellBlockEntity(pos, state, BlockRegistry.FURNACE_BLOCK_ENTITY.get()), IFurnaceCellContainer {
+    CellBlockEntity(pos, state, BlockRegistry.FURNACE_BLOCK_ENTITY.get()) {
     companion object {
         private const val INPUT_SLOT = 0
         private const val OUTPUT_SLOT = 1
@@ -302,25 +434,27 @@ class FurnaceBlockEntity(pos: BlockPos, state: BlockState) :
         return super.getCapability(cap, side)
     }
 
-    override var needsBurn: Boolean = false
-        private set
+    private var isBurning = false
 
-    private fun loadSmeltingItem() {
+    private fun loadBurningItem() {
         burnTime = 0
-        needsBurn = false
 
         inventoryHandlerLazy.ifPresent {
-            val inputStack = it.getStackInSlot(0)
+            val inputStack = it.getStackInSlot(INPUT_SLOT)
 
-            if(!inputStack.isEmpty){
-                needsBurn = true
+            isBurning = if(!inputStack.isEmpty){
+                furnaceCell.loadSmeltingBody(HeatBody.iron(10.0))
+                true
+            } else{
+                furnaceCell.unloadSmeltingBody()
+                false
             }
         }
     }
 
     private fun inputChanged() {
-        if(!needsBurn){
-            loadSmeltingItem()
+        if(!isBurning){
+            loadBurningItem()
         }
     }
 
@@ -332,20 +466,15 @@ class FurnaceBlockEntity(pos: BlockPos, state: BlockState) :
             level!!.sendBlockUpdated(blockPos, blockState, blockState, Block.UPDATE_CLIENTS)
         }
 
-        LOGGER.info("Needs Burn: $needsBurn")
-
-        if (!needsBurn) {
+        if (!isBurning) {
             return
         }
 
         inventoryHandlerLazy.ifPresent { inventory ->
             val inputStack = inventory.getStackInSlot(INPUT_SLOT)
 
-            LOGGER.info("INP STACK: $inputStack")
-            LOGGER.info("OUT STACK: ${inventory.getStackInSlot(OUTPUT_SLOT)}")
-
             if(inputStack.isEmpty){
-                loadSmeltingItem()
+                loadBurningItem()
 
                 return@ifPresent
             }
@@ -362,7 +491,7 @@ class FurnaceBlockEntity(pos: BlockPos, state: BlockState) :
                         // Done, load next (also remove input item)
                         inventory.setStackInSlot(INPUT_SLOT, ItemStack(inputStack.item, inputStack.count - 1))
 
-                        loadSmeltingItem()
+                        loadBurningItem()
 
                         LOGGER.info("Export")
                     }
@@ -370,7 +499,7 @@ class FurnaceBlockEntity(pos: BlockPos, state: BlockState) :
                     error("Could not smelt")
                 })
             } else {
-                Eln2.LOGGER.info("Trying to burn")
+                LOGGER.info("Trying to burn")
                 if(furnaceCell.isHot) {
                     burnTime++
                 }
@@ -415,7 +544,7 @@ class FurnaceBlockEntity(pos: BlockPos, state: BlockState) :
         }
 
         // This resets burnTime, so we load it before loading burnTime:
-        loadSmeltingItem()
+        loadBurningItem()
 
         burnTime = saveTag!!.getInt(BURN_TIME)
         furnaceCell.deserializeNbt(saveTag!!.get(FURNACE_CELL) as CompoundTag)
