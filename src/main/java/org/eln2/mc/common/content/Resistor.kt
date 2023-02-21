@@ -36,10 +36,15 @@ class ResistorObject : ElectricalObject(), IWailaProvider {
         set(value) {
             field = value
 
-            if(hasResistor){
+            // P.S. do not use an epsilon comparison here. I just want to make sure
+            // we can set the same resistance, presumably in an update loop.
+            if(hasResistor && resistor.resistance != value){
                 resistor.resistance = value
             }
         }
+
+    val current get() = resistor.current
+    val power get() = resistor.power
 
     override val maxConnections = 2
 
