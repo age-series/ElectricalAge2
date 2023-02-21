@@ -44,6 +44,7 @@ import org.eln2.mc.extensions.NbtExtensions.putBlockPos
 import org.eln2.mc.extensions.NbtExtensions.putDirection
 import org.eln2.mc.extensions.NbtExtensions.putPartUpdateType
 import org.eln2.mc.extensions.NbtExtensions.putResourceLocation
+import org.eln2.mc.extensions.PartExtensions.allows
 import org.eln2.mc.integration.waila.IWailaProvider
 import org.eln2.mc.integration.waila.TooltipBuilder
 import org.eln2.mc.utility.BoundingBox
@@ -743,12 +744,18 @@ class MultipartBlockEntity(var pos: BlockPos, var state: BlockState) :
         DirectionMask.perpendicular(partFace).process { searchDirection ->
             val partRelative = part.getRelativeDirection(searchDirection)
 
+            fun scanConsumer(remoteSpace: CellInfo, remoteContainer: ICellContainer, remoteRelative: RelativeRotationDirection){
+                results.add(CellNeighborInfo(remoteSpace, remoteContainer, partRelative, remoteRelative))
+            }
+
             if (!part.provider.canConnectFrom(partRelative)) {
                 Eln2.LOGGER.info("Part rejected connection on $partRelative - ${part.provider}")
                 return@process
             }
 
             fun innerScan() {
+                // Inner scan does not make sense outside multiparts, so I did not move it to CellScanner
+
                 if (part.allowInnerConnections) {
                     val innerFace = searchDirection.opposite
 
@@ -781,44 +788,14 @@ class MultipartBlockEntity(var pos: BlockPos, var state: BlockState) :
             }
 
             fun planarScan() {
-                if (part.allowPlanarConnections && level!!.getBlockEntity(pos + searchDirection) is ICellContainer) {
-                    val remoteContainer = level!!
-                        .getBlockEntity(pos + searchDirection)
-                        as? ICellContainer
-                        ?: return
-
-                    val remoteConnectionFace = searchDirection.opposite
-
-                    val remoteSpace = remoteContainer
-                        .query(CellQuery(remoteConnectionFace, partFace))
-                        ?: return
-
-                    val remoteRelative = remoteContainer
-                        .probeConnectionCandidate(remoteSpace, remoteConnectionFace)
-                        ?: return
-
-                    results.add(CellNeighborInfo(remoteSpace, remoteContainer, partRelative, remoteRelative))
+                if (part.allowPlanarConnections) {
+                    CellScanner.planarScan(level!!, pos, searchDirection, partFace, ::scanConsumer)
                 }
             }
 
             fun wrappedScan() {
                 if (part.allowWrappedConnections) {
-                    val wrapDirection = partFace.opposite
-
-                    val remoteContainer = level!!
-                        .getBlockEntity(pos + searchDirection + wrapDirection)
-                        as? ICellContainer
-                        ?: return
-
-                    val remoteSpace = remoteContainer
-                        .query(CellQuery(part.placementContext.face, searchDirection))
-                        ?: return
-
-                    val remoteRelative = remoteContainer
-                        .probeConnectionCandidate(remoteSpace, wrapDirection.opposite)
-                        ?: return
-
-                    results.add(CellNeighborInfo(remoteSpace, remoteContainer, partRelative, remoteRelative))
+                    CellScanner.wrappedScan(level!!, pos, searchDirection, partFace, ::scanConsumer)
                 }
             }
 
@@ -830,11 +807,17 @@ class MultipartBlockEntity(var pos: BlockPos, var state: BlockState) :
         return ArrayList(results)
     }
 
-    override fun probeConnectionCandidate(location: CellInfo, direction: Direction): RelativeRotationDirection? {
+    override fun probeConnectionCandidate(location: CellInfo, direction: Direction, mode: ConnectionMode): RelativeRotationDirection? {
         val part = (parts[location.innerFace]!!)
+        val partCell = part as IPartCellContainer
+
+        if(!partCell.allows(mode)){
+            return null
+        }
+
         val relative = part.getRelativeDirection(direction)
 
-        return if ((part as IPartCellContainer).provider.canConnectFrom(relative)) {
+        return if (partCell.provider.canConnectFrom(relative)) {
             relative
         } else {
             null

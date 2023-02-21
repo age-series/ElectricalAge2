@@ -1,6 +1,7 @@
 package org.eln2.mc.common.cells.foundation
 
 import net.minecraft.core.Direction
+import org.eln2.mc.common.parts.foundation.ConnectionMode
 import org.eln2.mc.common.space.RelativeRotationDirection
 
 /**
@@ -35,9 +36,10 @@ interface ICellContainer {
      * Checks if the specified cell accepts connection from the specified direction.
      * @param location The cell to check candidates for.
      * @param direction The global direction.
+     * @param mode The requested connection mode.
      * @return A relative rotation, if the connection is possible. Otherwise, null.
      * */
-    fun probeConnectionCandidate(location: CellInfo, direction: Direction): RelativeRotationDirection?
+    fun probeConnectionCandidate(location: CellInfo, direction: Direction, mode: ConnectionMode): RelativeRotationDirection?
 
     /**
      * Called by the connection manager when a connection is made. Containers may react to this in order to e.g. update the view.
