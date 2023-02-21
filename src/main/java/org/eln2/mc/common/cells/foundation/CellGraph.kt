@@ -310,6 +310,7 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
         validateMutationAccess()
 
         graph.cells.addAll(cells)
+
         manager.setDirty()
     }
 

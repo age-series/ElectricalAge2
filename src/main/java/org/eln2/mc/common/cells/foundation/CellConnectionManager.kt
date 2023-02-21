@@ -146,6 +146,8 @@ object CellConnectionManager {
         // Stop Simulation
         graph.stopSimulation()
 
+        cell.onRemoving()
+
         // This is common logic for all cases.
         neighborCells.forEach { neighborInfo ->
             neighborInfo.neighborInfo.cell.removeConnection(cell)

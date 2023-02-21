@@ -72,6 +72,12 @@ abstract class CellBase(val pos: CellPos, val id: ResourceLocation) : IWailaProv
     open fun onCreated() {}
 
     /**
+     * Called while the cell is being destroyed, just after the simulation was stopped.
+     * Subscribers may be cleaned up here.
+     * */
+    open fun onRemoving() {}
+
+    /**
      * Called after the cell was destroyed.
      */
     open fun onDestroyed() {
@@ -83,7 +89,26 @@ abstract class CellBase(val pos: CellPos, val id: ResourceLocation) : IWailaProv
      * @param connectionsChanged True if the neighbouring cells changed.
      * @param graphChanged True if the graph that owns this cell has been updated.
      */
-    open fun update(connectionsChanged: Boolean, graphChanged: Boolean) {}
+    open fun update(connectionsChanged: Boolean, graphChanged: Boolean) {
+        if(connectionsChanged) {
+            onConnectionsChanged()
+        }
+
+        if(graphChanged) {
+            onGraphChanged()
+        }
+    }
+
+    /**
+     * Called when this cell's connection list changes.
+     * */
+    open fun onConnectionsChanged() {}
+
+    /**
+     * Called when this cell joined another graph.
+     * Subscribers may be added here.
+     * */
+    open fun onGraphChanged() {}
 
     /**
      * Called when the solver is being built, in order to clear and prepare the objects.
