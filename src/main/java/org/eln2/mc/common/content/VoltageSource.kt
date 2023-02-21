@@ -35,7 +35,7 @@ class VoltageSourceObject : ElectricalObject(), IWailaProvider {
     /**
      * Gets or sets the potential of the voltage source.
      * */
-    var potential: Double = 100.0
+    var potential: Double = 1200.0
         set(value) {
             field = value
 
@@ -58,7 +58,7 @@ class VoltageSourceObject : ElectricalObject(), IWailaProvider {
 
     override fun recreateComponents() {
         source = VoltageSource()
-        source.potential = 100.0
+        source.potential = potential
 
         resistors.clear()
     }

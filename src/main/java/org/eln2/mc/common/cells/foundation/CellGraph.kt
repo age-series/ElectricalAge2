@@ -17,12 +17,17 @@ import org.eln2.mc.extensions.NbtExtensions.putCellPos
 import org.eln2.mc.extensions.NbtExtensions.putRelativeDirection
 import org.eln2.mc.utility.Time
 import java.util.*
+import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.collections.ArrayDeque
 import kotlin.system.measureNanoTime
+
+fun interface ICellGraphSubscriber {
+    fun simulationTick(elapsed: Double)
+}
 
 /**
  * The cell graph represents a physical network of cells.
@@ -42,10 +47,46 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
     // This is the simulation task. It will be null if the simulation is stopped
     private var runningTask: ScheduledFuture<*>? = null
 
+    val isRunning get() = runningTask != null
+
     @CrossThreadAccess
     private var updates = 0L
 
     private var updatesCheckpoint = 0L
+
+    private val subscribers = ArrayList<ICellGraphSubscriber>()
+
+    @CrossThreadAccess
+    private val subscribersAddQueue = ConcurrentLinkedQueue<ICellGraphSubscriber>()
+
+    @CrossThreadAccess
+    private val subscribersRemoveQueue = ConcurrentLinkedQueue<ICellGraphSubscriber>()
+
+    /**
+     * Adds a subscriber to this graph, on the next simulation tick.
+     * Subscribers are notified after each simulation step (from the simulation thread)
+     * */
+    @CrossThreadAccess
+    fun addSubscriber(subscriber: ICellGraphSubscriber) {
+        subscribersAddQueue.add(subscriber)
+    }
+
+    /**
+     * Removes a subscriber from this graph, on the next simulation tick.
+     * If it was not added beforehand, an error will occur in the simulation thread.
+     * */
+    @CrossThreadAccess
+    fun enqueueRemoveSubscriber(subscriber: ICellGraphSubscriber) {
+        subscribersRemoveQueue.add(subscriber)
+    }
+
+    fun removeSubscriber(subscriber: ICellGraphSubscriber) {
+        validateMutationAccess()
+
+        if(!subscribers.remove(subscriber)){
+            error("Could not remove $subscriber")
+        }
+    }
 
     @CrossThreadAccess
     var lastTickTime = 0.0
@@ -88,13 +129,35 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
     private fun update() {
         simulationStopLock.lock()
 
+        while (true) {
+            val subscriber = subscribersAddQueue.poll()
+                ?: break
+
+            subscribers.add(subscriber)
+        }
+
+        while (true) {
+            val subscriber = subscribersRemoveQueue.poll()
+                ?: break
+
+            if(!subscribers.remove(subscriber)){
+                error("Could not find subscriber $subscriber")
+            }
+        }
+
+        val elapsed = 0.05
+
         lastTickTime = Time.toSeconds(measureNanoTime {
             successful = true
 
             circuits.forEach {
-                successful = successful && it.step(0.05)
+                successful = successful && it.step(elapsed)
             }
         })
+
+        subscribers.forEach {
+            it.simulationTick(elapsed)
+        }
 
         updates++
 
@@ -386,6 +449,8 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
                 cell.update(connectionsChanged = true, graphChanged = true)
                 cell.onLoadedFromDisk()
             }
+
+            result.cells.forEach { it.onCreated() }
 
             return result
         }

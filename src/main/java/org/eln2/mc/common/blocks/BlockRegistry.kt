@@ -14,6 +14,8 @@ import org.eln2.mc.common.blocks.foundation.CellBlock
 import org.eln2.mc.common.blocks.foundation.CellBlockEntity
 import org.eln2.mc.common.blocks.foundation.MultipartBlock
 import org.eln2.mc.common.blocks.foundation.MultipartBlockEntity
+import org.eln2.mc.common.content.FurnaceBlock
+import org.eln2.mc.common.content.FurnaceBlockEntity
 import org.eln2.mc.common.tabs.eln2Tab
 
 object BlockRegistry {
@@ -39,6 +41,12 @@ object BlockRegistry {
         BLOCK_ENTITY_REGISTRY.register("multipart") {
             @Suppress("NULLABILITY_MISMATCH_BASED_ON_JAVA_ANNOTATIONS") // Thanks, Minecraft for the high quality code.
             BlockEntityType.Builder.of(::MultipartBlockEntity, MULTIPART_BLOCK.block.get()).build(null)
+        }
+
+    val FURNACE_BLOCK_ENTITY: RegistryObject<BlockEntityType<FurnaceBlockEntity>> =
+        BLOCK_ENTITY_REGISTRY.register("furnace") {
+            @Suppress("NULLABILITY_MISMATCH_BASED_ON_JAVA_ANNOTATIONS") // Thanks, Minecraft for the high quality code.
+            BlockEntityType.Builder.of(::FurnaceBlockEntity, FURNACE_BLOCK.block.get()).build(null)
         }
 
     class CellBlockRegistryItem(
@@ -82,4 +90,5 @@ object BlockRegistry {
     }
 
     val MULTIPART_BLOCK = registerBasicBlock("multipart", tab = null) { MultipartBlock() }
+    val FURNACE_BLOCK = registerBasicBlock("furnace", tab = null) { FurnaceBlock() }
 }

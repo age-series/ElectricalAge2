@@ -952,8 +952,6 @@ class MultipartBlockEntity(var pos: BlockPos, var state: BlockState) :
 
                 chunk.removeBlockEntityTicker(pos)
 
-                Eln2.LOGGER.info("Removed ticker!")
-
                 return
             }
 

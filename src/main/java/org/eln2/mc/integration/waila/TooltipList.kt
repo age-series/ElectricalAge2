@@ -172,6 +172,10 @@ class TooltipBuilder {
         return translateText("power", ValueText.valueText(value, UnitType.WATT))
     }
 
+    fun temperature(value: Double): TooltipBuilder {
+        return translateText("temperature", ValueText.valueText(value, UnitType.KELVIN))
+    }
+
     fun pinVoltages(pins: MutableList<Pin>) {
         pins.forEach { voltage(it.node?.potential ?: 0.0) }
     }

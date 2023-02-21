@@ -10,6 +10,7 @@ import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.HorizontalDirectionalBlock
 import net.minecraft.world.level.block.entity.BlockEntity
+import net.minecraft.world.level.block.entity.BlockEntityType
 import net.minecraft.world.level.block.state.BlockState
 import org.eln2.mc.Eln2
 import org.eln2.mc.common.blocks.BlockRegistry
@@ -23,33 +24,34 @@ import org.eln2.mc.integration.waila.IWailaProvider
 import org.eln2.mc.integration.waila.TooltipBuilder
 import java.util.*
 
-class CellBlockEntity(var pos: BlockPos, var state: BlockState) :
-    BlockEntity(BlockRegistry.CELL_BLOCK_ENTITY.get(), pos, state),
+open class CellBlockEntity(pos: BlockPos, state: BlockState, targetType: BlockEntityType<*>) :
+    BlockEntity(targetType, pos, state),
     ICellContainer,
     IWailaProvider {
     // Initialized when placed or loading
 
+    constructor(pos: BlockPos, state: BlockState): this(pos, state, BlockRegistry.CELL_BLOCK_ENTITY.get())
+
     open val cellFace = Direction.UP
 
     lateinit var graphManager: CellGraphManager
-    lateinit var cellProvider: CellProvider
+    private lateinit var cellProvider: CellProvider
 
     // Used for loading
     private lateinit var savedGraphID: UUID
 
     // Cell is not available on the client.
     var cell: CellBase? = null
+        private set
 
     private val serverLevel get() = level as ServerLevel
 
     private fun getPlacementRotation(): PlacementRotation {
-        return PlacementRotation(state.getValue(HorizontalDirectionalBlock.FACING))
+        return PlacementRotation(blockState.getValue(HorizontalDirectionalBlock.FACING))
     }
 
     private fun getLocalDirection(globalDirection: Direction): RelativeRotationDirection {
-        val placementRotation = getPlacementRotation()
-
-        return placementRotation.getRelativeFromAbsolute(globalDirection)
+        return RelativeRotationDirection.fromForwardUp(blockState.getValue(HorizontalDirectionalBlock.FACING), cellFace, globalDirection)
     }
 
     @Suppress("UNUSED_PARAMETER") // Will very likely be needed later and helps to know the name of the args.
@@ -117,9 +119,9 @@ class CellBlockEntity(var pos: BlockPos, var state: BlockState) :
 
         if (pTag.contains("GraphID")) {
             savedGraphID = UUID.fromString(pTag.getString("GraphID"))!!
-            Eln2.LOGGER.info("Deserialized cell entity at $pos")
+            Eln2.LOGGER.info("Deserialized cell entity at $blockPos")
         } else {
-            Eln2.LOGGER.warn("Cell entity at $pos does not have serialized data.")
+            Eln2.LOGGER.warn("Cell entity at $blockPos does not have serialized data.")
         }
     }
 
@@ -150,7 +152,7 @@ class CellBlockEntity(var pos: BlockPos, var state: BlockState) :
             val graph = graphManager.getGraph(savedGraphID)
 
             // fetch cell instance
-            println("Loading cell at location $pos")
+            println("Loading cell at location $blockPos")
 
             cell = graph.getCell(getCellPos())
 
@@ -168,7 +170,7 @@ class CellBlockEntity(var pos: BlockPos, var state: BlockState) :
     }
 
     private fun getCellPos(): CellPos {
-        return CellPos(pos, cellFace)
+        return CellPos(blockPos, cellFace)
     }
 
     override fun getCells(): ArrayList<CellInfo> {
@@ -193,13 +195,15 @@ class CellBlockEntity(var pos: BlockPos, var state: BlockState) :
 
                 if (cellProvider.canConnectFrom(local)) {
                     val remoteContainer = level!!
-                        .getBlockEntity(pos + direction)
+                        .getBlockEntity(blockPos + direction)
                         as? ICellContainer
                         ?: return@forEach
 
                     val queryResult = remoteContainer.query(CellQuery(direction.opposite, Direction.UP))
 
-                    if (queryResult != null) {
+                    // P.S. also check innerFace against cellFace, to prevent non-planar connections
+
+                    if (queryResult != null && queryResult.innerFace == cellFace) {
                         val remoteRelative =
                             remoteContainer.probeConnectionCandidate(getCellSpace(), direction.opposite)
 
