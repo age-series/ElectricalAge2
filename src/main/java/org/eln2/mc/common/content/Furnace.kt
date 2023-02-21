@@ -51,21 +51,19 @@ import java.util.*
 
 data class FurnaceOptions(
     var idleResistance: Double,
+    var runningResistance: Double,
     var temperatureThreshold: Double,
     var targetTemperature: Double,
     var surfaceArea: Double,
-    var minResistance: Double,
-    var maxResistance: Double,
     var temperatureLossRate: Double){
     fun serializeNbt(): CompoundTag {
         val tag = CompoundTag()
 
         tag.putDouble(IDLE_RES, idleResistance)
+        tag.putDouble(RUNNING_RES, runningResistance)
         tag.putDouble(TEMP_THRESH, temperatureThreshold)
         tag.putDouble(TARGET_TEMP, targetTemperature)
         tag.putDouble(SURFACE_AREA, surfaceArea)
-        tag.putDouble(MIN_RES, minResistance)
-        tag.putDouble(MAX_RES, maxResistance)
         tag.putDouble(TEMP_LOSS_RATE, temperatureLossRate)
 
         return tag
@@ -73,18 +71,16 @@ data class FurnaceOptions(
 
     fun deserializeNbt(tag: CompoundTag) {
         idleResistance = tag.getDouble(IDLE_RES)
+        runningResistance = tag.getDouble(RUNNING_RES)
         temperatureThreshold = tag.getDouble(TEMP_THRESH)
         targetTemperature = tag.getDouble(TARGET_TEMP)
         surfaceArea = tag.getDouble(SURFACE_AREA)
-        minResistance = tag.getDouble(MIN_RES)
-        maxResistance = tag.getDouble(MAX_RES)
         temperatureLossRate = tag.getDouble(TEMP_LOSS_RATE)
     }
 
     companion object{
         private const val IDLE_RES = "idleRes"
-        private const val MIN_RES = "minRes"
-        private const val MAX_RES = "maxRes"
+        private const val RUNNING_RES = "runningRes"
         private const val TARGET_TEMP = "targetTemp"
         private const val TEMP_THRESH = "tempThresh"
         private const val SURFACE_AREA = "surfaceArea"
@@ -95,7 +91,6 @@ data class FurnaceOptions(
 class FurnaceCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) {
     companion object {
         private const val OPTIONS = "options"
-        private const val PID = "pid"
         private const val RESISTOR_BODY = "heatBody"
     }
 
@@ -103,7 +98,6 @@ class FurnaceCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) {
         val tag = CompoundTag()
 
         tag.put(OPTIONS, options.serializeNbt())
-        tag.put(PID, pidCoefficients.serializeNbt())
         tag.put(RESISTOR_BODY, resistorHeatBody.serializeNbt())
 
         return tag
@@ -111,22 +105,18 @@ class FurnaceCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) {
 
     fun deserializeNbt(tag: CompoundTag){
         options.deserializeNbt(tag.get(OPTIONS) as CompoundTag)
-        pidCoefficients.deserializeNbt(tag.get(PID) as CompoundTag)
         resistorHeatBodyUpdate.setLatest(HeatBody.fromNbt(tag.get(RESISTOR_BODY) as CompoundTag))
     }
 
     val options = FurnaceOptions(
         1000000.0,
-        300.0,
-        500.0,
-        1.0,
-        25.0,
-        10000.0,
-        0.05)
+        100.0,
+        600.0,
+        800.0,
+        0.5,
+        0.01)
 
-    private data class BodyPair(val resistor: HeatBody, val smelting: HeatBody)
-
-    private var resistorHeatBody = HeatBody.iron(1.0)
+    private var resistorHeatBody = HeatBody.iron(0.5)
     private val resistorHeatBodyUpdate = AtomicUpdate<HeatBody>()
 
     //private var smeltingHeatBody = HeatBody.iron(10.0)
@@ -152,23 +142,10 @@ class FurnaceCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) {
         externalSmeltingBody = null
     }
 
-    val needsBurn get() = knownSmeltingBody != null
+    private val needsBurn get() = knownSmeltingBody != null
 
     private val system = HeatBodySystem().also {
         it.insertBody(resistorHeatBody)
-    }
-
-    private val pidCoefficients = PIDCoefficients(
-        1.5,
-        0.05,
-        0.000001)
-
-
-    // Use normalized control
-    private val pid = PIDController(pidCoefficients).also {
-        it.setPoint = 1.0
-        it.minControl = 0.0
-        it.maxControl = 1.0
     }
 
     var isHot: Boolean = false
@@ -189,18 +166,14 @@ class FurnaceCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) {
     private fun idle() {
         resistorObject.resistance = options.idleResistance
         isHot = false
-        pid.unwind()
     }
 
-    private fun applyControlSignal(dt: Double){
-        val signal = pid.update(resistorHeatBody.temperature / options.targetTemperature, dt)
-
-        resistorObject.resistance = map(
-            pid.maxControl - signal, // Invert because smaller resistance -> more power
-            pid.minControl,
-            pid.maxControl,
-            options.minResistance,
-            options.maxResistance)
+    private fun applyControlSignal(){
+        resistorObject.resistance = if(resistorHeatBody.temperature < options.targetTemperature){
+            options.runningResistance
+        } else{
+            options.idleResistance
+        }
     }
 
     private fun simulateThermalResistor(dt: Double){
@@ -304,7 +277,7 @@ class FurnaceCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) {
             return
         }
 
-        applyControlSignal(elapsed)
+        applyControlSignal()
     }
 
     override fun appendBody(builder: TooltipBuilder, config: IPluginConfig?) {
