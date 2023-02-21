@@ -59,14 +59,14 @@ class VoltageSourceObject : ElectricalObject(), IWailaProvider {
         return resistors.getOfferedResistor(directionOf(neighbour))
     }
 
-    override fun recreateComponents() {
+    override fun clearComponents() {
         source = VoltageSource()
         source.potential = potential
 
         resistors.clear()
     }
 
-    override fun registerComponents(circuit: Circuit) {
+    override fun addComponents(circuit: Circuit) {
         circuit.add(source)
         resistors.register(connections, circuit)
     }
@@ -80,12 +80,6 @@ class VoltageSourceObject : ElectricalObject(), IWailaProvider {
 
     override fun appendBody(builder: TooltipBuilder, config: IPluginConfig?) {
         builder.voltageSource(source)
-    }
-
-    override fun addConnection(connectionInfo: ElectricalConnectionInfo) {
-        super.addConnection(connectionInfo)
-
-        Eln2.LOGGER.info("VS Record connection")
     }
 }
 

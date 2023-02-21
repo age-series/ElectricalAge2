@@ -55,12 +55,12 @@ class ResistorObject : ElectricalObject(), IWailaProvider {
         return ElectricalComponentInfo(resistor, indexOf(neighbour))
     }
 
-    override fun recreateComponents() {
+    override fun clearComponents() {
         resistor = Resistor()
         resistor.resistance = resistance
     }
 
-    override fun registerComponents(circuit: Circuit) {
+    override fun addComponents(circuit: Circuit) {
         circuit.add(resistor)
     }
 

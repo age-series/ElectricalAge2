@@ -16,7 +16,7 @@ class ResistorBundle(var resistance: Double) {
     /**
      * This must be called once the circuit is made available, in order to register the resistors.
      * This "prepares" the bundle, so future calls to *getOfferedResistor* that result in a new resistor being created will cause an error.
-     * @see ElectricalObject.registerComponents
+     * @see ElectricalObject.addComponents
      * */
     fun register(connections: List<ElectricalConnectionInfo>, circuit: Circuit) {
         if (prepared) {
