@@ -138,16 +138,12 @@ class FurnaceCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) {
         return SimulationObjectSet(ResistorObject())
     }
 
-    override fun onCreated() {
-        super.onCreated()
-
+    override fun onGraphChanged() {
         graph.addSubscriber(this::simulationTick)
     }
 
-    override fun onDestroyed() {
-        super.onDestroyed()
-
-        graph.enqueueRemoveSubscriber(this::simulationTick)
+    override fun onRemoving() {
+        graph.removeSubscriber(this::simulationTick)
     }
 
     private fun idle() {
@@ -345,12 +341,17 @@ class FurnaceBlockEntity(pos: BlockPos, state: BlockState) :
             level!!.sendBlockUpdated(blockPos, blockState, blockState, Block.UPDATE_CLIENTS)
         }
 
+        LOGGER.info("Needs Burn: $needsBurn")
+
         if (!needsBurn) {
             return
         }
 
         inventoryHandlerLazy.ifPresent { inventory ->
             val inputStack = inventory.getStackInSlot(INPUT_SLOT)
+
+            LOGGER.info("INP STACK: $inputStack")
+            LOGGER.info("OUT STACK: ${inventory.getStackInSlot(OUTPUT_SLOT)}")
 
             if(inputStack.isEmpty){
                 loadSmeltingItem()
@@ -378,6 +379,7 @@ class FurnaceBlockEntity(pos: BlockPos, state: BlockState) :
                     error("Could not smelt")
                 })
             } else {
+                Eln2.LOGGER.info("Trying to burn")
                 if(furnaceCell.isHot) {
                     burnTime++
                 }
