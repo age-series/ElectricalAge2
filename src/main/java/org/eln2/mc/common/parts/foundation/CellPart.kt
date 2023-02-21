@@ -10,6 +10,7 @@ import org.eln2.mc.common.cells.foundation.CellBase
 import org.eln2.mc.common.cells.foundation.CellGraphManager
 import org.eln2.mc.common.cells.foundation.CellPos
 import org.eln2.mc.common.cells.foundation.CellProvider
+import org.eln2.mc.common.space.RelativeRotationDirection
 import org.eln2.mc.integration.waila.IWailaProvider
 import org.eln2.mc.integration.waila.TooltipBuilder
 import java.util.*
@@ -128,6 +129,9 @@ abstract class CellPart(
             }
         }
     }
+
+    override fun recordConnection(direction: RelativeRotationDirection, mode: ConnectionMode) {}
+    override fun recordDeletedConnection(direction: RelativeRotationDirection) {}
 
     override val allowPlanarConnections = true
     override val allowInnerConnections = true

@@ -6,7 +6,10 @@ import net.minecraft.world.phys.Vec3
 import org.ageseries.libage.sim.electrical.mna.Circuit
 import org.ageseries.libage.sim.electrical.mna.component.VoltageSource
 import org.eln2.mc.Eln2
+import org.eln2.mc.Mathematics.bbVec
+import org.eln2.mc.Mathematics.fromBB
 import org.eln2.mc.client.render.PartialModels
+import org.eln2.mc.client.render.PartialModels.bbOffset
 import org.eln2.mc.client.render.foundation.BasicPartRenderer
 import org.eln2.mc.common.cells.CellRegistry
 import org.eln2.mc.common.cells.foundation.CellBase
@@ -93,15 +96,13 @@ class VoltageSourceCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) 
 }
 
 class VoltageSourcePart(id: ResourceLocation, placementContext: PartPlacementContext) :
-    CellPart(id, placementContext, CellRegistry.VOLTAGE_SOURCE_CELL.get()) {
+    CellPart(id, placementContext, Content.VOLTAGE_SOURCE_CELL.get()) {
 
-    override val baseSize = Vec3(1.0, 1.0, 1.0)
+    override val baseSize = bbVec(6.0, 2.5, 6.0)
 
     override fun createRenderer(): IPartRenderer {
-        return BasicPartRenderer(this, PartialModels.WIRE_CROSSING_FULL)
+        return BasicPartRenderer(this, PartialModels.VOLTAGE_SOURCE).also {
+            it.downOffset = bbOffset(2.5)
+        }
     }
-
-    override fun recordConnection(direction: RelativeRotationDirection, mode: ConnectionMode) {}
-
-    override fun recordDeletedConnection(direction: RelativeRotationDirection) {}
 }

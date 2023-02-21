@@ -291,7 +291,7 @@ class FurnaceCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) {
 }
 
 class FurnaceBlockEntity(pos: BlockPos, state: BlockState) :
-    CellBlockEntity(pos, state, BlockRegistry.FURNACE_BLOCK_ENTITY.get()) {
+    CellBlockEntity(pos, state, Content.FURNACE_BLOCK_ENTITY.get()) {
 
     companion object {
         private const val INPUT_SLOT = 0
@@ -526,7 +526,7 @@ class FurnaceBlockEntity(pos: BlockPos, state: BlockState) :
 
 class FurnaceBlock : CellBlock() {
     override fun getCellProvider(): ResourceLocation {
-        return CellRegistry.FURNACE_CELL.id
+        return Content.FURNACE_CELL.id
     }
 
     override fun newBlockEntity(pPos: BlockPos, pState: BlockState): BlockEntity {

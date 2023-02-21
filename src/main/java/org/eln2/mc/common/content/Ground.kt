@@ -3,7 +3,10 @@ package org.eln2.mc.common.content
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.world.phys.Vec3
 import org.ageseries.libage.sim.electrical.mna.Circuit
+import org.eln2.mc.Mathematics.bbVec
+import org.eln2.mc.Mathematics.fromBB
 import org.eln2.mc.client.render.PartialModels
+import org.eln2.mc.client.render.PartialModels.bbOffset
 import org.eln2.mc.client.render.foundation.BasicPartRenderer
 import org.eln2.mc.common.cells.CellRegistry
 import org.eln2.mc.common.cells.foundation.CellBase
@@ -59,15 +62,13 @@ class GroundCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) {
 }
 
 class GroundPart(id: ResourceLocation, placementContext: PartPlacementContext) :
-    CellPart(id, placementContext, CellRegistry.GROUND_CELL.get()) {
+    CellPart(id, placementContext, Content.GROUND_CELL.get()) {
 
-    override val baseSize = Vec3(1.0, 1.0, 1.0)
+    override val baseSize = bbVec(4.0, 4.0, 4.0)
 
     override fun createRenderer(): IPartRenderer {
-        return BasicPartRenderer(this, PartialModels.WIRE_CROSSING_EMPTY)
+        return BasicPartRenderer(this, PartialModels.GROUND).also {
+            it.downOffset = bbOffset(3 + 1)
+        }
     }
-
-    override fun recordConnection(direction: RelativeRotationDirection, mode: ConnectionMode) {}
-
-    override fun recordDeletedConnection(direction: RelativeRotationDirection) {}
 }
