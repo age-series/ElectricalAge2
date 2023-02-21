@@ -1,3 +1,5 @@
+@file:Suppress("NonAsciiCharacters")
+
 package org.eln2.mc.common.content
 
 import mcp.mobius.waila.api.IPluginConfig
@@ -37,6 +39,7 @@ import org.eln2.mc.common.cells.foundation.CellBase
 import org.eln2.mc.common.cells.foundation.CellPos
 import org.eln2.mc.common.cells.foundation.HeatBody
 import org.eln2.mc.common.cells.foundation.objects.SimulationObjectSet
+import org.eln2.mc.common.events.AtomicUpdate
 import org.eln2.mc.control.PIDCoefficients
 import org.eln2.mc.control.PIDController
 import org.eln2.mc.extensions.LevelExtensions.addParticle
@@ -45,7 +48,25 @@ import org.eln2.mc.extensions.Vec3Extensions.plus
 import org.eln2.mc.extensions.Vec3Extensions.toVec3
 import org.eln2.mc.integration.waila.TooltipBuilder
 import java.util.*
-import java.util.concurrent.atomic.AtomicReference
+
+data class HeaterMaterialDescription(
+    val specificHeat: Double,
+    val r0: Double,
+    val t0: Double,
+    val alpha: Double
+)
+
+data class HeatingElementData(
+    val mass: Double,
+    val material: HeaterMaterialDescription){
+    fun computeResistance(t: Double): Double{
+        val r0 = material.r0
+        val 𝛼 = material.alpha
+        val ΔT = t - material.t0
+
+        return r0 * (1 + 𝛼 * ΔT)
+    }
+}
 
 interface IFurnaceCellContainer {
     val needsBurn: Boolean
@@ -71,7 +92,7 @@ class FurnaceCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) {
         tag.put(PID, pidCoefficients.serializeNbt())
         tag.putDouble(TARGET_TEMP, targetTemperature)
         tag.putDouble(TEMP_THRESH, temperatureThreshold)
-        tag.put(HEAT_BODY, heatBody.serializeNbt())
+        tag.put(HEAT_BODY, resistorHeatBody.serializeNbt())
 
         return tag
     }
@@ -83,33 +104,17 @@ class FurnaceCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) {
         pidCoefficients.deserializeNbt(tag.get(PID) as CompoundTag)
         targetTemperature = tag.getDouble(TARGET_TEMP)
         temperatureThreshold = tag.getDouble(TEMP_THRESH)
-        heatBodyReference.set(HeatBody.fromNbt(tag.get(HEAT_BODY) as CompoundTag))
+        resistorHeatBodyUpdate.setLatest(HeatBody.fromNbt(tag.get(HEAT_BODY) as CompoundTag))
     }
 
-    /**
-     * Gets or sets the resistance used when the furnace is idle.
-     * */
     var idleResistance = 1000000.0
-
-    /**
-     * Gets or sets the temperature threshold. If the temperature is above this,
-     * the furnace is considered "hot"
-     * */
     var temperatureThreshold = 300.0
-
-    /**
-     * Gets or sets the target temperature. The furnace will try to reach this temperature.
-     * */
     var targetTemperature = 500.0
 
-    // We use a CAS to get the deserialized body.
-    // This is because our thermal simulation creates a race condition with the thermal energy
-    private val heatBodyReference = AtomicReference<HeatBody>(null)
-    var heatBody = HeatBody.iron(5.0)
+    private val resistorHeatBodyUpdate = AtomicUpdate<HeatBody>()
+    private var resistorHeatBody = HeatBody.iron(5.0)
 
-    // TODO: use PIDF
-
-    val pidCoefficients = PIDCoefficients(
+    private val pidCoefficients = PIDCoefficients(
         1.5,
         0.05,
         0.000001)
@@ -119,25 +124,14 @@ class FurnaceCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) {
 
     private val pid = PIDController(pidCoefficients)
 
-    /**
-     * Gets or sets the passive temperature loss rate, in degrees / second.
-     * */
     var temperatureLossRate = 1.0
 
-    // We use a CAS to update the temperature from the game thread (e.g. from saved data)
-    private val temperatureReference = AtomicReference<Double>(null)
+    private val resistorTemperatureUpdate = AtomicUpdate<Double>()
+    var resistorTemperature
+        get() = resistorHeatBody.temperature
+        set(value) { resistorTemperatureUpdate.setLatest(value) }
 
-    /**
-     * @return The temperature of the heat body.
-     * */
-    var temperature
-        get() = heatBody.temperature
-        set(value) { temperatureReference.set(value) }
-
-    /**
-     * @return True if the temperature has reached threshold. Otherwise, false.
-     * */
-    val isHot get() = temperature >= temperatureThreshold
+    val isHot get() = resistorTemperature >= temperatureThreshold
 
     override fun createObjectSet(): SimulationObjectSet {
         return SimulationObjectSet(ResistorObject())
@@ -161,7 +155,7 @@ class FurnaceCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) {
         pid.minControl = 0.0
         pid.maxControl = 1.0
 
-        val control = pid.update(temperature / targetTemperature, dt)
+        val control = pid.update(resistorTemperature / targetTemperature, dt)
 
         resistorObject.resistance = map(
             pid.maxControl - control, // Invert because smaller resistance -> more power
@@ -173,27 +167,18 @@ class FurnaceCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) {
 
     private fun simulateThermalBody(dt: Double) {
         // Remove dissipated energy from the system
-        heatBody.temperature -= temperatureLossRate * dt
+        resistorHeatBody.temperature -= temperatureLossRate * dt
 
         // Ensure our energy is not negative
-        heatBody.ensureNotNegative()
+        resistorHeatBody.ensureNotNegative()
 
         // Add converted energy into the system
-        heatBody.thermalEnergy += resistorObject.power * dt
+        resistorHeatBody.thermalEnergy += resistorObject.power * dt
     }
 
     private fun applyExternalChanges() {
-        val newHeatBody = heatBodyReference.getAndSet(null)
-
-        if(newHeatBody != null) {
-            heatBody = newHeatBody
-        }
-
-        val newTemperature = temperatureReference.getAndSet(null)
-
-        if(newTemperature != null) {
-            heatBody.temperature = newTemperature
-        }
+        resistorHeatBodyUpdate.consume { resistorHeatBody = it }
+        resistorTemperatureUpdate.consume { resistorHeatBody.temperature = it }
     }
 
     private fun simulationTick(elapsed: Double){
@@ -203,6 +188,7 @@ class FurnaceCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) {
 
         if (container == null) {
             idle()
+
             return
         }
 
@@ -217,7 +203,7 @@ class FurnaceCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) {
     }
 
     override fun appendBody(builder: TooltipBuilder, config: IPluginConfig?) {
-        heatBody.appendBody(builder, config)
+        resistorHeatBody.appendBody(builder, config)
 
         super.appendBody(builder, config)
     }
