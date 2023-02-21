@@ -14,6 +14,7 @@ import net.minecraft.world.phys.Vec3
 import org.ageseries.libage.sim.electrical.mna.Circuit
 import org.ageseries.libage.sim.electrical.mna.component.Resistor
 import org.eln2.mc.Eln2
+import org.eln2.mc.Mathematics.bbVec
 import org.eln2.mc.client.render.MultipartBlockEntityInstance
 import org.eln2.mc.client.render.PartialModels
 import org.eln2.mc.common.cells.CellRegistry
@@ -115,8 +116,9 @@ class WireCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) {
 }
 
 class WirePart(id: ResourceLocation, context: PartPlacementContext) :
-    CellPart(id, context, CellRegistry.WIRE_CELL.get()) {
-    override val baseSize: Vec3 get() = Vec3(0.5, 0.25, 0.5)
+    CellPart(id, context, Content.WIRE_CELL.get()) {
+
+    override val baseSize = bbVec(3.5, 2.0, 3.5)
 
     private val connectedDirections = HashSet<RelativeRotationDirection>()
     private var wireRenderer: WirePartRenderer? = null

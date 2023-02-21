@@ -4,6 +4,7 @@ package org.eln2.mc.common.blocks
 
 import net.minecraft.world.item.*
 import net.minecraft.world.level.block.Block
+import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.entity.BlockEntityType
 import net.minecraftforge.eventbus.api.IEventBus
 import net.minecraftforge.registries.DeferredRegister
@@ -14,17 +15,29 @@ import org.eln2.mc.common.blocks.foundation.CellBlock
 import org.eln2.mc.common.blocks.foundation.CellBlockEntity
 import org.eln2.mc.common.blocks.foundation.MultipartBlock
 import org.eln2.mc.common.blocks.foundation.MultipartBlockEntity
-import org.eln2.mc.common.content.FurnaceBlock
-import org.eln2.mc.common.content.FurnaceBlockEntity
-import org.eln2.mc.common.tabs.eln2Tab
 
 object BlockRegistry {
-    private val BLOCK_REGISTRY =
+    val BLOCK_REGISTRY =
         DeferredRegister.create(ForgeRegistries.BLOCKS, Eln2.MODID)!! // Yeah, if this fails blow up the game
-    private val BLOCK_ITEM_REGISTRY =
+    val BLOCK_ITEM_REGISTRY =
         DeferredRegister.create(ForgeRegistries.ITEMS, Eln2.MODID)!! // Yeah, if this fails blow up the game
-    private val BLOCK_ENTITY_REGISTRY =
+    val BLOCK_ENTITY_REGISTRY =
         DeferredRegister.create(ForgeRegistries.BLOCK_ENTITIES, Eln2.MODID)!! // Yeah, if this fails blow up the game
+
+    // Thanks, Minecraft!
+    fun <T : BlockEntity> blockEntity(
+        name: String,
+        blockEntitySupplier: BlockEntityType.BlockEntitySupplier<T>,
+        blockSupplier: (() -> Block)): RegistryObject<BlockEntityType<T>> {
+
+        return BLOCK_ENTITY_REGISTRY.register(name){
+            @Suppress("NULLABILITY_MISMATCH_BASED_ON_JAVA_ANNOTATIONS") // Thanks, Minecraft for the high quality code.
+            BlockEntityType.Builder.of(
+                blockEntitySupplier,
+                blockSupplier())
+                .build(null)
+        }
+    }
 
     fun setup(bus: IEventBus) {
         BLOCK_REGISTRY.register(bus)
@@ -33,7 +46,6 @@ object BlockRegistry {
     }
 
     val CELL_BLOCK_ENTITY: RegistryObject<BlockEntityType<CellBlockEntity>> = BLOCK_ENTITY_REGISTRY.register("cell") {
-        @Suppress("NULLABILITY_MISMATCH_BASED_ON_JAVA_ANNOTATIONS") // Thanks, Minecraft for the high quality code.
         BlockEntityType.Builder.of(::CellBlockEntity).build(null)
     }
 
@@ -41,12 +53,6 @@ object BlockRegistry {
         BLOCK_ENTITY_REGISTRY.register("multipart") {
             @Suppress("NULLABILITY_MISMATCH_BASED_ON_JAVA_ANNOTATIONS") // Thanks, Minecraft for the high quality code.
             BlockEntityType.Builder.of(::MultipartBlockEntity, MULTIPART_BLOCK.block.get()).build(null)
-        }
-
-    val FURNACE_BLOCK_ENTITY: RegistryObject<BlockEntityType<FurnaceBlockEntity>> =
-        BLOCK_ENTITY_REGISTRY.register("furnace") {
-            @Suppress("NULLABILITY_MISMATCH_BASED_ON_JAVA_ANNOTATIONS") // Thanks, Minecraft for the high quality code.
-            BlockEntityType.Builder.of(::FurnaceBlockEntity, FURNACE_BLOCK.block.get()).build(null)
         }
 
     class CellBlockRegistryItem(
@@ -75,7 +81,7 @@ object BlockRegistry {
         return CellBlockRegistryItem(name, block, item)
     }
 
-    private fun registerBasicBlock(
+    fun registerBasicBlock(
         name: String,
         tab: CreativeModeTab? = null,
         supplier: () -> Block
@@ -90,5 +96,4 @@ object BlockRegistry {
     }
 
     val MULTIPART_BLOCK = registerBasicBlock("multipart", tab = null) { MultipartBlock() }
-    val FURNACE_BLOCK = registerBasicBlock("furnace", tab = null) { FurnaceBlock() }
 }

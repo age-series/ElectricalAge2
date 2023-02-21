@@ -1,12 +1,77 @@
 {
-    "parent": "minecraft:block/cube",
-    "textures": {
-        "up": "eln2:block/resistor/up",
-        "down": "eln2:block/resistor/down",
-        "north": "eln2:block/resistor/front",
-        "south": "eln2:block/resistor/back",
-        "west": "eln2:block/resistor/left",
-        "east": "eln2:block/resistor/right",
-        "particle": "minecraft:block/stone"
-    }
+	"credit": "Made with Blockbench",
+	"texture_size": [32, 32],
+	"textures": {
+		"0": "eln2:block/components",
+		"particle": "eln2:block/components"
+	},
+	"elements": [
+		{
+			"from": [6.25, 0, 5.5],
+			"to": [9.75, 2.25, 10.5],
+			"faces": {
+				"north": {"uv": [8.25, 13.5, 10.25, 14.75], "texture": "#0"},
+				"east": {"uv": [3.25, 12, 0.75, 13.125], "texture": "#0"},
+				"south": {"uv": [6.5, 13.5, 8.25, 14.625], "texture": "#0"},
+				"west": {"uv": [0.75, 12, 3.25, 13.125], "texture": "#0"},
+				"up": {"uv": [0, 8.75, 1.75, 11.25], "texture": "#0"},
+				"down": {"uv": [0, 8.75, 1.75, 11.25], "texture": "#0"}
+			}
+		},
+		{
+			"from": [6, 0, 4],
+			"to": [10, 2.5, 5.5],
+			"faces": {
+				"north": {"uv": [0, 13.25, 2, 14.5], "texture": "#0"},
+				"east": {"uv": [3.25, 12, 4, 13.25], "texture": "#0"},
+				"south": {"uv": [2, 13.25, 4, 14.5], "texture": "#0"},
+				"west": {"uv": [0, 12, 0.75, 13.25], "texture": "#0"},
+				"up": {"uv": [0, 8, 2, 8.75], "texture": "#0"},
+				"down": {"uv": [0, 11.25, 2, 12], "texture": "#0"}
+			}
+		},
+		{
+			"from": [6, 0, 10.5],
+			"to": [10, 2.5, 12],
+			"rotation": {"angle": 0, "axis": "y", "origin": [0, 0, 16]},
+			"faces": {
+				"north": {"uv": [4, 13.25, 2, 14.5], "texture": "#0"},
+				"east": {"uv": [4, 12, 3.25, 13.25], "texture": "#0"},
+				"south": {"uv": [2, 13.25, 0, 14.5], "texture": "#0"},
+				"west": {"uv": [0.75, 12, 0, 13.25], "texture": "#0"},
+				"up": {"uv": [0, 8.75, 2, 8], "texture": "#0"},
+				"down": {"uv": [0, 12, 2, 11.25], "texture": "#0"}
+			}
+		},
+		{
+			"from": [7, 0, 0],
+			"to": [9, 1.5, 16],
+			"faces": {
+				"north": {"uv": [2, 2, 3, 2.75], "texture": "#0"},
+				"east": {"uv": [2, 0, 10, 0.75], "texture": "#0"},
+				"south": {"uv": [2, 3, 3, 3.75], "texture": "#0"},
+				"west": {"uv": [2, 1, 10, 1.75], "texture": "#0"},
+				"up": {"uv": [1, 8, 0, 0], "texture": "#0"},
+				"down": {"uv": [2, 0, 1, 8], "texture": "#0"}
+			}
+		}
+	],
+	"groups": [
+		{
+			"name": "resistor",
+			"origin": [8, 8, 8],
+			"color": 0,
+			"children": [
+				0,
+				1,
+				2,
+				{
+					"name": "wire",
+					"origin": [8, 8, 8],
+					"color": 0,
+					"children": [3]
+				}
+			]
+		}
+	]
 }

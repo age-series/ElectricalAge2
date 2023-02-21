@@ -28,6 +28,34 @@ class BasicCellProvider(private val directionMask: DirectionMask, private val fa
         }
 
         /**
+         * Creates a basic provider that accepts connections from the front.
+         * */
+        fun monoF(factory: ICellFactory): BasicCellProvider {
+            return BasicCellProvider(DirectionMask.FRONT, factory)
+        }
+
+        /**
+         * Creates a basic provider that accepts connections from the back.
+         * */
+        fun monoB(factory: ICellFactory): BasicCellProvider {
+            return BasicCellProvider(DirectionMask.BACK, factory)
+        }
+
+        /**
+         * Creates a basic provider that accepts connections from the left.
+         * */
+        fun monoL(factory: ICellFactory): BasicCellProvider {
+            return BasicCellProvider(DirectionMask.LEFT, factory)
+        }
+
+        /**
+         * Creates a basic provider that accepts connections from the right.
+         * */
+        fun monoR(factory: ICellFactory): BasicCellProvider {
+            return BasicCellProvider(DirectionMask.RIGHT, factory)
+        }
+
+        /**
          * Creates a basic provider that accepts connections from the left and right of the cell.
          * */
         fun polarLR(factory: ICellFactory): BasicCellProvider {

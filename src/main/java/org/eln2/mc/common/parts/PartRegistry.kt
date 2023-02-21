@@ -44,7 +44,7 @@ object PartRegistry {
      *  @param name The name for all the registry items.
      *  @param provider The part provider that will be used to create the part.
      * */
-    private fun part(name: String, provider: PartProvider): PartRegistryItem {
+    fun part(name: String, provider: PartProvider): PartRegistryItem {
         val part = PARTS.register(name) { provider }
         val item = PART_ITEMS.register(name) { PartItem(provider, eln2Tab) }
 
@@ -64,11 +64,4 @@ object PartRegistry {
     fun getPartItem(id: ResourceLocation): PartItem {
         return ForgeRegistries.ITEMS.getValue(id) as PartItem
     }
-
-    val WIRE_PART = part("wire_part", BasicPartProvider(::WirePart, Vec3(0.1, 0.1, 0.1)))
-
-    //val BATTERY_PART = part("battery_part", BasicPartProvider(::BatteryPart, Vec3(0.8, 0.8, 0.8)))
-    val RESISTOR_PART = part("resistor_part", BasicPartProvider(::ResistorPart, Vec3(1.0, 1.0, 1.0)))
-    val VOLTAGE_SOURCE_PART = part("voltage_source_part", BasicPartProvider(::VoltageSourcePart, Vec3(1.0, 1.0, 1.0)))
-    val GROUND_PART = part("ground_part", BasicPartProvider(::GroundPart, Vec3(1.0, 1.0, 1.0)))
 }
