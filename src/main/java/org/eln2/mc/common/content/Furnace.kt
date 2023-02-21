@@ -28,7 +28,6 @@ import net.minecraftforge.common.capabilities.Capability
 import net.minecraftforge.common.util.LazyOptional
 import net.minecraftforge.items.CapabilityItemHandler
 import net.minecraftforge.items.ItemStackHandler
-import org.eln2.mc.Eln2
 import org.eln2.mc.Eln2.LOGGER
 import org.eln2.mc.Mathematics.map
 import org.eln2.mc.common.blocks.BlockRegistry
@@ -50,25 +49,6 @@ import org.eln2.mc.extensions.Vec3Extensions.toVec3
 import org.eln2.mc.integration.waila.TooltipBuilder
 import java.util.*
 
-data class HeaterMaterialDescription(
-    val specificHeat: Double,
-    val r0: Double,
-    val t0: Double,
-    val alpha: Double
-)
-
-data class HeatingElementData(
-    val mass: Double,
-    val material: HeaterMaterialDescription){
-    fun computeResistance(t: Double): Double{
-        val r0 = material.r0
-        val 𝛼 = material.alpha
-        val ΔT = t - material.t0
-
-        return r0 * (1 + 𝛼 * ΔT)
-    }
-}
-
 data class FurnaceOptions(
     var idleResistance: Double,
     var temperatureThreshold: Double,
@@ -77,7 +57,6 @@ data class FurnaceOptions(
     var minResistance: Double,
     var maxResistance: Double,
     var temperatureLossRate: Double){
-
     fun serializeNbt(): CompoundTag {
         val tag = CompoundTag()
 
@@ -340,10 +319,11 @@ class FurnaceCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) {
 
 class FurnaceBlockEntity(pos: BlockPos, state: BlockState) :
     CellBlockEntity(pos, state, BlockRegistry.FURNACE_BLOCK_ENTITY.get()) {
+
     companion object {
         private const val INPUT_SLOT = 0
         private const val OUTPUT_SLOT = 1
-        private const val BURN_TIME_TARGET = 20
+        private const val BURN_TIME_TARGET = 100
 
         private const val FURNACE = "furnace"
         private const val INVENTORY = "inventory"
@@ -610,16 +590,19 @@ class FurnaceBlock : CellBlock() {
 
         val facing = blockState.getValue(FACING)
         val axis = facing.axis
-        val randomOffset = random.nextDouble() * 0.6 - 0.3
 
-        val randomOffset3 = Vec3(
-            if (axis === Direction.Axis.X) facing.stepX.toDouble() * 0.52 else randomOffset,
-            random.nextDouble() * 6.0 / 16.0,
-            if (axis === Direction.Axis.Z) facing.stepZ.toDouble() * 0.52 else randomOffset)
+        repeat(4){
+            val randomOffset = random.nextDouble() * 0.6 - 0.3
 
-        val particlePos = sidePos + randomOffset3
+            val randomOffset3 = Vec3(
+                if (axis === Direction.Axis.X) facing.stepX.toDouble() * 0.52 else randomOffset,
+                random.nextDouble() * 6.0 / 16.0,
+                if (axis === Direction.Axis.Z) facing.stepZ.toDouble() * 0.52 else randomOffset)
 
-        level.addParticle(ParticleTypes.SMOKE, particlePos, 0.0, 0.0, 0.0)
-        level.addParticle(ParticleTypes.FLAME, particlePos, 0.0, 0.0, 0.0)
+            val particlePos = sidePos + randomOffset3
+
+            level.addParticle(ParticleTypes.SMOKE, particlePos, 0.0, 0.0, 0.0)
+            level.addParticle(ParticleTypes.FLAME, particlePos, 0.0, 0.0, 0.0)
+        }
     }
 }
