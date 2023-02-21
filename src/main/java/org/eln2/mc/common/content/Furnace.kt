@@ -113,7 +113,7 @@ class FurnaceCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) {
         100.0,
         600.0,
         800.0,
-        0.5,
+        1.0,
         0.01)
 
     private var resistorHeatBody = HeatBody.iron(0.5)
@@ -296,7 +296,7 @@ class FurnaceBlockEntity(pos: BlockPos, state: BlockState) :
     companion object {
         private const val INPUT_SLOT = 0
         private const val OUTPUT_SLOT = 1
-        private const val BURN_TIME_TARGET = 100
+        private const val BURN_TIME_TARGET = 40
 
         private const val FURNACE = "furnace"
         private const val INVENTORY = "inventory"
@@ -391,7 +391,7 @@ class FurnaceBlockEntity(pos: BlockPos, state: BlockState) :
             val inputStack = it.getStackInSlot(INPUT_SLOT)
 
             isBurning = if(!inputStack.isEmpty){
-                furnaceCell.loadSmeltingBody(HeatBody.iron(10.0))
+                furnaceCell.loadSmeltingBody(HeatBody.iron(0.5))
                 true
             } else{
                 furnaceCell.unloadSmeltingBody()
