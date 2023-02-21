@@ -16,6 +16,7 @@ import org.eln2.mc.Eln2
 import org.eln2.mc.common.blocks.BlockRegistry
 import org.eln2.mc.common.cells.*
 import org.eln2.mc.common.cells.foundation.*
+import org.eln2.mc.common.parts.foundation.ConnectionMode
 import org.eln2.mc.common.space.PlacementRotation
 import org.eln2.mc.common.space.RelativeRotationDirection
 import org.eln2.mc.extensions.BlockPosExtensions.plus
@@ -194,23 +195,8 @@ open class CellBlockEntity(pos: BlockPos, state: BlockState, targetType: BlockEn
                 val local = getLocalDirection(direction)
 
                 if (cellProvider.canConnectFrom(local)) {
-                    val remoteContainer = level!!
-                        .getBlockEntity(blockPos + direction)
-                        as? ICellContainer
-                        ?: return@forEach
-
-                    val queryResult = remoteContainer.query(CellQuery(direction.opposite, Direction.UP))
-
-                    // P.S. also check innerFace against cellFace, to prevent non-planar connections
-
-                    if (queryResult != null && queryResult.innerFace == cellFace) {
-                        val remoteRelative =
-                            remoteContainer.probeConnectionCandidate(getCellSpace(), direction.opposite)
-
-                        if (remoteRelative != null) {
-                            results.add(CellNeighborInfo(queryResult, remoteContainer, local, remoteRelative))
-                        }
-
+                    CellScanner.planarScan(level!!, blockPos, direction, cellFace){ remoteInfo, remoteContainer, remoteRelative ->
+                        results.add(CellNeighborInfo(remoteInfo, remoteContainer, local, remoteRelative))
                     }
                 }
             }
@@ -218,8 +204,14 @@ open class CellBlockEntity(pos: BlockPos, state: BlockState, targetType: BlockEn
         return results
     }
 
-    override fun probeConnectionCandidate(location: CellInfo, direction: Direction): RelativeRotationDirection? {
+    override fun probeConnectionCandidate(location: CellInfo, direction: Direction, mode: ConnectionMode): RelativeRotationDirection? {
         assert(location.cell == cell!!)
+
+        Eln2.LOGGER.info("CELL PROBE $location $direction $mode")
+
+        if(mode != ConnectionMode.Planar){
+            return null
+        }
 
         val local = getLocalDirection(direction)
 
