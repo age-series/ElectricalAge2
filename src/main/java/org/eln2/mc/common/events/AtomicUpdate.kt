@@ -7,7 +7,7 @@ class AtomicUpdate<T> {
 
     val pending get() = reference.get() != null
 
-    fun setLatest(value: T): T {
+    fun setLatest(value: T?): T? {
         return reference.getAndSet(value)
     }
 
