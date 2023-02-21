@@ -93,17 +93,13 @@ data class FurnaceOptions(
     }
 
     fun deserializeNbt(tag: CompoundTag) {
-        fun serializeNbt(){
-            val tag = CompoundTag()
-
-            idleResistance = tag.getDouble(IDLE_RES)
-            temperatureThreshold = tag.getDouble(TEMP_THRESH)
-            targetTemperature = tag.getDouble(TARGET_TEMP)
-            surfaceArea = tag.getDouble(SURFACE_AREA)
-            minResistance = tag.getDouble(MIN_RES)
-            maxResistance = tag.getDouble(MAX_RES)
-            temperatureLossRate = tag.getDouble(TEMP_LOSS_RATE)
-        }
+        idleResistance = tag.getDouble(IDLE_RES)
+        temperatureThreshold = tag.getDouble(TEMP_THRESH)
+        targetTemperature = tag.getDouble(TARGET_TEMP)
+        surfaceArea = tag.getDouble(SURFACE_AREA)
+        minResistance = tag.getDouble(MIN_RES)
+        maxResistance = tag.getDouble(MAX_RES)
+        temperatureLossRate = tag.getDouble(TEMP_LOSS_RATE)
     }
 
     companion object{
@@ -115,7 +111,6 @@ data class FurnaceOptions(
         private const val SURFACE_AREA = "surfaceArea"
         private const val TEMP_LOSS_RATE = "tempLossRate"
     }
-
 }
 
 class FurnaceCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) {
