@@ -63,6 +63,12 @@ class MultipartBlockEntity(var pos: BlockPos, var state: BlockState) :
     ICellContainer,
     IWailaProvider {
 
+    // Interesting issue.
+    // If we try to add tickers before the block receives the first tick,
+    // we will cause some deadlock in Minecraft's code.
+    // This is set to TRUE when this block first ticks. We only update the ticker if this is set to true.
+    private var worldLoaded = false
+
     private val parts = HashMap<Direction, Part>()
 
     // Used for part sync:
@@ -532,7 +538,12 @@ class MultipartBlockEntity(var pos: BlockPos, var state: BlockState) :
             return
         }
 
-        saveParts(pTag)
+        try {
+            saveParts(pTag)
+        }
+        catch (t: Throwable){
+            Eln2.LOGGER.error("MULTIPART SAVE EX $t")
+        }
     }
 
     /**
@@ -883,6 +894,10 @@ class MultipartBlockEntity(var pos: BlockPos, var state: BlockState) :
     }
 
     fun addTicker(part: ITickablePart) {
+        if(level == null){
+            error("Illegal ticker add before level is available")
+        }
+
         if (!parts.values.any { it == part }) {
             error("Cannot register ticker for a part that is not added!")
         }
@@ -893,11 +908,13 @@ class MultipartBlockEntity(var pos: BlockPos, var state: BlockState) :
 
         tickingParts.add(part)
 
+        if(!worldLoaded){
+            return
+        }
+
         val chunk = level!!.getChunkAt(pos)
 
         chunk.updateBlockEntityTicker(this)
-
-        Eln2.LOGGER.info("activated ticker")
     }
 
     fun removeTicker(part: ITickablePart) {
@@ -928,6 +945,8 @@ class MultipartBlockEntity(var pos: BlockPos, var state: BlockState) :
                 return
             }
 
+            entity.worldLoaded = true
+
             if (!entity.needsTicks) {
                 // Remove the ticker
 
@@ -947,8 +966,6 @@ class MultipartBlockEntity(var pos: BlockPos, var state: BlockState) :
                     error("Tried to remove part ticker $removed that was not registered")
                 }
             }
-
-            Eln2.LOGGER.info("Multipart tick")
         }
     }
 

@@ -7,6 +7,7 @@ import net.minecraft.world.phys.Vec3
 import org.ageseries.libage.sim.electrical.mna.Circuit
 import org.ageseries.libage.sim.electrical.mna.component.Resistor
 import org.ageseries.libage.sim.electrical.mna.component.VoltageSource
+import org.eln2.mc.Eln2
 import org.eln2.mc.Mathematics.bbVec
 import org.eln2.mc.annotations.CrossThreadAccess
 import org.eln2.mc.client.render.PartialModels
@@ -22,13 +23,16 @@ import org.eln2.mc.common.cells.foundation.objects.SimulationObjectSet
 import org.eln2.mc.common.events.AtomicUpdate
 import org.eln2.mc.common.parts.foundation.CellPart
 import org.eln2.mc.common.parts.foundation.IPartRenderer
+import org.eln2.mc.common.parts.foundation.ITickablePart
 import org.eln2.mc.common.parts.foundation.PartPlacementContext
 import org.eln2.mc.common.space.RelativeRotationDirection
 import org.eln2.mc.extensions.LibAgeExtensions.add
+import org.eln2.mc.extensions.NbtExtensions.useSubTag
 import org.eln2.mc.extensions.NbtExtensions.useSubTagIfPreset
 import org.eln2.mc.extensions.NbtExtensions.withSubTag
 import org.eln2.mc.integration.waila.IWailaProvider
 import org.eln2.mc.integration.waila.TooltipBuilder
+import java.util.logging.Logger
 import kotlin.math.abs
 import kotlin.math.round
 
@@ -236,7 +240,8 @@ class BatteryCell(pos: CellPos, id: ResourceLocation, val model: BatteryModel) :
 }
 
 class BatteryPart(id: ResourceLocation, placementContext: PartPlacementContext, provider: CellProvider):
-    CellPart(id, placementContext, provider){
+    CellPart(id, placementContext, provider),
+    ITickablePart {
     override val baseSize = bbVec(6.0, 8.0, 12.0)
 
     override fun createRenderer(): IPartRenderer {
@@ -244,20 +249,44 @@ class BatteryPart(id: ResourceLocation, placementContext: PartPlacementContext, 
             it.downOffset = bbOffset(8.0)
         }
     }
+/*
 
-    override fun getSaveTag(): CompoundTag? {
-        return super.getSaveTag()?.withSubTag("BatteryData"){
+    override fun saveCustomSimData(): CompoundTag {
+        return CompoundTag().also {
             it.put("battery", batteryCell.serializeNbt())
         }
     }
 
-    override fun loadFromTag(tag: CompoundTag) {
-        super.loadFromTag(tag)
+    override fun loadCustomSimData(tag: CompoundTag) {
+        Eln2.LOGGER.info("Load custom sim data: $tag")
 
-        tag.useSubTagIfPreset("BatteryData"){
-            batteryCell.deserializeNbt(it.getCompound("battery"))
+        try {
+            tag.useSubTag("battery") {
+                if(!hasCell){
+                    Eln2.LOGGER.info("NO CEL")
+                }
+                batteryCell.deserializeNbt(tag)
+
+            }
+        }
+        catch (ex: Throwable){
+            Eln2.LOGGER.error(ex)
+        }
+
+    }
+*/
+
+    override fun onAdded() {
+        super.onAdded()
+
+        if(!placementContext.level.isClientSide){
+            placementContext.multipart.addTicker(this)
         }
     }
 
     private val batteryCell get() = cell as BatteryCell
+
+    override fun tick() {
+        invalidateSave()
+    }
 }
