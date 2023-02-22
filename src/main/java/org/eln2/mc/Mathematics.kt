@@ -31,4 +31,40 @@ object Mathematics {
     fun Vec3.fromBB(): Vec3 {
         return bbVec(this)
     }
+
+    fun vec3(value: Double): Vec3 {
+        return Vec3(value, value, value)
+    }
+
+    fun vec3X(x: Double): Vec3{
+        return Vec3(x, 0.0, 0.0)
+    }
+
+    fun vec3X(): Vec3{
+        return vec3X(1.0)
+    }
+
+    fun vec3Y(y: Double): Vec3{
+        return Vec3(0.0, y, 0.0)
+    }
+
+    fun vec3Y(): Vec3{
+        return vec3Y(1.0)
+    }
+
+    fun vec3Z(z: Double): Vec3{
+        return Vec3(0.0, 0.0, z)
+    }
+
+    fun vec3Z(): Vec3{
+        return vec3Z(1.0)
+    }
+
+    fun vec3One(): Vec3{
+        return vec3(1.0)
+    }
+
+    fun vec3Zero(): Vec3{
+        return vec3(0.0)
+    }
 }
