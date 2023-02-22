@@ -1,5 +1,6 @@
 package org.eln2.mc
 
+import net.minecraft.core.Vec3i
 import net.minecraft.world.phys.Vec3
 
 // Yes, how fancy. Stop making fun of me!
@@ -66,5 +67,41 @@ object Mathematics {
 
     fun vec3Zero(): Vec3{
         return vec3(0.0)
+    }
+
+    fun vec3i(value: Int): Vec3i {
+        return Vec3i(value, value, value)
+    }
+
+    fun vec3iX(x: Int): Vec3i{
+        return Vec3i(x, 0, 0)
+    }
+
+    fun vec3iX(): Vec3i{
+        return vec3iX(1)
+    }
+
+    fun vec3iY(y: Int): Vec3i{
+        return Vec3i(0, y, 0)
+    }
+
+    fun vec3iY(): Vec3i{
+        return vec3iY(1)
+    }
+
+    fun vec3iZ(z: Int): Vec3i{
+        return Vec3i(0, 0, z)
+    }
+
+    fun vec3iZ(): Vec3i{
+        return vec3iZ(1)
+    }
+
+    fun vec3iOne(): Vec3i{
+        return vec3i(1)
+    }
+
+    fun vec3iZero(): Vec3i{
+        return vec3i(0)
     }
 }

@@ -61,6 +61,7 @@ abstract class CellPart(
     override fun onPlaced() {
         cell = provider.create(cellPos)
         cell.container = placementContext.multipart
+        onCellAcquired()
     }
 
     /**
@@ -70,6 +71,7 @@ abstract class CellPart(
         if (hasCell) {
             cell.onContainerUnloaded()
             cell.container = null
+            onCellReleased()
         }
     }
 
@@ -138,6 +140,8 @@ abstract class CellPart(
             loadCustomSimData(customSimulationData!!)
             customSimulationData = null
         }
+
+        onCellAcquired()
     }
 
     open fun saveCustomSimData(): CompoundTag?{
@@ -155,6 +159,9 @@ abstract class CellPart(
     override fun recordConnection(direction: RelativeRotationDirection, mode: ConnectionMode) {}
 
     override fun recordDeletedConnection(direction: RelativeRotationDirection) {}
+
+    open fun onCellAcquired() {}
+    open fun onCellReleased() { }
 
     override val allowPlanarConnections = true
     override val allowInnerConnections = true
