@@ -3,8 +3,13 @@ package org.eln2.mc.common.events
 import net.minecraftforge.event.TickEvent
 import net.minecraftforge.eventbus.api.SubscribeEvent
 import net.minecraftforge.fml.common.Mod
+import org.eln2.mc.Eln2.LOGGER
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedQueue
+
+fun interface IEventQueueAccess {
+    fun enqueueEvent(event: IEvent): Boolean
+}
 
 /**
  * The event scheduler can be used to schedule events from any thread, that are to be sent on a game tick.
@@ -47,15 +52,22 @@ object EventScheduler {
      * This may be used concurrently.
      * Events enqueued using this access will be sent to the listener on the next tick.
      * */
-    fun getEventAccess(listener: IEventListener): (IEvent) -> Unit {
+    fun getEventAccess(listener: IEventListener): IEventQueueAccess {
         val eventQueue = getEventQueue(listener)
 
-        return {
+        return IEventQueueAccess {
             if (!eventQueue.valid) {
-                error("Tried to send event after queue became invalid")
+                // To be fair, this value could change just after checking.
+                // For fun, we log.
+
+                LOGGER.warn("Lingering event access")
+
+                return@IEventQueueAccess false
             }
 
             eventQueue.queue.add(it)
+
+            return@IEventQueueAccess true
         }
     }
 
@@ -63,7 +75,7 @@ object EventScheduler {
      * Gets the event access for the specified listener, and enqueues an event for the next tick.
      * */
     fun enqueueEvent(listener: IEventListener, event: IEvent) {
-        getEventAccess(listener).invoke(event)
+        getEventAccess(listener).enqueueEvent(event)
     }
 
     /**
