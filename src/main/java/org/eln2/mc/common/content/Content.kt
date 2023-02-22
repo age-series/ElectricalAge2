@@ -50,4 +50,6 @@ object Content {
 
     val BATTERY_PART_10V = PartRegistry.part("battery_part_10v", BasicPartProvider({a, b -> BatteryPart(a, b, BATTERY_CELL_10V.get())}, vec3(1.0)))
     val BATTERY_PART_100V = PartRegistry.part("battery_part_100v", BasicPartProvider({a, b -> BatteryPart(a, b, BATTERY_CELL_100V.get())}, vec3(1.0)))
+
+    val LIGHT = BlockRegistry.registerBasicBlock("light_bl"){LightBlock()}
 }

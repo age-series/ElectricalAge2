@@ -118,7 +118,7 @@ class WireCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) {
 class WirePart(id: ResourceLocation, context: PartPlacementContext) :
     CellPart(id, context, Content.WIRE_CELL.get()) {
 
-    override val baseSize = bbVec(3.5, 2.0, 3.5)
+    override val baseSize = bbVec(8.0, 2.0, 8.0)
 
     private val connectedDirections = HashSet<RelativeRotationDirection>()
     private var wireRenderer: WirePartRenderer? = null

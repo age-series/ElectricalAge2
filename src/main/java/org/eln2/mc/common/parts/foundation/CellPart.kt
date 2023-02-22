@@ -11,6 +11,7 @@ import org.eln2.mc.common.cells.foundation.CellGraphManager
 import org.eln2.mc.common.cells.foundation.CellPos
 import org.eln2.mc.common.cells.foundation.CellProvider
 import org.eln2.mc.common.space.RelativeRotationDirection
+import org.eln2.mc.extensions.NbtExtensions.useSubTagIfPreset
 import org.eln2.mc.integration.waila.IWailaProvider
 import org.eln2.mc.integration.waila.TooltipBuilder
 import java.util.*
@@ -46,6 +47,9 @@ abstract class CellPart(
     @ServerOnly
     private lateinit var loadGraphId: UUID
 
+    @ServerOnly
+    private var customSimulationData: CompoundTag? = null
+
     /**
      * Notifies the cell of the new container.
      * */
@@ -77,6 +81,14 @@ abstract class CellPart(
 
         tag.putUUID("GraphID", cell.graph.id)
 
+        if(cell.hasGraph){
+            val custom = saveCustomSimData()
+
+            if(custom != null){
+                tag.put("PartData", custom)
+            }
+        }
+
         return tag
     }
 
@@ -94,6 +106,8 @@ abstract class CellPart(
         } else {
             Eln2.LOGGER.info("Part at $cellPos did not have saved data")
         }
+
+        tag.useSubTagIfPreset("SimulationData"){ customSimulationData = it }
     }
 
     /**
@@ -118,15 +132,26 @@ abstract class CellPart(
 
         cell.container = placementContext.multipart
         cell.onContainerLoaded()
+
+        Eln2.LOGGER.info("loading custom data")
+
+        if(customSimulationData != null){
+            loadCustomSimData(customSimulationData!!)
+            customSimulationData = null
+        }
+    }
+
+    open fun saveCustomSimData(): CompoundTag?{
+        return null
+    }
+
+    open fun loadCustomSimData(tag: CompoundTag){
+
     }
 
     override fun appendBody(builder: TooltipBuilder, config: IPluginConfig?) {
         if (hasCell) {
-            val cell = this.cell
-
-            if (cell is IWailaProvider) {
-                cell.appendBody(builder, config)
-            }
+            this.cell.appendBody(builder, config)
         }
     }
 
