@@ -571,14 +571,11 @@ class MultipartBlockEntity(var pos: BlockPos, var state: BlockState) :
             }
 
             if (this.savedTag != null) {
-                Eln2.LOGGER.info("Completing multipart disk load at $pos with ${savedTag!!.size()}")
                 loadParts(savedTag!!)
-                Eln2.LOGGER.info("Loaded from tag")
+
                 parts.values.forEach { part ->
                     part.onLoaded()
                 }
-
-                Eln2.LOGGER.info("Done")
 
                 // GC reference tracking
                 savedTag = null

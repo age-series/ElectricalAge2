@@ -3,11 +3,9 @@ package org.eln2.mc.common.content
 import mcp.mobius.waila.api.IPluginConfig
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.resources.ResourceLocation
-import net.minecraft.world.phys.Vec3
 import org.ageseries.libage.sim.electrical.mna.Circuit
 import org.ageseries.libage.sim.electrical.mna.component.Resistor
 import org.ageseries.libage.sim.electrical.mna.component.VoltageSource
-import org.eln2.mc.Eln2
 import org.eln2.mc.Mathematics.bbVec
 import org.eln2.mc.annotations.CrossThreadAccess
 import org.eln2.mc.client.render.PartialModels
@@ -28,13 +26,10 @@ import org.eln2.mc.common.parts.foundation.PartPlacementContext
 import org.eln2.mc.common.space.RelativeRotationDirection
 import org.eln2.mc.extensions.LibAgeExtensions.add
 import org.eln2.mc.extensions.NbtExtensions.useSubTag
-import org.eln2.mc.extensions.NbtExtensions.useSubTagIfPreset
-import org.eln2.mc.extensions.NbtExtensions.withSubTag
+import org.eln2.mc.extensions.NumberExtensions.formatted
 import org.eln2.mc.integration.waila.IWailaProvider
 import org.eln2.mc.integration.waila.TooltipBuilder
-import java.util.logging.Logger
 import kotlin.math.abs
-import kotlin.math.round
 
 enum class GeneratorPowerDirection {
     Outgoing,
@@ -163,6 +158,10 @@ object BatteryModels {
 }
 
 class BatteryCell(pos: CellPos, id: ResourceLocation, val model: BatteryModel) : GeneratorCell(pos, id) {
+    companion object {
+        private const val ENERGY = "energy"
+    }
+
     var energy = 0.0
 
     private val energyUpdate = AtomicUpdate<Double>()
@@ -171,14 +170,14 @@ class BatteryCell(pos: CellPos, id: ResourceLocation, val model: BatteryModel) :
 
     @CrossThreadAccess
     fun deserializeNbt(tag: CompoundTag) {
-        energyUpdate.setLatest(tag.getDouble("energy"))
+        energyUpdate.setLatest(tag.getDouble(ENERGY))
     }
 
     @CrossThreadAccess
     fun serializeNbt(): CompoundTag{
         val tag = CompoundTag()
 
-        tag.putDouble("energy", energy)
+        tag.putDouble(ENERGY, energy)
 
         return tag
     }
@@ -233,15 +232,19 @@ class BatteryCell(pos: CellPos, id: ResourceLocation, val model: BatteryModel) :
 
     override fun appendBody(builder: TooltipBuilder, config: IPluginConfig?) {
         super.appendBody(builder, config)
-
+        builder.text("Charge", "${(charge * 100.0).formatted()}%")
         builder.energy(energy)
-        builder.text("Charge", round(charge * 100.0))
     }
 }
 
 class BatteryPart(id: ResourceLocation, placementContext: PartPlacementContext, provider: CellProvider):
     CellPart(id, placementContext, provider),
     ITickablePart {
+
+    companion object {
+        private const val BATTERY = "battery"
+    }
+
     override val baseSize = bbVec(6.0, 8.0, 12.0)
 
     override fun createRenderer(): IPartRenderer {
@@ -249,32 +252,16 @@ class BatteryPart(id: ResourceLocation, placementContext: PartPlacementContext, 
             it.downOffset = bbOffset(8.0)
         }
     }
-/*
 
     override fun saveCustomSimData(): CompoundTag {
         return CompoundTag().also {
-            it.put("battery", batteryCell.serializeNbt())
+            it.put(BATTERY, batteryCell.serializeNbt())
         }
     }
 
     override fun loadCustomSimData(tag: CompoundTag) {
-        Eln2.LOGGER.info("Load custom sim data: $tag")
-
-        try {
-            tag.useSubTag("battery") {
-                if(!hasCell){
-                    Eln2.LOGGER.info("NO CEL")
-                }
-                batteryCell.deserializeNbt(tag)
-
-            }
-        }
-        catch (ex: Throwable){
-            Eln2.LOGGER.error(ex)
-        }
-
+        tag.useSubTag(BATTERY) { batteryCell.deserializeNbt(it) }
     }
-*/
 
     override fun onAdded() {
         super.onAdded()
