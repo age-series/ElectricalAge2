@@ -145,6 +145,15 @@ object NbtExtensions {
         return tag
     }
 
+    fun CompoundTag.placeSubTag(key: String, consumer: ((CompoundTag) -> Unit)): CompoundTag {
+        val tag = CompoundTag()
+        consumer(tag)
+
+        this.put(key, tag)
+
+        return tag
+    }
+
     /**
      * Gets the compound tag from this instance, and calls the consumer method with the found tag.
      * @return The tag that was found.

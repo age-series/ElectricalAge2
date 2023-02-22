@@ -29,6 +29,11 @@ abstract class CellPart(
     IPartCellContainer,
     IWailaProvider {
 
+    companion object {
+        private const val GRAPH_ID = "GraphID"
+        private const val CUSTOM_SIMULATION_DATA = "SimulationData"
+    }
+
     /**
      * The actual cell contained within this part.
      * It only exists on the server (it is a simulation-only item)
@@ -79,14 +84,10 @@ abstract class CellPart(
 
         val tag = CompoundTag()
 
-        tag.putUUID("GraphID", cell.graph.id)
+        tag.putUUID(GRAPH_ID, cell.graph.id)
 
-        if(cell.hasGraph){
-            val custom = saveCustomSimData()
-
-            if(custom != null){
-                tag.put("PartData", custom)
-            }
+        saveCustomSimData()?.also {
+            tag.put(CUSTOM_SIMULATION_DATA, it)
         }
 
         return tag
@@ -101,13 +102,13 @@ abstract class CellPart(
             return
         }
 
-        if (tag.contains("GraphID")) {
+        if (tag.contains(GRAPH_ID)) {
             loadGraphId = tag.getUUID("GraphID")
         } else {
             Eln2.LOGGER.info("Part at $cellPos did not have saved data")
         }
 
-        tag.useSubTagIfPreset("SimulationData"){ customSimulationData = it }
+        tag.useSubTagIfPreset(CUSTOM_SIMULATION_DATA) { customSimulationData = it }
     }
 
     /**
@@ -120,10 +121,9 @@ abstract class CellPart(
 
         cell = if (!this::loadGraphId.isInitialized) {
             Eln2.LOGGER.error("Part cell not initialized!")
+            // Should we blow up the game?
             provider.create(cellPos)
         } else {
-            Eln2.LOGGER.info("Part loading cell from disk $loadGraphId")
-
             CellGraphManager
                 .getFor(placementContext.level as ServerLevel)
                 .getGraph(loadGraphId)
@@ -133,9 +133,8 @@ abstract class CellPart(
         cell.container = placementContext.multipart
         cell.onContainerLoaded()
 
-        Eln2.LOGGER.info("loading custom data")
-
         if(customSimulationData != null){
+            Eln2.LOGGER.info(customSimulationData)
             loadCustomSimData(customSimulationData!!)
             customSimulationData = null
         }
@@ -145,9 +144,7 @@ abstract class CellPart(
         return null
     }
 
-    open fun loadCustomSimData(tag: CompoundTag){
-
-    }
+    open fun loadCustomSimData(tag: CompoundTag) {}
 
     override fun appendBody(builder: TooltipBuilder, config: IPluginConfig?) {
         if (hasCell) {
@@ -156,6 +153,7 @@ abstract class CellPart(
     }
 
     override fun recordConnection(direction: RelativeRotationDirection, mode: ConnectionMode) {}
+
     override fun recordDeletedConnection(direction: RelativeRotationDirection) {}
 
     override val allowPlanarConnections = true
