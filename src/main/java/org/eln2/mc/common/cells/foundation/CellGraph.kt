@@ -4,7 +4,9 @@ import net.minecraft.nbt.CompoundTag
 import net.minecraft.nbt.ListTag
 import net.minecraft.resources.ResourceLocation
 import net.minecraftforge.server.ServerLifecycleHooks
+import org.ageseries.libage.debug.dprintln
 import org.ageseries.libage.sim.electrical.mna.Circuit
+import org.ageseries.libage.sim.electrical.mna.component.VoltageSource
 import org.eln2.mc.Eln2.LOGGER
 import org.eln2.mc.annotations.CrossThreadAccess
 import org.eln2.mc.common.cells.CellRegistry
@@ -153,6 +155,10 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
             circuits.forEach {
                 successful = successful && it.step(elapsed)
             }
+
+            if(!successful){
+                LOGGER.error("Failed to solve")
+            }
         })
 
         subscribers.forEach {
@@ -178,6 +184,8 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
         realizeElectrical()
 
         cells.forEach { it.build() }
+
+        circuits.forEach { postProcessCircuit(it) }
     }
 
     /**
@@ -254,6 +262,25 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
 
             results.add(factory(visited))
         }
+    }
+
+    private fun postProcessCircuit(circuit: Circuit){
+        if(circuit.isFloating){
+            fixFloating(circuit)
+        }
+    }
+
+    private fun fixFloating(circuit: Circuit){
+        var found = false
+        for (comp in circuit.components) {
+            if (comp is VoltageSource) {
+                dprintln("F.<init>: floating: ground $comp pin 1 (node ${comp.node(1)}")
+                comp.ground(1)
+                found = true
+                break
+            }
+        }
+        if (!found) println("WARN: F.<init>: floating circuit and no VSource; the matrix is likely underconstrained.")
     }
 
     /**

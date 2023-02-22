@@ -38,12 +38,12 @@ object Content {
     val FURNACE_CELL = CellRegistry.register("furnace_cell", BasicCellProvider.polarLR(::FurnaceCell))
     val FURNACE_BLOCK = BlockRegistry.registerBasicBlock("furnace", tab = null) { FurnaceBlock() }
 
-    val BATTERY_CELL_10V = CellRegistry.register("battery_cell_10v", BasicCellProvider.monoF{ pos, id ->
+    val BATTERY_CELL_10V = CellRegistry.register("battery_cell_10v", BasicCellProvider.polarFB{ pos, id ->
         BatteryCell(pos, id, BatteryModels.linVConstR(10.0, milliOhms(50.0), wattHoursInJ(100.0)))
         .also { it.energy = it.model.energyCapacity / 2.0 }
     })
 
-    val BATTERY_CELL_100V = CellRegistry.register("battery_cell_100v", BasicCellProvider.monoF{ pos, id ->
+    val BATTERY_CELL_100V = CellRegistry.register("battery_cell_100v", BasicCellProvider.polarFB{ pos, id ->
         BatteryCell(pos, id, BatteryModels.linVConstR(100.0, milliOhms(100.0), kwHoursInJ(1.2)))
         .also { it.energy = it.model.energyCapacity / 2.0 }
     })

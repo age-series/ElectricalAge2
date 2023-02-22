@@ -7,8 +7,10 @@ import net.minecraft.world.phys.Vec3
 import org.ageseries.libage.sim.electrical.mna.Circuit
 import org.ageseries.libage.sim.electrical.mna.component.Resistor
 import org.ageseries.libage.sim.electrical.mna.component.VoltageSource
+import org.eln2.mc.Mathematics.bbVec
 import org.eln2.mc.annotations.CrossThreadAccess
 import org.eln2.mc.client.render.PartialModels
+import org.eln2.mc.client.render.PartialModels.bbOffset
 import org.eln2.mc.client.render.foundation.BasicPartRenderer
 import org.eln2.mc.common.cells.foundation.CellBase
 import org.eln2.mc.common.cells.foundation.CellPos
@@ -21,11 +23,14 @@ import org.eln2.mc.common.events.AtomicUpdate
 import org.eln2.mc.common.parts.foundation.CellPart
 import org.eln2.mc.common.parts.foundation.IPartRenderer
 import org.eln2.mc.common.parts.foundation.PartPlacementContext
+import org.eln2.mc.common.space.RelativeRotationDirection
+import org.eln2.mc.extensions.LibAgeExtensions.add
 import org.eln2.mc.extensions.NbtExtensions.useSubTagIfPreset
 import org.eln2.mc.extensions.NbtExtensions.withSubTag
 import org.eln2.mc.integration.waila.IWailaProvider
 import org.eln2.mc.integration.waila.TooltipBuilder
 import kotlin.math.abs
+import kotlin.math.round
 
 enum class GeneratorPowerDirection {
     Outgoing,
@@ -36,6 +41,9 @@ enum class GeneratorPowerDirection {
  * Represents an Electrical Generator. It is characterised by a voltage and internal resistance.
  * */
 class GeneratorObject : ElectricalObject(), IWailaProvider {
+    var plusDirection = RelativeRotationDirection.Front
+    var minusDirection = RelativeRotationDirection.Back
+
     var internalResistance: Double = 1.0
         set(value){
             field = value
@@ -70,10 +78,14 @@ class GeneratorObject : ElectricalObject(), IWailaProvider {
         if(resistor.instance.current > 0) GeneratorPowerDirection.Incoming
         else GeneratorPowerDirection.Outgoing
 
-    override val maxConnections = 1
+    override val maxConnections = 2
 
     override fun offerComponent(neighbour: ElectricalObject): ElectricalComponentInfo {
-        return resistor.offerExternal()
+        return when(val dir = directionOf(neighbour)){
+            plusDirection -> resistor.offerExternal()
+            minusDirection -> source.offerNegative()
+            else -> error("Unhandled neighbor direction $dir")
+        }
     }
 
     override fun clearComponents() {
@@ -82,28 +94,26 @@ class GeneratorObject : ElectricalObject(), IWailaProvider {
     }
 
     override fun addComponents(circuit: Circuit) {
-        circuit.add(resistor.instance)
-        circuit.add(source.instance)
+        circuit.add(resistor)
+        circuit.add(source)
     }
 
     override fun build() {
-        resistor.connectInternal(source.offerExternal())
+        resistor.connectInternal(source.offerPositive())
 
-        source.groundInternal()
-
-        if(connections.size == 0){
-            return
+        connections.forEach { connectionInfo ->
+            when(val direction = connectionInfo.direction){
+                plusDirection -> resistor.connectExternal(this, connectionInfo)
+                minusDirection -> source.connectNegative(this, connectionInfo)
+                else -> error("Unhandled direction $direction")
+            }
         }
-
-        val connectionInfo = connections[0].obj.offerComponent(this)
-
-        resistor.connectExternal(connectionInfo)
     }
 
     override fun appendBody(builder: TooltipBuilder, config: IPluginConfig?) {
-        builder.text("Resistor Current", resistor.instance.current)
-        builder.text("Voltage Source Potential", source.instance.potential)
+        builder.voltage(source.instance.potential)
         builder.text("Flow", powerFlowDirection)
+        builder.power(abs(resistorPower))
     }
 }
 
@@ -221,15 +231,18 @@ class BatteryCell(pos: CellPos, id: ResourceLocation, val model: BatteryModel) :
         super.appendBody(builder, config)
 
         builder.energy(energy)
+        builder.text("Charge", round(charge * 100.0))
     }
 }
 
 class BatteryPart(id: ResourceLocation, placementContext: PartPlacementContext, provider: CellProvider):
     CellPart(id, placementContext, provider){
-    override val baseSize: Vec3 = Vec3(1.0, 1.0, 1.0)
+    override val baseSize = bbVec(6.0, 8.0, 12.0)
 
     override fun createRenderer(): IPartRenderer {
-        return BasicPartRenderer(this, PartialModels.BATTERY)
+        return BasicPartRenderer(this, PartialModels.BATTERY).also {
+            it.downOffset = bbOffset(8.0)
+        }
     }
 
     override fun getSaveTag(): CompoundTag? {

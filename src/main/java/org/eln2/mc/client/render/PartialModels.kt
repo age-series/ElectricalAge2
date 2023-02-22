@@ -12,7 +12,8 @@ object PartialModels {
     val WIRE_CROSSING = partialBlock("wire/wire_crossing")
     val WIRE_CROSSING_FULL = partialBlock("wire/wire_crossing_full")
 
-    val BATTERY = partialBlock("12v_battery")
+    val BATTERY_OLD = partialBlock("12v_battery")
+    val BATTERY = partialBlock("accumulator1")
 
     val VOLTAGE_SOURCE = partialBlock("voltage_source")
     val RESISTOR = partialBlock("resistor")
