@@ -119,4 +119,42 @@ object NbtExtensions {
 
         return PartUpdateType.fromId(data)
     }
+
+    /**
+     * Creates a new compound tag, calls the consumer method with the new tag, and adds the created tag to this instance.
+     * @return The Compound Tag that was created.
+     * */
+    fun CompoundTag.withSubTag(key: String, consumer: ((CompoundTag) -> Unit)): CompoundTag {
+        val tag = CompoundTag()
+
+        consumer(tag)
+
+        this.put(key, tag)
+
+        return tag
+    }
+
+    /**
+     * Gets the compound tag from this instance, and calls the consumer method with the found tag.
+     * @return The tag that was found.
+     * */
+    fun CompoundTag.useSubTag(key: String, consumer: ((CompoundTag) -> Unit)): CompoundTag {
+        val tag = this.get(key) as CompoundTag
+        consumer(tag)
+
+        return tag
+    }
+
+    /**
+     * Gets the compound tag from this instance, and calls the consumer method with the found tag.
+     * @return The tag that was found.
+     * */
+    fun CompoundTag.useSubTagIfPreset(key: String, consumer: ((CompoundTag) -> Unit)): CompoundTag? {
+        val tag = this.get(key) as? CompoundTag
+            ?: return null
+
+        consumer(tag)
+
+        return tag
+    }
 }
