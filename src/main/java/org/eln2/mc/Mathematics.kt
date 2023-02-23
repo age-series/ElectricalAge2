@@ -2,9 +2,40 @@ package org.eln2.mc
 
 import net.minecraft.core.Vec3i
 import net.minecraft.world.phys.Vec3
+import org.checkerframework.checker.units.qual.min
+
+
+
 
 // Yes, how fancy. Stop making fun of me!
 object Mathematics {
+    //#region Interpolations
+
+    fun lerp(from: Double, to: Double, factor: Double): Double{
+        return (1.0 - factor) * from + factor * to
+    }
+
+    fun lerp(from: Float, to: Float, factor: Float): Float{
+        return (1f - factor) * from + factor * to
+    }
+
+    fun lerpC(from: Double, to: Double, factorRaw: Double): Double{
+        val factor = factorRaw.coerceIn(0.0, 1.0)
+        return (1.0 - factor) * from + factor * to
+    }
+
+    fun lerpC(from: Float, to: Float, factorRaw: Float): Float{
+        val factor = factorRaw.coerceIn(0f, 1f)
+        return (1f - factor) * from + factor * to
+    }
+
+    fun smoothstepC(from: Double, to: Double, factorRaw: Double): Double{
+        val factor = ((factorRaw - from) / (to - from)).coerceIn(0.0, 1.0)
+        return factor * factor * (3 - 2 * factor);
+    }
+
+    //#endregion
+
     fun map(v: Double, srcMin: Double, srcMax: Double, dstMin: Double, dstMax: Double): Double {
         return dstMin + (v - srcMin) * (dstMax - dstMin) / (srcMax - srcMin)
     }

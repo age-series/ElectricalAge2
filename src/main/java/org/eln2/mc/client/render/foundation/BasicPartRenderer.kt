@@ -12,7 +12,7 @@ import org.eln2.mc.common.parts.foundation.Part
 /**
  * The basic part renderer is used to render a single partial model.
  * */
-class BasicPartRenderer(val part: Part, val model: PartialModel) : IPartRenderer {
+open class BasicPartRenderer(val part: Part, val model: PartialModel) : IPartRenderer {
     /**
      * Useful if the model needs to be rotated to match the networked behavior.
      * Alternatively, the model may be rotated in the 3D editor.
@@ -24,8 +24,8 @@ class BasicPartRenderer(val part: Part, val model: PartialModel) : IPartRenderer
      * */
     var downOffset = 0.0
 
-    private var modelInstance: ModelData? = null
-    private lateinit var multipart: MultipartBlockEntityInstance
+    protected var modelInstance: ModelData? = null
+    protected lateinit var multipart: MultipartBlockEntityInstance
 
     override fun setupRendering(multipart: MultipartBlockEntityInstance) {
         this.multipart = multipart
