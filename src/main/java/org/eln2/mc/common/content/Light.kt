@@ -12,7 +12,7 @@ import net.minecraft.world.level.block.state.StateDefinition
 import net.minecraft.world.level.block.state.properties.IntegerProperty
 import net.minecraft.world.level.material.Material
 import org.eln2.mc.Eln2.LOGGER
-import org.eln2.mc.Mathematics.vec3One
+import org.eln2.mc.Mathematics.bbVec
 import org.eln2.mc.client.render.PartialModels
 import org.eln2.mc.client.render.foundation.BasicPartRenderer
 import org.eln2.mc.common.cells.foundation.CellBase
@@ -26,8 +26,6 @@ import org.eln2.mc.common.events.IEventQueueAccess
 import org.eln2.mc.common.parts.foundation.CellPart
 import org.eln2.mc.common.parts.foundation.IPartRenderer
 import org.eln2.mc.common.parts.foundation.PartPlacementContext
-import org.eln2.mc.common.space.DirectionMask.Companion.perpendicular
-import org.eln2.mc.extensions.BlockPosExtensions.plus
 import org.eln2.mc.integration.waila.TooltipBuilder
 
 interface IGhostLightHandle {
@@ -237,12 +235,14 @@ class LightPart(id: ResourceLocation, placementContext: PartPlacementContext, ce
     CellPart(id, placementContext, cellProvider),
     IEventListener {
 
-    override val baseSize = vec3One()
+    override val baseSize = bbVec(8.0, 1.0 + 2.302, 5.0)
 
     private var lights = ArrayList<IGhostLightHandle>()
 
     override fun createRenderer(): IPartRenderer {
-        return BasicPartRenderer(this, PartialModels.WIRE_CROSSING_FULL)
+        return BasicPartRenderer(this, PartialModels.SMALL_WALL_LAMP).also {
+            it.downOffset = baseSize.y / 2.0
+        }
     }
 
     private fun cleanup() {

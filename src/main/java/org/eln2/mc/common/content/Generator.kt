@@ -7,8 +7,6 @@ import org.ageseries.libage.sim.electrical.mna.Circuit
 import org.ageseries.libage.sim.electrical.mna.component.Resistor
 import org.ageseries.libage.sim.electrical.mna.component.VoltageSource
 import org.eln2.mc.Mathematics.bbVec
-import org.eln2.mc.Mathematics.vec3Y
-import org.eln2.mc.Mathematics.vec3iY
 import org.eln2.mc.annotations.CrossThreadAccess
 import org.eln2.mc.client.render.PartialModels
 import org.eln2.mc.client.render.PartialModels.bbOffset
@@ -26,7 +24,6 @@ import org.eln2.mc.common.parts.foundation.IPartRenderer
 import org.eln2.mc.common.parts.foundation.ITickablePart
 import org.eln2.mc.common.parts.foundation.PartPlacementContext
 import org.eln2.mc.common.space.RelativeRotationDirection
-import org.eln2.mc.extensions.BlockPosExtensions.plus
 import org.eln2.mc.extensions.LibAgeExtensions.add
 import org.eln2.mc.extensions.NbtExtensions.useSubTag
 import org.eln2.mc.extensions.NumberExtensions.formatted
