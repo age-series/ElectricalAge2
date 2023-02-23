@@ -13,7 +13,6 @@ import net.minecraft.world.level.block.state.properties.IntegerProperty
 import net.minecraft.world.level.material.Material
 import org.eln2.mc.Eln2.LOGGER
 import org.eln2.mc.Mathematics.vec3One
-import org.eln2.mc.Mathematics.vec3iY
 import org.eln2.mc.client.render.PartialModels
 import org.eln2.mc.client.render.foundation.BasicPartRenderer
 import org.eln2.mc.common.cells.foundation.CellBase
@@ -27,6 +26,7 @@ import org.eln2.mc.common.events.IEventQueueAccess
 import org.eln2.mc.common.parts.foundation.CellPart
 import org.eln2.mc.common.parts.foundation.IPartRenderer
 import org.eln2.mc.common.parts.foundation.PartPlacementContext
+import org.eln2.mc.common.space.DirectionMask.Companion.perpendicular
 import org.eln2.mc.extensions.BlockPosExtensions.plus
 import org.eln2.mc.integration.waila.TooltipBuilder
 
@@ -39,9 +39,7 @@ class GhostLightBlock : AirBlock(Properties.of(Material.AIR).lightLevel { it.get
     private class LightGrid(val level: Level) {
         private class Cell(val level: Level, val pos: BlockPos, val grid: LightGrid) {
             private fun handleBrightnessChanged(handle: Handle){
-                val maximalBrightness = handles.maxOf { it.trackedBrightness }
-
-                setInLevel(level, pos, maximalBrightness)
+                refreshGhost()
             }
 
             private fun handleDestroyed(handle: Handle) {
@@ -57,6 +55,14 @@ class GhostLightBlock : AirBlock(Properties.of(Material.AIR).lightLevel { it.get
 
             fun createHandle(): IGhostLightHandle {
                 return Handle(this).also { handles.add(it) }
+            }
+
+            fun refreshGhost(){
+                LOGGER.info("Refresh ghost")
+
+                val maximalBrightness = handles.maxOf { it.trackedBrightness }
+
+                setInLevel(level, pos, maximalBrightness)
             }
 
             private class Handle(val cell: Cell): IGhostLightHandle {
@@ -79,7 +85,9 @@ class GhostLightBlock : AirBlock(Properties.of(Material.AIR).lightLevel { it.get
                 }
 
                 override fun destroy() {
-                    cell.handleDestroyed(this)
+                    if(!destroyed){
+                        cell.handleDestroyed(this)
+                    }
                 }
             }
         }
@@ -92,6 +100,10 @@ class GhostLightBlock : AirBlock(Properties.of(Material.AIR).lightLevel { it.get
 
         fun createHandle(pos: BlockPos): IGhostLightHandle {
             return cells.computeIfAbsent(pos) { Cell(level, pos, this) }.createHandle()
+        }
+
+        fun refreshGhost(pos: BlockPos){
+            cells[pos]?.refreshGhost()
         }
     }
 
@@ -133,8 +145,16 @@ class GhostLightBlock : AirBlock(Properties.of(Material.AIR).lightLevel { it.get
             return true
         }
 
+        private fun getGrid(level: Level): LightGrid {
+            return grids.computeIfAbsent(level){ LightGrid(level) }
+        }
+
         fun createHandle(level: Level, pos: BlockPos): IGhostLightHandle {
-            return grids.computeIfAbsent(level){ LightGrid(level) }.createHandle(pos)
+            return getGrid(level).createHandle(pos)
+        }
+
+        fun refreshGhost(level: Level, pos: BlockPos){
+            grids[level]?.refreshGhost(pos)
         }
     }
 
@@ -225,9 +245,9 @@ class LightPart(id: ResourceLocation, placementContext: PartPlacementContext, ce
         return BasicPartRenderer(this, PartialModels.WIRE_CROSSING_FULL)
     }
 
-
     private fun cleanup() {
         lights.forEach { it.destroy() }
+        lights.clear()
     }
 
     override fun onCellAcquired() {
@@ -246,9 +266,12 @@ class LightPart(id: ResourceLocation, placementContext: PartPlacementContext, ce
     }
 
     private fun createLights(){
-        val pos = placementContext.pos + vec3iY(2)
+        val normal = placementContext.face
 
-        lights.add(GhostLightBlock.createHandle(placementContext.level, pos))
+        (perpendicular(normal) + normal).directionList
+        .map { placementContext.pos + it }
+        .map { GhostLightBlock.createHandle(placementContext.level, it) }
+        .forEach { lights.add(it) }
     }
 
     private fun onLightUpdate(event: LightChangeEvent) {

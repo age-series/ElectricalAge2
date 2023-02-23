@@ -4,9 +4,11 @@ import com.charleskorn.kaml.Yaml
 import net.minecraft.ChatFormatting
 import net.minecraft.Util
 import net.minecraft.network.chat.TranslatableComponent
+import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.entity.player.Player
 import net.minecraftforge.event.TickEvent
 import net.minecraftforge.event.entity.EntityJoinWorldEvent
+import net.minecraftforge.event.world.BlockEvent
 import net.minecraftforge.eventbus.api.SubscribeEvent
 import net.minecraftforge.fml.common.Mod
 import net.minecraftforge.fml.loading.FMLPaths
@@ -14,6 +16,8 @@ import net.minecraftforge.server.ServerLifecycleHooks
 import org.eln2.mc.Eln2
 import org.eln2.mc.Eln2.LOGGER
 import org.eln2.mc.common.cells.foundation.CellGraphManager
+import org.eln2.mc.common.content.GhostLightBlock
+import org.eln2.mc.common.events.EventScheduler
 import org.eln2.mc.utility.AnalyticsAcknowledgementsData
 import org.eln2.mc.utility.AveragingList
 import java.io.IOException
@@ -121,6 +125,17 @@ object CommonEvents {
                     }
                 }
             }
+        }
+    }
+
+    @SubscribeEvent
+    fun onBlockBroken(event: BlockEvent){
+        if(event.world.isClientSide){
+            return
+        }
+
+        EventScheduler.scheduleWorkPost(1){
+            GhostLightBlock.refreshGhost(event.world as ServerLevel, event.pos)
         }
     }
 }
