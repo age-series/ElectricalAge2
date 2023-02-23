@@ -4,16 +4,10 @@ import com.jozufozu.flywheel.core.Materials
 import com.jozufozu.flywheel.core.PartialModel
 import com.jozufozu.flywheel.core.materials.FlatLit
 import com.jozufozu.flywheel.core.materials.model.ModelData
-import com.mojang.math.Vector3f
-import net.minecraft.world.phys.Vec3
 import org.eln2.mc.client.render.MultipartBlockEntityInstance
+import org.eln2.mc.client.render.foundation.PartRendererTransforms.applyBlockBenchTransform
 import org.eln2.mc.common.parts.foundation.IPartRenderer
 import org.eln2.mc.common.parts.foundation.Part
-import org.eln2.mc.extensions.ModelDataExtensions.blockCenter
-import org.eln2.mc.extensions.ModelDataExtensions.zeroCenter
-import org.eln2.mc.extensions.QuaternionExtensions.times
-import org.eln2.mc.extensions.Vec3Extensions.times
-import org.eln2.mc.extensions.Vec3Extensions.toVec3
 
 /**
  * The basic part renderer is used to render a single partial model.
@@ -52,11 +46,7 @@ class BasicPartRenderer(val part: Part, val model: PartialModel) : IPartRenderer
             .getModel(model)
             .createInstance()
             .loadIdentity()
-            .translate(part.placementContext.face.opposite.normal.toVec3() * Vec3(downOffset, downOffset, downOffset))
-            .blockCenter()
-            .translate(part.worldBoundingBox.center)
-            .multiply(part.placementContext.face.rotation * part.facingRotation * Vector3f.YP.rotationDegrees(yRotation))
-            .zeroCenter()
+            .applyBlockBenchTransform(part, downOffset, yRotation)
 
         multipart.relightPart(part)
     }

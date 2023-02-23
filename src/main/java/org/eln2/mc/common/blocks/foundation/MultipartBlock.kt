@@ -17,6 +17,7 @@ import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.entity.BlockEntityTicker
 import net.minecraft.world.level.block.entity.BlockEntityType
 import net.minecraft.world.level.block.state.BlockState
+import net.minecraft.world.level.block.state.StateDefinition
 import net.minecraft.world.level.material.FluidState
 import net.minecraft.world.level.material.Material
 import net.minecraft.world.phys.BlockHitResult
@@ -25,11 +26,16 @@ import net.minecraft.world.phys.shapes.EntityCollisionContext
 import net.minecraft.world.phys.shapes.VoxelShape
 import org.eln2.mc.Eln2
 import org.eln2.mc.common.blocks.BlockRegistry
+import org.eln2.mc.common.content.GhostLightBlock
 import org.eln2.mc.common.parts.PartRegistry
 import org.eln2.mc.common.parts.foundation.Part
 import java.util.*
 
-class MultipartBlock : BaseEntityBlock(Properties.of(Material.STONE).noOcclusion().destroyTime(0.2f)) {
+class MultipartBlock : BaseEntityBlock(Properties.of(Material.STONE)
+    .noOcclusion()
+    .destroyTime(0.2f)
+    .lightLevel { it.getValue(GhostLightBlock.brightnessProperty) }) {
+
     private val epsilon = 0.00001
     private val emptyBox = box(0.0, 0.0, 0.0, epsilon, epsilon, epsilon)
 
@@ -227,5 +233,9 @@ class MultipartBlock : BaseEntityBlock(Properties.of(Material.STONE).noOcclusion
             BlockRegistry.MULTIPART_BLOCK_ENTITY.get(),
             MultipartBlockEntity.Companion::blockTick
         )
+    }
+
+    override fun createBlockStateDefinition(pBuilder: StateDefinition.Builder<Block, BlockState>) {
+        pBuilder.add(GhostLightBlock.brightnessProperty)
     }
 }
