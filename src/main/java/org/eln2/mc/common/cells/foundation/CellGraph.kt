@@ -1,8 +1,11 @@
 package org.eln2.mc.common.cells.foundation
 
+import net.minecraft.client.Minecraft
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.nbt.ListTag
 import net.minecraft.resources.ResourceLocation
+import net.minecraft.server.MinecraftServer
+import net.minecraftforge.common.ForgeHooks
 import net.minecraftforge.server.ServerLifecycleHooks
 import org.ageseries.libage.debug.dprintln
 import org.ageseries.libage.sim.electrical.mna.Circuit
@@ -413,6 +416,12 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
         startSimulation()
 
         return circuitCompound
+    }
+
+    fun serverStop(){
+        if(runningTask != null) {
+            stopSimulation()
+        }
     }
 
     private data class ConnectionInfoCell(val cellPos: CellPos, val direction: RelativeRotationDirection)

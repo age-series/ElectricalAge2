@@ -8,6 +8,7 @@ import net.minecraft.world.level.saveddata.SavedData
 import org.eln2.mc.Eln2
 import org.eln2.mc.utility.Stopwatch
 import java.util.*
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * The Cell Graph Manager tracks the cell graphs for a single dimension.
@@ -81,6 +82,10 @@ class CellGraphManager(val level: Level) : SavedData() {
         return graphs[id] ?: error("Graph with id $id not found")
     }
 
+    fun serverStop(){
+        graphs.values.forEach { it.serverStop() }
+    }
+
     companion object {
         private fun load(tag: CompoundTag, level: ServerLevel): CellGraphManager {
             val manager = CellGraphManager(level)
@@ -114,7 +119,11 @@ class CellGraphManager(val level: Level) : SavedData() {
          * Gets or creates a graph manager for the specified level.
          * */
         fun getFor(level: ServerLevel): CellGraphManager {
-            return level.dataStorage.computeIfAbsent({ load(it, level) }, { CellGraphManager(level) }, "CellManager")
+            return level.dataStorage.computeIfAbsent(
+                { load(it, level) },
+                { CellGraphManager(level) },
+                "CellManager")
+
         }
     }
 }

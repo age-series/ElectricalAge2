@@ -1,7 +1,13 @@
 package org.eln2.mc.common.content
 
+import com.jozufozu.flywheel.core.Materials
+import com.jozufozu.flywheel.core.PartialModel
+import com.jozufozu.flywheel.core.materials.FlatLit
+import com.jozufozu.flywheel.core.materials.model.ModelData
+import com.jozufozu.flywheel.util.Color
 import mcp.mobius.waila.api.IPluginConfig
 import net.minecraft.core.BlockPos
+import net.minecraft.nbt.CompoundTag
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.AirBlock
@@ -13,19 +19,23 @@ import net.minecraft.world.level.block.state.properties.IntegerProperty
 import net.minecraft.world.level.material.Material
 import org.eln2.mc.Eln2.LOGGER
 import org.eln2.mc.Mathematics.bbVec
+import org.eln2.mc.annotations.ClientOnly
+import org.eln2.mc.annotations.ServerOnly
+import org.eln2.mc.client.render.MultipartBlockEntityInstance
 import org.eln2.mc.client.render.PartialModels
-import org.eln2.mc.client.render.foundation.BasicPartRenderer
+import org.eln2.mc.client.render.animations.colors.ColorInterpolators
+import org.eln2.mc.client.render.animations.colors.Utilities.colorF
+import org.eln2.mc.client.render.foundation.PartRendererTransforms.applyBlockBenchTransform
 import org.eln2.mc.common.cells.foundation.CellBase
 import org.eln2.mc.common.cells.foundation.CellPos
 import org.eln2.mc.common.cells.foundation.CellProvider
 import org.eln2.mc.common.cells.foundation.objects.SimulationObjectSet
-import org.eln2.mc.common.events.EventScheduler
-import org.eln2.mc.common.events.IEvent
-import org.eln2.mc.common.events.IEventListener
-import org.eln2.mc.common.events.IEventQueueAccess
+import org.eln2.mc.common.events.*
 import org.eln2.mc.common.parts.foundation.CellPart
 import org.eln2.mc.common.parts.foundation.IPartRenderer
 import org.eln2.mc.common.parts.foundation.PartPlacementContext
+import org.eln2.mc.extensions.NbtExtensions.useSubTag
+import org.eln2.mc.extensions.NbtExtensions.withSubTag
 import org.eln2.mc.integration.waila.TooltipBuilder
 
 interface IGhostLightHandle {
@@ -183,6 +193,9 @@ class LightCell(pos: CellPos, id: ResourceLocation, val model: LightModel) : Cel
 
     private var receiver: IEventQueueAccess? = null
 
+    var rawBrightness: Double = 0.0
+        private set
+
     fun subscribeEvents(access: IEventQueueAccess) {
         receiver = access
     }
@@ -204,9 +217,10 @@ class LightCell(pos: CellPos, id: ResourceLocation, val model: LightModel) : Cel
     }
 
     private fun simulationTick(elapsed: Double){
-        val actualBrightness = (model
-            .brightnessFunction
-            .calculateBrightness(resistorObject.power) * 15.0)
+        rawBrightness = model.brightnessFunction.calculateBrightness(resistorObject.power)
+
+        val actualBrightness =
+            (rawBrightness * 15.0)
             .toInt()
             .coerceIn(0, 15)
 
@@ -231,18 +245,106 @@ class LightCell(pos: CellPos, id: ResourceLocation, val model: LightModel) : Cel
     }
 }
 
+class LightRenderer(
+    private val part: LightPart,
+    private val cage: PartialModel,
+    private val emitter: PartialModel) : IPartRenderer {
+
+    companion object {
+        val interpolator = ColorInterpolators.rgbLinear()
+        val COLD_TINT = colorF(1f, 1f, 1f, 1f)
+        val WARM_TINT = Color(254, 196, 127, 255)
+    }
+
+    private val brightnessUpdate = AtomicUpdate<Double>()
+
+    fun updateBrightness(newValue: Double){
+        brightnessUpdate.setLatest(newValue)
+    }
+
+    var yRotation = 0f
+    var downOffset = 0.0
+
+    private var cageInstance: ModelData? = null
+    private var emitterInstance: ModelData? = null
+
+    private lateinit var multipart: MultipartBlockEntityInstance
+
+    override fun setupRendering(multipart: MultipartBlockEntityInstance) {
+        this.multipart = multipart
+
+        buildInstance()
+    }
+
+    private fun create(model: PartialModel): ModelData{
+        return multipart.materialManager
+            .defaultSolid()
+            .material(Materials.TRANSFORMED)
+            .getModel(model)
+            .createInstance()
+            .loadIdentity()
+            .applyBlockBenchTransform(part, downOffset, yRotation)
+    }
+
+    private fun buildInstance() {
+        if (!this::multipart.isInitialized) {
+            error("Multipart not initialized!")
+        }
+
+        cageInstance?.delete()
+        emitterInstance?.delete()
+
+        cageInstance = create(cage)
+        emitterInstance = create(emitter)
+
+        multipart.relightPart(part)
+    }
+
+    override fun relightModels(): List<FlatLit<*>> {
+        val list = ArrayList<ModelData>(2)
+
+        cageInstance?.also { list.add(it) }
+        emitterInstance?.also { list.add(it) }
+
+        return list
+    }
+
+    override fun remove() {
+        cageInstance?.delete()
+        emitterInstance?.delete()
+    }
+
+    override fun beginFrame() {
+        val model = emitterInstance
+            ?: return
+
+        brightnessUpdate.consume {
+            val brightness = it.coerceIn(0.0, 1.0).toFloat()
+
+            model.setColor(interpolator.interpolate(COLD_TINT, WARM_TINT, brightness))
+        }
+    }
+}
+
 class LightPart(id: ResourceLocation, placementContext: PartPlacementContext, cellProvider: CellProvider):
     CellPart(id, placementContext, cellProvider),
     IEventListener {
+
+    companion object {
+        private const val RAW_BRIGHTNESS = "rawBrightness"
+        private const val CLIENT_DATA = "clientData"
+    }
 
     override val baseSize = bbVec(8.0, 1.0 + 2.302, 5.0)
 
     private var lights = ArrayList<IGhostLightHandle>()
 
     override fun createRenderer(): IPartRenderer {
-        return BasicPartRenderer(this, PartialModels.SMALL_WALL_LAMP).also {
-            it.downOffset = baseSize.y / 2.0
-        }
+        return LightRenderer(
+            this,
+            PartialModels.SMALL_WALL_LAMP_CAGE,
+            PartialModels.SMALL_WALL_LAMP_EMITTER)
+            .also { it.downOffset = baseSize.y / 2.0 }
     }
 
     private fun cleanup() {
@@ -282,6 +384,30 @@ class LightPart(id: ResourceLocation, placementContext: PartPlacementContext, ce
         }
 
         updateBrightness(event.brightness)
+
+        syncChanges()
+    }
+
+    @ServerOnly
+    override fun getSyncTag(): CompoundTag {
+        return CompoundTag().withSubTag(CLIENT_DATA, packClientData())
+    }
+
+    @ClientOnly
+    override fun handleSyncTag(tag: CompoundTag) {
+        tag.useSubTag(CLIENT_DATA, this::unpackClientData)
+    }
+
+    override fun getSaveTag(): CompoundTag? {
+        return super.getSaveTag()?.withSubTag(CLIENT_DATA, packClientData())
+    }
+
+    override fun loadFromTag(tag: CompoundTag) {
+        super.loadFromTag(tag)
+
+        if(placementContext.level.isClientSide){
+            tag.useSubTag(CLIENT_DATA, this::unpackClientData)
+        }
     }
 
     override fun onCellReleased() {
@@ -295,5 +421,16 @@ class LightPart(id: ResourceLocation, placementContext: PartPlacementContext, ce
         cleanup()
     }
 
+    private fun unpackClientData(tag: CompoundTag){
+        lightRenderer.updateBrightness(tag.getDouble(RAW_BRIGHTNESS))
+    }
+
+    private fun packClientData(): CompoundTag{
+        return CompoundTag().also {
+            it.putDouble(RAW_BRIGHTNESS, lightCell.rawBrightness)
+        }
+    }
+
     private val lightCell get() = cell as LightCell
+    private val lightRenderer get() = renderer as LightRenderer
 }

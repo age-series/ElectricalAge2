@@ -124,7 +124,7 @@ object NbtExtensions {
      * Creates a new compound tag, calls the consumer method with the new tag, and adds the created tag to this instance.
      * @return The Compound Tag that was created.
      * */
-    fun CompoundTag.withSubTag(key: String, consumer: ((CompoundTag) -> Unit)): CompoundTag {
+    fun CompoundTag.putSubTag(key: String, consumer: ((CompoundTag) -> Unit)): CompoundTag {
         val tag = CompoundTag()
 
         consumer(tag)
@@ -132,6 +132,11 @@ object NbtExtensions {
         this.put(key, tag)
 
         return tag
+    }
+
+    fun CompoundTag.withSubTag(key: String, tag: CompoundTag): CompoundTag {
+        this.put(key, tag)
+        return this
     }
 
     /**

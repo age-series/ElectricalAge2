@@ -18,7 +18,8 @@ object PartialModels {
     val VOLTAGE_SOURCE = partialBlock("voltage_source")
     val RESISTOR = partialBlock("resistor")
     val GROUND = partialBlock("ground_pin")
-    val SMALL_WALL_LAMP = partialBlock("small_wall_lamp")
+    val SMALL_WALL_LAMP_EMITTER = partialBlock("small_wall_lamp_emitter")
+    val SMALL_WALL_LAMP_CAGE = partialBlock("small_wall_lamp_cage")
 
     private fun partial(path: String): PartialModel {
         return PartialModel(Eln2.resource(path))
