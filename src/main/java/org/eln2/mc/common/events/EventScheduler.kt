@@ -4,11 +4,17 @@ import net.minecraftforge.event.TickEvent
 import net.minecraftforge.eventbus.api.SubscribeEvent
 import net.minecraftforge.fml.common.Mod
 import org.eln2.mc.Eln2.LOGGER
+import java.util.PriorityQueue
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.PriorityBlockingQueue
 
 fun interface IEventQueueAccess {
     fun enqueueEvent(event: IEvent): Boolean
+}
+
+fun interface IWorkItem {
+    fun execute()
 }
 
 /**
@@ -22,7 +28,18 @@ object EventScheduler {
         var valid = true
     }
 
+    private var timeStamp: Int = 0
+
+    private data class SynchronousWork(val timeStamp: Int, val item: IWorkItem)
+
     private val eventQueues = ConcurrentHashMap<IEventListener, EventQueue>()
+
+    private val workComparator = Comparator<SynchronousWork> { (c1, _), (c2, _) ->
+        c1.compareTo(c2)
+    }
+
+    private val scheduledWorkPre = PriorityBlockingQueue(1024, workComparator)
+    private val scheduledWorkPost = PriorityBlockingQueue(1024, workComparator)
 
     private fun getEventQueue(listener: IEventListener): EventQueue {
         return eventQueues[listener]
@@ -34,6 +51,14 @@ object EventScheduler {
      * */
     fun getManager(listener: IEventListener): EventManager {
         return getEventQueue(listener).manager
+    }
+
+    fun scheduleWorkPre(countdown: Int, item: IWorkItem){
+        scheduledWorkPre.add(SynchronousWork(timeStamp + countdown, item))
+    }
+
+    fun scheduleWorkPost(countdown: Int, item: IWorkItem){
+        scheduledWorkPost.add(SynchronousWork(timeStamp + countdown, item))
     }
 
     /**
@@ -92,6 +117,8 @@ object EventScheduler {
     @SubscribeEvent
     fun onServerTick(event: TickEvent.ServerTickEvent) {
         if (event.phase == TickEvent.Phase.START) {
+            doSynchronousWork(scheduledWorkPre)
+
             eventQueues.values.forEach {
                 val queue = it.queue
                 val manager = it.manager
@@ -100,6 +127,26 @@ object EventScheduler {
                     manager.send(queue.poll() ?: break)
                 }
             }
+        }
+        else if(event.phase == TickEvent.Phase.END){
+            doSynchronousWork(scheduledWorkPost)
+        }
+
+        timeStamp++
+    }
+
+    private fun doSynchronousWork(queue: PriorityBlockingQueue<SynchronousWork>){
+        while (true){
+            val first = queue.peek()
+                ?: break
+
+            if(first.timeStamp > timeStamp){
+                break
+            }
+
+            queue.remove()
+
+            first.item.execute()
         }
     }
 }
