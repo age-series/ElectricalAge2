@@ -3,6 +3,7 @@
 package org.eln2.mc.common.content
 
 import net.minecraft.world.phys.Vec3
+import org.eln2.mc.Mathematics.bbVec
 import org.eln2.mc.Mathematics.vec3
 import org.eln2.mc.Mathematics.vec3One
 import org.eln2.mc.common.blocks.BlockRegistry
@@ -53,8 +54,8 @@ object Content {
     val BATTERY_PART_100V = PartRegistry.part("battery_part_100v", BasicPartProvider({a, b -> BatteryPart(a, b, BATTERY_CELL_100V.get())}, vec3(1.0)))
 
     val LIGHT_GHOST_BLOCK = BlockRegistry.registerBasicBlock("light_ghost"){GhostLightBlock()}
-    val LIGHT_CELL = CellRegistry.register("light_cell", BasicCellProvider.polarFB { pos, id ->
+    val LIGHT_CELL = CellRegistry.register("light_cell", BasicCellProvider.polarLR { pos, id ->
         LightCell(pos, id, LightModels.test())
     })
-    val LIGHT_PART = PartRegistry.part("light_part", BasicPartProvider({a, b -> LightPart(a, b, LIGHT_CELL.get())}, vec3One()))
+    val LIGHT_PART = PartRegistry.part("light_part", BasicPartProvider({a, b -> LightPart(a, b, LIGHT_CELL.get())}, bbVec(8.0, 4.0, 5.0)))
 }
