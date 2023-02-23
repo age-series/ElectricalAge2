@@ -16,4 +16,8 @@ object SelfDescriptiveUnitMultipliers {
     fun megaJoules(value: Double): Double{
         return value * 1e6
     }
+
+    fun centimeters(value: Double): Double {
+        return value / 100.0
+    }
 }

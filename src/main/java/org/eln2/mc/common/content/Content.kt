@@ -5,12 +5,12 @@ package org.eln2.mc.common.content
 import net.minecraft.world.phys.Vec3
 import org.eln2.mc.Mathematics.bbVec
 import org.eln2.mc.Mathematics.vec3
-import org.eln2.mc.Mathematics.vec3One
 import org.eln2.mc.common.blocks.BlockRegistry
 import org.eln2.mc.common.cells.CellRegistry
 import org.eln2.mc.common.cells.foundation.providers.BasicCellProvider
 import org.eln2.mc.common.parts.PartRegistry
 import org.eln2.mc.common.parts.foundation.providers.BasicPartProvider
+import org.eln2.mc.utility.SelfDescriptiveUnitMultipliers.centimeters
 import org.eln2.mc.utility.SelfDescriptiveUnitMultipliers.milliOhms
 import org.eln2.mc.utility.UnitConversions.kwHoursInJ
 import org.eln2.mc.utility.UnitConversions.wattHoursInJ
@@ -24,8 +24,12 @@ object Content {
      */
     fun initialize() {}
 
-    val WIRE_CELL = CellRegistry.register("wire_cell", BasicCellProvider.fourPin(::WireCell))
-    val WIRE_PART = PartRegistry.part("wire_part", BasicPartProvider(::WirePart, Vec3(0.1, 0.1, 0.1)))
+    val COPPER_WIRE_CELL = CellRegistry.register("wire_cell_copper", BasicCellProvider.fourPin  { a, b ->
+        WireCell(a, b, WireModels.copper(centimeters(5.0)))
+    })
+    val COPPER_WIRE_PART = PartRegistry.part("wire_part_copper", BasicPartProvider({ a, b ->
+        WirePart(a, b, COPPER_WIRE_CELL.get())
+    }, Vec3(0.1, 0.1, 0.1)))
 
     val RESISTOR_CELL = CellRegistry.register("resistor_cell", BasicCellProvider.polarFB(::ResistorCell))
     val RESISTOR_PART = PartRegistry.part("resistor_part", BasicPartProvider(::ResistorPart, Vec3(1.0, 0.4, 0.4)))

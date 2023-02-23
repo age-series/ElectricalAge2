@@ -1,3 +1,5 @@
+@file:Suppress("NonAsciiCharacters")
+
 package org.eln2.mc.common.content
 
 import com.jozufozu.flywheel.core.Materials
@@ -20,6 +22,7 @@ import org.eln2.mc.client.render.PartialModels
 import org.eln2.mc.common.cells.CellRegistry
 import org.eln2.mc.common.cells.foundation.CellBase
 import org.eln2.mc.common.cells.foundation.CellPos
+import org.eln2.mc.common.cells.foundation.CellProvider
 import org.eln2.mc.common.cells.foundation.objects.ElectricalComponentInfo
 import org.eln2.mc.common.cells.foundation.objects.ElectricalObject
 import org.eln2.mc.common.cells.foundation.objects.ResistorBundle
@@ -109,14 +112,28 @@ class WireObject : ElectricalObject(), IWailaProvider {
     }
 }
 
-class WireCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) {
-    override fun createObjectSet(): SimulationObjectSet {
-        return SimulationObjectSet(WireObject())
+data class WireModel(val resistanceMeter: Double)
+
+object WireModels {
+    private fun getResistance(ρ: Double, L: Double, A: Double): Double {
+        return ρ * L / A
+    }
+
+    fun copper(thickness: Double): WireModel {
+        return WireModel(getResistance(1.77 * 10e-8, 1.0, thickness))
     }
 }
 
-class WirePart(id: ResourceLocation, context: PartPlacementContext) :
-    CellPart(id, context, Content.WIRE_CELL.get()) {
+class WireCell(pos: CellPos, id: ResourceLocation, val model: WireModel) : CellBase(pos, id) {
+    override fun createObjectSet(): SimulationObjectSet {
+        return SimulationObjectSet(WireObject().also {
+            it.resistance = model.resistanceMeter / 2.0 // Divide by two because bundle creates 2 resistors
+        })
+    }
+}
+
+class WirePart(id: ResourceLocation, context: PartPlacementContext, cellProvider: CellProvider) :
+    CellPart(id, context, cellProvider) {
 
     override val baseSize = bbVec(8.0, 2.0, 8.0)
 
