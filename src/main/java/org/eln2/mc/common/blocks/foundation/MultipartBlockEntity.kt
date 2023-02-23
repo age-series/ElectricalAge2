@@ -23,11 +23,13 @@ import net.minecraft.world.phys.shapes.BooleanOp
 import net.minecraft.world.phys.shapes.Shapes
 import net.minecraft.world.phys.shapes.VoxelShape
 import org.eln2.mc.Eln2
+import org.eln2.mc.Eln2.LOGGER
 import org.eln2.mc.annotations.ClientOnly
 import org.eln2.mc.annotations.ServerOnly
 import org.eln2.mc.client.render.MultipartBlockEntityInstance
 import org.eln2.mc.common.blocks.BlockRegistry
 import org.eln2.mc.common.cells.foundation.*
+import org.eln2.mc.common.content.GhostLightBlock
 import org.eln2.mc.common.parts.PartRegistry
 import org.eln2.mc.common.parts.foundation.*
 import org.eln2.mc.common.space.DirectionMask
@@ -58,7 +60,7 @@ import java.util.concurrent.ConcurrentLinkedQueue
  *  - The multipart entity saves data for all the parts. Parts are responsible for their rendering.
  *  - A part can also be included in the simulation. Special connection logic is implemented for CellPart.
  * */
-class MultipartBlockEntity(var pos: BlockPos, var state: BlockState) :
+class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
     BlockEntity(BlockRegistry.MULTIPART_BLOCK_ENTITY.get(), pos, state),
     ICellContainer,
     IWailaProvider {
@@ -104,6 +106,14 @@ class MultipartBlockEntity(var pos: BlockPos, var state: BlockState) :
 
         result.onRemoved()
 
+        level?.also {
+            if(!it.isClientSide){
+                // Remove lingering lights
+
+                updateBrightness()
+            }
+        }
+
         return result
     }
 
@@ -125,7 +135,7 @@ class MultipartBlockEntity(var pos: BlockPos, var state: BlockState) :
      * */
     @ServerOnly
     private fun syncData() {
-        level!!.sendBlockUpdated(blockPos, state, state, Block.UPDATE_CLIENTS)
+        level!!.sendBlockUpdated(blockPos, blockState, blockState, Block.UPDATE_CLIENTS)
     }
 
     /**
@@ -446,7 +456,12 @@ class MultipartBlockEntity(var pos: BlockPos, var state: BlockState) :
             return
         }
 
-        val tag = packet.tag!!
+        val tag = packet.tag
+
+        if(tag == null){
+            Eln2.LOGGER.error("Got null update tag")
+            return
+        }
 
         unpackPlacementUpdates(tag)
         unpackPartUpdates(tag)
@@ -919,6 +934,35 @@ class MultipartBlockEntity(var pos: BlockPos, var state: BlockState) :
     }
 
     val needsTicks get() = tickingParts.isNotEmpty()
+
+    private fun setBlockBrightness(value: Int){
+        level!!.setBlockAndUpdate(pos, blockState.setValue(GhostLightBlock.brightnessProperty, value))
+    }
+
+    fun updateBrightness() {
+        if(level!!.isClientSide){
+            error("Cannot update brightness on client")
+        }
+
+        val currentBrightness = blockState.getValue(GhostLightBlock.brightnessProperty)
+
+        LOGGER.info("Brightness: $currentBrightness")
+
+        val targetBrightness = parts.values.maxOfOrNull { it.brightness }
+
+        LOGGER.info("Target brightness: $targetBrightness")
+
+        if(targetBrightness == null) {
+            setBlockBrightness(0)
+            return
+        }
+
+        if(targetBrightness != currentBrightness) {
+            LOGGER.info("Setting")
+
+            setBlockBrightness(targetBrightness)
+        }
+    }
 
     companion object {
         fun <T : BlockEntity> blockTick(level: Level?, pos: BlockPos?, state: BlockState?, entity: T?) {

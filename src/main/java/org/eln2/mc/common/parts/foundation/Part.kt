@@ -27,6 +27,9 @@ abstract class Part(val id: ResourceLocation, val placementContext: PartPlacemen
 
     private var cachedShape: VoxelShape? = null
 
+    var brightness: Int = 0
+        private set
+
     /**
      * This gets the relative direction towards the global direction, taking into account the facing of this part.
      * @param global A global direction.
@@ -245,5 +248,14 @@ abstract class Part(val id: ResourceLocation, val placementContext: PartPlacemen
     open fun destroyRenderer() {
         cachedRenderer?.remove()
         cachedRenderer = null
+    }
+
+    /**
+     * Sends a light update to the multipart.
+     * */
+    fun updateBrightness(newValue: Int){
+        brightness = newValue
+
+        placementContext.multipart.updateBrightness()
     }
 }

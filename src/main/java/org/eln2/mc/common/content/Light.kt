@@ -110,7 +110,7 @@ class GhostLightBlock : AirBlock(Properties.of(Material.AIR).lightLevel { it.get
     companion object {
         private val block get() = Content.LIGHT_GHOST_BLOCK.block.get()
 
-        private val brightnessProperty: IntegerProperty = IntegerProperty.create("brightness", 0, 15)
+        val brightnessProperty: IntegerProperty = IntegerProperty.create("brightness", 0, 15)
 
         private val grids = HashMap<Level, LightGrid>()
 
@@ -266,12 +266,12 @@ class LightPart(id: ResourceLocation, placementContext: PartPlacementContext, ce
     }
 
     private fun createLights(){
-        val normal = placementContext.face
+       /* val normal = placementContext.face
 
         (perpendicular(normal) + normal).directionList
         .map { placementContext.pos + it }
         .map { GhostLightBlock.createHandle(placementContext.level, it) }
-        .forEach { lights.add(it) }
+        .forEach { lights.add(it) }*/
     }
 
     private fun onLightUpdate(event: LightChangeEvent) {
@@ -280,6 +280,8 @@ class LightPart(id: ResourceLocation, placementContext: PartPlacementContext, ce
         lights.forEach {
             it.update(event.brightness)
         }
+
+        updateBrightness(event.brightness)
     }
 
     override fun onCellReleased() {
