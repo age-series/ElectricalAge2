@@ -25,6 +25,8 @@ import org.eln2.mc.common.parts.foundation.ITickablePart
 import org.eln2.mc.common.parts.foundation.PartPlacementContext
 import org.eln2.mc.common.space.RelativeRotationDirection
 import org.eln2.mc.extensions.LibAgeExtensions.add
+import org.eln2.mc.extensions.LibAgeExtensions.setPotentialEpsilon
+import org.eln2.mc.extensions.LibAgeExtensions.setResistanceEpsilon
 import org.eln2.mc.extensions.NbtExtensions.useSubTag
 import org.eln2.mc.extensions.NumberExtensions.formatted
 import org.eln2.mc.integration.waila.IWailaProvider
@@ -46,19 +48,13 @@ class GeneratorObject : ElectricalObject(), IWailaProvider {
     var internalResistance: Double = 1.0
         set(value){
             field = value
-
-            resistor.ifPresent {
-                it.resistance = value
-            }
+            resistor.ifPresent { it.setResistanceEpsilon(value) }
         }
 
     var potential: Double = 1.0
         set(value){
             field = value
-
-            source.ifPresent {
-                it.potential = value
-            }
+            source.ifPresent { it.setPotentialEpsilon(value) }
         }
 
     private val resistor = ComponentHolder {
