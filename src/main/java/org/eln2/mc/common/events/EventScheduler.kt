@@ -4,7 +4,7 @@ import net.minecraftforge.event.TickEvent
 import net.minecraftforge.eventbus.api.SubscribeEvent
 import net.minecraftforge.fml.common.Mod
 import org.eln2.mc.Eln2.LOGGER
-import java.util.PriorityQueue
+import org.eln2.mc.annotations.CrossThreadAccess
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.PriorityBlockingQueue
@@ -18,11 +18,13 @@ fun interface IWorkItem {
 }
 
 /**
- * The event scheduler can be used to schedule events from any thread, that are to be sent on a game tick.
+ * The Event Scheduler is used to execute work and dispatch events to the server thread.
+ * It is used in scenarios where e.g. simulation threads need to signal a game object, that will subsequently
+ * perform game logic.
  * */
 @Mod.EventBusSubscriber
 object EventScheduler {
-    private class EventQueue(listener: IEventListener) {
+    private class EventQueue {
         val manager = EventManager()
         val queue = ConcurrentLinkedQueue<IEvent>()
         var valid = true
@@ -47,27 +49,30 @@ object EventScheduler {
     }
 
     /**
-     * Gets the Event Manager of the queue of the specified listener.
+     * Gets the Event Manager of the listener.
      * */
+    @CrossThreadAccess
     fun getManager(listener: IEventListener): EventManager {
         return getEventQueue(listener).manager
     }
 
+    @CrossThreadAccess
     fun scheduleWorkPre(countdown: Int, item: IWorkItem){
         scheduledWorkPre.add(SynchronousWork(timeStamp + countdown, item))
     }
 
+    @CrossThreadAccess
     fun scheduleWorkPost(countdown: Int, item: IWorkItem){
         scheduledWorkPost.add(SynchronousWork(timeStamp + countdown, item))
     }
 
     /**
      * Creates an event queue for the specified listener.
-     * Only one queue can exist per listener. An error will be raised if this listener already registered a queue.
+     * Only one queue can exist per listener.
      * This queue can be subsequently accessed, and events can be enqueued for the next tick.
      * */
     fun register(listener: IEventListener) {
-        if (eventQueues.put(listener, EventQueue(listener)) != null) {
+        if (eventQueues.put(listener, EventQueue()) != null) {
             error("Duplicate add $listener")
         }
     }
@@ -77,6 +82,7 @@ object EventScheduler {
      * This may be used concurrently.
      * Events enqueued using this access will be sent to the listener on the next tick.
      * */
+    @CrossThreadAccess
     fun getEventAccess(listener: IEventListener): IEventQueueAccess {
         val eventQueue = getEventQueue(listener)
 
@@ -96,15 +102,13 @@ object EventScheduler {
         }
     }
 
-    /**
-     * Gets the event access for the specified listener, and enqueues an event for the next tick.
-     * */
+    @CrossThreadAccess
     fun enqueueEvent(listener: IEventListener, event: IEvent) {
         getEventAccess(listener).enqueueEvent(event)
     }
 
     /**
-     * Destroys the event queue of the specified listener. Results in an exception if the listener was not registered beforehand.
+     * Destroys the event queue of the specified listener.
      * */
     fun remove(listener: IEventListener) {
         val removed = eventQueues.remove(listener) ?: error("Could not find queue for $listener")
@@ -119,20 +123,26 @@ object EventScheduler {
         if (event.phase == TickEvent.Phase.START) {
             doSynchronousWork(scheduledWorkPre)
 
-            eventQueues.values.forEach {
-                val queue = it.queue
-                val manager = it.manager
-
-                while (true) {
-                    manager.send(queue.poll() ?: break)
-                }
-            }
+            dispatchEvents()
         }
         else if(event.phase == TickEvent.Phase.END){
             doSynchronousWork(scheduledWorkPost)
-        }
 
-        timeStamp++
+            timeStamp++
+        }
+    }
+
+    private fun dispatchEvents() {
+        // Todo: hold a list of dirty queues so we don't traverse the full set
+
+        eventQueues.values.forEach {
+            val queue = it.queue
+            val manager = it.manager
+
+            while (true) {
+                manager.send(queue.poll() ?: break)
+            }
+        }
     }
 
     private fun doSynchronousWork(queue: PriorityBlockingQueue<SynchronousWork>){
@@ -141,10 +151,13 @@ object EventScheduler {
                 ?: break
 
             if(first.timeStamp > timeStamp){
+                // Because our queue is sorted, it means there are no items
+                // that we should execute this tick.
+
                 break
             }
 
-            queue.remove()
+            assert(queue.remove(first))
 
             first.item.execute()
         }
