@@ -47,9 +47,9 @@ object Content {
     val BATTERY_CELL_100V = CellRegistry.register("battery_cell_t", BasicCellProvider.polarFB{ pos, id ->
         BatteryCell(pos, id, BatteryModel(
             VoltageModels.TEST,
-            { _, _, _ -> milliOhms(100.0) },
-            { _, _, _, _, _ -> 0.0 },
-            { _, _ -> 1.0 },
+            { _, _ -> milliOhms(100.0) },
+            { _, _, -> 0.0 },
+            { _ -> 1.0 },
             kwHoursInJ(2.2),
             0.5))
         .also { it.energy = it.model.energyCapacity / 2.0 }
