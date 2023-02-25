@@ -44,17 +44,17 @@ object Content {
     val FURNACE_CELL = CellRegistry.register("furnace_cell", BasicCellProvider.polarLR(::FurnaceCell))
     val FURNACE_BLOCK = BlockRegistry.registerBasicBlock("furnace", tab = null) { FurnaceBlock() }
 
-    val BATTERY_CELL_10V = CellRegistry.register("battery_cell_10v", BasicCellProvider.polarFB{ pos, id ->
-        BatteryCell(pos, id, BatteryModels.linVConstR(10.0, milliOhms(50.0), wattHoursInJ(100.0)))
+    val BATTERY_CELL_100V = CellRegistry.register("battery_cell_t", BasicCellProvider.polarFB{ pos, id ->
+        BatteryCell(pos, id, BatteryModel(
+            VoltageModels.TEST,
+            { _, _, _ -> milliOhms(100.0) },
+            { _, _, _, _, _ -> 0.0 },
+            { _, _ -> 1.0 },
+            kwHoursInJ(2.2),
+            0.5))
         .also { it.energy = it.model.energyCapacity / 2.0 }
     })
 
-    val BATTERY_CELL_100V = CellRegistry.register("battery_cell_100v", BasicCellProvider.polarFB{ pos, id ->
-        BatteryCell(pos, id, BatteryModels.linVConstR(100.0, milliOhms(100.0), kwHoursInJ(1.2)))
-        .also { it.energy = it.model.energyCapacity / 2.0 }
-    })
-
-    val BATTERY_PART_10V = PartRegistry.part("battery_part_10v", BasicPartProvider({a, b -> BatteryPart(a, b, BATTERY_CELL_10V.get())}, vec3(1.0)))
     val BATTERY_PART_100V = PartRegistry.part("battery_part_100v", BasicPartProvider({a, b -> BatteryPart(a, b, BATTERY_CELL_100V.get())}, vec3(1.0)))
 
     val LIGHT_GHOST_BLOCK = BlockRegistry.registerBasicBlock("light_ghost"){GhostLightBlock()}

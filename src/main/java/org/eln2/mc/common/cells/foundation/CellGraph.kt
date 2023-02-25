@@ -1,11 +1,8 @@
 package org.eln2.mc.common.cells.foundation
 
-import net.minecraft.client.Minecraft
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.nbt.ListTag
 import net.minecraft.resources.ResourceLocation
-import net.minecraft.server.MinecraftServer
-import net.minecraftforge.common.ForgeHooks
 import net.minecraftforge.server.ServerLifecycleHooks
 import org.ageseries.libage.debug.dprintln
 import org.ageseries.libage.sim.electrical.mna.Circuit
@@ -26,6 +23,7 @@ import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.collections.ArrayDeque
 import kotlin.system.measureNanoTime
@@ -156,16 +154,23 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
             successful = true
 
             circuits.forEach {
-                successful = successful && it.step(elapsed)
-            }
+                val success = it.step(elapsed)
 
-            if(!successful){
-                LOGGER.error("Failed to solve")
+                successful = successful && success
+
+                if(!success && !it.isFloating){
+                    LOGGER.error("Failed to update non-floating circuit!")
+                }
             }
         })
 
         subscribers.forEach {
-            it.simulationTick(elapsed)
+            try {
+                it.simulationTick(elapsed)
+            }
+            catch (e: Throwable){
+                LOGGER.error("FATAL SIMULATION ERROR WHILE TICKING $it: $e", e)
+            }
         }
 
         updates++
@@ -436,7 +441,24 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
             LOGGER.info("Using ${Configuration.config.simulationThreads} simulation threads")
         }
 
-        private val pool = Executors.newScheduledThreadPool(Configuration.config.simulationThreads)
+        private val threadNumber = AtomicInteger()
+
+        private fun createThread(r: Runnable): Thread{
+            val t = Thread(r, "cell-graph-${threadNumber.getAndIncrement()}")
+
+            if (t.isDaemon){
+                t.isDaemon = false
+            }
+
+            if (t.priority != Thread.NORM_PRIORITY){
+                t.priority = Thread.NORM_PRIORITY
+            }
+
+            return t
+        }
+
+        private val pool = Executors.newScheduledThreadPool(
+            Configuration.config.simulationThreads, ::createThread)
 
         fun fromNbt(graphCompound: CompoundTag, manager: CellGraphManager): CellGraph {
             val id = graphCompound.getUUID("ID")

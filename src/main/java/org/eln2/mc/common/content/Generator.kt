@@ -6,7 +6,10 @@ import net.minecraft.resources.ResourceLocation
 import org.ageseries.libage.sim.electrical.mna.Circuit
 import org.ageseries.libage.sim.electrical.mna.component.Resistor
 import org.ageseries.libage.sim.electrical.mna.component.VoltageSource
+import org.eln2.mc.HermiteSpline
 import org.eln2.mc.Mathematics.bbVec
+import org.eln2.mc.Mathematics.lerp
+import org.eln2.mc.Mathematics.map
 import org.eln2.mc.annotations.CrossThreadAccess
 import org.eln2.mc.client.render.PartialModels
 import org.eln2.mc.client.render.PartialModels.bbOffset
@@ -28,7 +31,7 @@ import org.eln2.mc.extensions.LibAgeExtensions.add
 import org.eln2.mc.extensions.LibAgeExtensions.setPotentialEpsilon
 import org.eln2.mc.extensions.LibAgeExtensions.setResistanceEpsilon
 import org.eln2.mc.extensions.NbtExtensions.useSubTag
-import org.eln2.mc.extensions.NumberExtensions.formatted
+import org.eln2.mc.extensions.NumberExtensions.formattedPercentN
 import org.eln2.mc.integration.waila.IWailaProvider
 import org.eln2.mc.integration.waila.TooltipBuilder
 import kotlin.math.abs
@@ -68,6 +71,8 @@ class GeneratorObject : ElectricalObject(), IWailaProvider {
     val hasResistor get() = resistor.isPresent
 
     val resistorPower get() = resistor.instance.power
+
+    val resistorCurrent get() = resistor.instance.current
 
     val powerFlowDirection get() =
         if(resistor.instance.current > 0) GeneratorPowerDirection.Incoming
@@ -121,23 +126,52 @@ abstract class GeneratorCell(pos: CellPos, id: ResourceLocation) : CellBase(pos,
 }
 
 fun interface IBatteryVoltageFunction {
-    fun computeVoltage(charge: Double): Double
+    fun computeVoltage(
+        model: BatteryModel,
+        charge: Double,
+        thresholdCharge: Double,
+        life: Double): Double
 }
 
 fun interface IBatteryResistanceFunction {
-    fun computeResistance(charge: Double): Double
+    fun computeResistance(
+        model: BatteryModel,
+        charge: Double,
+        life: Double): Double
 }
 
-object BatteryFunctions {
-    fun linV(maxVoltage: Double): IBatteryVoltageFunction {
-        return IBatteryVoltageFunction {
-            it * maxVoltage
-        }
-    }
+fun interface IBatteryDamageFunction {
+    fun computeDamage(
+        model: BatteryModel,
+        charge: Double,
+        current: Double,
+        dt: Double,
+        life: Double): Double
+}
 
-    fun constR(resistance: Double): IBatteryResistanceFunction{
-        return IBatteryResistanceFunction {
-            resistance
+fun interface IBatteryEnergyCapacityFunction {
+    fun computeCapacity(model: BatteryModel, life: Double): Double
+}
+
+object VoltageModels {
+    private val TEST_VOLTAGE_SPLINE =
+        HermiteSpline.loadSpline("battery_models/test.txt")
+    
+    val TEST = IBatteryVoltageFunction { model, charge, thresholdCharge, _ ->
+        if(charge > model.thresholdCharge){
+            TEST_VOLTAGE_SPLINE.evaluate(thresholdCharge)
+        }
+        else{
+            val progress = map(
+                charge,
+                0.0,
+                model.thresholdCharge,
+                0.0,
+                1.0)
+
+            val ceiling = TEST_VOLTAGE_SPLINE.evaluate(0.0)
+
+            lerp(0.0, ceiling, progress)
         }
     }
 }
@@ -145,28 +179,36 @@ object BatteryFunctions {
 data class BatteryModel(
     val voltageFunction: IBatteryVoltageFunction,
     val resistanceFunction: IBatteryResistanceFunction,
-    val energyCapacity: Double)
+    val damageFunction: IBatteryDamageFunction,
+    val capacityFunction: IBatteryEnergyCapacityFunction,
+    val energyCapacity: Double,
+    val thresholdCharge: Double)
 
-object BatteryModels {
-    fun linVConstR(maxVoltage: Double, resistance: Double, capacity: Double): BatteryModel{
-        return BatteryModel(BatteryFunctions.linV(maxVoltage), BatteryFunctions.constR(resistance), capacity)
-    }
-}
+data class BatteryState(val energy: Double, val life: Double)
 
 class BatteryCell(pos: CellPos, id: ResourceLocation, val model: BatteryModel) : GeneratorCell(pos, id) {
     companion object {
         private const val ENERGY = "energy"
+        private const val LIFE = "life"
     }
 
     var energy = 0.0
+    var life = 1.0
 
-    private val energyUpdate = AtomicUpdate<Double>()
+    private val stateUpdate = AtomicUpdate<BatteryState>()
 
     val charge get() = energy / model.energyCapacity
 
+    val thresholdCharge get() = map(
+        charge,
+        model.thresholdCharge,
+        1.0,
+        0.0,
+        1.0)
+
     @CrossThreadAccess
     fun deserializeNbt(tag: CompoundTag) {
-        energyUpdate.setLatest(tag.getDouble(ENERGY))
+        stateUpdate.setLatest(BatteryState(tag.getDouble(ENERGY), tag.getDouble(LIFE)))
     }
 
     @CrossThreadAccess
@@ -174,6 +216,7 @@ class BatteryCell(pos: CellPos, id: ResourceLocation, val model: BatteryModel) :
         val tag = CompoundTag()
 
         tag.putDouble(ENERGY, energy)
+        tag.putDouble(LIFE, life)
 
         return tag
     }
@@ -191,7 +234,10 @@ class BatteryCell(pos: CellPos, id: ResourceLocation, val model: BatteryModel) :
     }
 
     private fun applyExternalUpdates(){
-        energyUpdate.consume { energy = it }
+        stateUpdate.consume {
+            energy = it.energy
+            life = it.life
+        }
     }
 
     private fun simulateEnergyFlow(elapsed: Double) {
@@ -210,7 +256,7 @@ class BatteryCell(pos: CellPos, id: ResourceLocation, val model: BatteryModel) :
         }
 
         // Clamp energy
-        energy = energy.coerceIn(0.0, model.energyCapacity)
+        energy = energy.coerceIn(0.0, model.energyCapacity * model.capacityFunction.computeCapacity(model, life))
     }
 
     private fun simulationTick(elapsed: Double){
@@ -222,13 +268,24 @@ class BatteryCell(pos: CellPos, id: ResourceLocation, val model: BatteryModel) :
 
         simulateEnergyFlow(elapsed)
 
-        generatorObject.potential = model.voltageFunction.computeVoltage(charge)
-        generatorObject.internalResistance = model.resistanceFunction.computeResistance(charge)
+        generatorObject.potential = model.voltageFunction.computeVoltage(model, charge, thresholdCharge, life)
+        generatorObject.internalResistance = model.resistanceFunction.computeResistance(model, charge, life)
+
+        life -= model.damageFunction.computeDamage(
+            model,
+            charge,
+            generatorObject.resistorCurrent,
+            elapsed,
+            life)
+
+        life = life.coerceIn(0.0, 1.0)
     }
 
     override fun appendBody(builder: TooltipBuilder, config: IPluginConfig?) {
         super.appendBody(builder, config)
-        builder.text("Charge", "${(charge * 100.0).formatted()}%")
+
+        builder.text("Charge", thresholdCharge.formattedPercentN())
+        builder.text("Life", life.formattedPercentN())
         builder.energy(energy)
     }
 }
