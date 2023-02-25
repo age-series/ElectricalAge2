@@ -131,7 +131,10 @@ dependencies {
 
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.1'
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.1'
-
+    library "io.prometheus:simpleclient:0.16.0"
+    library "io.prometheus:simpleclient_hotspot:0.16.0"
+    library "io.prometheus:simpleclient_httpserver:0.16.0"
+    library "io.prometheus:simpleclient_pushgateway:0.16.0"
     // Real mod deobf dependency examples - these get remapped to your current mappings
     // compileOnly fg.deobf("mezz.jei:jei-${mc_version}:${jei_version}:api") // Adds JEI API as a compile dependency
     // runtimeOnly fg.deobf("mezz.jei:jei-${mc_version}:${jei_version}") // Adds the full JEI mod as a runtime dependency
