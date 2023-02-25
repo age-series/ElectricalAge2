@@ -125,51 +125,49 @@ abstract class GeneratorCell(pos: CellPos, id: ResourceLocation) : CellBase(pos,
     val generatorObject = electricalObject as GeneratorObject
 }
 
+interface IBatteryView {
+    val model: BatteryModel
+    val energy: Double
+    val current: Double
+    val life: Double
+    val cycles: Double
+    val charge: Double
+    val thresholdCharge: Double
+}
+
 fun interface IBatteryVoltageFunction {
-    fun computeVoltage(
-        model: BatteryModel,
-        charge: Double,
-        thresholdCharge: Double,
-        life: Double): Double
+    fun computeVoltage(battery: IBatteryView, dt: Double): Double
 }
 
 fun interface IBatteryResistanceFunction {
-    fun computeResistance(
-        model: BatteryModel,
-        charge: Double,
-        life: Double): Double
+    fun computeResistance(battery: IBatteryView, dt: Double): Double
 }
 
 fun interface IBatteryDamageFunction {
-    fun computeDamage(
-        model: BatteryModel,
-        charge: Double,
-        current: Double,
-        dt: Double,
-        life: Double): Double
+    fun computeDamage(battery: IBatteryView, dt: Double): Double
 }
 
 fun interface IBatteryEnergyCapacityFunction {
-    fun computeCapacity(model: BatteryModel, life: Double): Double
+    fun computeCapacity(battery: IBatteryView): Double
 }
 
 object VoltageModels {
-    private val TEST_VOLTAGE_SPLINE =
-        HermiteSpline.loadSpline("battery_models/test.txt")
-    
-    val TEST = IBatteryVoltageFunction { model, charge, thresholdCharge, _ ->
-        if(charge > model.thresholdCharge){
-            TEST_VOLTAGE_SPLINE.evaluate(thresholdCharge)
+    private val VOLTAGE_12V_LEAD_ACID =
+        HermiteSpline.loadSpline("battery_models/12v_lead_acid_voltage.spline")
+
+    val TEST = IBatteryVoltageFunction { view, _ ->
+        if(view.charge > view.model.damageChargeThreshold){
+            VOLTAGE_12V_LEAD_ACID.evaluate(view.thresholdCharge)
         }
         else{
             val progress = map(
-                charge,
+                view.charge,
                 0.0,
-                model.thresholdCharge,
+                view.model.damageChargeThreshold,
                 0.0,
                 1.0)
 
-            val ceiling = TEST_VOLTAGE_SPLINE.evaluate(0.0)
+            val ceiling = VOLTAGE_12V_LEAD_ACID.evaluate(0.0)
 
             lerp(0.0, ceiling, progress)
         }
@@ -182,33 +180,50 @@ data class BatteryModel(
     val damageFunction: IBatteryDamageFunction,
     val capacityFunction: IBatteryEnergyCapacityFunction,
     val energyCapacity: Double,
-    val thresholdCharge: Double)
+    val damageChargeThreshold: Double)
 
-data class BatteryState(val energy: Double, val life: Double)
+data class BatteryState(val energy: Double, val life: Double, val cycles: Double)
 
-class BatteryCell(pos: CellPos, id: ResourceLocation, val model: BatteryModel) : GeneratorCell(pos, id) {
+class BatteryCell(pos: CellPos, id: ResourceLocation, override val model: BatteryModel) :
+    GeneratorCell(pos, id),
+    IBatteryView {
+
     companion object {
         private const val ENERGY = "energy"
         private const val LIFE = "life"
+        private const val CYCLES = "cycles"
     }
 
-    var energy = 0.0
-    var life = 1.0
+    override var energy = 0.0
+
+    override var life = 1.0
+        private set
+
+    override var cycles = 0.0
+        private set
+
+    override val current get() = generatorObject.resistorCurrent
 
     private val stateUpdate = AtomicUpdate<BatteryState>()
 
-    val charge get() = energy / model.energyCapacity
+    override val charge get() = energy / model.energyCapacity
 
-    val thresholdCharge get() = map(
+    override val thresholdCharge get() = map(
         charge,
-        model.thresholdCharge,
+        model.damageChargeThreshold,
         1.0,
         0.0,
         1.0)
 
+    val adjustedEnergyCapacity
+        get() = model.energyCapacity * model.capacityFunction.computeCapacity(this)
+
     @CrossThreadAccess
     fun deserializeNbt(tag: CompoundTag) {
-        stateUpdate.setLatest(BatteryState(tag.getDouble(ENERGY), tag.getDouble(LIFE)))
+        stateUpdate.setLatest(BatteryState(
+            tag.getDouble(ENERGY),
+            tag.getDouble(LIFE),
+            tag.getDouble(CYCLES)))
     }
 
     @CrossThreadAccess
@@ -217,6 +232,7 @@ class BatteryCell(pos: CellPos, id: ResourceLocation, val model: BatteryModel) :
 
         tag.putDouble(ENERGY, energy)
         tag.putDouble(LIFE, life)
+        tag.putDouble(CYCLES, cycles)
 
         return tag
     }
@@ -237,6 +253,7 @@ class BatteryCell(pos: CellPos, id: ResourceLocation, val model: BatteryModel) :
         stateUpdate.consume {
             energy = it.energy
             life = it.life
+            cycles = it.cycles
         }
     }
 
@@ -255,8 +272,14 @@ class BatteryCell(pos: CellPos, id: ResourceLocation, val model: BatteryModel) :
             energy -= transferredEnergy
         }
 
+        val capacity = adjustedEnergyCapacity
+
         // Clamp energy
-        energy = energy.coerceIn(0.0, model.energyCapacity * model.capacityFunction.computeCapacity(model, life))
+        energy = energy.coerceIn(0.0, capacity)
+
+        // Update cycles
+
+        cycles += transferredEnergy / capacity
     }
 
     private fun simulationTick(elapsed: Double){
@@ -268,16 +291,9 @@ class BatteryCell(pos: CellPos, id: ResourceLocation, val model: BatteryModel) :
 
         simulateEnergyFlow(elapsed)
 
-        generatorObject.potential = model.voltageFunction.computeVoltage(model, charge, thresholdCharge, life)
-        generatorObject.internalResistance = model.resistanceFunction.computeResistance(model, charge, life)
-
-        life -= model.damageFunction.computeDamage(
-            model,
-            charge,
-            generatorObject.resistorCurrent,
-            elapsed,
-            life)
-
+        generatorObject.potential = model.voltageFunction.computeVoltage(this, elapsed)
+        generatorObject.internalResistance = model.resistanceFunction.computeResistance(this, elapsed)
+        life -= model.damageFunction.computeDamage(this, elapsed)
         life = life.coerceIn(0.0, 1.0)
     }
 
@@ -286,6 +302,8 @@ class BatteryCell(pos: CellPos, id: ResourceLocation, val model: BatteryModel) :
 
         builder.text("Charge", thresholdCharge.formattedPercentN())
         builder.text("Life", life.formattedPercentN())
+        builder.text("Cycles", cycles.formattedPercentN())
+        builder.text("Capacity", adjustedEnergyCapacity.formattedPercentN())
         builder.energy(energy)
     }
 }
