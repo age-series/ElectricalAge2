@@ -2,9 +2,8 @@ package org.eln2.mc
 
 import net.minecraft.core.Vec3i
 import net.minecraft.world.phys.Vec3
-import org.checkerframework.checker.units.qual.min
-
-
+import org.eln2.mc.utility.ResourceReader
+import kotlin.math.floor
 
 
 // Yes, how fancy. Stop making fun of me!
@@ -134,5 +133,67 @@ object Mathematics {
 
     fun vec3iZero(): Vec3i{
         return vec3i(0)
+    }
+}
+
+class HermiteSpline {
+    val points = ArrayList<Double>()
+
+    fun evaluate(progress: Double): Double {
+        if(points.size == 0){
+            // Wouldn't make sense to evaluate it with one, but let's throw errors only for 0
+
+            error("Cannot evaluate spline with 0 points")
+        }
+
+        val fuzzyIndex = (points.size - 1) * progress
+        val t = fuzzyIndex - floor(fuzzyIndex)
+        val pointIndex = fuzzyIndex.toInt()
+
+        return hermite(
+            getPoint(pointIndex - 1),
+            getPoint(pointIndex + 0),
+            getPoint(pointIndex + 1),
+            getPoint(pointIndex + 2),
+            t
+        )
+    }
+
+    private fun getPoint(index: Int): Double {
+        if (index < 0) {
+            return points.first()
+        }
+
+        if (index >= points.size) {
+            return points.last()
+        }
+
+        return points[index]
+    }
+
+    companion object{
+        fun hermite(a: Double, b: Double, c: Double, d: Double, t: Double): Double {
+            val t2 = t * t
+            val t3 = t2 * t
+
+            val h1 = -a / 2.0 + 3.0 * b / 2.0 - 3.0 * c / 2.0 + d / 2.0
+            val h2 = a - 5.0 * b / 2.0 + 2.0 * c - d / 2.0
+            val h3 = -a / 2.0 + c / 2.0
+
+            return h1 * t3 + h2 * t2 + h3 * t + b
+        }
+
+        fun loadSpline(path: String): HermiteSpline {
+            return HermiteSpline().also { spline ->
+                ResourceReader
+                    .getResourceString(Eln2.resource(path))
+                    .lines()
+                    .filter { it.isNotBlank() && it.isNotEmpty() }
+                    .map { it.toDouble() }
+                    .forEach(spline.points::add)
+
+                Eln2.LOGGER.info("Loaded ${spline.points.size} points from $path")
+            }
+        }
     }
 }
