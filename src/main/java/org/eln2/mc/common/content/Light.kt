@@ -29,6 +29,7 @@ import org.eln2.mc.client.render.foundation.PartRendererTransforms.applyBlockBen
 import org.eln2.mc.common.cells.foundation.CellBase
 import org.eln2.mc.common.cells.foundation.CellPos
 import org.eln2.mc.common.cells.foundation.CellProvider
+import org.eln2.mc.common.cells.foundation.SubscriberPhase
 import org.eln2.mc.common.cells.foundation.objects.SimulationObjectSet
 import org.eln2.mc.common.events.*
 import org.eln2.mc.common.parts.foundation.CellPart
@@ -209,14 +210,14 @@ class LightCell(pos: CellPos, id: ResourceLocation, val model: LightModel) : Cel
     }
 
     override fun onGraphChanged() {
-        graph.addSubscriber(this::simulationTick)
+        graph.subscribers.addPreInstantaneous(this::simulationTick)
     }
 
     override fun onRemoving() {
-        graph.removeSubscriber(this::simulationTick)
+        graph.subscribers.removeSubscriber(this::simulationTick)
     }
 
-    private fun simulationTick(elapsed: Double){
+    private fun simulationTick(elapsed: Double, phase: SubscriberPhase){
         rawBrightness = model.brightnessFunction.calculateBrightness(resistorObject.power)
 
         val actualBrightness =

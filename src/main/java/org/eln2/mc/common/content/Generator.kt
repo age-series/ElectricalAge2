@@ -14,10 +14,7 @@ import org.eln2.mc.annotations.CrossThreadAccess
 import org.eln2.mc.client.render.PartialModels
 import org.eln2.mc.client.render.PartialModels.bbOffset
 import org.eln2.mc.client.render.foundation.BasicPartRenderer
-import org.eln2.mc.common.cells.foundation.CellBase
-import org.eln2.mc.common.cells.foundation.CellPos
-import org.eln2.mc.common.cells.foundation.CellProvider
-import org.eln2.mc.common.cells.foundation.ComponentHolder
+import org.eln2.mc.common.cells.foundation.*
 import org.eln2.mc.common.cells.foundation.objects.ElectricalComponentInfo
 import org.eln2.mc.common.cells.foundation.objects.ElectricalObject
 import org.eln2.mc.common.cells.foundation.objects.SimulationObjectSet
@@ -238,15 +235,11 @@ class BatteryCell(pos: CellPos, id: ResourceLocation, override val model: Batter
     }
 
     override fun onGraphChanged() {
-        super.onGraphChanged()
-
-        graph.addSubscriber(this::simulationTick)
+        graph.subscribers.addPreInstantaneous(this::simulationTick)
     }
 
     override fun onRemoving() {
-        super.onRemoving()
-
-        graph.removeSubscriber(this::simulationTick)
+        graph.subscribers.removeSubscriber(this::simulationTick)
     }
 
     private fun applyExternalUpdates(){
@@ -282,7 +275,7 @@ class BatteryCell(pos: CellPos, id: ResourceLocation, override val model: Batter
         cycles += transferredEnergy / capacity
     }
 
-    private fun simulationTick(elapsed: Double){
+    private fun simulationTick(elapsed: Double, phase: SubscriberPhase){
         applyExternalUpdates()
 
         if(!generatorObject.hasResistor){

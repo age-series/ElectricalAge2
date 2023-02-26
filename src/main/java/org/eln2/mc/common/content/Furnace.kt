@@ -36,6 +36,8 @@ import org.eln2.mc.common.blocks.foundation.CellBlockEntity
 import org.eln2.mc.common.cells.CellRegistry
 import org.eln2.mc.common.cells.foundation.CellBase
 import org.eln2.mc.common.cells.foundation.CellPos
+import org.eln2.mc.common.cells.foundation.SubscriberOptions
+import org.eln2.mc.common.cells.foundation.SubscriberPhase
 import org.eln2.mc.common.cells.foundation.thermodynamics.HeatBody
 import org.eln2.mc.common.cells.foundation.objects.SimulationObjectSet
 import org.eln2.mc.common.cells.foundation.thermodynamics.HeatBodySystem
@@ -156,11 +158,11 @@ class FurnaceCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) {
     }
 
     override fun onGraphChanged() {
-        graph.addSubscriber(this::simulationTick)
+        graph.subscribers.addPreInstantaneous(this::simulationTick)
     }
 
     override fun onRemoving() {
-        graph.removeSubscriber(this::simulationTick)
+        graph.subscribers.removeSubscriber(this::simulationTick)
     }
 
     private fun idle() {
@@ -266,7 +268,7 @@ class FurnaceCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) {
         }
     }
 
-    private fun simulationTick(elapsed: Double){
+    private fun simulationTick(elapsed: Double, phase: SubscriberPhase){
         applyExternalUpdates()
 
         runThermalSimulation(elapsed)
