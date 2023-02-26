@@ -28,6 +28,7 @@ import org.eln2.mc.extensions.LibAgeExtensions.add
 import org.eln2.mc.extensions.LibAgeExtensions.setPotentialEpsilon
 import org.eln2.mc.extensions.LibAgeExtensions.setResistanceEpsilon
 import org.eln2.mc.extensions.NbtExtensions.useSubTag
+import org.eln2.mc.extensions.NumberExtensions.formatted
 import org.eln2.mc.extensions.NumberExtensions.formattedPercentN
 import org.eln2.mc.integration.waila.IWailaProvider
 import org.eln2.mc.integration.waila.TooltipBuilder
@@ -212,8 +213,10 @@ class BatteryCell(pos: CellPos, id: ResourceLocation, override val model: Batter
         0.0,
         1.0)
 
+    val capacityCoefficient get() = model.capacityFunction.computeCapacity(this)
+
     val adjustedEnergyCapacity
-        get() = model.energyCapacity * model.capacityFunction.computeCapacity(this)
+        get() = model.energyCapacity * capacityCoefficient
 
     @CrossThreadAccess
     fun deserializeNbt(tag: CompoundTag) {
@@ -295,8 +298,8 @@ class BatteryCell(pos: CellPos, id: ResourceLocation, override val model: Batter
 
         builder.text("Charge", thresholdCharge.formattedPercentN())
         builder.text("Life", life.formattedPercentN())
-        builder.text("Cycles", cycles.formattedPercentN())
-        builder.text("Capacity", adjustedEnergyCapacity.formattedPercentN())
+        builder.text("Cycles", cycles.formatted())
+        builder.text("Capacity", capacityCoefficient.formattedPercentN())
         builder.energy(energy)
     }
 }
