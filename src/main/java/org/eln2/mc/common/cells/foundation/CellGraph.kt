@@ -456,7 +456,7 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
                 cell.onLoadedFromDisk()
             }
 
-            result.cells.forEach { it.onCreated() }
+            result.cells.forEach { it.create() }
 
             return result
         }

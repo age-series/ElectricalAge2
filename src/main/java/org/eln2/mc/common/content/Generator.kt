@@ -15,6 +15,8 @@ import org.eln2.mc.client.render.PartialModels
 import org.eln2.mc.client.render.PartialModels.bbOffset
 import org.eln2.mc.client.render.foundation.BasicPartRenderer
 import org.eln2.mc.common.cells.foundation.*
+import org.eln2.mc.common.cells.foundation.behaviors.ElectricalEnergyConverterBehavior
+import org.eln2.mc.common.cells.foundation.behaviors.Extensions.withElectricalEnergyConverter
 import org.eln2.mc.common.cells.foundation.objects.ElectricalComponentInfo
 import org.eln2.mc.common.cells.foundation.objects.ElectricalObject
 import org.eln2.mc.common.cells.foundation.objects.SimulationObjectSet
@@ -192,6 +194,10 @@ class BatteryCell(pos: CellPos, id: ResourceLocation, override val model: Batter
         private const val CYCLES = "cycles"
     }
 
+    init {
+        behaviors.withElectricalEnergyConverter { generatorObject.resistorPower }
+    }
+
     override var energy = 0.0
 
     override var life = 1.0
@@ -301,6 +307,10 @@ class BatteryCell(pos: CellPos, id: ResourceLocation, override val model: Batter
         builder.text("Cycles", cycles.formatted())
         builder.text("Capacity", capacityCoefficient.formattedPercentN())
         builder.energy(energy)
+
+        val converter = behaviors.getBehavior<ElectricalEnergyConverterBehavior>()
+        builder.text("Conv E", converter.energy.formatted())
+        builder.text("Conv ΔE", converter.deltaEnergy.formatted())
     }
 }
 

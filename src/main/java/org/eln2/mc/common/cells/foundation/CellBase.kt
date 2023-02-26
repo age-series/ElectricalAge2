@@ -34,6 +34,14 @@ abstract class CellBase(val pos: CellPos, val id: ResourceLocation) : IWailaProv
 
     private var createdSet: SimulationObjectSet? = null
 
+    private val behaviorsLazy = lazy {
+        CellBehaviorContainer(this)
+    }
+
+    protected val behaviorsInitialized get() = behaviorsLazy.isInitialized()
+
+    protected val behaviors get() = behaviorsLazy.value
+
     /**
      * Called once when the object set is requested. The result is then cached.
      * @return A new object set, with all the desired objects.
@@ -66,16 +74,25 @@ abstract class CellBase(val pos: CellPos, val id: ResourceLocation) : IWailaProv
      */
     open fun onLoadedFromDisk() {}
 
+    fun create() {
+        onCreated()
+    }
+
     /**
      * Called after the cell was created.
      */
-    open fun onCreated() {}
+    protected open fun onCreated() {}
+
+    fun remove() {
+        behaviors.destroy()
+        onRemoving()
+    }
 
     /**
      * Called while the cell is being destroyed, just after the simulation was stopped.
      * Subscribers may be cleaned up here.
      * */
-    open fun onRemoving() {}
+    protected open fun onRemoving() {}
 
     /**
      * Called after the cell was destroyed.
@@ -95,6 +112,7 @@ abstract class CellBase(val pos: CellPos, val id: ResourceLocation) : IWailaProv
         }
 
         if(graphChanged) {
+            behaviors.changeGraph()
             onGraphChanged()
         }
     }

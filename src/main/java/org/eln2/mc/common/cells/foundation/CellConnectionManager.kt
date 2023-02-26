@@ -25,7 +25,7 @@ object CellConnectionManager {
      * */
     fun connect(container: ICellContainer, cellInfo: CellInfo) {
         connectCell(cellInfo, container)
-        cellInfo.cell.onCreated()
+        cellInfo.cell.create()
     }
 
     /**
@@ -146,7 +146,7 @@ object CellConnectionManager {
         // Stop Simulation
         graph.stopSimulation()
 
-        cell.onRemoving()
+        cell.remove()
 
         // This is common logic for all cases.
         neighborCells.forEach { neighborInfo ->
