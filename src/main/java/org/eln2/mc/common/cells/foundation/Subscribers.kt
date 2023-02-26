@@ -87,6 +87,14 @@ class SubscriberCollection {
         enqueueOrApply(AddUpdate(subscriber, parameters))
     }
 
+    fun addPreInstantaneous(subscriber: ISubscriber){
+        addSubscriber(SubscriberOptions(0, SubscriberPhase.Pre), subscriber)
+    }
+
+    fun addPostInstantaneous(subscriber: ISubscriber){
+        addSubscriber(SubscriberOptions(0, SubscriberPhase.Post), subscriber)
+    }
+
     fun removeSubscriber(subscriber: ISubscriber){
         enqueueOrApply(RemoveAllUpdate(subscriber))
     }

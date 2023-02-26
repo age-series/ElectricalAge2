@@ -57,39 +57,7 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
 
     private var updatesCheckpoint = 0L
 
-    private val subscribers = ArrayList<ICellGraphSubscriber>()
-
-    @CrossThreadAccess
-    private val subscribersAddQueue = ConcurrentLinkedQueue<ICellGraphSubscriber>()
-
-    @CrossThreadAccess
-    private val subscribersRemoveQueue = ConcurrentLinkedQueue<ICellGraphSubscriber>()
-
-    /**
-     * Adds a subscriber to this graph, on the next simulation tick.
-     * Subscribers are notified after each simulation step (from the simulation thread)
-     * */
-    @CrossThreadAccess
-    fun addSubscriber(subscriber: ICellGraphSubscriber) {
-        subscribersAddQueue.add(subscriber)
-    }
-
-    /**
-     * Removes a subscriber from this graph, on the next simulation tick.
-     * If it was not added beforehand, an error will occur in the simulation thread.
-     * */
-    @CrossThreadAccess
-    fun enqueueRemoveSubscriber(subscriber: ICellGraphSubscriber) {
-        subscribersRemoveQueue.add(subscriber)
-    }
-
-    fun removeSubscriber(subscriber: ICellGraphSubscriber) {
-        validateMutationAccess()
-
-        if(!subscribers.remove(subscriber)){
-            error("Could not remove $subscriber")
-        }
-    }
+    val subscribers = SubscriberCollection()
 
     @CrossThreadAccess
     var lastTickTime = 0.0
@@ -132,23 +100,9 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
     private fun update() {
         simulationStopLock.lock()
 
-        while (true) {
-            val subscriber = subscribersAddQueue.poll()
-                ?: break
-
-            subscribers.add(subscriber)
-        }
-
-        while (true) {
-            val subscriber = subscribersRemoveQueue.poll()
-                ?: break
-
-            if(!subscribers.remove(subscriber)){
-                error("Could not find subscriber $subscriber")
-            }
-        }
-
         val elapsed = 0.05
+
+        subscribers.update(elapsed, SubscriberPhase.Pre)
 
         lastTickTime = Time.toSeconds(measureNanoTime {
             successful = true
@@ -164,14 +118,7 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
             }
         })
 
-        subscribers.forEach {
-            try {
-                it.simulationTick(elapsed)
-            }
-            catch (e: Throwable){
-                LOGGER.error("FATAL SIMULATION ERROR WHILE TICKING $it: $e", e)
-            }
-        }
+        subscribers.update(elapsed, SubscriberPhase.Post)
 
         updates++
 
