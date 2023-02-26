@@ -4,6 +4,7 @@ package org.eln2.mc.common.content
 
 import net.minecraft.world.phys.Vec3
 import org.eln2.mc.Mathematics.bbVec
+import org.eln2.mc.Mathematics.lerp
 import org.eln2.mc.Mathematics.vec3
 import org.eln2.mc.common.blocks.BlockRegistry
 import org.eln2.mc.common.cells.CellRegistry
@@ -14,6 +15,8 @@ import org.eln2.mc.utility.SelfDescriptiveUnitMultipliers.centimeters
 import org.eln2.mc.utility.SelfDescriptiveUnitMultipliers.milliOhms
 import org.eln2.mc.utility.UnitConversions.kwHoursInJ
 import org.eln2.mc.utility.UnitConversions.wattHoursInJ
+import kotlin.math.abs
+import kotlin.math.pow
 
 /**
  * Joint registry for content classes.
@@ -46,13 +49,41 @@ object Content {
 
     val BATTERY_CELL_100V = CellRegistry.register("battery_cell_t", BasicCellProvider.polarFB{ pos, id ->
         BatteryCell(pos, id, BatteryModel(
-            VoltageModels.TEST,
-            { _, _ -> milliOhms(100.0) },
-            { _, _, -> 0.0 },
-            { _ -> 1.0 },
-            kwHoursInJ(2.2),
+            voltageFunction = VoltageModels.TEST,
+            resistanceFunction = { _, _ -> milliOhms(100.0) },
+            damageFunction = { battery, dt ->
+                val currentThreshold = 7.0 //A
+
+                // Test damage func: passive 0.001% per second
+                // if current > threshold, 0.1% per second for every amp
+                // if charge < threshold, amplify everything by 10delta
+
+                val passiveTerm = 0.001 / 100.0 // remember: percent
+
+                val absCurrent = abs(battery.current)
+
+                val currentTerm = if(absCurrent > currentThreshold) {
+                    (absCurrent - currentThreshold) * (0.1 / 100.0)
+                } else 0.0
+
+                val amplification = if(battery.charge < battery.model.damageChargeThreshold){
+                    (battery.model.damageChargeThreshold - battery.charge) * 10
+                } else 0.0
+
+                (passiveTerm + currentTerm) * dt * (1.0 + amplification)
+            },
+            capacityFunction = { battery ->
+                // Test capacity func: 0% after 5 cycles
+                // life has 90% impact.
+
+                val lifeTerm = -(1 - battery.life) * 0.90
+                val cyclesTerm = -lerp(0.0, 1.0, battery.cycles / 5.0)
+
+                1 + lifeTerm + cyclesTerm
+            },
+            energyCapacity = kwHoursInJ(2.2),
             0.5))
-        .also { it.energy = it.model.energyCapacity / 2.0 }
+        .also { it.energy = it.model.energyCapacity * 0.9 }
     })
 
     val BATTERY_PART_100V = PartRegistry.part("battery_part_100v", BasicPartProvider({a, b -> BatteryPart(a, b, BATTERY_CELL_100V.get())}, vec3(1.0)))

@@ -206,7 +206,8 @@ class BatteryCell(pos: CellPos, id: ResourceLocation, override val model: Batter
     override var cycles = 0.0
         private set
 
-    override val current get() = generatorObject.resistorCurrent
+    override val current
+        get() = generatorObject.resistorCurrent
 
     private val stateUpdate = AtomicUpdate<BatteryState>()
 
@@ -219,7 +220,8 @@ class BatteryCell(pos: CellPos, id: ResourceLocation, override val model: Batter
         0.0,
         1.0)
 
-    val capacityCoefficient get() = model.capacityFunction.computeCapacity(this)
+    val capacityCoefficient
+        get() = model.capacityFunction.computeCapacity(this).coerceIn(0.0, 1.0)
 
     val adjustedEnergyCapacity
         get() = model.energyCapacity * capacityCoefficient
@@ -281,7 +283,7 @@ class BatteryCell(pos: CellPos, id: ResourceLocation, override val model: Batter
 
         // Update cycles
 
-        cycles += transferredEnergy / capacity
+        cycles += transferredEnergy / capacity //todo: this massively affects the change rate, maybe use the model's capacity?
     }
 
     private fun simulationTick(elapsed: Double, phase: SubscriberPhase){
@@ -307,6 +309,7 @@ class BatteryCell(pos: CellPos, id: ResourceLocation, override val model: Batter
         builder.text("Cycles", cycles.formatted())
         builder.text("Capacity", capacityCoefficient.formattedPercentN())
         builder.energy(energy)
+        builder.current(current)
 
         val converter = behaviors.getBehavior<ElectricalEnergyConverterBehavior>()
         builder.text("Conv E", converter.energy.formatted())
