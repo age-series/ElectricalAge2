@@ -153,7 +153,7 @@ class TooltipBuilder {
     }
 
     fun mass(value: Double): TooltipBuilder {
-        return translateText("mass", ValueText.valueText(value, UnitType.GRAM))
+        return translateText("mass", ValueText.valueText(value * 1000.0, UnitType.GRAM))
     }
 
     fun voltage(value: Double): TooltipBuilder {
