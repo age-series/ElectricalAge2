@@ -152,6 +152,10 @@ class TooltipBuilder {
         return translateText("energy", ValueText.valueText(value, UnitType.JOULE))
     }
 
+    fun mass(value: Double): TooltipBuilder {
+        return translateText("mass", ValueText.valueText(value, UnitType.GRAM))
+    }
+
     fun voltage(value: Double): TooltipBuilder {
         return translateText("voltage", ValueText.valueText(value, UnitType.VOLT))
     }

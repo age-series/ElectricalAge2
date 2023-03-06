@@ -100,7 +100,7 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
     private fun update() {
         simulationStopLock.lock()
 
-        val elapsed = 0.05
+        val elapsed = 1.0 / 100.0
 
         subscribers.update(elapsed, SubscriberPhase.Pre)
 
