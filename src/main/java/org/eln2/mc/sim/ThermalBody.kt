@@ -10,9 +10,9 @@ import org.eln2.mc.integration.waila.TooltipBuilder
 import org.eln2.mc.utility.IntId
 
 class ThermalBody<Locator>(
-    override val locator: Locator,
-    override val mass: ThermalMass,
-    override val surfaceArea: Double
+    override var locator: Locator,
+    override var mass: ThermalMass,
+    override var surfaceArea: Double
 ) : Simulator.Body<Locator>,
     IWailaProvider {
     var temperature: Temperature

@@ -1,9 +1,7 @@
 package org.eln2.mc.common.cells.foundation.behaviors
 
-import org.eln2.mc.common.cells.foundation.CellBehaviorContainer
-import org.eln2.mc.common.cells.foundation.ICellBehavior
-import org.eln2.mc.common.cells.foundation.SubscriberCollection
-import org.eln2.mc.common.cells.foundation.SubscriberPhase
+import org.eln2.mc.common.cells.foundation.*
+import org.eln2.mc.sim.ThermalBody
 
 fun interface IElectricalPowerAccessor {
     fun get(): Double
@@ -14,10 +12,7 @@ fun interface IElectricalPowerAccessor {
  * */
 class ElectricalEnergyConverterBehavior(private val accessor: IElectricalPowerAccessor): ICellBehavior {
     var energy: Double = 0.0
-        private set
-
     var deltaEnergy: Double = 0.0
-        private set
 
     override fun onAdded(container: CellBehaviorContainer) {}
 
@@ -35,8 +30,46 @@ class ElectricalEnergyConverterBehavior(private val accessor: IElectricalPowerAc
     }
 }
 
+fun interface IThermalBodyGetter {
+    fun get(): ThermalBody<CellPos>
+}
+
+/**
+ * Converts dissipated electrical energy to thermal energy.
+ * */
+@RequiresBehavior<ElectricalEnergyConverterBehavior>
+class JouleEffectBehavior(private val thermalBodyAccessor: IThermalBodyGetter) : ICellBehavior {
+    private lateinit var converterBehavior: ElectricalEnergyConverterBehavior
+
+    override fun onAdded(container: CellBehaviorContainer) {
+        converterBehavior = container.getBehavior()
+    }
+
+    override fun subscribe(subscribers: SubscriberCollection) {
+        subscribers.addPreInstantaneous(this::simulationTick)
+    }
+
+    override fun destroy(subscribers: SubscriberCollection) {
+        subscribers.removeSubscriber(this::simulationTick)
+    }
+
+    private fun simulationTick(dt: Double, p: SubscriberPhase){
+        // Add delta energy
+
+        thermalBodyAccessor.get().thermalEnergy += converterBehavior.deltaEnergy
+
+        // Drain moved energy
+        converterBehavior.energy -= converterBehavior.deltaEnergy
+    }
+}
+
 object Extensions {
     fun CellBehaviorContainer.withElectricalEnergyConverter(accessor: IElectricalPowerAccessor): CellBehaviorContainer{
         return this.add(ElectricalEnergyConverterBehavior(accessor))
+    }
+
+    @RequiresBehavior<ElectricalEnergyConverterBehavior>
+    fun CellBehaviorContainer.withJouleEffectHeating(getter: IThermalBodyGetter): CellBehaviorContainer {
+        return this.add(JouleEffectBehavior(getter))
     }
 }

@@ -6,6 +6,7 @@ value class SimulationObjectMask(private val mask: Int) {
         private fun getBit(type: SimulationObjectType): Int {
             return when (type) {
                 SimulationObjectType.Electrical -> 1 shl 0
+                SimulationObjectType.Thermal -> 1 shl 1
             }
         }
 

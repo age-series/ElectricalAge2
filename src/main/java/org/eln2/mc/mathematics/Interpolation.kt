@@ -1,8 +1,8 @@
 package org.eln2.mc.mathematics
 
 import org.eln2.mc.Eln2
-import org.eln2.mc.mathematics.Mathematics.map
-import org.eln2.mc.mathematics.Mathematics.pow2I
+import org.eln2.mc.mathematics.Functions.map
+import org.eln2.mc.mathematics.Functions.pow2I
 import org.eln2.mc.utility.ResourceReader
 import kotlin.math.floor
 
