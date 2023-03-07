@@ -1,10 +1,13 @@
 package org.eln2.mc.common.cells.foundation
 
 import mcp.mobius.waila.api.IPluginConfig
+import net.minecraft.nbt.CompoundTag
 import net.minecraft.resources.ResourceLocation
-import org.ageseries.libage.sim.thermal.ConnectionParameters
 import org.eln2.mc.common.cells.foundation.objects.*
 import org.eln2.mc.common.space.RelativeRotationDirection
+import org.eln2.mc.extensions.NbtExtensions.putSubTag
+import org.eln2.mc.extensions.NbtExtensions.useSubTagIfPreset
+import org.eln2.mc.extensions.NbtExtensions.withSubTagOptional
 import org.eln2.mc.integration.waila.IWailaProvider
 import org.eln2.mc.integration.waila.TooltipBuilder
 
@@ -16,6 +19,13 @@ data class CellConnectionInfo(val cell: CellBase, val sourceDirection: RelativeR
  * Cells create connections with other cells, and objects create connections with other objects of the same simulation type.
  * */
 abstract class CellBase(val pos: CellPos, val id: ResourceLocation) : IWailaProvider {
+    companion object {
+        private const val CELL_DATA = "cellData"
+        private const val OBJECT_DATA = "objectData"
+        private const val ELECTRICAL = "electrical"
+        private const val THERMAL = "thermal"
+    }
+
     lateinit var graph: CellGraph
     lateinit var connections: ArrayList<CellConnectionInfo>
 
@@ -54,6 +64,42 @@ abstract class CellBase(val pos: CellPos, val id: ResourceLocation) : IWailaProv
 
             return createdSet!!
         }
+
+    fun loadTag(tag: CompoundTag) {
+        tag.useSubTagIfPreset(CELL_DATA, this::loadCellData)
+        tag.useSubTagIfPreset(OBJECT_DATA, this::loadObjectData)
+    }
+
+    fun createTag(): CompoundTag {
+        return CompoundTag().also { tag ->
+            tag.apply {
+                withSubTagOptional(CELL_DATA, saveCellData())
+                putSubTag(OBJECT_DATA) { saveObjectData(it) }
+            }
+        }
+    }
+
+    open fun loadCellData(tag: CompoundTag) { }
+
+    open fun saveCellData(): CompoundTag? {
+        return null
+    }
+
+    private fun saveObjectData(tag: CompoundTag) {
+        objectSet.process { obj ->
+            if(obj is IPersistentObject) {
+                tag.put(obj.type.name, obj.save())
+            }
+        }
+    }
+
+    private fun loadObjectData(tag: CompoundTag) {
+        objectSet.process { obj ->
+            if(obj is IPersistentObject) {
+                obj.load(tag.getCompound(obj.type.name))
+            }
+        }
+    }
 
     /**
      * Called when the tile entity is being unloaded.
