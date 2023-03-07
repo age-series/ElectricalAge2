@@ -18,6 +18,7 @@ import org.ageseries.libage.sim.electrical.mna.Circuit
 import org.ageseries.libage.sim.electrical.mna.component.Resistor
 import org.ageseries.libage.sim.thermal.Simulator
 import org.ageseries.libage.sim.thermal.ThermalMass
+import org.apache.http.impl.conn.Wire
 import org.eln2.mc.Eln2
 import org.eln2.mc.mathematics.Functions.bbVec
 import org.eln2.mc.client.render.MultipartBlockEntityInstance
@@ -44,11 +45,9 @@ import org.eln2.mc.extensions.Vec3Extensions.times
 import org.eln2.mc.extensions.Vec3Extensions.toVec3
 import org.eln2.mc.integration.waila.IWailaProvider
 import org.eln2.mc.integration.waila.TooltipBuilder
-import org.eln2.mc.mathematics.Geometry.circleSurfaceArea
 import org.eln2.mc.mathematics.Geometry.cylinderExteriorSurfaceArea
 import org.eln2.mc.sim.ThermalBody
 import java.util.concurrent.atomic.AtomicReference
-import kotlin.math.PI
 import kotlin.math.abs
 
 /**
@@ -149,24 +148,35 @@ class ThermalWireObject(val pos: CellPos) : ThermalObject(), IWailaProvider {
     }
 }
 
-class WireCell(pos: CellPos, id: ResourceLocation, val model: ElectricalWireModel) : CellBase(pos, id) {
+enum class WireType {
+    Electrical,
+    Thermal
+}
+
+class WireCell(pos: CellPos, id: ResourceLocation, val model: ElectricalWireModel, val type: WireType) : CellBase(pos, id) {
     init {
-        behaviors
-            .withElectricalEnergyConverter { electricalWire.power }
-            .withJouleEffectHeating { thermalWire.body }
+        if(type == WireType.Electrical) {
+            behaviors
+                .withElectricalEnergyConverter { electricalWire.power }
+                .withJouleEffectHeating { thermalWire.body }
+        }
     }
 
     override fun createObjectSet(): SimulationObjectSet {
-        return SimulationObjectSet(ElectricalWireObject().also {
-            it.resistance = model.resistanceMeter / 2.0 // Divide by two because bundle creates 2 resistors
-        }, ThermalWireObject(pos))
+        return if(type == WireType.Electrical){
+            SimulationObjectSet(ElectricalWireObject().also {
+                it.resistance = model.resistanceMeter / 2.0 // Divide by two because bundle creates 2 resistors
+            }, ThermalWireObject(pos))
+        } else {
+            SimulationObjectSet(ThermalWireObject(pos))
+        }
     }
 
     private val electricalWire get() = electricalObject as ElectricalWireObject
     private val thermalWire get() = thermalObject as ThermalWireObject
 }
 
-class WirePart(id: ResourceLocation, context: PartPlacementContext, cellProvider: CellProvider) :
+class WirePart(id: ResourceLocation, context: PartPlacementContext, cellProvider: CellProvider, val type: WireType) :
     CellPart(id, context, cellProvider) {
 
     override val baseSize = bbVec(8.0, 2.0, 8.0)
@@ -175,7 +185,9 @@ class WirePart(id: ResourceLocation, context: PartPlacementContext, cellProvider
     private var wireRenderer: WirePartRenderer? = null
 
     override fun createRenderer(): IPartRenderer {
-        wireRenderer = WirePartRenderer(this)
+        wireRenderer = WirePartRenderer(this,
+            if(type == WireType.Electrical) WireMeshSets.electricalWireMap
+            else WireMeshSets.thermalWireMap)
 
         applyRendererState()
 
@@ -270,20 +282,29 @@ class WirePart(id: ResourceLocation, context: PartPlacementContext, cellProvider
     }
 }
 
-class WirePartRenderer(val part: WirePart) : IPartRenderer {
-    companion object {
-        // P.S. these are also written in respect to the model rotation.
+object WireMeshSets {
+    // todo replace when models are available
 
-        private val caseMap = mapOf(
-            (DirectionMask.EMPTY) to PartialModels.WIRE_CROSSING_EMPTY,
-            (DirectionMask.FRONT) to PartialModels.WIRE_CROSSING_SINGLE_WIRE,
-            (DirectionMask.FRONT + DirectionMask.BACK) to PartialModels.WIRE_STRAIGHT,
-            (DirectionMask.FRONT + DirectionMask.LEFT) to PartialModels.WIRE_CORNER,
-            (DirectionMask.LEFT + DirectionMask.FRONT + DirectionMask.RIGHT) to PartialModels.WIRE_CROSSING,
-            (DirectionMask.HORIZONTALS) to PartialModels.WIRE_CROSSING_FULL
-        )
-    }
+    val electricalWireMap = mapOf(
+        (DirectionMask.EMPTY) to PartialModels.WIRE_CROSSING_EMPTY,
+        (DirectionMask.FRONT) to PartialModels.WIRE_CROSSING_SINGLE_WIRE,
+        (DirectionMask.FRONT + DirectionMask.BACK) to PartialModels.WIRE_STRAIGHT,
+        (DirectionMask.FRONT + DirectionMask.LEFT) to PartialModels.WIRE_CORNER,
+        (DirectionMask.LEFT + DirectionMask.FRONT + DirectionMask.RIGHT) to PartialModels.WIRE_CROSSING,
+        (DirectionMask.HORIZONTALS) to PartialModels.WIRE_CROSSING_FULL
+    )
 
+    val thermalWireMap = mapOf(
+        (DirectionMask.EMPTY) to PartialModels.THERMAL_WIRE_CROSSING_EMPTY,
+        (DirectionMask.FRONT) to PartialModels.THERMAL_WIRE_CROSSING_SINGLE_WIRE,
+        (DirectionMask.FRONT + DirectionMask.BACK) to PartialModels.THERMAL_WIRE_STRAIGHT,
+        (DirectionMask.FRONT + DirectionMask.LEFT) to PartialModels.THERMAL_WIRE_CORNER,
+        (DirectionMask.LEFT + DirectionMask.FRONT + DirectionMask.RIGHT) to PartialModels.THERMAL_WIRE_CROSSING,
+        (DirectionMask.HORIZONTALS) to PartialModels.THERMAL_WIRE_CROSSING_FULL
+    )
+}
+
+class WirePartRenderer(val part: WirePart, val meshes: Map<DirectionMask, PartialModel>) : IPartRenderer {
     private lateinit var multipartInstance: MultipartBlockEntityInstance
     private var modelInstance: ModelData? = null
 
@@ -312,7 +333,7 @@ class WirePartRenderer(val part: WirePart) : IPartRenderer {
         var found = false
 
         // Here, we search for the correct configuration by just rotating all the cases we know.
-        caseMap.forEach { (mappingMask, model) ->
+        meshes.forEach { (mappingMask, model) ->
             val match = mappingMask.matchCounterClockWise(mask)
 
             if (match != -1) {
