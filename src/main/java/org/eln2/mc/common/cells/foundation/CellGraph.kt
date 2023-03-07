@@ -19,7 +19,6 @@ import org.eln2.mc.extensions.NbtExtensions.putCellPos
 import org.eln2.mc.extensions.NbtExtensions.putRelativeDirection
 import org.eln2.mc.utility.Time
 import java.util.*
-import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
@@ -337,35 +336,48 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
         LOGGER.info("Started simulation for $this")
     }
 
-    fun toNbt(): CompoundTag {
-        stopSimulation()
+    private fun runSuspended(action: (() -> Unit)) {
+        val running = isRunning
 
-        val circuitCompound = CompoundTag()
-        circuitCompound.putUUID("ID", id)
-
-        val cellListTag = ListTag()
-
-        cells.forEach { cell ->
-            val cellTag = CompoundTag()
-            val connectionsTag = ListTag()
-
-            cell.connections.forEach { connectionInfo ->
-                val connectionCompound = CompoundTag()
-                connectionCompound.putCellPos("Position", connectionInfo.cell.pos)
-                connectionCompound.putRelativeDirection("Direction", connectionInfo.sourceDirection)
-                connectionsTag.add(connectionCompound)
-            }
-
-            cellTag.putCellPos("Position", cell.pos)
-            cellTag.putString("ID", cell.id.toString())
-            cellTag.put("Connections", connectionsTag)
-
-            cellListTag.add(cellTag)
+        if (running){
+            stopSimulation()
         }
 
-        circuitCompound.put("Cells", cellListTag)
+        action()
 
-        startSimulation()
+        if(running) {
+            startSimulation()
+        }
+    }
+
+    fun toNbt(): CompoundTag {
+        val circuitCompound = CompoundTag()
+
+        runSuspended {
+            circuitCompound.putUUID("ID", id)
+
+            val cellListTag = ListTag()
+
+            cells.forEach { cell ->
+                val cellTag = CompoundTag()
+                val connectionsTag = ListTag()
+
+                cell.connections.forEach { connectionInfo ->
+                    val connectionCompound = CompoundTag()
+                    connectionCompound.putCellPos("Position", connectionInfo.cell.pos)
+                    connectionCompound.putRelativeDirection("Direction", connectionInfo.sourceDirection)
+                    connectionsTag.add(connectionCompound)
+                }
+
+                cellTag.putCellPos("Position", cell.pos)
+                cellTag.putString("ID", cell.id.toString())
+                cellTag.put("Connections", connectionsTag)
+
+                cellListTag.add(cellTag)
+            }
+
+            circuitCompound.put("Cells", cellListTag)
+        }
 
         return circuitCompound
     }
