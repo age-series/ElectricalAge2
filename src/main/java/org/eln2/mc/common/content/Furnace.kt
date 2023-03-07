@@ -110,14 +110,6 @@ class FurnaceCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) {
         }
     }
 
-    val stream: FileWriter = FileWriter(File(UUID.randomUUID().toString() + ".csv"))
-
-    private var time = 0.0
-
-    init {
-        stream.appendLine("Time,ResistorEnergy,SmeltingEnergy")
-    }
-
     fun deserializeNbt(tag: CompoundTag){
         options.deserializeNbt(tag.getCompound(OPTIONS))
         resistorHeatBodyUpdate.setLatest(thermalBody(tag.getThermalMassMapped(RESISTOR_THERMAL_MASS), options.surfaceArea))
@@ -211,10 +203,6 @@ class FurnaceCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) {
     private fun runThermalSimulation(dt: Double) {
         simulateThermalTransfer(dt)
         updateBurnState()
-
-        stream.appendLine("$time,${resistorHeatBody.thermalEnergy},${externalSmeltingBody?.thermalEnergy ?: 0.0}")
-
-        time += dt
     }
 
     private fun applyExternalUpdates() {
@@ -296,12 +284,6 @@ class FurnaceCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) {
     }
 
     private val resistorObject = electricalObject as ResistorObject
-
-    override fun onDestroyed() {
-        super.onDestroyed()
-
-        stream.close()
-    }
 }
 
 class FurnaceBlockEntity(pos: BlockPos, state: BlockState) :
