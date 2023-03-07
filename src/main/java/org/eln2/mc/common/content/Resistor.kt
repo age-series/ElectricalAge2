@@ -4,7 +4,7 @@ import mcp.mobius.waila.api.IPluginConfig
 import net.minecraft.resources.ResourceLocation
 import org.ageseries.libage.sim.electrical.mna.Circuit
 import org.ageseries.libage.sim.electrical.mna.component.Resistor
-import org.eln2.mc.Mathematics.bbVec
+import org.eln2.mc.mathematics.Mathematics.bbVec
 import org.eln2.mc.client.render.PartialModels
 import org.eln2.mc.client.render.PartialModels.bbOffset
 import org.eln2.mc.client.render.foundation.BasicPartRenderer

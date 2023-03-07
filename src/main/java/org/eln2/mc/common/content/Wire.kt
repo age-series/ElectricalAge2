@@ -16,10 +16,9 @@ import net.minecraft.world.phys.Vec3
 import org.ageseries.libage.sim.electrical.mna.Circuit
 import org.ageseries.libage.sim.electrical.mna.component.Resistor
 import org.eln2.mc.Eln2
-import org.eln2.mc.Mathematics.bbVec
+import org.eln2.mc.mathematics.Mathematics.bbVec
 import org.eln2.mc.client.render.MultipartBlockEntityInstance
 import org.eln2.mc.client.render.PartialModels
-import org.eln2.mc.common.cells.CellRegistry
 import org.eln2.mc.common.cells.foundation.CellBase
 import org.eln2.mc.common.cells.foundation.CellPos
 import org.eln2.mc.common.cells.foundation.CellProvider

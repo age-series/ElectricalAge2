@@ -1,10 +1,8 @@
 package org.eln2.mc.client.render.animations.colors
 
 import com.jozufozu.flywheel.util.Color
-import org.eln2.mc.Mathematics
-import org.eln2.mc.Mathematics.lerp
+import org.eln2.mc.mathematics.Mathematics.lerp
 import org.eln2.mc.client.render.animations.colors.Extensions.rgbToHsb
-import org.eln2.mc.client.render.animations.colors.Extensions.toAwtColor
 
 fun interface IColorInterpolator {
     fun interpolate(from: Color, to: Color, blend: Float): Color

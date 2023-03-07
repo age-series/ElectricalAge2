@@ -2,8 +2,7 @@ package org.eln2.mc.client.render.foundation
 
 import com.jozufozu.flywheel.core.materials.model.ModelData
 import com.mojang.math.Vector3f
-import net.minecraft.world.phys.Vec3
-import org.eln2.mc.Mathematics.vec3
+import org.eln2.mc.mathematics.Mathematics.vec3
 import org.eln2.mc.common.parts.foundation.Part
 import org.eln2.mc.extensions.ModelDataExtensions.blockCenter
 import org.eln2.mc.extensions.ModelDataExtensions.zeroCenter

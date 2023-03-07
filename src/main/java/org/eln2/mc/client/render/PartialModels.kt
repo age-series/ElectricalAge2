@@ -2,7 +2,7 @@ package org.eln2.mc.client.render
 
 import com.jozufozu.flywheel.core.PartialModel
 import org.eln2.mc.Eln2
-import org.eln2.mc.Mathematics.bbSize
+import org.eln2.mc.mathematics.Mathematics.bbSize
 
 object PartialModels {
     val WIRE_CROSSING_EMPTY = partialBlock("wire/wire_crossing_empty")
