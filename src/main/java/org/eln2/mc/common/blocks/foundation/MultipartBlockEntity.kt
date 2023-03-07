@@ -944,6 +944,10 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
             error("Cannot update brightness on client")
         }
 
+        if(!worldLoaded) {
+            return
+        }
+
         val currentBrightness = blockState.getValue(GhostLightBlock.brightnessProperty)
 
         LOGGER.info("Brightness: $currentBrightness")
@@ -958,8 +962,6 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
         }
 
         if(targetBrightness != currentBrightness) {
-            LOGGER.info("Setting")
-
             setBlockBrightness(targetBrightness)
         }
     }
@@ -987,6 +989,10 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
             }
 
             entity.worldLoaded = true
+
+            if(!level.isClientSide) {
+                entity.updateBrightness()
+            }
 
             if (!entity.needsTicks) {
                 // Remove the ticker

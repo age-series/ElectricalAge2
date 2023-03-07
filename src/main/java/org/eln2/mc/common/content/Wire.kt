@@ -38,7 +38,9 @@ import org.eln2.mc.common.space.RelativeRotationDirection
 import org.eln2.mc.extensions.ModelDataExtensions.blockCenter
 import org.eln2.mc.extensions.ModelDataExtensions.zeroCenter
 import org.eln2.mc.extensions.NbtExtensions.getRelativeDirection
+import org.eln2.mc.extensions.NbtExtensions.getThermalMass
 import org.eln2.mc.extensions.NbtExtensions.putRelativeDirection
+import org.eln2.mc.extensions.NbtExtensions.putThermalMass
 import org.eln2.mc.extensions.QuaternionExtensions.times
 import org.eln2.mc.extensions.Vec3Extensions.times
 import org.eln2.mc.extensions.Vec3Extensions.toVec3
@@ -128,7 +130,12 @@ object ElectricalWireModels {
     }
 }
 
-class ThermalWireObject(val pos: CellPos) : ThermalObject(), IWailaProvider {
+class ThermalWireObject(val pos: CellPos) : ThermalObject(), IWailaProvider, IPersistentObject {
+    companion object {
+        private const val THERMAL_MASS = "thermalMass"
+        private const val SURFACE_AREA = "area"
+    }
+
     var body = ThermalBody(
         pos,
         ThermalMass(Material.COPPER),
@@ -146,6 +153,20 @@ class ThermalWireObject(val pos: CellPos) : ThermalObject(), IWailaProvider {
     override fun appendBody(builder: TooltipBuilder, config: IPluginConfig?) {
         builder.temperature(body.temperatureK)
         builder.energy(body.thermalEnergy)
+    }
+
+    override fun save(): CompoundTag {
+        return CompoundTag().also {
+            it.putThermalMass(THERMAL_MASS, body.mass)
+            it.putDouble(SURFACE_AREA, body.surfaceArea)
+        }
+    }
+
+    override fun load(tag: CompoundTag) {
+        body = ThermalBody(
+            pos,
+            tag.getThermalMass(THERMAL_MASS),
+            tag.getDouble(SURFACE_AREA))
     }
 }
 

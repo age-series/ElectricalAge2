@@ -142,6 +142,14 @@ object NbtExtensions {
         return this
     }
 
+    fun CompoundTag.withSubTagOptional(key: String, tag: CompoundTag?): CompoundTag {
+        if(tag != null) {
+            this.put(key, tag)
+        }
+
+        return this
+    }
+
     /**
      * Gets the compound tag from this instance, and calls the consumer method with the found tag.
      * @return The tag that was found.

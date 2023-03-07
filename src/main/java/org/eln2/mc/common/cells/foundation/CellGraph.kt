@@ -378,7 +378,7 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
         val circuitCompound = CompoundTag()
 
         runSuspended {
-            circuitCompound.putUUID("ID", id)
+            circuitCompound.putUUID(ID, id)
 
             val cellListTag = ListTag()
 
@@ -388,19 +388,26 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
 
                 cell.connections.forEach { connectionInfo ->
                     val connectionCompound = CompoundTag()
-                    connectionCompound.putCellPos("Position", connectionInfo.cell.pos)
-                    connectionCompound.putRelativeDirection("Direction", connectionInfo.sourceDirection)
+                    connectionCompound.putCellPos(POSITION, connectionInfo.cell.pos)
+                    connectionCompound.putRelativeDirection(DIRECTION, connectionInfo.sourceDirection)
                     connectionsTag.add(connectionCompound)
                 }
 
-                cellTag.putCellPos("Position", cell.pos)
-                cellTag.putString("ID", cell.id.toString())
-                cellTag.put("Connections", connectionsTag)
+                cellTag.putCellPos(POSITION, cell.pos)
+                cellTag.putString(ID, cell.id.toString())
+                cellTag.put(CONNECTIONS, connectionsTag)
+
+                try{
+                    cellTag.put(CELL_DATA, cell.createTag())
+                }
+                catch (t: Throwable) {
+                    LOGGER.error("Cell save error: $t")
+                }
 
                 cellListTag.add(cellTag)
             }
 
-            circuitCompound.put("Cells", cellListTag)
+            circuitCompound.put(CELLS, cellListTag)
         }
 
         return circuitCompound
@@ -415,6 +422,13 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
     private data class ConnectionInfoCell(val cellPos: CellPos, val direction: RelativeRotationDirection)
 
     companion object {
+        private const val CELL_DATA = "data"
+        private const val ID = "id"
+        private const val CELLS = "cells"
+        private const val POSITION = "pos"
+        private const val CONNECTIONS = "connections"
+        private const val DIRECTION = "dir"
+
         init {
             // We do get an exception from thread pool creation, but explicit handling is better here.
             if (Configuration.config.simulationThreads == 0) {
@@ -444,27 +458,30 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
             Configuration.config.simulationThreads, ::createThread)
 
         fun fromNbt(graphCompound: CompoundTag, manager: CellGraphManager): CellGraph {
-            val id = graphCompound.getUUID("ID")
+            val id = graphCompound.getUUID(ID)
             val result = CellGraph(id, manager)
-            val cellListTag = graphCompound.get("Cells") as ListTag?
+            val cellListTag = graphCompound.get(CELLS) as ListTag?
                 ?: // no cells are to be loaded
                 return result
 
             // used to assign the connections after all cells have been loaded
             val cellConnections = HashMap<CellBase, ArrayList<ConnectionInfoCell>>()
 
+            // used to load cell custom data
+            val cellData = HashMap<CellBase, CompoundTag>()
+
             cellListTag.forEach { cellNbt ->
                 val cellCompound = cellNbt as CompoundTag
-                val pos = cellCompound.getCellPos("Position")
-                val cellId = ResourceLocation.tryParse(cellCompound.getString("ID"))!!
+                val pos = cellCompound.getCellPos(POSITION)
+                val cellId = ResourceLocation.tryParse(cellCompound.getString(ID))!!
 
                 val connectionPositions = ArrayList<ConnectionInfoCell>()
-                val connectionsTag = cellCompound.get("Connections") as ListTag
+                val connectionsTag = cellCompound.get(CONNECTIONS) as ListTag
 
                 connectionsTag.forEach {
                     val connectionCompound = it as CompoundTag
-                    val connectionPos = connectionCompound.getCellPos("Position")
-                    val connectionDirection = connectionCompound.getRelativeDirection("Direction")
+                    val connectionPos = connectionCompound.getCellPos(POSITION)
+                    val connectionDirection = connectionCompound.getRelativeDirection(DIRECTION)
                     connectionPositions.add(ConnectionInfoCell(connectionPos, connectionDirection))
                 }
 
@@ -473,6 +490,9 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
                 cellConnections[cell] = connectionPositions
 
                 result.addCell(cell)
+
+                cellData[cell] = cellCompound.getCompound(CELL_DATA)
+                LOGGER.info("Loaded tag")
             }
 
             // now assign all connections and the graph
@@ -489,6 +509,14 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
                 cell.graph = result
                 cell.connections = connections
                 cell.update(connectionsChanged = true, graphChanged = true)
+
+                try {
+                    cell.loadTag(cellData[cell]!!)
+                }
+                catch (t: Throwable) {
+                    LOGGER.error("Cell loading exception: $t")
+                }
+
                 cell.onLoadedFromDisk()
             }
 
