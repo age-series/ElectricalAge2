@@ -27,8 +27,9 @@ import org.eln2.mc.common.cells.foundation.CellBase
 import org.eln2.mc.common.cells.foundation.CellPos
 import org.eln2.mc.common.cells.foundation.CellProvider
 import org.eln2.mc.common.cells.foundation.Conventions
-import org.eln2.mc.common.cells.foundation.behaviors.Extensions.withElectricalEnergyConverter
-import org.eln2.mc.common.cells.foundation.behaviors.Extensions.withJouleEffectHeating
+import org.eln2.mc.common.cells.foundation.behaviors.withElectricalHeatTransfer
+import org.eln2.mc.common.cells.foundation.behaviors.withElectricalPowerConverter
+import org.eln2.mc.common.cells.foundation.behaviors.withStandardExplosionBehavior
 import org.eln2.mc.common.cells.foundation.objects.*
 import org.eln2.mc.common.events.AtomicUpdate
 import org.eln2.mc.common.events.EventScheduler
@@ -157,7 +158,8 @@ class ThermalWireObject(val pos: CellPos) : ThermalObject(), IWailaProvider, IPe
 
     override fun save(): CompoundTag {
         return CompoundTag().also {
-            it.putThermalMass(THERMAL_MASS, body.mass)
+            it.putThermalMass(THERMAL_MASS, body.mass
+            )
             it.putDouble(SURFACE_AREA, body.surfaceArea)
         }
     }
@@ -179,8 +181,9 @@ class WireCell(pos: CellPos, id: ResourceLocation, val model: ElectricalWireMode
     init {
         if(type == WireType.Electrical) {
             behaviors
-                .withElectricalEnergyConverter { electricalWire.power }
-                .withJouleEffectHeating { thermalWire.body }
+                .withElectricalPowerConverter { electricalWire.power }
+                .withElectricalHeatTransfer { thermalWire.body }
+                .withStandardExplosionBehavior(this, 500.0) { thermalWire.body.temperatureK }
         }
     }
 

@@ -98,6 +98,10 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
         collisionShape = Shapes.empty()
     }
 
+    fun getPart(face: Direction): Part? {
+        return parts[face]
+    }
+
     private fun destroyPart(face: Direction): Part? {
         val result = parts.remove(face)
             ?: return null
@@ -243,7 +247,7 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
      * Destroys a part, saves and synchronizes the changes.
      * */
     @ServerOnly
-    private fun breakPart(part: Part) {
+    fun breakPart(part: Part) {
         if (part is IPartCellContainer) {
             CellConnectionManager.destroy(
                 CellInfo(

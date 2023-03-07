@@ -26,12 +26,6 @@ class ThermalBody<Locator>(
         get() = mass.energy
         set(value) { mass.energy = value }
 
-    fun ensureNotNegative() {
-        if(mass.energy < 0) {
-            mass.energy = 0.0
-        }
-    }
-
     override fun appendBody(builder: TooltipBuilder, config: IPluginConfig?) {
         mass.appendBody(builder, config)
     }

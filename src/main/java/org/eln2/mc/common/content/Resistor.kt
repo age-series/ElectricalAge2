@@ -10,6 +10,8 @@ import org.eln2.mc.client.render.PartialModels.bbOffset
 import org.eln2.mc.client.render.foundation.BasicPartRenderer
 import org.eln2.mc.common.cells.foundation.CellBase
 import org.eln2.mc.common.cells.foundation.CellPos
+import org.eln2.mc.common.cells.foundation.behaviors.withElectricalHeatTransfer
+import org.eln2.mc.common.cells.foundation.behaviors.withElectricalPowerConverter
 import org.eln2.mc.common.cells.foundation.objects.ElectricalComponentInfo
 import org.eln2.mc.common.cells.foundation.objects.ElectricalObject
 import org.eln2.mc.common.cells.foundation.objects.SimulationObjectSet
@@ -25,6 +27,7 @@ import org.eln2.mc.integration.waila.TooltipBuilder
  * */
 class ResistorObject : ElectricalObject(), IWailaProvider {
     private lateinit var resistor: Resistor
+
     val hasResistor get() = this::resistor.isInitialized
 
     /**
@@ -75,9 +78,19 @@ class ResistorObject : ElectricalObject(), IWailaProvider {
 }
 
 class ResistorCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) {
-    override fun createObjectSet(): SimulationObjectSet {
-        return SimulationObjectSet(ResistorObject())
+    init {
+        behaviors.apply {
+            withElectricalPowerConverter { resistor.power }
+            withElectricalHeatTransfer { thermal.body }
+        }
     }
+
+    override fun createObjectSet(): SimulationObjectSet {
+        return SimulationObjectSet(ResistorObject(), ThermalWireObject(pos))
+    }
+
+    private val resistor get() = electricalObject as ResistorObject
+    private val thermal get() = thermalObject as ThermalWireObject
 }
 
 class ResistorPart(id: ResourceLocation, placementContext: PartPlacementContext) :

@@ -44,7 +44,6 @@ import org.eln2.mc.extensions.LevelExtensions.addParticle
 import org.eln2.mc.extensions.LevelExtensions.playLocalSound
 import org.eln2.mc.extensions.NbtExtensions.getThermalMassMapped
 import org.eln2.mc.extensions.NbtExtensions.putThermalMassMapped
-import org.eln2.mc.extensions.ThermalExtensions.appendBody
 import org.eln2.mc.extensions.ThermalExtensions.subStep
 import org.eln2.mc.extensions.Vec3Extensions.plus
 import org.eln2.mc.extensions.Vec3Extensions.toVec3
@@ -53,8 +52,6 @@ import org.eln2.mc.sim.TestEnvironment
 import org.eln2.mc.sim.ThermalBody
 import org.eln2.mc.sim.thermalBody
 import org.eln2.mc.utility.IntId
-import java.io.File
-import java.io.FileWriter
 import java.util.*
 
 data class FurnaceOptions(

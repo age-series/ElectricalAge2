@@ -3,9 +3,11 @@ package org.eln2.mc.common.content
 import mcp.mobius.waila.api.IPluginConfig
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.resources.ResourceLocation
+import org.ageseries.libage.sim.Material
 import org.ageseries.libage.sim.electrical.mna.Circuit
 import org.ageseries.libage.sim.electrical.mna.component.Resistor
 import org.ageseries.libage.sim.electrical.mna.component.VoltageSource
+import org.ageseries.libage.sim.thermal.ThermalMass
 import org.eln2.mc.mathematics.HermiteSpline
 import org.eln2.mc.mathematics.Functions.bbVec
 import org.eln2.mc.mathematics.Functions.lerp
@@ -15,8 +17,8 @@ import org.eln2.mc.client.render.PartialModels
 import org.eln2.mc.client.render.PartialModels.bbOffset
 import org.eln2.mc.client.render.foundation.BasicPartRenderer
 import org.eln2.mc.common.cells.foundation.*
-import org.eln2.mc.common.cells.foundation.behaviors.ElectricalEnergyConverterBehavior
-import org.eln2.mc.common.cells.foundation.behaviors.Extensions.withElectricalEnergyConverter
+import org.eln2.mc.common.cells.foundation.behaviors.withElectricalHeatTransfer
+import org.eln2.mc.common.cells.foundation.behaviors.withElectricalPowerConverter
 import org.eln2.mc.common.cells.foundation.objects.ElectricalComponentInfo
 import org.eln2.mc.common.cells.foundation.objects.ElectricalObject
 import org.eln2.mc.common.cells.foundation.objects.SimulationObjectSet
@@ -34,6 +36,7 @@ import org.eln2.mc.extensions.NumberExtensions.formatted
 import org.eln2.mc.extensions.NumberExtensions.formattedPercentN
 import org.eln2.mc.integration.waila.IWailaProvider
 import org.eln2.mc.integration.waila.TooltipBuilder
+import org.eln2.mc.sim.ThermalBody
 import kotlin.math.abs
 
 enum class GeneratorPowerDirection {
@@ -122,7 +125,7 @@ abstract class GeneratorCell(pos: CellPos, id: ResourceLocation) : CellBase(pos,
         return SimulationObjectSet(GeneratorObject())
     }
 
-    val generatorObject = electricalObject as GeneratorObject
+    val generatorObject get() = electricalObject as GeneratorObject
 }
 
 interface IBatteryView {
@@ -175,13 +178,34 @@ object VoltageModels {
     }
 }
 
+object BatterySpecificHeats {
+    // https://www.batterydesign.net/thermal/
+    val PB_ACID_VENTED_FLOODED = 1080.0
+    val PB_ACID_VRLA_GEL = 900.0
+    val VRLA_AGM = 792.0
+    val LI_ION_NCA = 830.0
+    val LI_ION_NMC = 1040.0
+    val LI_ION_NFP = 1145.0
+}
+
+object BatteryMaterials {
+    val PB_ACID_TEST = Material(
+        0.0,
+        Material.LATEX_RUBBER.thermalConductivity,
+        BatterySpecificHeats.PB_ACID_VENTED_FLOODED,
+        0.0)
+}
+
 data class BatteryModel(
     val voltageFunction: IBatteryVoltageFunction,
     val resistanceFunction: IBatteryResistanceFunction,
     val damageFunction: IBatteryDamageFunction,
     val capacityFunction: IBatteryEnergyCapacityFunction,
     val energyCapacity: Double,
-    val damageChargeThreshold: Double)
+    val damageChargeThreshold: Double,
+    val material: Material,
+    val mass: Double,
+    val surfaceArea: Double)
 
 data class BatteryState(val energy: Double, val life: Double, val energyIo: Double)
 
@@ -193,6 +217,21 @@ class BatteryCell(pos: CellPos, id: ResourceLocation, override val model: Batter
         private const val ENERGY = "energy"
         private const val LIFE = "life"
         private const val ENERGY_IO = "energyIo"
+    }
+
+    override fun createObjectSet(): SimulationObjectSet {
+        return SimulationObjectSet(GeneratorObject(), ThermalWireObject(pos).also {
+            it.body = ThermalBody(pos,
+                ThermalMass(model.material, null, model.mass),
+                model.surfaceArea)
+        })
+    }
+
+    init {
+        behaviors.apply {
+            withElectricalPowerConverter { generatorObject.resistorPower }
+            withElectricalHeatTransfer { thermalWireObject.body }
+        }
     }
 
     override var energy = 0.0
@@ -311,6 +350,8 @@ class BatteryCell(pos: CellPos, id: ResourceLocation, override val model: Batter
         builder.energy(energy)
         builder.current(current)
     }
+
+    val thermalWireObject = thermalObject as ThermalWireObject
 }
 
 class BatteryPart(id: ResourceLocation, placementContext: PartPlacementContext, provider: CellProvider):
