@@ -12,6 +12,13 @@ object PartialModels {
     val WIRE_CROSSING = partialBlock("wire/wire_crossing")
     val WIRE_CROSSING_FULL = partialBlock("wire/wire_crossing_full")
 
+    val THERMAL_WIRE_CROSSING_EMPTY = partialBlock("thermalwire/wire_crossing_empty")
+    val THERMAL_WIRE_CROSSING_SINGLE_WIRE = partialBlock("thermalwire/wire_crossing_singlewire")
+    val THERMAL_WIRE_STRAIGHT = partialBlock("thermalwire/wire_straight")
+    val THERMAL_WIRE_CORNER = partialBlock("thermalwire/wire_corner")
+    val THERMAL_WIRE_CROSSING = partialBlock("thermalwire/wire_crossing")
+    val THERMAL_WIRE_CROSSING_FULL = partialBlock("thermalwire/wire_crossing_full")
+
     val BATTERY_OLD = partialBlock("12v_battery")
     val BATTERY = partialBlock("accumulator1")
 
