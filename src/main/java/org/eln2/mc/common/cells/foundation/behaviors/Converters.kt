@@ -10,7 +10,7 @@ fun interface IElectricalPowerAccessor {
 /**
  * Integrates electrical power into energy.
  * */
-class ElectricalEnergyConverterBehavior(private val accessor: IElectricalPowerAccessor): ICellBehavior {
+class ElectricalPowerConverterBehavior(private val accessor: IElectricalPowerAccessor): ICellBehavior {
     var energy: Double = 0.0
     var deltaEnergy: Double = 0.0
 
@@ -30,16 +30,16 @@ class ElectricalEnergyConverterBehavior(private val accessor: IElectricalPowerAc
     }
 }
 
-fun interface IThermalBodyGetter {
+fun interface IThermalBodyAccessor {
     fun get(): ThermalBody<CellPos>
 }
 
 /**
  * Converts dissipated electrical energy to thermal energy.
  * */
-@RequiresBehavior<ElectricalEnergyConverterBehavior>
-class JouleEffectBehavior(private val thermalBodyAccessor: IThermalBodyGetter) : ICellBehavior {
-    private lateinit var converterBehavior: ElectricalEnergyConverterBehavior
+@RequiresBehavior<ElectricalPowerConverterBehavior>
+class ElectricalHeatTransferBehavior(private val thermalBodyAccessor: IThermalBodyAccessor) : ICellBehavior {
+    private lateinit var converterBehavior: ElectricalPowerConverterBehavior
 
     override fun onAdded(container: CellBehaviorContainer) {
         converterBehavior = container.getBehavior()
@@ -63,13 +63,11 @@ class JouleEffectBehavior(private val thermalBodyAccessor: IThermalBodyGetter) :
     }
 }
 
-object Extensions {
-    fun CellBehaviorContainer.withElectricalEnergyConverter(accessor: IElectricalPowerAccessor): CellBehaviorContainer{
-        return this.add(ElectricalEnergyConverterBehavior(accessor))
-    }
+fun CellBehaviorContainer.withElectricalPowerConverter(accessor: IElectricalPowerAccessor): CellBehaviorContainer{
+    return this.add(ElectricalPowerConverterBehavior(accessor))
+}
 
-    @RequiresBehavior<ElectricalEnergyConverterBehavior>
-    fun CellBehaviorContainer.withJouleEffectHeating(getter: IThermalBodyGetter): CellBehaviorContainer {
-        return this.add(JouleEffectBehavior(getter))
-    }
+@RequiresBehavior<ElectricalPowerConverterBehavior>
+fun CellBehaviorContainer.withElectricalHeatTransfer(getter: IThermalBodyAccessor): CellBehaviorContainer {
+    return this.add(ElectricalHeatTransferBehavior(getter))
 }

@@ -85,7 +85,10 @@ object Content {
                 1 + lifeTerm + cyclesTerm
             },
             energyCapacity = kwHoursInJ(2.2),
-            0.5))
+            0.5,
+            BatteryMaterials.PB_ACID_TEST,
+            20.0,
+            0.3))
         .also { it.energy = it.model.energyCapacity * 0.9 }
     })
 
