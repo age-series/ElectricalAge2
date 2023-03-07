@@ -205,12 +205,11 @@ class WirePart(id: ResourceLocation, context: PartPlacementContext, cellProvider
 
     companion object {
         private const val TEMPERATURE = "temperature"
-        private const val CONNECTIONS = "connections"
         private const val DIRECTIONS = "directions"
         private const val DIRECTION = "dir"
         private const val COLD_LIGHT_LEVEL = 0.0
         private const val COLD_LIGHT_TEMPERATURE = 500.0
-        private const val HOT_LIGHT_LEVEL = 10.0
+        private const val HOT_LIGHT_LEVEL = 5.0
         private const val HOT_LIGHT_TEMPERATURE = 1000.0
     }
 
@@ -280,12 +279,18 @@ class WirePart(id: ResourceLocation, context: PartPlacementContext, cellProvider
     }
 
     private fun updateLight() {
-        val temperature = temperature.coerceIn(COLD_LIGHT_TEMPERATURE, HOT_LIGHT_TEMPERATURE)
+        if(type != WireType.Thermal) {
+            return
+        }
 
         val level = (lerp(
             COLD_LIGHT_LEVEL,
             HOT_LIGHT_LEVEL,
-            map(temperature, COLD_LIGHT_TEMPERATURE, HOT_LIGHT_TEMPERATURE, 0.0, 1.0)) * 15)
+            map(temperature.coerceIn(COLD_LIGHT_TEMPERATURE, HOT_LIGHT_TEMPERATURE),
+                COLD_LIGHT_TEMPERATURE,
+                HOT_LIGHT_TEMPERATURE,
+                0.0,
+                1.0)))
             .toInt()
             .coerceIn(0, 15)
 
