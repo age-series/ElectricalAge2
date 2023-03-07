@@ -13,20 +13,22 @@ import net.minecraft.nbt.CompoundTag
 import net.minecraft.nbt.ListTag
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.world.phys.Vec3
+import org.ageseries.libage.sim.Material
 import org.ageseries.libage.sim.electrical.mna.Circuit
 import org.ageseries.libage.sim.electrical.mna.component.Resistor
+import org.ageseries.libage.sim.thermal.Simulator
+import org.ageseries.libage.sim.thermal.ThermalMass
 import org.eln2.mc.Eln2
-import org.eln2.mc.mathematics.Mathematics.bbVec
+import org.eln2.mc.mathematics.Functions.bbVec
 import org.eln2.mc.client.render.MultipartBlockEntityInstance
 import org.eln2.mc.client.render.PartialModels
 import org.eln2.mc.common.cells.foundation.CellBase
 import org.eln2.mc.common.cells.foundation.CellPos
 import org.eln2.mc.common.cells.foundation.CellProvider
-import org.eln2.mc.common.cells.foundation.objects.ElectricalComponentInfo
-import org.eln2.mc.common.cells.foundation.objects.ElectricalObject
-import org.eln2.mc.common.cells.foundation.objects.ResistorBundle
-import org.eln2.mc.common.cells.foundation.objects.SimulationObjectSet
 import org.eln2.mc.common.cells.foundation.Conventions
+import org.eln2.mc.common.cells.foundation.behaviors.Extensions.withElectricalEnergyConverter
+import org.eln2.mc.common.cells.foundation.behaviors.Extensions.withJouleEffectHeating
+import org.eln2.mc.common.cells.foundation.objects.*
 import org.eln2.mc.common.parts.foundation.CellPart
 import org.eln2.mc.common.parts.foundation.ConnectionMode
 import org.eln2.mc.common.parts.foundation.IPartRenderer
@@ -42,17 +44,18 @@ import org.eln2.mc.extensions.Vec3Extensions.times
 import org.eln2.mc.extensions.Vec3Extensions.toVec3
 import org.eln2.mc.integration.waila.IWailaProvider
 import org.eln2.mc.integration.waila.TooltipBuilder
+import org.eln2.mc.mathematics.Geometry.circleSurfaceArea
+import org.eln2.mc.mathematics.Geometry.cylinderExteriorSurfaceArea
+import org.eln2.mc.sim.ThermalBody
 import java.util.concurrent.atomic.AtomicReference
+import kotlin.math.PI
 import kotlin.math.abs
 
-// This organisation approach is inspired by a suggestion from jrddunbr.
-// Having the content in one file does help navigate more easily.
-
 /**
- * The Wire Object has a single resistor bundle. The Internal Pins of the bundle are connected to each other, and
+ * The [ElectricalWireObject] has a single [ResistorBundle]. The Internal Pins of the bundle are connected to each other, and
  * the External Pins are exported to other Electrical Objects.
  * */
-class WireObject : ElectricalObject(), IWailaProvider {
+class ElectricalWireObject : ElectricalObject(), IWailaProvider {
     private val resistors = ResistorBundle(0.05)
 
     /**
@@ -64,6 +67,8 @@ class WireObject : ElectricalObject(), IWailaProvider {
             field = value
             resistors.resistance = value
         }
+
+    val power get() = resistors.power
 
     override fun offerComponent(neighbour: ElectricalObject): ElectricalComponentInfo {
         return resistors.getOfferedResistor(directionOf(neighbour))
@@ -111,24 +116,54 @@ class WireObject : ElectricalObject(), IWailaProvider {
     }
 }
 
-data class WireModel(val resistanceMeter: Double)
+data class ElectricalWireModel(val resistanceMeter: Double)
 
-object WireModels {
+object ElectricalWireModels {
     private fun getResistance(ρ: Double, L: Double, A: Double): Double {
         return ρ * L / A
     }
 
-    fun copper(thickness: Double): WireModel {
-        return WireModel(getResistance(1.77 * 10e-8, 1.0, thickness))
+    fun copper(thickness: Double): ElectricalWireModel {
+        return ElectricalWireModel(getResistance(1.77 * 10e-8, 1.0, thickness))
     }
 }
 
-class WireCell(pos: CellPos, id: ResourceLocation, val model: WireModel) : CellBase(pos, id) {
-    override fun createObjectSet(): SimulationObjectSet {
-        return SimulationObjectSet(WireObject().also {
-            it.resistance = model.resistanceMeter / 2.0 // Divide by two because bundle creates 2 resistors
-        })
+class ThermalWireObject(val pos: CellPos) : ThermalObject(), IWailaProvider {
+    var body = ThermalBody(
+        pos,
+        ThermalMass(Material.COPPER),
+        cylinderExteriorSurfaceArea(1.0, 0.05)
+    )
+
+    override fun offerComponent(neighbour: ThermalObject): ThermalComponentInfo {
+        return ThermalComponentInfo(body)
     }
+
+    override fun addComponents(simulator: Simulator<CellPos>) {
+        simulator.add(body)
+    }
+
+    override fun appendBody(builder: TooltipBuilder, config: IPluginConfig?) {
+        builder.temperature(body.temperatureK)
+        builder.energy(body.thermalEnergy)
+    }
+}
+
+class WireCell(pos: CellPos, id: ResourceLocation, val model: ElectricalWireModel) : CellBase(pos, id) {
+    init {
+        behaviors
+            .withElectricalEnergyConverter { electricalWire.power }
+            .withJouleEffectHeating { thermalWire.body }
+    }
+
+    override fun createObjectSet(): SimulationObjectSet {
+        return SimulationObjectSet(ElectricalWireObject().also {
+            it.resistance = model.resistanceMeter / 2.0 // Divide by two because bundle creates 2 resistors
+        }, ThermalWireObject(pos))
+    }
+
+    private val electricalWire get() = electricalObject as ElectricalWireObject
+    private val thermalWire get() = thermalObject as ThermalWireObject
 }
 
 class WirePart(id: ResourceLocation, context: PartPlacementContext, cellProvider: CellProvider) :

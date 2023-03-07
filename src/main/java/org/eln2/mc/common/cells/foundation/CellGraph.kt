@@ -7,6 +7,7 @@ import net.minecraftforge.server.ServerLifecycleHooks
 import org.ageseries.libage.debug.dprintln
 import org.ageseries.libage.sim.electrical.mna.Circuit
 import org.ageseries.libage.sim.electrical.mna.component.VoltageSource
+import org.ageseries.libage.sim.thermal.Simulator
 import org.eln2.mc.Eln2.LOGGER
 import org.eln2.mc.annotations.CrossThreadAccess
 import org.eln2.mc.common.cells.CellRegistry
@@ -17,6 +18,8 @@ import org.eln2.mc.extensions.NbtExtensions.getCellPos
 import org.eln2.mc.extensions.NbtExtensions.getRelativeDirection
 import org.eln2.mc.extensions.NbtExtensions.putCellPos
 import org.eln2.mc.extensions.NbtExtensions.putRelativeDirection
+import org.eln2.mc.extensions.ThermalExtensions.subStep
+import org.eln2.mc.sim.TestEnvironment
 import org.eln2.mc.utility.Time
 import java.util.*
 import java.util.concurrent.Executors
@@ -43,7 +46,8 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
     private val posCells = HashMap<CellPos, CellBase>()
 
     private val circuits = ArrayList<Circuit>()
-
+    private val thermalSimulations = ArrayList<Simulator<CellPos>>()
+    
     private val simulationStopLock = ReentrantLock()
 
     // This is the simulation task. It will be null if the simulation is stopped
@@ -75,7 +79,7 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
     /**
      * True, if the solution was found last simulation tick. Otherwise, false.
      * */
-    var successful = false
+    var electricalSuccessful = false
         private set
 
     /**
@@ -104,16 +108,20 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
         subscribers.update(elapsed, SubscriberPhase.Pre)
 
         lastTickTime = Time.toSeconds(measureNanoTime {
-            successful = true
+            electricalSuccessful = true
 
             circuits.forEach {
                 val success = it.step(elapsed)
 
-                successful = successful && success
+                electricalSuccessful = electricalSuccessful && success
 
                 if(!success && !it.isFloating){
                     LOGGER.error("Failed to update non-floating circuit!")
                 }
+            }
+
+            thermalSimulations.forEach {
+                it.step(elapsed)
             }
         })
 
@@ -136,9 +144,9 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
         cells.forEach { it.recordObjectConnections() }
 
         realizeElectrical()
+        realizeThermal()
 
         cells.forEach { it.build() }
-
         circuits.forEach { postProcessCircuit(it) }
     }
 
@@ -158,6 +166,22 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
             circuits.add(circuit)
 
             LOGGER.info("Found circuit with ${circuit.components.size} components")
+        }
+    }
+
+    private fun realizeThermal() {
+        LOGGER.info("Realizing thermal components.")
+
+        thermalSimulations.clear()
+
+        realizeComponents(SimulationObjectType.Thermal) { set ->
+            val simulation = Simulator<CellPos>(TestEnvironment())
+
+            set.forEach { it.thermalObject.setNewSimulation(simulation) }
+
+            thermalSimulations.add(simulation)
+
+            LOGGER.info("Found thermal simulation with ${simulation.bodies.size} components")
         }
     }
 

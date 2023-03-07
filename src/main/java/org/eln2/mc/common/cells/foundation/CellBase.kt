@@ -2,10 +2,8 @@ package org.eln2.mc.common.cells.foundation
 
 import mcp.mobius.waila.api.IPluginConfig
 import net.minecraft.resources.ResourceLocation
-import org.eln2.mc.common.cells.foundation.objects.ElectricalConnectionInfo
-import org.eln2.mc.common.cells.foundation.objects.ElectricalObject
-import org.eln2.mc.common.cells.foundation.objects.SimulationObjectSet
-import org.eln2.mc.common.cells.foundation.objects.SimulationObjectType
+import org.ageseries.libage.sim.thermal.ConnectionParameters
+import org.eln2.mc.common.cells.foundation.objects.*
 import org.eln2.mc.common.space.RelativeRotationDirection
 import org.eln2.mc.integration.waila.IWailaProvider
 import org.eln2.mc.integration.waila.TooltipBuilder
@@ -140,19 +138,31 @@ abstract class CellBase(val pos: CellPos, val id: ResourceLocation) : IWailaProv
      * */
     fun recordObjectConnections() {
         objectSet.process {
-            connections.forEach { neighborInfo ->
-                if (neighborInfo.cell.hasObject(it.type)) {
+            connections.forEach { (remoteCell, sourceDirection) ->
+                if (remoteCell.hasObject(it.type)) {
                     // We can form a connection here.
 
                     when (it.type) {
                         SimulationObjectType.Electrical -> {
                             val localElectrical = it as ElectricalObject
-                            val remoteElectrical = neighborInfo.cell.objectSet.electricalObject
+                            val remoteElectrical = remoteCell.objectSet.electricalObject
 
                             localElectrical.addConnection(
                                 ElectricalConnectionInfo(
                                     remoteElectrical,
-                                    neighborInfo.sourceDirection
+                                    sourceDirection
+                                )
+                            )
+                        }
+
+                        SimulationObjectType.Thermal -> {
+                            val localThermal = it as ThermalObject
+                            val remoteThermal = remoteCell.objectSet.thermalObject
+
+                            localThermal.addConnection(
+                                ThermalConnectionInfo(
+                                    remoteThermal,
+                                    sourceDirection
                                 )
                             )
                         }
@@ -182,6 +192,7 @@ abstract class CellBase(val pos: CellPos, val id: ResourceLocation) : IWailaProv
      * Gets the electrical object. Only call if it has been ensured that this cell has an electrical object.
      * */
     val electricalObject get() = objectSet.electricalObject
+    val thermalObject get() = objectSet.thermalObject
 
     /**
      * By default, the cell just passes down the call to objects that implement the WAILA provider.

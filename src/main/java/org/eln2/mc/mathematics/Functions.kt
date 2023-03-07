@@ -2,10 +2,11 @@ package org.eln2.mc.mathematics
 
 import net.minecraft.core.Vec3i
 import net.minecraft.world.phys.Vec3
+import kotlin.math.PI
 import kotlin.math.floor
 
 // Yes, how fancy. Stop making fun of me!
-object Mathematics {
+object Functions {
     //#region Interpolations
 
     fun lerp(from: Double, to: Double, factor: Double): Double {
@@ -174,3 +175,12 @@ object Mathematics {
     }
 }
 
+object Geometry {
+    fun cylinderExteriorSurfaceArea(length: Double, radius: Double): Double {
+        return 2 * PI * radius * length + 2 * PI * radius * radius
+    }
+
+    fun circleSurfaceArea(radius: Double): Double {
+        return PI * radius * radius
+    }
+}

@@ -3,9 +3,9 @@
 package org.eln2.mc.common.content
 
 import net.minecraft.world.phys.Vec3
-import org.eln2.mc.mathematics.Mathematics.bbVec
-import org.eln2.mc.mathematics.Mathematics.lerp
-import org.eln2.mc.mathematics.Mathematics.vec3
+import org.eln2.mc.mathematics.Functions.bbVec
+import org.eln2.mc.mathematics.Functions.lerp
+import org.eln2.mc.mathematics.Functions.vec3
 import org.eln2.mc.common.blocks.BlockRegistry
 import org.eln2.mc.common.cells.CellRegistry
 import org.eln2.mc.common.cells.foundation.providers.BasicCellProvider
@@ -26,7 +26,7 @@ object Content {
     fun initialize() {}
 
     val COPPER_WIRE_CELL = CellRegistry.register("wire_cell_copper", BasicCellProvider.fourPin  { a, b ->
-        WireCell(a, b, WireModels.copper(centimeters(5.0)))
+        WireCell(a, b, ElectricalWireModels.copper(centimeters(5.0)))
     })
     val COPPER_WIRE_PART = PartRegistry.part("wire_part_copper", BasicPartProvider({ a, b ->
         WirePart(a, b, COPPER_WIRE_CELL.get())
