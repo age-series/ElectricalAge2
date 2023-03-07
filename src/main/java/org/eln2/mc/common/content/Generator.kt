@@ -128,6 +128,7 @@ abstract class GeneratorCell(pos: CellPos, id: ResourceLocation) : CellBase(pos,
 interface IBatteryView {
     val model: BatteryModel
     val energy: Double
+    val energyIo: Double
     val current: Double
     val life: Double
     val cycles: Double
@@ -182,7 +183,7 @@ data class BatteryModel(
     val energyCapacity: Double,
     val damageChargeThreshold: Double)
 
-data class BatteryState(val energy: Double, val life: Double, val cycles: Double)
+data class BatteryState(val energy: Double, val life: Double, val energyIo: Double)
 
 class BatteryCell(pos: CellPos, id: ResourceLocation, override val model: BatteryModel) :
     GeneratorCell(pos, id),
@@ -191,20 +192,19 @@ class BatteryCell(pos: CellPos, id: ResourceLocation, override val model: Batter
     companion object {
         private const val ENERGY = "energy"
         private const val LIFE = "life"
-        private const val CYCLES = "cycles"
-    }
-
-    init {
-        behaviors.withElectricalEnergyConverter { generatorObject.resistorPower }
+        private const val ENERGY_IO = "energyIo"
     }
 
     override var energy = 0.0
 
+    override var energyIo = 0.0
+        private set
+
     override var life = 1.0
         private set
 
-    override var cycles = 0.0
-        private set
+    override val cycles
+        get() = energyIo / model.energyCapacity
 
     override val current
         get() = generatorObject.resistorCurrent
@@ -231,7 +231,7 @@ class BatteryCell(pos: CellPos, id: ResourceLocation, override val model: Batter
         stateUpdate.setLatest(BatteryState(
             tag.getDouble(ENERGY),
             tag.getDouble(LIFE),
-            tag.getDouble(CYCLES)))
+            tag.getDouble(ENERGY_IO)))
     }
 
     @CrossThreadAccess
@@ -240,7 +240,7 @@ class BatteryCell(pos: CellPos, id: ResourceLocation, override val model: Batter
 
         tag.putDouble(ENERGY, energy)
         tag.putDouble(LIFE, life)
-        tag.putDouble(CYCLES, cycles)
+        tag.putDouble(ENERGY_IO, energyIo)
 
         return tag
     }
@@ -257,7 +257,7 @@ class BatteryCell(pos: CellPos, id: ResourceLocation, override val model: Batter
         stateUpdate.consume {
             energy = it.energy
             life = it.life
-            cycles = it.cycles
+            energyIo = it.energyIo
         }
     }
 
@@ -265,6 +265,10 @@ class BatteryCell(pos: CellPos, id: ResourceLocation, override val model: Batter
         // Get energy transfer
 
         val transferredEnergy = abs(generatorObject.resistorPower * elapsed)
+
+        // Update total IO
+
+        energyIo += transferredEnergy
 
         if(generatorObject.powerFlowDirection == GeneratorPowerDirection.Incoming){
             // Add energy into the system.
@@ -280,10 +284,6 @@ class BatteryCell(pos: CellPos, id: ResourceLocation, override val model: Batter
 
         // Clamp energy
         energy = energy.coerceIn(0.0, capacity)
-
-        // Update cycles
-
-        cycles += transferredEnergy / capacity //todo: this massively affects the change rate, maybe use the model's capacity?
     }
 
     private fun simulationTick(elapsed: Double, phase: SubscriberPhase){
@@ -310,10 +310,6 @@ class BatteryCell(pos: CellPos, id: ResourceLocation, override val model: Batter
         builder.text("Capacity", capacityCoefficient.formattedPercentN())
         builder.energy(energy)
         builder.current(current)
-
-        val converter = behaviors.getBehavior<ElectricalEnergyConverterBehavior>()
-        builder.text("Conv E", converter.energy.formatted())
-        builder.text("Conv ΔE", converter.deltaEnergy.formatted())
     }
 }
 

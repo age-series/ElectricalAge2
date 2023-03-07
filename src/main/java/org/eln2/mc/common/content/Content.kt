@@ -58,25 +58,22 @@ object Content {
             voltageFunction = VoltageModels.TEST,
             resistanceFunction = { _, _ -> milliOhms(100.0) },
             damageFunction = { battery, dt ->
-                val currentThreshold = 7.0 //A
+                val currentThreshold = 100.0 //A
 
-                // Test damage func: passive 0.001% per second
-                // if current > threshold, 0.1% per second for every amp
+                // if current > threshold, 0.0001% per second for every amp
                 // if charge < threshold, amplify everything by 10delta
-
-                val passiveTerm = 0.001 / 100.0 // remember: percent
 
                 val absCurrent = abs(battery.current)
 
                 val currentTerm = if(absCurrent > currentThreshold) {
-                    (absCurrent - currentThreshold) * (0.1 / 100.0)
+                    (absCurrent - currentThreshold) * (0.0001 / 100.0)
                 } else 0.0
 
                 val amplification = if(battery.charge < battery.model.damageChargeThreshold){
                     (battery.model.damageChargeThreshold - battery.charge) * 10
                 } else 0.0
 
-                (passiveTerm + currentTerm) * dt * (1.0 + amplification)
+                currentTerm * dt * (1.0 + amplification)
             },
             capacityFunction = { battery ->
                 // Test capacity func: 0% after 5 cycles
