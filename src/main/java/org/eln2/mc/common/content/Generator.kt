@@ -6,10 +6,10 @@ import net.minecraft.resources.ResourceLocation
 import org.ageseries.libage.sim.electrical.mna.Circuit
 import org.ageseries.libage.sim.electrical.mna.component.Resistor
 import org.ageseries.libage.sim.electrical.mna.component.VoltageSource
-import org.eln2.mc.HermiteSpline
-import org.eln2.mc.Mathematics.bbVec
-import org.eln2.mc.Mathematics.lerp
-import org.eln2.mc.Mathematics.map
+import org.eln2.mc.mathematics.HermiteSpline
+import org.eln2.mc.mathematics.Mathematics.bbVec
+import org.eln2.mc.mathematics.Mathematics.lerp
+import org.eln2.mc.mathematics.Mathematics.map
 import org.eln2.mc.annotations.CrossThreadAccess
 import org.eln2.mc.client.render.PartialModels
 import org.eln2.mc.client.render.PartialModels.bbOffset

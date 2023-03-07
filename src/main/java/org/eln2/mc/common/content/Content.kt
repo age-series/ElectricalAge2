@@ -3,9 +3,9 @@
 package org.eln2.mc.common.content
 
 import net.minecraft.world.phys.Vec3
-import org.eln2.mc.Mathematics.bbVec
-import org.eln2.mc.Mathematics.lerp
-import org.eln2.mc.Mathematics.vec3
+import org.eln2.mc.mathematics.Mathematics.bbVec
+import org.eln2.mc.mathematics.Mathematics.lerp
+import org.eln2.mc.mathematics.Mathematics.vec3
 import org.eln2.mc.common.blocks.BlockRegistry
 import org.eln2.mc.common.cells.CellRegistry
 import org.eln2.mc.common.cells.foundation.providers.BasicCellProvider
@@ -14,9 +14,7 @@ import org.eln2.mc.common.parts.foundation.providers.BasicPartProvider
 import org.eln2.mc.utility.SelfDescriptiveUnitMultipliers.centimeters
 import org.eln2.mc.utility.SelfDescriptiveUnitMultipliers.milliOhms
 import org.eln2.mc.utility.UnitConversions.kwHoursInJ
-import org.eln2.mc.utility.UnitConversions.wattHoursInJ
 import kotlin.math.abs
-import kotlin.math.pow
 
 /**
  * Joint registry for content classes.
