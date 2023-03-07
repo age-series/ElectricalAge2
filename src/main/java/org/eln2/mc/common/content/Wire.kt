@@ -16,13 +16,13 @@ import net.minecraft.world.phys.Vec3
 import org.ageseries.libage.sim.Material
 import org.ageseries.libage.sim.electrical.mna.Circuit
 import org.ageseries.libage.sim.electrical.mna.component.Resistor
-import org.ageseries.libage.sim.thermal.Simulator
-import org.ageseries.libage.sim.thermal.ThermalMass
-import org.apache.http.impl.conn.Wire
-import org.eln2.mc.Eln2
+import org.ageseries.libage.sim.thermal.*
+import org.eln2.mc.Eln2.LOGGER
 import org.eln2.mc.mathematics.Functions.bbVec
 import org.eln2.mc.client.render.MultipartBlockEntityInstance
 import org.eln2.mc.client.render.PartialModels
+import org.eln2.mc.client.render.animations.colors.ColorInterpolators
+import org.eln2.mc.client.render.animations.colors.Utilities.colorF
 import org.eln2.mc.common.cells.foundation.CellBase
 import org.eln2.mc.common.cells.foundation.CellPos
 import org.eln2.mc.common.cells.foundation.CellProvider
@@ -30,10 +30,9 @@ import org.eln2.mc.common.cells.foundation.Conventions
 import org.eln2.mc.common.cells.foundation.behaviors.Extensions.withElectricalEnergyConverter
 import org.eln2.mc.common.cells.foundation.behaviors.Extensions.withJouleEffectHeating
 import org.eln2.mc.common.cells.foundation.objects.*
-import org.eln2.mc.common.parts.foundation.CellPart
-import org.eln2.mc.common.parts.foundation.ConnectionMode
-import org.eln2.mc.common.parts.foundation.IPartRenderer
-import org.eln2.mc.common.parts.foundation.PartPlacementContext
+import org.eln2.mc.common.events.AtomicUpdate
+import org.eln2.mc.common.events.EventScheduler
+import org.eln2.mc.common.parts.foundation.*
 import org.eln2.mc.common.space.DirectionMask
 import org.eln2.mc.common.space.RelativeRotationDirection
 import org.eln2.mc.extensions.ModelDataExtensions.blockCenter
@@ -45,6 +44,8 @@ import org.eln2.mc.extensions.Vec3Extensions.times
 import org.eln2.mc.extensions.Vec3Extensions.toVec3
 import org.eln2.mc.integration.waila.IWailaProvider
 import org.eln2.mc.integration.waila.TooltipBuilder
+import org.eln2.mc.mathematics.Functions.lerp
+import org.eln2.mc.mathematics.Functions.map
 import org.eln2.mc.mathematics.Geometry.cylinderExteriorSurfaceArea
 import org.eln2.mc.sim.ThermalBody
 import java.util.concurrent.atomic.AtomicReference
@@ -174,20 +175,36 @@ class WireCell(pos: CellPos, id: ResourceLocation, val model: ElectricalWireMode
 
     private val electricalWire get() = electricalObject as ElectricalWireObject
     private val thermalWire get() = thermalObject as ThermalWireObject
+
+    val temperature get() = thermalWire.body.temperatureK
 }
 
 class WirePart(id: ResourceLocation, context: PartPlacementContext, cellProvider: CellProvider, val type: WireType) :
     CellPart(id, context, cellProvider) {
 
+    companion object {
+        private const val TEMPERATURE = "temperature"
+        private const val CONNECTIONS = "connections"
+        private const val DIRECTIONS = "directions"
+        private const val DIRECTION = "dir"
+        private const val COLD_LIGHT_LEVEL = 0.0
+        private const val COLD_LIGHT_TEMPERATURE = 500.0
+        private const val HOT_LIGHT_LEVEL = 10.0
+        private const val HOT_LIGHT_TEMPERATURE = 1000.0
+    }
+
     override val baseSize = bbVec(8.0, 2.0, 8.0)
 
     private val connectedDirections = HashSet<RelativeRotationDirection>()
     private var wireRenderer: WirePartRenderer? = null
+    private var temperature = 0.0
+    private var connectionsChanged = true
 
     override fun createRenderer(): IPartRenderer {
         wireRenderer = WirePartRenderer(this,
             if(type == WireType.Electrical) WireMeshSets.electricalWireMap
-            else WireMeshSets.thermalWireMap)
+            else WireMeshSets.thermalWireMap,
+            type)
 
         applyRendererState()
 
@@ -210,54 +227,71 @@ class WirePart(id: ResourceLocation, context: PartPlacementContext, cellProvider
     override fun loadFromTag(tag: CompoundTag) {
         super.loadFromTag(tag)
 
-        val wireData = tag.get("WireData") as CompoundTag
-
-        loadTag(wireData)
+        loadConnectionsTag(tag)
     }
 
     override fun getSaveTag(): CompoundTag? {
         val tag = super.getSaveTag() ?: return null
 
-        val wireData = createTag()
-
-        tag.put("WireData", wireData)
+        saveConnections(tag)
 
         return tag
     }
 
     override fun getSyncTag(): CompoundTag {
-        return createTag()
+        return CompoundTag().also { tag ->
+            if(connectionsChanged) {
+                saveConnections(tag)
+                connectionsChanged = false
+            }
+            temperature = (cell as WireCell).temperature
+            tag.putDouble(TEMPERATURE, temperature)
+        }
     }
 
     override fun handleSyncTag(tag: CompoundTag) {
-        loadTag(tag)
+        if(tag.contains(DIRECTIONS)) {
+            loadConnectionsTag(tag)
+        }
+
+        temperature = tag.getDouble(TEMPERATURE)
+        wireRenderer?.updateTemperature(temperature)
     }
 
-    private fun createTag(): CompoundTag {
-        val tag = CompoundTag()
+    private fun updateLight() {
+        val temperature = temperature.coerceIn(COLD_LIGHT_TEMPERATURE, HOT_LIGHT_TEMPERATURE)
 
+        val level = (lerp(
+            COLD_LIGHT_LEVEL,
+            HOT_LIGHT_LEVEL,
+            map(temperature, COLD_LIGHT_TEMPERATURE, HOT_LIGHT_TEMPERATURE, 0.0, 1.0)) * 15)
+            .toInt()
+            .coerceIn(0, 15)
+
+        updateBrightness(level)
+    }
+
+    private fun saveConnections(tag: CompoundTag) {
         val directionList = ListTag()
 
         connectedDirections.forEach { direction ->
             val directionTag = CompoundTag()
 
-            directionTag.putRelativeDirection("Direction", direction)
+            directionTag.putRelativeDirection(DIRECTION, direction)
 
             directionList.add(directionTag)
         }
 
-        tag.put("Directions", directionList)
-
-        return tag
+        tag.put(DIRECTIONS, directionList)
     }
 
-    private fun loadTag(tag: CompoundTag) {
+    private fun loadConnectionsTag(tag: CompoundTag) {
         connectedDirections.clear()
 
-        val directionList = tag.get("Directions") as ListTag
+        val directionList = tag.get(DIRECTIONS) as ListTag
 
         directionList.forEach { directionTag ->
-            val direction = (directionTag as CompoundTag).getRelativeDirection("Direction")
+            val direction = (directionTag as CompoundTag).getRelativeDirection(DIRECTION)
 
             connectedDirections.add(direction)
         }
@@ -272,13 +306,30 @@ class WirePart(id: ResourceLocation, context: PartPlacementContext, cellProvider
     }
 
     override fun recordConnection(direction: RelativeRotationDirection, mode: ConnectionMode) {
+        connectionsChanged = true
         connectedDirections.add(direction)
         syncAndSave()
     }
 
     override fun recordDeletedConnection(direction: RelativeRotationDirection) {
+        connectionsChanged = true
         connectedDirections.remove(direction)
         syncAndSave()
+    }
+
+    override fun onCellAcquired() {
+        sendTemperatureUpdates()
+    }
+
+    private fun sendTemperatureUpdates() {
+        if(!isAlive) {
+            return
+        }
+
+        syncChanges()
+        updateLight()
+
+        EventScheduler.scheduleWorkPre(20, this::sendTemperatureUpdates)
     }
 }
 
@@ -304,12 +355,26 @@ object WireMeshSets {
     )
 }
 
-class WirePartRenderer(val part: WirePart, val meshes: Map<DirectionMask, PartialModel>) : IPartRenderer {
+class WirePartRenderer(val part: WirePart, val meshes: Map<DirectionMask, PartialModel>, val type: WireType) : IPartRenderer {
+    companion object {
+        private val COLD_TINT = colorF(1f, 1f, 1f, 1f)
+        private val HOT_TINT = colorF(5f, 0.1f, 0.2f, 1f)
+        private val COLD_TEMP = STANDARD_TEMPERATURE
+        private val HOT_TEMP = Temperature.from(1000.0, ThermalUnits.CELSIUS)
+        private val INTERPOLATOR = ColorInterpolators.rgbLinear()
+    }
+
     private lateinit var multipartInstance: MultipartBlockEntityInstance
     private var modelInstance: ModelData? = null
 
     // Reset on every frame
     private var latestDirections = AtomicReference<List<RelativeRotationDirection>>()
+
+    private val temperatureUpdate = AtomicUpdate<Double>()
+
+    fun updateTemperature(value: Double) {
+        temperatureUpdate.setLatest(value)
+    }
 
     fun applyDirections(directions: List<RelativeRotationDirection>) {
         latestDirections.set(directions)
@@ -321,6 +386,7 @@ class WirePartRenderer(val part: WirePart, val meshes: Map<DirectionMask, Partia
 
     override fun beginFrame() {
         selectModel()
+        applyTemperatureRendering()
     }
 
     private fun selectModel() {
@@ -346,7 +412,22 @@ class WirePartRenderer(val part: WirePart, val meshes: Map<DirectionMask, Partia
         }
 
         if (!found) {
-            Eln2.LOGGER.error("Wire did not handle cases: $directions")
+            LOGGER.error("Wire did not handle cases: $directions")
+        }
+
+        applyTemperatureRendering()
+    }
+
+    private fun applyTemperatureRendering() {
+        if(type != WireType.Thermal) {
+            return
+        }
+
+        temperatureUpdate.consume {
+            val temperature = it.coerceIn(COLD_TEMP.kelvin, HOT_TEMP.kelvin)
+            val progress = map(temperature, COLD_TEMP.kelvin, HOT_TEMP.kelvin, 0.0, 1.0)
+
+            modelInstance?.setColor(INTERPOLATOR.interpolate(COLD_TINT, HOT_TINT, progress.toFloat()))
         }
     }
 

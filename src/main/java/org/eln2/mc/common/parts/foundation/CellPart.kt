@@ -55,12 +55,16 @@ abstract class CellPart(
     @ServerOnly
     private var customSimulationData: CompoundTag? = null
 
+    protected var isAlive = false
+        private set
+
     /**
      * Notifies the cell of the new container.
      * */
     override fun onPlaced() {
         cell = provider.create(cellPos)
         cell.container = placementContext.multipart
+        isAlive = true
         onCellAcquired()
     }
 
@@ -71,8 +75,15 @@ abstract class CellPart(
         if (hasCell) {
             cell.onContainerUnloaded()
             cell.container = null
+            isAlive = false
             onCellReleased()
         }
+    }
+
+    override fun onRemoved() {
+        super.onRemoved()
+
+        isAlive = false
     }
 
     /**
@@ -141,6 +152,7 @@ abstract class CellPart(
             customSimulationData = null
         }
 
+        isAlive = true
         onCellAcquired()
     }
 
