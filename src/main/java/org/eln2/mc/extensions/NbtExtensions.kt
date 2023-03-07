@@ -186,7 +186,7 @@ object NbtExtensions {
 
     fun CompoundTag.putMaterial(id: String, material: Material){
         this.putSubTag(id) {
-            it.putDouble(ELECTRICAL_RESISTIVITY, material.electricalResisitivity)
+            it.putDouble(ELECTRICAL_RESISTIVITY, material.electricalResistivity)
             it.putDouble(THERMAL_CONDUCTIVITY, material.thermalConductivity)
             it.putDouble(SPECIFIC_HEAT, material.specificHeat)
             it.putDouble(DENSITY, material.density)
