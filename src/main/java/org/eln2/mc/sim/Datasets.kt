@@ -8,6 +8,7 @@ import org.eln2.mc.utility.ResourceReader
 
 object Datasets {
     val AIR_THERMAL_CONDUCTIVITY = loadCsvSpline("air_thermal_conductivity/ds.csv", 0, 2)
+    val MINECRAFT_TEMPERATURE_CELSIUS = loadCsvSpline("minecraft_temperature/ds.csv", 0, 1)
 
     private fun loadCsvSpline(name: String, keyIndex: Int, valueIndex: Int): HermiteSplineMapped {
         val builder = mappedHermite()
