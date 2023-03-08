@@ -101,7 +101,7 @@ class DirectionMaskTests {
     @Test
     fun testChecks(){
         DirectionMask.ALL_MASKS.forEach { mask ->
-            Direction.values().forEach { dir ->
+            mask.directionList.forEach { dir ->
                 assert(mask.has(dir) == mask.directionList.contains(dir))
 
                 if(dir == Direction.NORTH) assert(mask.hasFront && mask.hasNorth)
