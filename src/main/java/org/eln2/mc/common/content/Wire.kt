@@ -207,9 +207,6 @@ class WireCell(
     }
 
     override fun createObjectSet(): SimulationObjectSet {
-        val level = graph.level
-        val environment = BiomeEnvironments.get(level, pos)
-
         val thermal = ThermalWireObject(this)
 
         return if(type == WireType.Electrical){
@@ -217,7 +214,7 @@ class WireCell(
                 it.resistance = model.resistanceMeter / 2.0 // Divide by two because bundle creates 2 resistors
             }, thermal)
         } else {
-            SimulationObjectSet(thermalObject)
+            SimulationObjectSet(thermal)
         }
     }
 

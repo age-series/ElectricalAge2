@@ -1,18 +1,23 @@
 package org.eln2.mc.common.cells.foundation.behaviors
 
+import net.minecraft.server.level.ServerLevel
 import org.eln2.mc.common.blocks.foundation.MultipartBlockEntity
 import org.eln2.mc.common.cells.foundation.CellBase
 import org.eln2.mc.common.cells.foundation.CellBehaviorContainer
+import org.eln2.mc.extensions.LevelExtensions.destroyPart
 
 fun CellBehaviorContainer.withStandardExplosionBehavior(cell: CellBase, threshold: Double, temperatureAccessor: ITemperatureAccessor): CellBehaviorContainer {
-    return withExplosionBehavior(temperatureAccessor, TemperatureExplosionBehaviorOptions(
-        threshold,
-        0.1,
-        0.25
-    )) {
+    return withExplosionBehavior(temperatureAccessor, TemperatureExplosionBehaviorOptions(threshold, 0.1, 0.25)) {
+        val container = cell.container
 
-        // todo maybe an IExplodable?
-        (cell.container as MultipartBlockEntity).getPart(cell.pos.face)!!
+        if(container is MultipartBlockEntity) {
+            val part = container.getPart(cell.pos.face)!!
+            val level = (part.placementContext.level as ServerLevel)
+            level.destroyPart(part)
+        }
+        else {
+            error("Cannot explode $container")
+        }
     }
 }
 
