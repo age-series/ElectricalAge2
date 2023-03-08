@@ -30,6 +30,7 @@ import org.eln2.mc.common.cells.foundation.CellBase
 import org.eln2.mc.common.cells.foundation.CellPos
 import org.eln2.mc.common.cells.foundation.CellProvider
 import org.eln2.mc.common.cells.foundation.SubscriberPhase
+import org.eln2.mc.common.cells.foundation.behaviors.withStandardBehavior
 import org.eln2.mc.common.cells.foundation.objects.SimulationObjectSet
 import org.eln2.mc.common.events.*
 import org.eln2.mc.common.parts.foundation.CellPart
@@ -205,8 +206,12 @@ class LightCell(pos: CellPos, id: ResourceLocation, val model: LightModel) : Cel
         receiver = null
     }
 
+    init {
+        behaviors.withStandardBehavior(this, { resistorObject.power }, { thermal.body })
+    }
+
     override fun createObjectSet(): SimulationObjectSet {
-        return SimulationObjectSet(ResistorObject().also { it.resistance = model.resistance })
+        return SimulationObjectSet(ResistorObject().also { it.resistance = model.resistance }, ThermalWireObject(this))
     }
 
     override fun onGraphChanged() {
@@ -239,6 +244,7 @@ class LightCell(pos: CellPos, id: ResourceLocation, val model: LightModel) : Cel
     }
 
     private val resistorObject get() = electricalObject as ResistorObject
+    private val thermal get() = thermalObject as ThermalWireObject
 
     override fun appendBody(builder: TooltipBuilder, config: IPluginConfig?) {
         super.appendBody(builder, config)

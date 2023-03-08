@@ -1,12 +1,9 @@
 package org.eln2.mc.common.cells.foundation.behaviors
 
 import mcp.mobius.waila.api.IPluginConfig
-import net.minecraft.server.level.ServerLevel
-import org.eln2.mc.Eln2.LOGGER
 import org.eln2.mc.common.cells.foundation.*
 import org.eln2.mc.common.events.EventScheduler
 import org.eln2.mc.common.parts.foundation.Part
-import org.eln2.mc.extensions.LevelExtensions.destroyPart
 import org.eln2.mc.extensions.NumberExtensions.formattedPercentN
 import org.eln2.mc.integration.waila.IWailaProvider
 import org.eln2.mc.integration.waila.TooltipBuilder
@@ -15,9 +12,8 @@ fun interface ITemperatureAccessor {
     fun get(): Double
 }
 
-// todo: generic IBlowable or something along these lines
-fun interface IPartAccessor {
-    fun get(): Part
+fun interface IExplosionNotifier {
+    fun explode()
 }
 
 data class TemperatureExplosionBehaviorOptions(
@@ -47,9 +43,9 @@ data class TemperatureExplosionBehaviorOptions(
  * using the [EventScheduler]
  * */
 class TemperatureExplosionBehavior(
-    val accessor: ITemperatureAccessor,
+    val temperatureAccessor: ITemperatureAccessor,
     val options: TemperatureExplosionBehaviorOptions,
-    val partAccessor: IPartAccessor) :
+    val notifier: IExplosionNotifier) :
     ICellBehavior,
     IWailaProvider {
 
@@ -67,7 +63,7 @@ class TemperatureExplosionBehavior(
     }
 
     private fun simulationTick(dt: Double, phase: SubscriberPhase) {
-        val temperature = accessor.get()
+        val temperature = temperatureAccessor.get()
 
         if(temperature > options.temperatureThreshold) {
             val difference = temperature - options.temperatureThreshold
@@ -90,10 +86,7 @@ class TemperatureExplosionBehavior(
             enqueued = true
 
             EventScheduler.scheduleWorkPre(1) {
-                val part = partAccessor.get()
-                val level = (part.placementContext.level as ServerLevel)
-
-                level.destroyPart(part)
+                notifier.explode()
             }
         }
     }
@@ -106,9 +99,9 @@ class TemperatureExplosionBehavior(
 fun CellBehaviorContainer.withExplosionBehavior(
     temperatureAccessor: ITemperatureAccessor,
     options: TemperatureExplosionBehaviorOptions,
-    partAccessor: IPartAccessor): CellBehaviorContainer {
+    explosionNotifier: IExplosionNotifier): CellBehaviorContainer {
 
-    this.add(TemperatureExplosionBehavior(temperatureAccessor, options, partAccessor))
+    this.add(TemperatureExplosionBehavior(temperatureAccessor, options, explosionNotifier))
 
     return this
 }

@@ -12,6 +12,7 @@ import org.eln2.mc.common.cells.foundation.CellBase
 import org.eln2.mc.common.cells.foundation.CellPos
 import org.eln2.mc.common.cells.foundation.behaviors.withElectricalHeatTransfer
 import org.eln2.mc.common.cells.foundation.behaviors.withElectricalPowerConverter
+import org.eln2.mc.common.cells.foundation.behaviors.withStandardBehavior
 import org.eln2.mc.common.cells.foundation.objects.ElectricalComponentInfo
 import org.eln2.mc.common.cells.foundation.objects.ElectricalObject
 import org.eln2.mc.common.cells.foundation.objects.SimulationObjectSet
@@ -79,10 +80,7 @@ class ResistorObject : ElectricalObject(), IWailaProvider {
 
 class ResistorCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) {
     init {
-        behaviors.apply {
-            withElectricalPowerConverter { resistor.power }
-            withElectricalHeatTransfer { thermal.body }
-        }
+        behaviors.withStandardBehavior(this, { resistor.power }, { thermal.body })
     }
 
     override fun createObjectSet(): SimulationObjectSet {
