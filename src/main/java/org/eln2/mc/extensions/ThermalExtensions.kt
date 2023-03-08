@@ -12,7 +12,7 @@ object ThermalExtensions {
         builder.temperature(this.temperature.kelvin)
     }
 
-    fun Simulator<*>.subStep(dt: Double, steps: Int, consumer: ((Int, Double) -> Unit)? = null){
+    fun Simulator.subStep(dt: Double, steps: Int, consumer: ((Int, Double) -> Unit)? = null){
         val stepSize = dt / steps
 
         repeat(steps) {

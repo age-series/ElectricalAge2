@@ -42,16 +42,16 @@ import org.eln2.mc.common.cells.foundation.objects.SimulationObjectSet
 import org.eln2.mc.common.events.AtomicUpdate
 import org.eln2.mc.extensions.LevelExtensions.addParticle
 import org.eln2.mc.extensions.LevelExtensions.playLocalSound
+import org.eln2.mc.extensions.LibAgeExtensions.add
+import org.eln2.mc.extensions.LibAgeExtensions.connect
+import org.eln2.mc.extensions.LibAgeExtensions.remove
 import org.eln2.mc.extensions.NbtExtensions.getThermalMassMapped
 import org.eln2.mc.extensions.NbtExtensions.putThermalMassMapped
 import org.eln2.mc.extensions.ThermalExtensions.subStep
 import org.eln2.mc.extensions.Vec3Extensions.plus
 import org.eln2.mc.extensions.Vec3Extensions.toVec3
 import org.eln2.mc.integration.waila.TooltipBuilder
-import org.eln2.mc.sim.TestEnvironment
 import org.eln2.mc.sim.ThermalBody
-import org.eln2.mc.sim.thermalBody
-import org.eln2.mc.utility.IntId
 import java.util.*
 
 data class FurnaceOptions(
@@ -109,7 +109,7 @@ class FurnaceCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) {
 
     fun deserializeNbt(tag: CompoundTag){
         options.deserializeNbt(tag.getCompound(OPTIONS))
-        resistorHeatBodyUpdate.setLatest(thermalBody(tag.getThermalMassMapped(RESISTOR_THERMAL_MASS), options.surfaceArea))
+        resistorHeatBodyUpdate.setLatest(ThermalBody(tag.getThermalMassMapped(RESISTOR_THERMAL_MASS), options.surfaceArea))
     }
 
     val options = FurnaceOptions(
@@ -121,14 +121,14 @@ class FurnaceCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) {
         0.01,
         ConnectionParameters.DEFAULT)
 
-    private var resistorHeatBody = thermalBody(ThermalMass(Material.IRON), 0.5)
-    private val resistorHeatBodyUpdate = AtomicUpdate<ThermalBody<IntId>>()
+    private var resistorHeatBody = ThermalBody(ThermalMass(Material.IRON), 0.5)
+    private val resistorHeatBodyUpdate = AtomicUpdate<ThermalBody>()
 
     //private var smeltingHeatBody = HeatBody.iron(10.0)
 
     // Used to track the body added to the system.
     // We only mutate this ref on our simulation thread.
-    private var knownSmeltingBody: ThermalBody<IntId>? = null
+    private var knownSmeltingBody: ThermalBody? = null
 
     // Used to hold the target smelting body. Mutated from e.g. the game object.
     // In our simulation thread, we implemented a state machine using this.
@@ -137,9 +137,9 @@ class FurnaceCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) {
     // 2. If the external heating body is not null, and the known body is not equal to it, we update the body in the system.
     // To update, we first check if the known body is not null. If that is so, we remove it from the simulation. This cleans up the previous body.
     // Then, we set its reference to the new one, and insert it into the simulation, also setting up connections.
-    private var externalSmeltingBody: ThermalBody<IntId>? = null
+    private var externalSmeltingBody: ThermalBody? = null
 
-    fun loadSmeltingBody(body: ThermalBody<IntId>) {
+    fun loadSmeltingBody(body: ThermalBody) {
         externalSmeltingBody = body
     }
 
@@ -149,7 +149,7 @@ class FurnaceCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) {
 
     private val needsBurn get() = knownSmeltingBody != null
 
-    private val simulator = Simulator(TestEnvironment<IntId>()).also {
+    private val simulator = Simulator().also {
         it.add(resistorHeatBody)
     }
     var isHot: Boolean = false
@@ -217,10 +217,10 @@ class FurnaceCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) {
             // Works because knownSmeltingBody reference is not mutated outside our simulation thread
 
             if(knownSmeltingBody != null){
-                simulator.add(Simulator.Connection(
+                simulator.connect(
                     resistorHeatBody,
                     knownSmeltingBody!!,
-                    options.connectionParameters))
+                    options.connectionParameters)
             }
         }
 
@@ -254,7 +254,7 @@ class FurnaceCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) {
 
                 knownSmeltingBody = external
                 simulator.add(external)
-                simulator.add(Simulator.Connection(external, resistorHeatBody, options.connectionParameters))
+                simulator.connect(external, resistorHeatBody, options.connectionParameters)
             }
         }
     }
@@ -384,7 +384,10 @@ class FurnaceBlockEntity(pos: BlockPos, state: BlockState) :
             val inputStack = it.getStackInSlot(INPUT_SLOT)
 
             isBurning = if(!inputStack.isEmpty){
-                furnaceCell.loadSmeltingBody(thermalBody(ThermalMass(Material.IRON), 1.0))
+                furnaceCell.loadSmeltingBody(
+                    ThermalBody(
+                    ThermalMass(Material.IRON), 1.0)
+                )
                 true
             } else{
                 furnaceCell.unloadSmeltingBody()

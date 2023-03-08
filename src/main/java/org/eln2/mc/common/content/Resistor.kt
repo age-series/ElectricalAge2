@@ -86,7 +86,7 @@ class ResistorCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) {
     }
 
     override fun createObjectSet(): SimulationObjectSet {
-        return SimulationObjectSet(ResistorObject(), ThermalWireObject(pos))
+        return SimulationObjectSet(ResistorObject(), ThermalWireObject(this))
     }
 
     private val resistor get() = electricalObject as ResistorObject

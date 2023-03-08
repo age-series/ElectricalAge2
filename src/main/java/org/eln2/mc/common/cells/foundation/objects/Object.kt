@@ -103,11 +103,11 @@ abstract class ElectricalObject : ISimulationObject {
     protected abstract fun addComponents(circuit: Circuit)
 }
 
-data class ThermalComponentInfo(val body: ThermalBody<CellPos>)
+data class ThermalComponentInfo(val body: ThermalBody)
 data class ThermalConnectionInfo(val obj: ThermalObject, val direction: RelativeRotationDirection)
 
 abstract class ThermalObject : ISimulationObject {
-    var simulation: Simulator<CellPos>? = null
+    var simulation: Simulator? = null
         private set
 
     protected val connections = ArrayList<ThermalConnectionInfo>()
@@ -139,7 +139,7 @@ abstract class ThermalObject : ISimulationObject {
      * Called by the building logic when the thermal object is made part of a simulation.
      * Also calls the *registerComponents* method.
      * */
-    fun setNewSimulation(simulator: Simulator<CellPos>) {
+    fun setNewSimulation(simulator: Simulator) {
         this.simulation = simulator
 
         addComponents(simulator)
@@ -184,8 +184,8 @@ abstract class ThermalObject : ISimulationObject {
             assert(remote.simulation == simulation)
 
             simulation!!.connect(
-                this.offerComponent(remote).body,
-                remote.offerComponent(this).body,
+                this.offerComponent(remote).body.mass,
+                remote.offerComponent(this).body.mass,
                 ConnectionParameters.DEFAULT)
         }
     }
@@ -193,5 +193,5 @@ abstract class ThermalObject : ISimulationObject {
     /**
      * Called when the simulation must be updated with the components owned by this object.
      * */
-    protected abstract fun addComponents(simulator: Simulator<CellPos>)
+    protected abstract fun addComponents(simulator: Simulator)
 }

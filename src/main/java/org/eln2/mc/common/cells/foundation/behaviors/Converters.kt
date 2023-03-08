@@ -31,7 +31,7 @@ class ElectricalPowerConverterBehavior(private val accessor: IElectricalPowerAcc
 }
 
 fun interface IThermalBodyAccessor {
-    fun get(): ThermalBody<CellPos>
+    fun get(): ThermalBody
 }
 
 /**

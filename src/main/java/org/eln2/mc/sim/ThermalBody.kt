@@ -9,12 +9,10 @@ import org.eln2.mc.integration.waila.IWailaProvider
 import org.eln2.mc.integration.waila.TooltipBuilder
 import org.eln2.mc.utility.IntId
 
-class ThermalBody<Locator>(
-    override var locator: Locator,
-    override var mass: ThermalMass,
-    override var surfaceArea: Double
-) : Simulator.Body<Locator>,
-    IWailaProvider {
+class ThermalBody(
+    var mass: ThermalMass,
+    var surfaceArea: Double
+) : IWailaProvider {
     var temperature: Temperature
         get() = mass.temperature
         set(value) { mass.temperature = value }
@@ -29,8 +27,4 @@ class ThermalBody<Locator>(
     override fun appendBody(builder: TooltipBuilder, config: IPluginConfig?) {
         mass.appendBody(builder, config)
     }
-}
-
-fun thermalBody(mass: ThermalMass, surfaceArea: Double): ThermalBody<IntId> {
-    return ThermalBody(IntId.create(), mass, surfaceArea)
 }

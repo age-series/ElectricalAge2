@@ -14,7 +14,7 @@ import java.util.concurrent.ConcurrentHashMap
  * The Cell Graph Manager tracks the cell graphs for a single dimension.
  * This is a **server-only** construct. Simulations never have to occur on the client.
  * */
-class CellGraphManager(val level: Level) : SavedData() {
+class CellGraphManager(val level: ServerLevel) : SavedData() {
     private val graphs = HashMap<UUID, CellGraph>()
 
     private val statisticsWatch = Stopwatch()
@@ -47,7 +47,7 @@ class CellGraphManager(val level: Level) : SavedData() {
      * Creates a fresh graph, starts tracking it, and invalidates the saved data.
      * */
     fun createGraph(): CellGraph {
-        val graph = CellGraph(UUID.randomUUID(), this)
+        val graph = CellGraph(UUID.randomUUID(), this, level)
         addGraph(graph)
 
         return graph
@@ -99,7 +99,7 @@ class CellGraphManager(val level: Level) : SavedData() {
 
             graphListTag.forEach { circuitNbt ->
                 val graphCompound = circuitNbt as CompoundTag
-                val graph = CellGraph.fromNbt(graphCompound, manager)
+                val graph = CellGraph.fromNbt(graphCompound, manager, level)
                 if (graph.cells.isEmpty()) {
                     Eln2.LOGGER.error("Loaded circuit with no cells!")
                     return@forEach

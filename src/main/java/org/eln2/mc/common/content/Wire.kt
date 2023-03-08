@@ -36,6 +36,8 @@ import org.eln2.mc.common.events.EventScheduler
 import org.eln2.mc.common.parts.foundation.*
 import org.eln2.mc.common.space.DirectionMask
 import org.eln2.mc.common.space.RelativeRotationDirection
+import org.eln2.mc.extensions.LibAgeExtensions.add
+import org.eln2.mc.extensions.LibAgeExtensions.connect
 import org.eln2.mc.extensions.ModelDataExtensions.blockCenter
 import org.eln2.mc.extensions.ModelDataExtensions.zeroCenter
 import org.eln2.mc.extensions.NbtExtensions.getRelativeDirection
@@ -50,6 +52,8 @@ import org.eln2.mc.integration.waila.TooltipBuilder
 import org.eln2.mc.mathematics.Functions.lerp
 import org.eln2.mc.mathematics.Functions.map
 import org.eln2.mc.mathematics.Geometry.cylinderExteriorSurfaceArea
+import org.eln2.mc.sim.BiomeEnvironments
+import org.eln2.mc.sim.EnvironmentInformation
 import org.eln2.mc.sim.ThermalBody
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.math.abs
@@ -131,24 +135,30 @@ object ElectricalWireModels {
     }
 }
 
-class ThermalWireObject(val pos: CellPos) : ThermalObject(), IWailaProvider, IPersistentObject {
+class ThermalWireObject(
+    val cell: CellBase) :
+    ThermalObject(), IWailaProvider, IPersistentObject {
+
+    private val environmentInformation
+        get() = BiomeEnvironments.get(cell.graph.level, cell.pos)
+
     companion object {
         private const val THERMAL_MASS = "thermalMass"
         private const val SURFACE_AREA = "area"
     }
 
     var body = ThermalBody(
-        pos,
         ThermalMass(Material.COPPER),
         cylinderExteriorSurfaceArea(1.0, 0.05)
-    )
+    ).also { it.temperature = environmentInformation.temperature }
 
     override fun offerComponent(neighbour: ThermalObject): ThermalComponentInfo {
         return ThermalComponentInfo(body)
     }
 
-    override fun addComponents(simulator: Simulator<CellPos>) {
+    override fun addComponents(simulator: Simulator) {
         simulator.add(body)
+        simulator.connect(body, environmentInformation)
     }
 
     override fun appendBody(builder: TooltipBuilder, config: IPluginConfig?) {
@@ -166,34 +176,48 @@ class ThermalWireObject(val pos: CellPos) : ThermalObject(), IWailaProvider, IPe
 
     override fun load(tag: CompoundTag) {
         body = ThermalBody(
-            pos,
             tag.getThermalMass(THERMAL_MASS),
             tag.getDouble(SURFACE_AREA))
     }
 }
 
-enum class WireType {
-    Electrical,
-    Thermal
+enum class WireType(val temperatureThreshold: Temperature, val isRadiant: Boolean) {
+    Electrical(Temperature.from(300.0, ThermalUnits.CELSIUS), false),
+    Thermal(Temperature.from(2000.0, ThermalUnits.CELSIUS), true)
 }
 
-class WireCell(pos: CellPos, id: ResourceLocation, val model: ElectricalWireModel, val type: WireType) : CellBase(pos, id) {
+class WireCell(
+    pos: CellPos,
+    id: ResourceLocation,
+    val model: ElectricalWireModel,
+    val type: WireType) : CellBase(pos, id) {
+
     init {
         if(type == WireType.Electrical) {
-            behaviors
-                .withElectricalPowerConverter { electricalWire.power }
-                .withElectricalHeatTransfer { thermalWire.body }
-                .withStandardExplosionBehavior(this, 500.0) { thermalWire.body.temperatureK }
+            behaviors.apply {
+                withElectricalPowerConverter { electricalWire.power }
+                withElectricalHeatTransfer { thermalWire.body }
+            }
+
+        }
+
+        behaviors.withStandardExplosionBehavior(this, type.temperatureThreshold.kelvin) {
+            thermalWire.body.temperatureK
         }
     }
 
     override fun createObjectSet(): SimulationObjectSet {
+        val level = graph.level
+        val environment = BiomeEnvironments.get(level, pos)
+
+        val thermal = ThermalWireObject(this)
+
         return if(type == WireType.Electrical){
             SimulationObjectSet(ElectricalWireObject().also {
                 it.resistance = model.resistanceMeter / 2.0 // Divide by two because bundle creates 2 resistors
-            }, ThermalWireObject(pos))
+            }, thermal)
         } else {
-            SimulationObjectSet(ThermalWireObject(pos))
+            SimulationObjectSet(thermalObject)
         }
     }
 
@@ -448,7 +472,7 @@ class WirePartRenderer(val part: WirePart, val meshes: Map<DirectionMask, Partia
     }
 
     private fun applyTemperatureRendering() {
-        if(type != WireType.Thermal) {
+        if(!type.isRadiant) {
             return
         }
 
