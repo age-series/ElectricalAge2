@@ -22,7 +22,7 @@ object CsvLoader {
                 continue
             }
 
-            val tokens = line.split(',').map { it.toDouble() }
+            val tokens = line.split(',').map { it.toDoubleOrNull() ?: error("Could not parse double $it") }
 
             if(tokens.size != headers.size){
                 error("Mismatched CSV token count")

@@ -16,11 +16,12 @@ object BiomeEnvironments {
 
     fun get(level: Level, pos: CellPos): EnvironmentInformation{
         val biome = level.getBiome(pos.blockPos).value()
+        val temperature = Datasets.MINECRAFT_TEMPERATURE_CELSIUS.evaluate(biome.baseTemperature.toDouble())
 
         return biomes.computeIfAbsent(biome) {
             return@computeIfAbsent EnvironmentInformation(
-                Temperature.from(biome.baseTemperature.toDouble(), ThermalUnits.CELSIUS),
-                Datasets.AIR_THERMAL_CONDUCTIVITY.evaluate(biome.baseTemperature.toDouble())
+                Temperature.from(temperature, ThermalUnits.CELSIUS),
+                Datasets.AIR_THERMAL_CONDUCTIVITY.evaluate(temperature)
             )
         }
     }
