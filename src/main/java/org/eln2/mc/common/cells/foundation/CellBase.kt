@@ -257,5 +257,11 @@ abstract class CellBase(val pos: CellPos, val id: ResourceLocation) : IWailaProv
                 it.appendBody(builder, config)
             }
         }
+
+        behaviors.process {
+            if(it is IWailaProvider) {
+                it.appendBody(builder, config)
+            }
+        }
     }
 }

@@ -220,8 +220,8 @@ class BatteryCell(pos: CellPos, id: ResourceLocation, override val model: Batter
     }
 
     override fun createObjectSet(): SimulationObjectSet {
-        return SimulationObjectSet(GeneratorObject(), ThermalWireObject(pos).also {
-            it.body = ThermalBody(pos,
+        return SimulationObjectSet(GeneratorObject(), ThermalWireObject(this).also {
+            it.body = ThermalBody(
                 ThermalMass(model.material, null, model.mass),
                 model.surfaceArea)
         })

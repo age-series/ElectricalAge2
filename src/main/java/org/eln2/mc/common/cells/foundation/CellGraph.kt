@@ -3,6 +3,7 @@ package org.eln2.mc.common.cells.foundation
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.nbt.ListTag
 import net.minecraft.resources.ResourceLocation
+import net.minecraft.server.level.ServerLevel
 import net.minecraftforge.server.ServerLifecycleHooks
 import org.ageseries.libage.debug.dprintln
 import org.ageseries.libage.sim.electrical.mna.Circuit
@@ -18,8 +19,6 @@ import org.eln2.mc.extensions.NbtExtensions.getCellPos
 import org.eln2.mc.extensions.NbtExtensions.getRelativeDirection
 import org.eln2.mc.extensions.NbtExtensions.putCellPos
 import org.eln2.mc.extensions.NbtExtensions.putRelativeDirection
-import org.eln2.mc.extensions.ThermalExtensions.subStep
-import org.eln2.mc.sim.TestEnvironment
 import org.eln2.mc.utility.Time
 import java.util.*
 import java.util.concurrent.Executors
@@ -40,13 +39,13 @@ fun interface ICellGraphSubscriber {
  * The cell graph manages the solver and simulation.
  * It also has serialization/deserialization logic for saving to the disk using NBT.
  * */
-class CellGraph(val id: UUID, val manager: CellGraphManager) {
+class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLevel) {
     val cells = ArrayList<CellBase>()
 
     private val posCells = HashMap<CellPos, CellBase>()
 
     private val circuits = ArrayList<Circuit>()
-    private val thermalSimulations = ArrayList<Simulator<CellPos>>()
+    private val thermalSimulations = ArrayList<Simulator>()
     
     private val simulationStopLock = ReentrantLock()
 
@@ -175,13 +174,13 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
         thermalSimulations.clear()
 
         realizeComponents(SimulationObjectType.Thermal) { set ->
-            val simulation = Simulator<CellPos>(TestEnvironment())
+            val simulation = Simulator()
 
             set.forEach { it.thermalObject.setNewSimulation(simulation) }
 
             thermalSimulations.add(simulation)
 
-            LOGGER.info("Found thermal simulation with ${simulation.bodies.size} components")
+            LOGGER.info("Found thermal simulation with ${simulation.masses.size} components")
         }
     }
 
@@ -457,9 +456,9 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
         private val pool = Executors.newScheduledThreadPool(
             Configuration.config.simulationThreads, ::createThread)
 
-        fun fromNbt(graphCompound: CompoundTag, manager: CellGraphManager): CellGraph {
+        fun fromNbt(graphCompound: CompoundTag, manager: CellGraphManager, level: ServerLevel): CellGraph {
             val id = graphCompound.getUUID(ID)
-            val result = CellGraph(id, manager)
+            val result = CellGraph(id, manager, level)
             val cellListTag = graphCompound.get(CELLS) as ListTag?
                 ?: // no cells are to be loaded
                 return result

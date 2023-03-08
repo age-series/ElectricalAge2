@@ -11,6 +11,10 @@ interface ICellBehavior {
 class CellBehaviorContainer(private val cell: CellBase) {
     val behaviors = ArrayList<ICellBehavior>()
 
+    fun process(action: ((ICellBehavior) -> Unit)) {
+        behaviors.forEach(action)
+    }
+
     inline fun <reified T : ICellBehavior> getBehaviorOrNull(): T? {
         return behaviors.first { it is T } as? T
     }
