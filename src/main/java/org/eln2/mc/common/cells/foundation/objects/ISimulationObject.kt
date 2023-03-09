@@ -1,5 +1,7 @@
 package org.eln2.mc.common.cells.foundation.objects
 
+import org.eln2.mc.common.space.DirectionMask
+
 /**
  * Represents a discrete simulation unit that participates in one simulation type.
  * */
@@ -27,4 +29,6 @@ interface ISimulationObject {
      * Connections should be removed here.
      * */
     fun destroy()
+
+    val connectionMask: DirectionMask
 }

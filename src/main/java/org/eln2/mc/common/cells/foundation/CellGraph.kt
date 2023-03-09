@@ -329,6 +329,12 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
         manager.setDirty()
     }
 
+    fun ensureStopped() {
+        if(isRunning) {
+            stopSimulation()
+        }
+    }
+
     /**
      * Stops the simulation. This is a sync point, so usage of this should be sparse.
      * Will result in an error if it was not running.

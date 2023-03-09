@@ -1,6 +1,8 @@
 package org.eln2.mc.sim
 
 import mcp.mobius.waila.api.IPluginConfig
+import org.ageseries.libage.sim.Material
+import org.ageseries.libage.sim.thermal.STANDARD_TEMPERATURE
 import org.ageseries.libage.sim.thermal.Simulator
 import org.ageseries.libage.sim.thermal.Temperature
 import org.ageseries.libage.sim.thermal.ThermalMass
@@ -26,5 +28,11 @@ class ThermalBody(
 
     override fun appendBody(builder: TooltipBuilder, config: IPluginConfig?) {
         mass.appendBody(builder, config)
+    }
+
+    companion object {
+        fun createDefault(): ThermalBody {
+            return ThermalBody(ThermalMass(Material.IRON), 0.1)
+        }
     }
 }

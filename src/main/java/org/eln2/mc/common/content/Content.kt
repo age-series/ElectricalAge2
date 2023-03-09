@@ -99,4 +99,10 @@ object Content {
         LightCell(pos, id, LightModels.test())
     })
     val LIGHT_PART = PartRegistry.part("light_part", BasicPartProvider({a, b -> LightPart(a, b, LIGHT_CELL.get())}, bbVec(8.0, 4.0, 5.0)))
+
+    val THERMOCOUPLE_CELL = CellRegistry.register("thermocouple_cell", BasicCellProvider.fourPin { pos, id ->
+        ThermocoupleCell(pos, id)
+    })
+
+    val THERMOCOUPLE_PART = PartRegistry.part("thermocouple_part", BasicPartProvider(::ThermocouplePart, vec3(0.1)))
 }

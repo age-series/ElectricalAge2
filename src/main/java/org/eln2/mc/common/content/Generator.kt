@@ -3,11 +3,15 @@ package org.eln2.mc.common.content
 import mcp.mobius.waila.api.IPluginConfig
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.resources.ResourceLocation
+import net.minecraft.world.phys.Vec3
 import org.ageseries.libage.sim.Material
 import org.ageseries.libage.sim.electrical.mna.Circuit
 import org.ageseries.libage.sim.electrical.mna.component.Resistor
 import org.ageseries.libage.sim.electrical.mna.component.VoltageSource
+import org.ageseries.libage.sim.thermal.ConnectionParameters
+import org.ageseries.libage.sim.thermal.Simulator
 import org.ageseries.libage.sim.thermal.ThermalMass
+import org.eln2.mc.Eln2
 import org.eln2.mc.mathematics.HermiteSpline
 import org.eln2.mc.mathematics.Functions.bbVec
 import org.eln2.mc.mathematics.Functions.lerp
@@ -16,19 +20,20 @@ import org.eln2.mc.annotations.CrossThreadAccess
 import org.eln2.mc.client.render.PartialModels
 import org.eln2.mc.client.render.PartialModels.bbOffset
 import org.eln2.mc.client.render.foundation.BasicPartRenderer
+import org.eln2.mc.common.cells.CellRegistry
 import org.eln2.mc.common.cells.foundation.*
 import org.eln2.mc.common.cells.foundation.behaviors.withElectricalHeatTransfer
 import org.eln2.mc.common.cells.foundation.behaviors.withElectricalPowerConverter
-import org.eln2.mc.common.cells.foundation.objects.ElectricalComponentInfo
-import org.eln2.mc.common.cells.foundation.objects.ElectricalObject
-import org.eln2.mc.common.cells.foundation.objects.SimulationObjectSet
+import org.eln2.mc.common.cells.foundation.objects.*
 import org.eln2.mc.common.events.AtomicUpdate
 import org.eln2.mc.common.parts.foundation.CellPart
 import org.eln2.mc.common.parts.foundation.IPartRenderer
 import org.eln2.mc.common.parts.foundation.ITickablePart
 import org.eln2.mc.common.parts.foundation.PartPlacementContext
+import org.eln2.mc.common.space.DirectionMask
 import org.eln2.mc.common.space.RelativeRotationDirection
 import org.eln2.mc.extensions.LibAgeExtensions.add
+import org.eln2.mc.extensions.LibAgeExtensions.connect
 import org.eln2.mc.extensions.LibAgeExtensions.setPotentialEpsilon
 import org.eln2.mc.extensions.LibAgeExtensions.setResistanceEpsilon
 import org.eln2.mc.extensions.NbtExtensions.useSubTag
@@ -36,8 +41,11 @@ import org.eln2.mc.extensions.NumberExtensions.formatted
 import org.eln2.mc.extensions.NumberExtensions.formattedPercentN
 import org.eln2.mc.integration.waila.IWailaProvider
 import org.eln2.mc.integration.waila.TooltipBuilder
+import org.eln2.mc.mathematics.Functions.vec3
 import org.eln2.mc.sim.ThermalBody
 import kotlin.math.abs
+import kotlin.math.min
+import kotlin.math.pow
 
 enum class GeneratorPowerDirection {
     Outgoing,
@@ -50,6 +58,9 @@ enum class GeneratorPowerDirection {
 class GeneratorObject : ElectricalObject(), IWailaProvider {
     var plusDirection = RelativeRotationDirection.Front
     var minusDirection = RelativeRotationDirection.Back
+
+    override val connectionMask: DirectionMask
+        get() = DirectionMask.ofRelatives(plusDirection, minusDirection)
 
     var internalResistance: Double = 1.0
         set(value){
@@ -392,5 +403,149 @@ class BatteryPart(id: ResourceLocation, placementContext: PartPlacementContext, 
 
     override fun tick() {
         invalidateSave()
+    }
+}
+
+class ThermalBipoleObject: ThermalObject(), IWailaProvider {
+    var b1 = ThermalBody.createDefault()
+    var b2 = ThermalBody.createDefault()
+
+    var b1Dir = RelativeRotationDirection.Front
+    var b2Dir = RelativeRotationDirection.Back
+
+    override val connectionMask: DirectionMask
+        get() = DirectionMask.ofRelatives(b1Dir, b2Dir)
+
+    override fun offerComponent(neighbour: ThermalObject): ThermalComponentInfo {
+        return ThermalComponentInfo(when(val dir = directionOf(neighbour)){
+            b1Dir -> b1
+            b2Dir -> b2
+            else -> error("Unhandled bipole direction $dir")
+        })
+    }
+
+    override fun addComponents(simulator: Simulator) {
+        simulator.add(b1)
+        simulator.add(b2)
+    }
+
+    override fun appendBody(builder: TooltipBuilder, config: IPluginConfig?) {
+        builder.temperature(b1.temperatureK)
+        builder.temperature(b2.temperatureK)
+    }
+}
+
+fun interface IPowerSetAccessor {
+    fun set(power: Double)
+}
+
+fun interface IPowerGetAccessor {
+    fun get(): Double
+}
+
+fun interface IThermalBodyProvider {
+    fun get(): ThermalBody
+}
+
+fun interface ITransferRateAccessor {
+    fun get(): Double
+}
+
+class ThermocoupleBehavior(
+    val powerGetter: IPowerGetAccessor,
+    val powerSetter: IPowerSetAccessor,
+    val body1Accessor: IThermalBodyProvider,
+    val body2Accessor: IThermalBodyProvider,
+    val transferRateAccessor: ITransferRateAccessor): ICellBehavior, IWailaProvider {
+    private data class BodyPair(val hot: ThermalBody, val cold: ThermalBody)
+
+    override fun onAdded(container: CellBehaviorContainer) {}
+
+    override fun subscribe(subscribers: SubscriberCollection) {
+        subscribers.addPreInstantaneous(this::preTick)
+        subscribers.addPostInstantaneous(this::postTick)
+    }
+
+    override fun destroy(subscribers: SubscriberCollection) {
+        subscribers.removeSubscriber(this::preTick)
+        subscribers.removeSubscriber(this::postTick)
+    }
+
+    private fun getSortedBodyPair(): BodyPair {
+        var cold = body1Accessor.get()
+        var hot = body2Accessor.get()
+
+        if(cold.temperatureK > hot.temperatureK) {
+            val temp = cold
+            cold = hot
+            hot = temp
+        }
+
+        return BodyPair(hot, cold)
+    }
+
+    private fun preTick(dt: Double, phase: SubscriberPhase) {
+        val bodies = getSortedBodyPair()
+        val deltaE = min(bodies.hot.thermalEnergy - bodies.cold.thermalEnergy, transferRateAccessor.get() * dt)
+
+        val power = deltaE / dt
+        powerSetter.set(power)
+    }
+
+    private fun postTick(dt: Double, phase: SubscriberPhase) {
+        val bodies = getSortedBodyPair()
+
+        val transferred = powerGetter.get() * dt
+
+        bodies.hot.thermalEnergy -= transferred
+        bodies.cold.thermalEnergy += transferred
+    }
+
+    override fun appendBody(builder: TooltipBuilder, config: IPluginConfig?) {
+        val pair = getSortedBodyPair()
+
+        builder.energy(pair.hot.thermalEnergy)
+        builder.energy(pair.cold.thermalEnergy)
+    }
+}
+
+class ThermocoupleCell(pos: CellPos, id: ResourceLocation) : GeneratorCell(pos, id) {
+    init {
+        behaviors.add(ThermocoupleBehavior(
+            { generatorObject.resistorPower },
+            { power ->
+                val current = power / generatorObject.potential
+                val resistance = generatorObject.potential / current
+
+                generatorObject.internalResistance = resistance
+            },
+            { thermalBipole.b1 },
+            { thermalBipole.b2 },
+            { 1000.0 }))
+    }
+
+    override fun createObjectSet(): SimulationObjectSet {
+        return SimulationObjectSet(
+            GeneratorObject().also {
+                it.potential = 100.0
+            },
+            ThermalBipoleObject().also {
+                it.b1Dir = RelativeRotationDirection.Left
+                it.b2Dir = RelativeRotationDirection.Right
+            })
+    }
+
+    private val thermalBipole get() = thermalObject as ThermalBipoleObject
+}
+
+class ThermocouplePart(
+    id: ResourceLocation,
+    placementContext: PartPlacementContext):
+    CellPart(id, placementContext, Content.THERMOCOUPLE_CELL.get()) {
+    override val baseSize: Vec3
+        get() = vec3(0.1)
+
+    override fun createRenderer(): IPartRenderer {
+        return BasicPartRenderer(this, PartialModels.BATTERY)
     }
 }

@@ -45,7 +45,7 @@ object CellConnectionManager {
         // Stop all running simulations
 
         neighborCells.map { it.graph }.distinct().forEach {
-            it.stopSimulation()
+            it.ensureStopped()
         }
 
         /*
