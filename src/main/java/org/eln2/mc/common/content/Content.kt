@@ -3,6 +3,7 @@
 package org.eln2.mc.common.content
 
 import net.minecraft.world.phys.Vec3
+import org.ageseries.libage.sim.Material
 import org.eln2.mc.mathematics.Functions.bbVec
 import org.eln2.mc.mathematics.Functions.lerp
 import org.eln2.mc.mathematics.Functions.vec3
@@ -31,6 +32,15 @@ object Content {
     val THERMAL_COPPER_WIRE_CELL = CellRegistry.register("thermal_wire_cell_copper", BasicCellProvider.fourPin  { a, b ->
         WireCell(a, b, ElectricalWireModels.copper(centimeters(5.0)), WireType.Thermal)
     })
+    val THERMAL_RADIATOR_CELL = CellRegistry.register("thermal_radiator_cell", BasicCellProvider.fourPin { a, b ->
+        ThermalRadiatorCell(a, b, RadiatorModel(
+            2000.0,
+            100.0,
+            Material.COPPER,
+            100.0
+        ))
+    })
+    val THERMAL_RADIATOR = PartRegistry.part("thermal_radiator_part", BasicPartProvider(::RadiatorPart, Vec3(1.0, 0.5, 1.0)))
 
     val ELECTRICAL_COPPER_WIRE_PART: PartRegistry.PartRegistryItem = PartRegistry.part("electrical_wire_part_copper", BasicPartProvider({ a, b ->
         WirePart(a, b, ELECTRICAL_COPPER_WIRE_CELL.get(), WireType.Electrical)
