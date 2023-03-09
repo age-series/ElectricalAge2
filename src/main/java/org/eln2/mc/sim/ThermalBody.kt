@@ -32,7 +32,7 @@ class ThermalBody(
 
     companion object {
         fun createDefault(): ThermalBody {
-            return ThermalBody(ThermalMass(Material.IRON), 0.1)
+            return ThermalBody(ThermalMass(Material.COPPER), 0.5)
         }
     }
 }

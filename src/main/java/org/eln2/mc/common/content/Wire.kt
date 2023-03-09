@@ -186,7 +186,7 @@ enum class WireType(val temperatureThreshold: Temperature, val isRadiant: Boolea
     Thermal(Temperature.from(2000.0, ThermalUnits.CELSIUS), true)
 }
 
-class WireCell(
+open class WireCell(
     pos: CellPos,
     id: ResourceLocation,
     val model: ElectricalWireModel,
