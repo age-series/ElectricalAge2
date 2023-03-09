@@ -44,4 +44,8 @@ class SimulationObjectSet(objects: List<ISimulationObject>) {
     fun process(function: ((ISimulationObject) -> Unit)) {
         objects.values.forEach(function)
     }
+
+    operator fun get(type: SimulationObjectType): ISimulationObject {
+        return objects[type] ?: error("Object set does not have $type")
+    }
 }

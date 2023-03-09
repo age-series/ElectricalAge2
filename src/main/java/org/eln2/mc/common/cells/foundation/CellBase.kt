@@ -185,33 +185,48 @@ abstract class CellBase(val pos: CellPos, val id: ResourceLocation) : IWailaProv
     fun recordObjectConnections() {
         objectSet.process {
             connections.forEach { (remoteCell, sourceDirection) ->
-                if (remoteCell.hasObject(it.type)) {
-                    // We can form a connection here.
+                if(!it.connectionMask.has(sourceDirection)) {
+                    return@forEach
+                }
 
-                    when (it.type) {
-                        SimulationObjectType.Electrical -> {
-                            val localElectrical = it as ElectricalObject
-                            val remoteElectrical = remoteCell.objectSet.electricalObject
+                if (!remoteCell.hasObject(it.type)) {
+                    return@forEach
+                }
 
-                            localElectrical.addConnection(
-                                ElectricalConnectionInfo(
-                                    remoteElectrical,
-                                    sourceDirection
-                                )
+                val remoteObj = remoteCell.objectSet[it.type]
+
+                val remoteConnection = remoteCell.connections.firstOrNull { it.cell == this }
+                    ?: error("Mismatched connection sets")
+
+                if(!remoteObj.connectionMask.has(remoteConnection.sourceDirection)) {
+                    return@forEach
+                }
+
+                // We can form a connection here.
+
+                when (it.type) {
+                    SimulationObjectType.Electrical -> {
+                        val localElectrical = it as ElectricalObject
+                        val remoteElectrical = remoteCell.objectSet.electricalObject
+
+                        localElectrical.addConnection(
+                            ElectricalConnectionInfo(
+                                remoteElectrical,
+                                sourceDirection
                             )
-                        }
+                        )
+                    }
 
-                        SimulationObjectType.Thermal -> {
-                            val localThermal = it as ThermalObject
-                            val remoteThermal = remoteCell.objectSet.thermalObject
+                    SimulationObjectType.Thermal -> {
+                        val localThermal = it as ThermalObject
+                        val remoteThermal = remoteCell.objectSet.thermalObject
 
-                            localThermal.addConnection(
-                                ThermalConnectionInfo(
-                                    remoteThermal,
-                                    sourceDirection
-                                )
+                        localThermal.addConnection(
+                            ThermalConnectionInfo(
+                                remoteThermal,
+                                sourceDirection
                             )
-                        }
+                        )
                     }
                 }
             }

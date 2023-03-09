@@ -8,11 +8,18 @@ import org.eln2.mc.extensions.LevelExtensions.destroyPart
 
 fun CellBehaviorContainer.withStandardExplosionBehavior(cell: CellBase, threshold: Double, temperatureAccessor: ITemperatureAccessor): CellBehaviorContainer {
     return withExplosionBehavior(temperatureAccessor, TemperatureExplosionBehaviorOptions(threshold, 0.1, 0.25)) {
-        val container = cell.container
+        val container = cell.container ?: return@withExplosionBehavior
 
         if(container is MultipartBlockEntity) {
-            val part = container.getPart(cell.pos.face)!!
+            if(container.isRemoved){
+                return@withExplosionBehavior
+            }
+
+            val part = container.getPart(cell.pos.face)
+                ?: return@withExplosionBehavior
+
             val level = (part.placementContext.level as ServerLevel)
+
             level.destroyPart(part)
         }
         else {
@@ -34,7 +41,7 @@ fun CellBehaviorContainer.withStandardBehavior(cell: CellBase, power: IElectrica
     return this
         .withElectricalPowerConverter(power)
         .withElectricalHeatTransfer(thermal)
-        .withStandardExplosionBehavior(cell, 250.0) {
+        .withStandardExplosionBehavior(cell, 600.0) {
             thermal.get().temperatureK
         }
 }

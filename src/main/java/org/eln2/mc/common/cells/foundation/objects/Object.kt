@@ -5,6 +5,7 @@ import org.ageseries.libage.sim.electrical.mna.component.Component
 import org.ageseries.libage.sim.thermal.ConnectionParameters
 import org.ageseries.libage.sim.thermal.Simulator
 import org.eln2.mc.common.cells.foundation.CellPos
+import org.eln2.mc.common.space.DirectionMask
 import org.eln2.mc.common.space.RelativeRotationDirection
 import org.eln2.mc.sim.ThermalBody
 
@@ -15,6 +16,8 @@ data class ElectricalConnectionInfo(val obj: ElectricalObject, val direction: Re
  * Represents an object that is part of an electrical simulation.
  * */
 abstract class ElectricalObject : ISimulationObject {
+    override val connectionMask: DirectionMask = DirectionMask.HORIZONTALS
+
     /**
      * The circuit this object is part of.
      * It is initialized while the solver is being built.
@@ -107,6 +110,8 @@ data class ThermalComponentInfo(val body: ThermalBody)
 data class ThermalConnectionInfo(val obj: ThermalObject, val direction: RelativeRotationDirection)
 
 abstract class ThermalObject : ISimulationObject {
+    override val connectionMask: DirectionMask = DirectionMask.HORIZONTALS
+
     var simulation: Simulator? = null
         private set
 
