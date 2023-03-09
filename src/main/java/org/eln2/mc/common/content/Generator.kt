@@ -362,7 +362,7 @@ class BatteryCell(pos: CellPos, id: ResourceLocation, override val model: Batter
         builder.current(current)
     }
 
-    val thermalWireObject = thermalObject as ThermalWireObject
+    val thermalWireObject get() = thermalObject as ThermalWireObject
 }
 
 class BatteryPart(id: ResourceLocation, placementContext: PartPlacementContext, provider: CellProvider):

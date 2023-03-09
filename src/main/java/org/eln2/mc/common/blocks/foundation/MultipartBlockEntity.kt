@@ -954,11 +954,7 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
 
         val currentBrightness = blockState.getValue(GhostLightBlock.brightnessProperty)
 
-        LOGGER.info("Brightness: $currentBrightness")
-
         val targetBrightness = parts.values.maxOfOrNull { it.brightness }
-
-        LOGGER.info("Target brightness: $targetBrightness")
 
         if(targetBrightness == null) {
             setBlockBrightness(0)
