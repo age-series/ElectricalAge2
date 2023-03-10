@@ -65,7 +65,7 @@ object Content {
 
     val BATTERY_CELL_100V = CellRegistry.register("battery_cell_t", BasicCellProvider.polarFB{ pos, id ->
         BatteryCell(pos, id, BatteryModel(
-            voltageFunction = VoltageModels.TEST,
+            voltageFunction = VoltageModels.WET_CELL_12V,
             resistanceFunction = { _, _ -> milliOhms(100.0) },
             damageFunction = { battery, dt ->
                 val currentThreshold = 100.0 //A

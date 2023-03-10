@@ -10,6 +10,7 @@ import org.ageseries.libage.sim.electrical.mna.component.Resistor
 import org.ageseries.libage.sim.electrical.mna.component.VoltageSource
 import org.ageseries.libage.sim.thermal.ConnectionParameters
 import org.ageseries.libage.sim.thermal.Simulator
+import org.ageseries.libage.sim.thermal.Temperature
 import org.ageseries.libage.sim.thermal.ThermalMass
 import org.eln2.mc.Eln2
 import org.eln2.mc.mathematics.HermiteSpline
@@ -42,6 +43,9 @@ import org.eln2.mc.extensions.NumberExtensions.formattedPercentN
 import org.eln2.mc.integration.waila.IWailaProvider
 import org.eln2.mc.integration.waila.TooltipBuilder
 import org.eln2.mc.mathematics.Functions.vec3
+import org.eln2.mc.mathematics.evaluate
+import org.eln2.mc.mathematics.kdVectorDOf
+import org.eln2.mc.sim.Datasets
 import org.eln2.mc.sim.ThermalBody
 import kotlin.math.abs
 import kotlin.math.min
@@ -148,6 +152,7 @@ interface IBatteryView {
     val cycles: Double
     val charge: Double
     val thresholdCharge: Double
+    val temperature: Temperature
 }
 
 fun interface IBatteryVoltageFunction {
@@ -167,12 +172,12 @@ fun interface IBatteryEnergyCapacityFunction {
 }
 
 object VoltageModels {
-    private val VOLTAGE_12V_LEAD_ACID =
-        HermiteSpline.loadSpline("battery_models/12v_lead_acid_voltage.spline")
+    val WET_CELL_12V = IBatteryVoltageFunction { view, _ ->
+        val dataset = Datasets.LEAD_ACID_12V_WET
+        val temperature = view.temperature.kelvin
 
-    val TEST = IBatteryVoltageFunction { view, _ ->
         if(view.charge > view.model.damageChargeThreshold){
-            VOLTAGE_12V_LEAD_ACID.evaluate(view.thresholdCharge)
+            dataset.evaluate(view.charge, temperature)
         }
         else{
             val progress = map(
@@ -182,7 +187,7 @@ object VoltageModels {
                 0.0,
                 1.0)
 
-            val ceiling = VOLTAGE_12V_LEAD_ACID.evaluate(0.0)
+            val ceiling = dataset.evaluate(view.model.damageChargeThreshold, temperature)
 
             lerp(0.0, ceiling, progress)
         }
@@ -269,6 +274,8 @@ class BatteryCell(pos: CellPos, id: ResourceLocation, override val model: Batter
         1.0,
         0.0,
         1.0)
+    override val temperature: Temperature
+        get() = thermalWireObject.body.temperature
 
     val capacityCoefficient
         get() = model.capacityFunction.computeCapacity(this).coerceIn(0.0, 1.0)

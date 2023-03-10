@@ -3,17 +3,26 @@ package org.eln2.mc.mathematics
 import org.eln2.mc.mathematics.Functions.frac
 import kotlin.math.floor
 
-interface IKDVectorI {
+interface IKDVector<T> {
     val size: Int
+    operator fun get(index: Int): T
+}
+
+interface IKdVectorMutable<T>: IKDVector<T> {
+    operator fun set(index: Int, value: T)
+}
+
+interface IKDVectorI: IKDVector<Int> {
+    override val size: Int
     operator fun iterator(): Iterator<Int>
-    operator fun get(index: Int): Int
+    override operator fun get(index: Int): Int
     fun toArray(): IntArray
 
     operator fun plus(other: IKDVectorI): IKDVectorI
 }
 
-interface IKDVectorIMutable : IKDVectorI {
-    operator fun set(index: Int, value: Int)
+interface IKDVectorIMutable : IKDVectorI, IKdVectorMutable<Int> {
+    override operator fun set(index: Int, value: Int)
 }
 
 class KDVectorI(val values: IntArray) : IKDVectorIMutable {
@@ -98,6 +107,14 @@ fun kdVectorIOf(values: List<Int>): KDVectorI {
     return KDVectorI(values.toIntArray())
 }
 
+fun kdVectorImOf(values: List<Int>): KDVectorIImmutable {
+    return KDVectorIImmutable(values)
+}
+
+fun kdVectorImOf(vararg values: Int): KDVectorIImmutable {
+    return kdVectorImOf(values.asList())
+}
+
 class KDVectorIImmutable(source: List<Int>) : IKDVectorI {
     constructor(vararg source: Int) : this(source.asList())
 
@@ -129,16 +146,16 @@ class KDVectorIImmutable(source: List<Int>) : IKDVectorI {
     }
 }
 
-interface IKDVectorD {
-    val size: Int
+interface IKDVectorD: IKDVector<Double> {
+    override val size: Int
     operator fun iterator(): Iterator<Double>
-    operator fun get(index: Int): Double
+    override operator fun get(index: Int): Double
 
     fun floored(): IKDVectorI
     fun fraction(): IKDVectorD
 }
 
-class KDVectorD(val values: DoubleArray) : IKDVectorD {
+class KDVectorD(val values: DoubleArray) : IKDVectorD, IKdVectorMutable<Double> {
     constructor(size: Int) : this(DoubleArray(size))
 
     override val size get() = values.size
@@ -170,7 +187,7 @@ class KDVectorD(val values: DoubleArray) : IKDVectorD {
         return result
     }
 
-    operator fun set(index: Int, value: Double) {
+    override operator fun set(index: Int, value: Double) {
         values[index] = value
     }
 
@@ -235,7 +252,7 @@ fun kdVectorDOf(vararg values: Double): KDVectorD {
     return KDVectorD(values.asList().toDoubleArray())
 }
 
-interface IKdGrid<T> {
+interface IKDGrid<T> {
     val dimensions: Int
     fun getSize(dimension: Int): Int
     operator fun get(coordinates: IKDVectorI): T
@@ -245,7 +262,7 @@ interface IKdGridMutable<T> {
     operator fun set(coordinates: IKDVectorI, value: T)
 }
 
-class KDGrid<T>(val sizes: KDVectorIImmutable, val grid: Array<T>) : IKdGrid<T>, IKdGridMutable<T> {
+class KDGrid<T>(val sizes: KDVectorIImmutable, val grid: Array<T>) : IKDGrid<T>, IKdGridMutable<T> {
     private val strides: IntArray
 
     override val dimensions get() = sizes.size
@@ -337,7 +354,7 @@ class KDGrid<T>(val sizes: KDVectorIImmutable, val grid: Array<T>) : IKdGrid<T>,
 }
 
 
-class KDGridD(val sizes: KDVectorIImmutable, val grid: DoubleArray) : IKdGrid<Double>, IKdGridMutable<Double> {
+class KDGridD(val sizes: KDVectorIImmutable, val grid: DoubleArray) : IKDGrid<Double>, IKdGridMutable<Double> {
     private val strides: IntArray
 
     override val dimensions get() = sizes.size
@@ -364,6 +381,14 @@ class KDGridD(val sizes: KDVectorIImmutable, val grid: DoubleArray) : IKdGrid<Do
     }
 }
 
+inline operator fun<reified T> IKDGrid<T>.get(vararg coordinates: Int): T {
+    return this[kdVectorIOf(coordinates.asList())]
+}
+
+inline operator fun<reified T> IKdGridMutable<T>.set(vararg coordinates: Int, value: T) {
+    this[kdVectorIOf(coordinates.asList())] = value
+}
+
 inline fun <reified T> kdGridOf(sizes: KDVectorIImmutable, default: T): KDGrid<T> {
     return KDGrid(sizes, Array(KDGrid.computeGridSize(sizes)) { default })
 }
@@ -386,4 +411,64 @@ fun kdGridDOf(sizes: KDVectorIImmutable): KDGridD {
 
 fun kdGridDOf(vararg sizes: Int): KDGridD {
     return kdGridDOf(KDVectorIImmutable(sizes.asList()))
+}
+
+fun KDGridD.interpolator(): GridInterpolator {
+    return GridInterpolator(this)
+}
+
+fun <T> IKDGrid<T>.traverse(consumer: ((IKDVectorI) -> Unit)) {
+    fun traverseDimension(dimension: Int, coordinates: KDVectorI) {
+        val size = this.getSize(dimension)
+
+        for (i in 0 until size) {
+            coordinates[dimension] = i
+
+            if(dimension != 0) {
+                traverseDimension(dimension - 1, coordinates.copy())
+            }
+            else {
+                consumer(coordinates)
+            }
+        }
+    }
+
+    traverseDimension(this.dimensions - 1, KDVectorI.ofSize(this.dimensions))
+}
+
+fun<T> IKDVector<T>.x(): T = this[0]
+fun<T> IKDVector<T>.y(): T = this[1]
+fun<T> IKDVector<T>.z(): T = this[2]
+fun<T> IKDVector<T>.w(): T = this[3]
+fun IKDGrid<*>.width(): Int = this.getSize(0)
+fun IKDGrid<*>.height(): Int = this.getSize(1)
+fun IKDGrid<*>.depth(): Int = this.getSize(2)
+
+data class Vector2I(val x: Int, val y: Int)
+
+data class Rectangle4I(val x: Int, val y: Int, val width: Int, val height: Int) {
+    val left get() = x
+    val right get() = x + width
+    val top get() = y
+    val bottom get() = y + height
+
+    fun traverseX(action: ((Int) -> Unit)) {
+        for (x in top until bottom) {
+            action(x)
+        }
+    }
+
+    fun traverseY(action: ((Int) -> Unit)) {
+        for (y in left until right) {
+            action(y)
+        }
+    }
+
+    fun traverse(action: ((Int, Int) -> Unit)) {
+        for (y in left until right) {
+            for (x in top until bottom) {
+                action(x, y)
+            }
+        }
+    }
 }
