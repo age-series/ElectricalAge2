@@ -1,6 +1,7 @@
 package org.eln2.mc.mathematics
 
 import org.eln2.mc.Eln2
+import org.eln2.mc.Eln2.LOGGER
 import org.eln2.mc.mathematics.Functions.map
 import org.eln2.mc.mathematics.Functions.pow2I
 import org.eln2.mc.utility.ResourceReader
@@ -210,7 +211,8 @@ data class SplineSegment(val keyStart: Double, val keyEnd: Double, val points: L
 interface ISplineSegmentList {
     /**
      * Finds the spline segment that matches the range of the key.
-     * @return The index of the spline segment.
+     * @return The index of the spline segment. If the segment is out of range,
+     * the corresponding boundary index will be given.
      * */
     fun find(key: Double): Int
 
@@ -240,6 +242,16 @@ interface ISplineSegmentList {
     val endKey: Double
 
     /**
+     * Gets the leftmost (smallest) value in this segment list.
+     * */
+    val startValue: Double
+
+    /**
+     * Gets the rightmost (largest) value in this segment list.
+     * */
+    val endValue: Double
+
+    /**
      * Gets the number of spline segments.
      * */
     val count: Int
@@ -249,11 +261,33 @@ interface ISplineSegmentList {
  * This is a spline segment list with O(n) search time.
  * */
 class LinearSegmentList(private val segments: List<SplineSegment>) : ISplineSegmentList {
+    init {
+        if(segments.isEmpty()){
+            error("Tried to initialize segment list with 0 segments")
+        }
+
+        if(segments.size > 1) {
+            for(i in 1 until segments.size) {
+                val previous = segments[i - 1]
+                val current = segments[i]
+
+                if(previous.keyEnd != current.keyStart) {
+                    error("Segment list continuity error")
+                }
+            }
+        }
+    }
+
     override fun find(key: Double): Int {
         val index = segments.indexOfFirst { it.keyStart <= key && it.keyEnd >= key }
 
         if (index == -1) {
-            error("Spline index $key out of range")
+            return if(key < segments.first().keyStart) {
+                0
+            } else if(key > segments.last().keyEnd) {
+                segments.size - 1
+            }
+            else error("Unexpected key $key")
         }
 
         return index
@@ -285,6 +319,12 @@ class LinearSegmentList(private val segments: List<SplineSegment>) : ISplineSegm
     override val endKey: Double
         get() = segments.last().keyEnd
 
+    override val startValue: Double
+        get() = segments.first().valueStart
+
+    override val endValue: Double
+        get() = segments.last().valueEnd
+
     override val count: Int
         get() = segments.size
 }
@@ -296,6 +336,14 @@ class HermiteSplineMapped(val segments: ISplineSegmentList) {
     var tension: Double = 1.0
 
     fun evaluate(key: Double): Double {
+        if(key < segments.startKey) {
+            return segments.startValue
+        }
+
+        if(key > segments.endKey) {
+            return segments.endValue
+        }
+
         val index = segments.find(key)
 
         val left = segments.left(index)
@@ -349,4 +397,30 @@ class MappedSplineBuilder {
 
 fun mappedHermite(): MappedSplineBuilder {
     return MappedSplineBuilder()
+}
+
+class MappedGridInterpolator(
+    val interpolator: GridInterpolator,
+    val mappings: List<HermiteSplineMapped>) {
+    init {
+        if(mappings.size != interpolator.grid.dimensions) {
+            error("Mismatched mapping set")
+        }
+    }
+
+    fun evaluate(coordinates: IKDVectorD): Double {
+        val grid = interpolator.grid
+
+        val gridCoordinates = KDVectorD.ofSize(grid.dimensions)
+
+        for (dim in 0 until grid.dimensions) {
+            gridCoordinates[dim] = mappings[dim].evaluate(coordinates[dim])
+        }
+
+        return interpolator.evaluate(gridCoordinates, Functions::lerp)
+    }
+}
+
+fun MappedGridInterpolator.evaluate(vararg coordinates: Double): Double {
+    return this.evaluate(kdVectorDOf(coordinates.asList()))
 }
