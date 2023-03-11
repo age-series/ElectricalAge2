@@ -21,11 +21,8 @@ import net.minecraft.sounds.SoundSource
 import net.minecraft.world.*
 import net.minecraft.world.entity.player.Inventory
 import net.minecraft.world.entity.player.Player
-import net.minecraft.world.entity.player.StackedContents
 import net.minecraft.world.inventory.*
 import net.minecraft.world.item.ItemStack
-import net.minecraft.world.item.crafting.AbstractCookingRecipe
-import net.minecraft.world.item.crafting.Recipe
 import net.minecraft.world.item.crafting.RecipeType
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.Block
@@ -35,7 +32,6 @@ import net.minecraft.world.level.block.entity.BlockEntityType
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.BlockHitResult
 import net.minecraft.world.phys.Vec3
-import net.minecraftforge.common.ForgeHooks
 import net.minecraftforge.common.capabilities.Capability
 import net.minecraftforge.common.util.LazyOptional
 import net.minecraftforge.items.CapabilityItemHandler
@@ -45,17 +41,19 @@ import org.ageseries.libage.sim.Material
 import org.ageseries.libage.sim.thermal.ConnectionParameters
 import org.ageseries.libage.sim.thermal.Simulator
 import org.ageseries.libage.sim.thermal.ThermalMass
+import org.eln2.mc.Eln2
 import org.eln2.mc.Eln2.LOGGER
 import org.eln2.mc.annotations.ActuallyValidUsage
+import org.eln2.mc.client.render.renderTextured
 import org.eln2.mc.common.blocks.foundation.CellBlock
 import org.eln2.mc.common.blocks.foundation.CellBlockEntity
 import org.eln2.mc.common.cells.foundation.CellBase
 import org.eln2.mc.common.cells.foundation.CellPos
 import org.eln2.mc.common.cells.foundation.SubscriberPhase
 import org.eln2.mc.common.cells.foundation.objects.SimulationObjectSet
-import org.eln2.mc.common.containers.ContainerRegistry
 import org.eln2.mc.common.events.AtomicUpdate
 import org.eln2.mc.common.events.EventScheduler
+import org.eln2.mc.extensions.GuiExtensions.addPlayerGrid
 import org.eln2.mc.extensions.LevelExtensions.addParticle
 import org.eln2.mc.extensions.LevelExtensions.constructMenu
 import org.eln2.mc.extensions.LevelExtensions.playLocalSound
@@ -68,6 +66,9 @@ import org.eln2.mc.extensions.ThermalExtensions.subStep
 import org.eln2.mc.extensions.Vec3Extensions.plus
 import org.eln2.mc.extensions.Vec3Extensions.toVec3
 import org.eln2.mc.integration.waila.TooltipBuilder
+import org.eln2.mc.mathematics.Functions.vec4fOne
+import org.eln2.mc.mathematics.Vector2F
+import org.eln2.mc.mathematics.Vector2I
 import org.eln2.mc.sim.ThermalBody
 import java.util.*
 
@@ -376,11 +377,17 @@ class FurnaceBlockEntity(pos: BlockPos, state: BlockState) :
         val isEmpty = super.getStackInSlot(INPUT_SLOT).isEmpty && super.getStackInSlot(OUTPUT_SLOT).isEmpty
     }
 
+    class DataHandler(): SimpleContainerData(2) {
+
+    }
+
     private var burnTime = 0
 
     val inventoryHandler = InventoryHandler(this)
     private val inventoryHandlerLazy = LazyOptional.of { inventoryHandler }
     private var saveTag: CompoundTag? = null
+
+    val data = DataHandler()
 
     var clientBurning = false
         private set
@@ -434,6 +441,8 @@ class FurnaceBlockEntity(pos: BlockPos, state: BlockState) :
         if (!isBurning) {
             return
         }
+
+        setChanged()
 
         inventoryHandlerLazy.ifPresent { inventory ->
             val inputStack = inventory.getStackInSlot(INPUT_SLOT)
@@ -544,26 +553,30 @@ class FurnaceBlockEntity(pos: BlockPos, state: BlockState) :
 class FurnaceMenu constructor(
     pContainerId: Int,
     playerInventory: Inventory,
-    handler: ItemStackHandler
+    handler: ItemStackHandler,
+    val containerData: ContainerData
 ) : AbstractContainerMenu(Content.FURNACE_MENU.get(), pContainerId) {
+    companion object {
+        fun create(id: Int, inventory: Inventory, player: Player, entity: FurnaceBlockEntity): FurnaceMenu {
+            return FurnaceMenu(
+                id,
+                inventory,
+                entity.inventoryHandler,
+                entity.data)
+        }
+    }
+
     constructor(pContainerId: Int, playerInventory: Inventory): this(
         pContainerId,
         playerInventory,
-        ItemStackHandler(2)
+        ItemStackHandler(2),
+        SimpleContainerData(2)
     )
 
     init {
-        addSlot(SlotItemHandler(handler, FurnaceBlockEntity.INPUT_SLOT, 10, 10))
-        addSlot(SlotItemHandler(handler, FurnaceBlockEntity.OUTPUT_SLOT, 10, 30))
-
-        for (i in 0..2) {
-            for (j in 0..8) {
-                addSlot(Slot(playerInventory, j + i * 9 + 9, 8 + j * 18, 84 + i * 18))
-            }
-        }
-        for (k in 0..8) {
-            addSlot(Slot(playerInventory, k, 8 + k * 18, 142))
-        }
+        addSlot(SlotItemHandler(handler, FurnaceBlockEntity.INPUT_SLOT, 56, 35))
+        addSlot(SlotItemHandler(handler, FurnaceBlockEntity.OUTPUT_SLOT, 116, 35))
+        this.addPlayerGrid(playerInventory, this::addSlot)
     }
 
     override fun stillValid(pPlayer: Player): Boolean {
@@ -577,8 +590,22 @@ class FurnaceMenu constructor(
 
 class FurnaceScreen(menu: FurnaceMenu, playerInventory: Inventory, title: Component) :
         AbstractContainerScreen<FurnaceMenu>(menu, playerInventory, title) {
-    override fun renderBg(pPoseStack: PoseStack, pPartialTick: Float, pMouseX: Int, pMouseY: Int) {
+    companion object {
+        private val TEXTURE = Eln2.resource("textures/gui/container/furnace_test.png")
+        private val TEX_SIZE = Vector2I(256, 256)
+        private val GUI_SIZE = Vector2I(176, 166)
+    }
 
+    override fun renderBg(pPoseStack: PoseStack, pPartialTick: Float, pMouseX: Int, pMouseY: Int) {
+        renderTextured(
+            texture = TEXTURE,
+            poseStack = pPoseStack,
+            blitOffset = 0,
+            color = vec4fOne(),
+            position = Vector2I(leftPos, topPos),
+            uvSize = GUI_SIZE,
+            uvPosition = Vector2F.zero(),
+            textureSize = TEX_SIZE)
     }
 
 }
@@ -648,9 +675,6 @@ class FurnaceBlock : CellBlock() {
         pHand: InteractionHand,
         pHit: BlockHitResult
     ): InteractionResult {
-        return pLevel.constructMenu<FurnaceBlockEntity>(pPos, pPlayer,
-            { TextComponent("Test") },
-            ::FurnaceMenu,
-            { it.inventoryHandler })
+        return pLevel.constructMenu(pPos, pPlayer, { TextComponent("Test") }, FurnaceMenu::create)
     }
 }

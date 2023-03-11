@@ -453,7 +453,19 @@ fun IKDVector<Double>.toKDVectorD(): KDVectorD {
     return KDVectorD(values)
 }
 
-data class Vector2I(val x: Int, val y: Int)
+data class Vector2I(val x: Int, val y: Int) {
+    companion object {
+        fun one(): Vector2I = Vector2I(1, 1)
+        fun zero(): Vector2I = Vector2I(0, 0)
+    }
+}
+
+data class Vector2F(val x: Float, val y: Float) {
+    companion object {
+        fun one(): Vector2F = Vector2F(1f, 1f)
+        fun zero(): Vector2F = Vector2F(0f, 0f)
+    }
+}
 
 data class Rectangle4I(val x: Int, val y: Int, val width: Int, val height: Int) {
     val left get() = x
