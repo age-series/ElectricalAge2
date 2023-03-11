@@ -1,6 +1,19 @@
 package org.eln2.mc.utility
 
+import com.mojang.math.Vector4f
 import net.minecraft.network.FriendlyByteBuf
+
+fun mcColor(color: Vector4f): McColor {
+    fun getByte(v: Float): UByte {
+        return (v * 255f).toInt().coerceIn(0, 255).toUByte()
+    }
+
+    return McColor(
+        getByte(color.x()),
+        getByte(color.y()),
+        getByte(color.z()),
+        getByte(color.w()))
+}
 
 class McColor(val r: UByte, val g: UByte, val b: UByte, val a: UByte) {
     constructor(r: Int, g: Int, b: Int, a: Int) : this(

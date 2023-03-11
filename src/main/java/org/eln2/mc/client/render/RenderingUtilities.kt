@@ -6,8 +6,11 @@ import com.mojang.math.Vector4f
 import net.minecraft.client.gui.GuiComponent
 import net.minecraft.client.renderer.GameRenderer
 import net.minecraft.resources.ResourceLocation
+import org.eln2.mc.mathematics.Rectangle4I
 import org.eln2.mc.mathematics.Vector2F
 import org.eln2.mc.mathematics.Vector2I
+import org.eln2.mc.utility.McColor
+import org.eln2.mc.utility.mcColor
 
 fun renderTextured(
     texture: ResourceLocation,
@@ -35,3 +38,19 @@ fun renderTextured(
         textureSize.x,
         textureSize.y)
 }
+
+fun renderColored(poseStack: PoseStack, color: McColor, rectangle: Rectangle4I) {
+    RenderSystem.setShader { GameRenderer.getPositionColorShader() }
+
+    GuiComponent.fill(poseStack,
+        rectangle.left,
+        rectangle.top,
+        rectangle.right,
+        rectangle.bottom,
+        color.value)
+}
+
+fun renderColored(poseStack: PoseStack, color: Vector4f, rectangle: Rectangle4I) {
+    renderColored(poseStack, mcColor(color), rectangle)
+}
+

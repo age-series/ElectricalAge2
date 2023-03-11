@@ -119,6 +119,18 @@ object Functions {
         return dstMin + (v - srcMin) * (dstMax - dstMin) / (srcMax - srcMin)
     }
 
+    /**
+     * Maps [v] from a source range to a destination range.
+     * @param srcMin The minimum value in [v]'s range.
+     * @param srcMax The maximum value in [v]'s range.
+     * @param dstMin The resulting range minimum.
+     * @param dstMax The resulting range maximum.
+     * @return [v] mapped from the source range to the destination range.
+     * */
+    fun map(v: Int, srcMin: Int, srcMax: Int, dstMin: Int, dstMax: Int): Int {
+        return dstMin + (v - srcMin) * (dstMax - dstMin) / (srcMax - srcMin)
+    }
+
     //#endregion
 
     //#region Vectors
@@ -297,6 +309,26 @@ object Functions {
     }
 
     //#endregion
+
+    fun mapNormalizedDoubleShort(value: Double): Int {
+        return map(
+            value,
+            0.0,
+            1.0,
+            Short.MIN_VALUE.toDouble(),
+            Short.MAX_VALUE.toDouble())
+            .toInt()
+    }
+
+    fun unmapNormalizedDoubleShort(value: Int): Double {
+        return map(
+            value.toDouble(),
+            Short.MIN_VALUE.toDouble(),
+            Short.MAX_VALUE.toDouble(),
+            0.0,
+            1.0
+        )
+    }
 }
 
 object Geometry {
