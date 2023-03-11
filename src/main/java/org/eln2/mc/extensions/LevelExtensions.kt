@@ -1,13 +1,24 @@
 package org.eln2.mc.extensions
 
 import net.minecraft.core.particles.ParticleOptions
+import net.minecraft.network.chat.Component
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.sounds.SoundEvent
 import net.minecraft.sounds.SoundSource
+import net.minecraft.world.InteractionResult
 import net.minecraft.world.entity.item.ItemEntity
+import net.minecraft.world.entity.player.Inventory
+import net.minecraft.world.entity.player.Player
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.Level
+import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.phys.Vec3
+import net.minecraft.core.BlockPos
+import net.minecraft.server.level.ServerPlayer
+import net.minecraft.world.MenuProvider
+import net.minecraft.world.inventory.AbstractContainerMenu
+import net.minecraftforge.items.ItemStackHandler
+import net.minecraftforge.network.NetworkHooks
 import org.eln2.mc.Eln2
 import org.eln2.mc.annotations.ServerOnly
 import org.eln2.mc.common.blocks.foundation.MultipartBlockEntity
@@ -73,6 +84,58 @@ object LevelExtensions {
 
         if (multipart.isEmpty) {
             this.destroyBlock(pos, false)
+        }
+    }
+
+    fun interface IContainerFactory<T: BlockEntity> {
+        fun create(id: Int, inventory: Inventory, player: Player, entity: T): AbstractContainerMenu
+    }
+
+    inline fun<reified TEntity: BlockEntity> Level.constructMenu(
+        pos: BlockPos,
+        player: Player,
+        crossinline title: (() -> Component),
+        factory: IContainerFactory<TEntity>): InteractionResult {
+
+        if(!this.isClientSide) {
+            val entity = this.getBlockEntity(pos) as? TEntity
+                ?: return InteractionResult.FAIL
+
+            val containerProvider = object : MenuProvider {
+                override fun getDisplayName(): Component {
+                    return title()
+                }
+
+                override fun createMenu(
+                    pContainerId: Int,
+                    pInventory: Inventory,
+                    pPlayer: Player
+                ): AbstractContainerMenu {
+                    return factory.create(
+                        pContainerId,
+                        pInventory,
+                        pPlayer,
+                        entity
+                    )
+                }
+            }
+
+            NetworkHooks.openGui(player as ServerPlayer, containerProvider, entity.blockPos)
+            return InteractionResult.SUCCESS
+        }
+
+        return InteractionResult.SUCCESS
+    }
+
+    inline fun<reified TEntity: BlockEntity> Level.constructMenu(
+        pos: BlockPos,
+        player: Player,
+        crossinline title: (() -> Component),
+        crossinline factory: ((Int, Inventory, ItemStackHandler) -> AbstractContainerMenu),
+        crossinline accessor: ((TEntity) -> ItemStackHandler)): InteractionResult {
+
+        return this.constructMenu<TEntity>(pos, player, title) {
+                id, inventory, _, entity -> factory(id, inventory, accessor(entity))
         }
     }
 }
