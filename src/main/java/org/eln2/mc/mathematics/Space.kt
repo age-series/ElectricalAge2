@@ -443,6 +443,15 @@ fun<T> IKDVector<T>.w(): T = this[3]
 fun IKDGrid<*>.width(): Int = this.getSize(0)
 fun IKDGrid<*>.height(): Int = this.getSize(1)
 fun IKDGrid<*>.depth(): Int = this.getSize(2)
+fun IKDVector<Double>.toKDVectorD(): KDVectorD {
+    val values = DoubleArray(this.size)
+
+    for (i in 0 until this.size) {
+        values[i] = this[i]
+    }
+
+    return KDVectorD(values)
+}
 
 data class Vector2I(val x: Int, val y: Int)
 

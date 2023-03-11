@@ -51,9 +51,8 @@ import org.eln2.mc.integration.waila.IWailaProvider
 import org.eln2.mc.integration.waila.TooltipBuilder
 import org.eln2.mc.mathematics.Functions.lerp
 import org.eln2.mc.mathematics.Functions.map
-import org.eln2.mc.mathematics.Geometry.cylinderExteriorSurfaceArea
+import org.eln2.mc.mathematics.Geometry.cylinderSurfaceArea
 import org.eln2.mc.sim.BiomeEnvironments
-import org.eln2.mc.sim.EnvironmentInformation
 import org.eln2.mc.sim.ThermalBody
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.math.abs
@@ -149,7 +148,7 @@ class ThermalWireObject(
 
     var body = ThermalBody(
         ThermalMass(Material.COPPER),
-        cylinderExteriorSurfaceArea(1.0, 0.05)
+        cylinderSurfaceArea(1.0, 0.05)
     ).also { it.temperature = environmentInformation.temperature }
 
     override fun offerComponent(neighbour: ThermalObject): ThermalComponentInfo {
