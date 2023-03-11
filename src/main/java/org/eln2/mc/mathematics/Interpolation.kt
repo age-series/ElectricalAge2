@@ -16,11 +16,17 @@ class GridInterpolator(val grid: KDGridD) {
         fun interpolate(a: Double, b: Double, t: Double): Double
     }
 
+    /**
+     * Pre-computed offset table to compute neighbor coordinates.
+     * */
     private val neighborOffsets =
         ArrayList<KDVectorI>()
             .also { findCorners(it, grid.dimensions - 1, KDVectorI.ofSize(grid.dimensions)) }
             .map { KDVectorIImmutable(it.values.toList()) }
 
+    /**
+     * Clamps the [coordinates] and returns the cell value.
+     * */
     private fun getClamped(coordinates: IKDVectorI): Double {
         val clamped = KDVectorI(coordinates.toArray()).also {
             for (i in 0 until it.size) {
@@ -107,7 +113,8 @@ class GridInterpolator(val grid: KDGridD) {
 }
 
 /**
- * The grid vector interpolator can be used to interpolate a grid of vectors.
+ * The grid vector interpolator is used to interpolate a grid of vectors.
+ * Internally, this uses a [GridInterpolator] for every dimension.
  * */
 class GridVectorInterpolator(val interpolators: List<GridInterpolator>) {
     fun evaluate(coordinates: IKDVectorD, function: GridInterpolator.IInterpolationFunction): KDVectorD {
@@ -399,6 +406,11 @@ fun mappedHermite(): MappedSplineBuilder {
     return MappedSplineBuilder()
 }
 
+/**
+ * Uses a grid interpolator and maps values to grid indices using splines.
+ * @param interpolator The grid interpolator to use.
+ * @param mappings Value-coordinate splines for every grid dimension.
+ * */
 class MappedGridInterpolator(
     val interpolator: GridInterpolator,
     val mappings: List<HermiteSplineMapped>) {
