@@ -2,20 +2,30 @@
 
 package org.eln2.mc.common.content
 
+import com.mojang.blaze3d.vertex.PoseStack
 import mcp.mobius.waila.api.IPluginConfig
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
 import net.minecraft.core.particles.ParticleTypes
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.network.Connection
+import net.minecraft.network.chat.Component
+import net.minecraft.network.chat.TextComponent
 import net.minecraft.network.protocol.Packet
 import net.minecraft.network.protocol.game.ClientGamePacketListener
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.sounds.SoundEvents
 import net.minecraft.sounds.SoundSource
-import net.minecraft.world.SimpleContainer
+import net.minecraft.world.*
+import net.minecraft.world.entity.player.Inventory
+import net.minecraft.world.entity.player.Player
+import net.minecraft.world.entity.player.StackedContents
+import net.minecraft.world.inventory.*
 import net.minecraft.world.item.ItemStack
+import net.minecraft.world.item.crafting.AbstractCookingRecipe
+import net.minecraft.world.item.crafting.Recipe
 import net.minecraft.world.item.crafting.RecipeType
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.Block
@@ -23,24 +33,31 @@ import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.entity.BlockEntityTicker
 import net.minecraft.world.level.block.entity.BlockEntityType
 import net.minecraft.world.level.block.state.BlockState
+import net.minecraft.world.phys.BlockHitResult
 import net.minecraft.world.phys.Vec3
+import net.minecraftforge.common.ForgeHooks
 import net.minecraftforge.common.capabilities.Capability
 import net.minecraftforge.common.util.LazyOptional
 import net.minecraftforge.items.CapabilityItemHandler
 import net.minecraftforge.items.ItemStackHandler
+import net.minecraftforge.items.SlotItemHandler
 import org.ageseries.libage.sim.Material
 import org.ageseries.libage.sim.thermal.ConnectionParameters
 import org.ageseries.libage.sim.thermal.Simulator
 import org.ageseries.libage.sim.thermal.ThermalMass
 import org.eln2.mc.Eln2.LOGGER
+import org.eln2.mc.annotations.ActuallyValidUsage
 import org.eln2.mc.common.blocks.foundation.CellBlock
 import org.eln2.mc.common.blocks.foundation.CellBlockEntity
 import org.eln2.mc.common.cells.foundation.CellBase
 import org.eln2.mc.common.cells.foundation.CellPos
 import org.eln2.mc.common.cells.foundation.SubscriberPhase
 import org.eln2.mc.common.cells.foundation.objects.SimulationObjectSet
+import org.eln2.mc.common.containers.ContainerRegistry
 import org.eln2.mc.common.events.AtomicUpdate
+import org.eln2.mc.common.events.EventScheduler
 import org.eln2.mc.extensions.LevelExtensions.addParticle
+import org.eln2.mc.extensions.LevelExtensions.constructMenu
 import org.eln2.mc.extensions.LevelExtensions.playLocalSound
 import org.eln2.mc.extensions.LibAgeExtensions.add
 import org.eln2.mc.extensions.LibAgeExtensions.connect
@@ -287,8 +304,8 @@ class FurnaceBlockEntity(pos: BlockPos, state: BlockState) :
     CellBlockEntity(pos, state, Content.FURNACE_BLOCK_ENTITY.get()) {
 
     companion object {
-        private const val INPUT_SLOT = 0
-        private const val OUTPUT_SLOT = 1
+        const val INPUT_SLOT = 0
+        const val OUTPUT_SLOT = 1
         private const val BURN_TIME_TARGET = 40
 
         private const val FURNACE = "furnace"
@@ -314,8 +331,10 @@ class FurnaceBlockEntity(pos: BlockPos, state: BlockState) :
         }
     }
 
-    private class InventoryHandler(private val furnaceBlockEntity: FurnaceBlockEntity) : ItemStackHandler(2) {
+    class InventoryHandler(private val furnaceBlockEntity: FurnaceBlockEntity) : ItemStackHandler(2) {
         override fun insertItem(slot: Int, stack: ItemStack, simulate: Boolean): ItemStack {
+            LOGGER.info("Inventory Handler inserts $slot $stack")
+
             if(slot == INPUT_SLOT){
                 return if(canSmelt(stack)){
                     super.insertItem(slot, stack, simulate).also {
@@ -339,29 +358,28 @@ class FurnaceBlockEntity(pos: BlockPos, state: BlockState) :
             return super.insertItem(OUTPUT_SLOT, stack, false) != stack
         }
 
-        override fun extractItem(slot: Int, amount: Int, simulate: Boolean): ItemStack {
-            if(slot == INPUT_SLOT){
-                return ItemStack.EMPTY
-            }
-
-            return super.extractItem(slot, amount, simulate)
-        }
-
         /**
          * Checks if the specified item can be smelted.
          * */
-        fun canSmelt(stack: ItemStack): Boolean {
+        private fun canSmelt(stack: ItemStack): Boolean {
             val recipeManager = furnaceBlockEntity.level!!.recipeManager
             val recipe = recipeManager.getRecipeFor(RecipeType.SMELTING, SimpleContainer(stack), furnaceBlockEntity.level!!)
 
             return !recipe.isEmpty
         }
+
+        fun clear() {
+            super.setStackInSlot(INPUT_SLOT, ItemStack.EMPTY)
+            super.setStackInSlot(OUTPUT_SLOT, ItemStack.EMPTY)
+        }
+
+        val isEmpty = super.getStackInSlot(INPUT_SLOT).isEmpty && super.getStackInSlot(OUTPUT_SLOT).isEmpty
     }
 
     private var burnTime = 0
 
-    private val inventoryHandlerLazy = LazyOptional.of { InventoryHandler(this) }
-
+    val inventoryHandler = InventoryHandler(this)
+    private val inventoryHandlerLazy = LazyOptional.of { inventoryHandler }
     private var saveTag: CompoundTag? = null
 
     var clientBurning = false
@@ -380,25 +398,28 @@ class FurnaceBlockEntity(pos: BlockPos, state: BlockState) :
     private fun loadBurningItem() {
         burnTime = 0
 
-        inventoryHandlerLazy.ifPresent {
-            val inputStack = it.getStackInSlot(INPUT_SLOT)
+        val inputStack = inventoryHandler.getStackInSlot(INPUT_SLOT)
 
-            isBurning = if(!inputStack.isEmpty){
-                furnaceCell.loadSmeltingBody(
-                    ThermalBody(
+        isBurning = if(!inputStack.isEmpty){
+            furnaceCell.loadSmeltingBody(
+                ThermalBody(
                     ThermalMass(Material.IRON), 1.0)
-                )
-                true
-            } else{
-                furnaceCell.unloadSmeltingBody()
-                false
-            }
+            )
+            true
+        } else{
+            furnaceCell.unloadSmeltingBody()
+
+            false
         }
     }
 
     private fun inputChanged() {
         if(!isBurning){
-            loadBurningItem()
+            EventScheduler.scheduleWorkPre(0) {
+                if(!isRemoved) {
+                    loadBurningItem()
+                }
+            }
         }
     }
 
@@ -520,6 +541,48 @@ class FurnaceBlockEntity(pos: BlockPos, state: BlockState) :
     private val furnaceCell get() = cell as FurnaceCell
 }
 
+class FurnaceMenu constructor(
+    pContainerId: Int,
+    playerInventory: Inventory,
+    handler: ItemStackHandler
+) : AbstractContainerMenu(Content.FURNACE_MENU.get(), pContainerId) {
+    constructor(pContainerId: Int, playerInventory: Inventory): this(
+        pContainerId,
+        playerInventory,
+        ItemStackHandler(2)
+    )
+
+    init {
+        addSlot(SlotItemHandler(handler, FurnaceBlockEntity.INPUT_SLOT, 10, 10))
+        addSlot(SlotItemHandler(handler, FurnaceBlockEntity.OUTPUT_SLOT, 10, 30))
+
+        for (i in 0..2) {
+            for (j in 0..8) {
+                addSlot(Slot(playerInventory, j + i * 9 + 9, 8 + j * 18, 84 + i * 18))
+            }
+        }
+        for (k in 0..8) {
+            addSlot(Slot(playerInventory, k, 8 + k * 18, 142))
+        }
+    }
+
+    override fun stillValid(pPlayer: Player): Boolean {
+        return true
+    }
+
+    override fun quickMoveStack(pPlayer: Player, pIndex: Int): ItemStack {
+        return ItemStack.EMPTY
+    }
+}
+
+class FurnaceScreen(menu: FurnaceMenu, playerInventory: Inventory, title: Component) :
+        AbstractContainerScreen<FurnaceMenu>(menu, playerInventory, title) {
+    override fun renderBg(pPoseStack: PoseStack, pPartialTick: Float, pMouseX: Int, pMouseY: Int) {
+
+    }
+
+}
+
 class FurnaceBlock : CellBlock() {
     override fun getCellProvider(): ResourceLocation {
         return Content.FURNACE_CELL.id
@@ -573,5 +636,21 @@ class FurnaceBlock : CellBlock() {
             level.addParticle(ParticleTypes.SMOKE, particlePos, 0.0, 0.0, 0.0)
             level.addParticle(ParticleTypes.FLAME, particlePos, 0.0, 0.0, 0.0)
         }
+    }
+
+    @ActuallyValidUsage
+    @Deprecated("Deprecated in Java")
+    override fun use(
+        pState: BlockState,
+        pLevel: Level,
+        pPos: BlockPos,
+        pPlayer: Player,
+        pHand: InteractionHand,
+        pHit: BlockHitResult
+    ): InteractionResult {
+        return pLevel.constructMenu<FurnaceBlockEntity>(pPos, pPlayer,
+            { TextComponent("Test") },
+            ::FurnaceMenu,
+            { it.inventoryHandler })
     }
 }

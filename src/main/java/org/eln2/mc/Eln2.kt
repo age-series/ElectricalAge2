@@ -40,6 +40,8 @@ object Eln2 {
             // Client-side setup
 
             MOD_BUS.register(ClientEvents)
+            MOD_BUS.register(Content.ClientSetup)
+
             PartialModels.initialize()
         }
 

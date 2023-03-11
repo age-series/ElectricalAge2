@@ -2,14 +2,20 @@
 
 package org.eln2.mc.common.content
 
+import net.minecraft.client.gui.screens.MenuScreens
 import net.minecraft.world.phys.Vec3
+import net.minecraftforge.eventbus.api.SubscribeEvent
+import net.minecraftforge.fml.common.Mod
+import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent
 import org.ageseries.libage.sim.Material
+import org.eln2.mc.Eln2.LOGGER
 import org.eln2.mc.mathematics.Functions.bbVec
 import org.eln2.mc.mathematics.Functions.lerp
 import org.eln2.mc.mathematics.Functions.vec3
 import org.eln2.mc.common.blocks.BlockRegistry
 import org.eln2.mc.common.cells.CellRegistry
 import org.eln2.mc.common.cells.foundation.providers.BasicCellProvider
+import org.eln2.mc.common.containers.ContainerRegistry
 import org.eln2.mc.common.parts.PartRegistry
 import org.eln2.mc.common.parts.foundation.providers.BasicPartProvider
 import org.eln2.mc.utility.SelfDescriptiveUnitMultipliers.centimeters
@@ -62,6 +68,7 @@ object Content {
     val FURNACE_BLOCK_ENTITY = BlockRegistry.blockEntity("furnace", ::FurnaceBlockEntity) { FURNACE_BLOCK.block.get() }
     val FURNACE_CELL = CellRegistry.register("furnace_cell", BasicCellProvider.polarLR(::FurnaceCell))
     val FURNACE_BLOCK = BlockRegistry.registerBasicBlock("furnace", tab = null) { FurnaceBlock() }
+    val FURNACE_MENU = ContainerRegistry.registerMenu("furnace_menu", ::FurnaceMenu)
 
     val BATTERY_CELL_100V = CellRegistry.register("battery_cell_t", BasicCellProvider.polarFB{ pos, id ->
         BatteryCell(pos, id, BatteryModel(
@@ -115,4 +122,20 @@ object Content {
     })
 
     val THERMOCOUPLE_PART = PartRegistry.part("thermocouple_part", BasicPartProvider(::ThermocouplePart, vec3(0.1)))
+
+    @Mod.EventBusSubscriber
+    object ClientSetup {
+        @SubscribeEvent
+        fun clientSetup(event: FMLClientSetupEvent) {
+            event.enqueueWork {
+                clientWork()
+
+                LOGGER.info("Content registry client-sided setup complete.")
+            }
+        }
+
+        private fun clientWork() {
+            MenuScreens.register(FURNACE_MENU.get(), ::FurnaceScreen)
+        }
+    }
 }
