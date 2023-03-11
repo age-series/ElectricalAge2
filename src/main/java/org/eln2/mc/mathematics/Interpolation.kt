@@ -1,7 +1,9 @@
 package org.eln2.mc.mathematics
 
 import org.eln2.mc.Eln2
-import org.eln2.mc.Eln2.LOGGER
+import org.eln2.mc.data.SegmentRange
+import org.eln2.mc.data.SegmentTree
+import org.eln2.mc.data.SegmentTreeBuilder
 import org.eln2.mc.mathematics.Functions.map
 import org.eln2.mc.mathematics.Functions.pow2I
 import org.eln2.mc.utility.ResourceReader
@@ -264,42 +266,7 @@ interface ISplineSegmentList {
     val count: Int
 }
 
-/**
- * This is a spline segment list with O(n) search time.
- * */
-class LinearSegmentList(private val segments: List<SplineSegment>) : ISplineSegmentList {
-    init {
-        if(segments.isEmpty()){
-            error("Tried to initialize segment list with 0 segments")
-        }
-
-        if(segments.size > 1) {
-            for(i in 1 until segments.size) {
-                val previous = segments[i - 1]
-                val current = segments[i]
-
-                if(previous.keyEnd != current.keyStart) {
-                    error("Segment list continuity error")
-                }
-            }
-        }
-    }
-
-    override fun find(key: Double): Int {
-        val index = segments.indexOfFirst { it.keyStart <= key && it.keyEnd >= key }
-
-        if (index == -1) {
-            return if(key < segments.first().keyStart) {
-                0
-            } else if(key > segments.last().keyEnd) {
-                segments.size - 1
-            }
-            else error("Unexpected key $key")
-        }
-
-        return index
-    }
-
+abstract class SplineSegmentList(protected val segments: List<SplineSegment>): ISplineSegmentList {
     override fun left(index: Int): SplineSegment {
         if (index <= 0) {
             return segments.first()
@@ -334,6 +301,61 @@ class LinearSegmentList(private val segments: List<SplineSegment>) : ISplineSegm
 
     override val count: Int
         get() = segments.size
+}
+
+/**
+ * This is a spline segment list with O(n) search time.
+ * */
+class LinearSplineSegmentList(segments: List<SplineSegment>) : SplineSegmentList(segments) {
+    init {
+        if(segments.isEmpty()){
+            error("Tried to initialize segment list with 0 segments")
+        }
+
+        if(segments.size > 1) {
+            for(i in 1 until segments.size) {
+                val previous = segments[i - 1]
+                val current = segments[i]
+
+                if(previous.keyEnd != current.keyStart) {
+                    error("Segment list continuity error")
+                }
+            }
+        }
+    }
+
+    override fun find(key: Double): Int {
+        val index = segments.indexOfFirst { it.keyStart <= key && it.keyEnd >= key }
+
+        if (index == -1) {
+            return if(key < segments.first().keyStart) {
+                0
+            } else if(key > segments.last().keyEnd) {
+                segments.size - 1
+            }
+            else error("Unexpected key $key")
+        }
+
+        return index
+    }
+
+
+}
+
+/**
+ * This is a spline segment list that uses a [SegmentTree] to search indices.
+ * Time complexity is as specified by [SegmentTree.query]
+ * */
+class TreeSplineSegmentList(segments: List<SplineSegment>): SplineSegmentList(segments) {
+    private val segmentTree = SegmentTreeBuilder<Int>().also {
+        segments.forEachIndexed { index, (keyStart, keyEnd, _) ->
+            it.insert(index, SegmentRange(keyStart, keyEnd))
+        }
+    }.build()
+
+    override fun find(key: Double): Int {
+        return segmentTree.queryOrNull(key) ?: error("Spline index $key out of range")
+    }
 }
 
 /**
@@ -393,12 +415,20 @@ class MappedSplineBuilder {
         return this
     }
 
-    fun buildHermite(): HermiteSplineMapped {
+    fun buildHermite(listFactory: ((List<SplineSegment>) -> ISplineSegmentList)): HermiteSplineMapped {
         if (segments.isEmpty()) {
             error("Tried to build spline with 0 segments")
         }
 
-        return HermiteSplineMapped(LinearSegmentList(segments.toList()))
+        return HermiteSplineMapped(listFactory(segments.toList()))
+    }
+
+    fun buildHermite(): HermiteSplineMapped {
+        return buildHermite(::TreeSplineSegmentList)
+    }
+
+    fun buildHermite2(): HermiteSplineMapped {
+        return buildHermite(::LinearSplineSegmentList)
     }
 }
 
