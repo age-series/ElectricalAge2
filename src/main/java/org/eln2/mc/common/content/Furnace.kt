@@ -2,7 +2,6 @@
 
 package org.eln2.mc.common.content
 
-import com.jozufozu.flywheel.repack.joml.Vector2d
 import com.mojang.blaze3d.vertex.PoseStack
 import mcp.mobius.waila.api.IPluginConfig
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen
@@ -32,7 +31,6 @@ import net.minecraft.world.level.block.entity.BlockEntityTicker
 import net.minecraft.world.level.block.entity.BlockEntityType
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.BlockHitResult
-import net.minecraft.world.phys.Vec2
 import net.minecraft.world.phys.Vec3
 import net.minecraftforge.common.capabilities.Capability
 import net.minecraftforge.common.util.LazyOptional
@@ -67,14 +65,11 @@ import org.eln2.mc.extensions.ThermalExtensions.subStep
 import org.eln2.mc.extensions.Vec3Extensions.plus
 import org.eln2.mc.extensions.Vec3Extensions.toVec3
 import org.eln2.mc.integration.waila.TooltipBuilder
+import org.eln2.mc.mathematics.*
 import org.eln2.mc.mathematics.Functions.map
 import org.eln2.mc.mathematics.Functions.mapNormalizedDoubleShort
 import org.eln2.mc.mathematics.Functions.unmapNormalizedDoubleShort
 import org.eln2.mc.mathematics.Functions.vec4fOne
-import org.eln2.mc.mathematics.Rectangle4I
-import org.eln2.mc.mathematics.Vector2D
-import org.eln2.mc.mathematics.Vector2F
-import org.eln2.mc.mathematics.Vector2I
 import org.eln2.mc.sim.ThermalBody
 import org.eln2.mc.utility.McColors
 import java.util.*
@@ -404,6 +399,10 @@ class FurnaceBlockEntity(pos: BlockPos, state: BlockState) :
             get() = this.get(RESISTOR_TARGET_TEMPERATURE)
             set(value) { this.set(RESISTOR_TARGET_TEMPERATURE, value) }
 
+        val resistorTemperatureProgress: Double get() =
+            (resistorTemperature.toDouble() / resistorTargetTemperature.toDouble())
+            .coerceIn(0.0, 1.0).definedOrZero()
+
         var bodyTemperature: Int
             get() = this.get(BODY_TEMPERATURE)
             set(value) { this.set(BODY_TEMPERATURE, value) }
@@ -411,6 +410,10 @@ class FurnaceBlockEntity(pos: BlockPos, state: BlockState) :
         var bodyTargetTemperature: Int
             get() = this.get(BODY_TARGET_TEMPERATURE)
             set(value) { this.set(BODY_TARGET_TEMPERATURE, value) }
+
+        val bodyTemperatureProgress: Double get() =
+            (bodyTemperature.toDouble() / bodyTargetTemperature.toDouble())
+            .coerceIn(0.0, 1.0).definedOrZero()
 
         var smeltProgress: Double
             get() = unmapNormalizedDoubleShort(this.get(SMELT_PROGRESS))
@@ -439,6 +442,8 @@ class FurnaceBlockEntity(pos: BlockPos, state: BlockState) :
     private var isBurning = false
 
     private fun loadBurningItem() {
+        data.smeltProgress = 0.0
+
         burnTime = 0
 
         val inputStack = inventoryHandler.getStackInSlot(INPUT_SLOT)
@@ -634,32 +639,76 @@ class FurnaceMenu constructor(
     }
 }
 
-class FurnaceScreen(menu: FurnaceMenu, playerInventory: Inventory, title: Component) :
-        AbstractContainerScreen<FurnaceMenu>(menu, playerInventory, title) {
+class FurnaceScreen(menu: FurnaceMenu, playerInventory: Inventory, title: Component) : AbstractContainerScreen<FurnaceMenu>(menu, playerInventory, title) {
     companion object {
         private val TEXTURE = Eln2.resource("textures/gui/container/furnace_test.png")
         private val TEX_SIZE = Vector2I(256, 256)
-        private val GUI_SIZE = Vector2I(176, 166)
-        private val SLIDE_RANGE = Vector2D(10.0, 100.0)
-        private const val SLIDER_Y = 10
-        private const val SLIDER_SIZE = 10
+        private val BACKGROUND_UV_SIZE = Vector2I(176, 166)
+
+        private val RESISTOR_INDICATOR_POS = Vector2I(13, 28)
+        private val BODY_INDICATOR_POS = Vector2I(27, 28)
+
+        private const val INDICATOR_HEIGHT = 57 - 28
+        private const val INDICATOR_WIDTH = 21 - 13
+        private val INDICATOR_SIZE = Vector2I(INDICATOR_WIDTH, 2)
+        private val INDICATOR_COLOR = McColors.red
+
+        private val PROGRESS_ARROW_POS = Vector2I(79, 34)
+        private val PROGRESS_UV_POS = Vector2F(176f, 14f)
+        private val PROGRESS_UV_SIZE = Vector2F(16f, 16f)
+    }
+
+    private val offset get() = Vector2I(leftPos, topPos)
+
+    private fun renderIndicator(stack: PoseStack, position: Vector2I, progress: Double) {
+        val vertical = map(
+            progress,
+            0.0,
+            1.0,
+            (position.y + INDICATOR_HEIGHT).toDouble(),
+            position.y.toDouble()
+        )
+
+        renderColored(stack, INDICATOR_COLOR, Rectangle4F(
+            (position.x + leftPos).toFloat(),
+            (vertical + topPos).toFloat(),
+            INDICATOR_SIZE.toVector2F())
+        )
+    }
+
+    private fun renderTemperatureIndicators(stack: PoseStack) {
+        renderIndicator(stack, RESISTOR_INDICATOR_POS, menu.containerData.resistorTemperatureProgress)
+        renderIndicator(stack, BODY_INDICATOR_POS, menu.containerData.bodyTemperatureProgress)
+    }
+
+    private fun renderProgressArrow(stack: PoseStack) {
+        val uvSize = Vector2F(
+            map(
+                menu.containerData.smeltProgress.toFloat(),
+                0f,
+                1f,
+                0f,
+                PROGRESS_UV_SIZE.x
+            ),
+            PROGRESS_UV_SIZE.y
+        )
+
+        renderTextured(
+            texture = TEXTURE,
+            poseStack = stack,
+            blitOffset = 0,
+            color = vec4fOne(),
+            position = PROGRESS_ARROW_POS + offset,
+            uvSize = uvSize.toVector2I(),
+            uvPosition = PROGRESS_UV_POS,
+            textureSize = TEX_SIZE)
     }
 
     override fun render(pPoseStack: PoseStack, pMouseX: Int, pMouseY: Int, pPartialTick: Float) {
         super.render(pPoseStack, pMouseX, pMouseY, pPartialTick)
 
-        val sliderX = map(
-            menu.containerData.smeltProgress,
-            0.0,
-            1.0,
-            SLIDE_RANGE.x,
-            SLIDE_RANGE.y)
-            .toInt()
-
-        renderColored(
-            pPoseStack,
-            McColors.red,
-            Rectangle4I(sliderX, SLIDER_Y, SLIDER_SIZE, SLIDER_SIZE))
+        renderTemperatureIndicators(pPoseStack)
+        renderProgressArrow(pPoseStack)
     }
 
     override fun renderBg(pPoseStack: PoseStack, pPartialTick: Float, pMouseX: Int, pMouseY: Int) {
@@ -669,7 +718,7 @@ class FurnaceScreen(menu: FurnaceMenu, playerInventory: Inventory, title: Compon
             blitOffset = 0,
             color = vec4fOne(),
             position = Vector2I(leftPos, topPos),
-            uvSize = GUI_SIZE,
+            uvSize = BACKGROUND_UV_SIZE,
             uvPosition = Vector2F.zero(),
             textureSize = TEX_SIZE)
     }

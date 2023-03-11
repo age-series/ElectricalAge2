@@ -458,12 +458,20 @@ data class Vector2I(val x: Int, val y: Int) {
         fun one(): Vector2I = Vector2I(1, 1)
         fun zero(): Vector2I = Vector2I(0, 0)
     }
+
+    operator fun plus(other: Vector2I): Vector2I = Vector2I(x + other.x, y + other.y)
+
+    fun toVector2F(): Vector2F = Vector2F(x.toFloat(), y.toFloat())
 }
 
 data class Vector2F(val x: Float, val y: Float) {
     companion object {
         fun one(): Vector2F = Vector2F(1f, 1f)
         fun zero(): Vector2F = Vector2F(0f, 0f)
+    }
+
+    fun toVector2I(): Vector2I {
+        return Vector2I(x.toInt(), y.toInt())
     }
 }
 
@@ -475,28 +483,24 @@ data class Vector2D(val x: Double, val y: Double) {
 }
 
 data class Rectangle4I(val x: Int, val y: Int, val width: Int, val height: Int) {
+    constructor(pos: Vector2I, width: Int, height: Int): this(pos.x, pos.y, width, height)
+    constructor(pos: Vector2I, size: Vector2I): this(pos.x, pos.y, size.x, size.y)
+    constructor(x: Int, y: Int, size: Vector2I): this(x, y, size.x, size.y)
+
     val left get() = x
     val right get() = x + width
     val top get() = y
     val bottom get() = y + height
+}
 
-    fun traverseX(action: ((Int) -> Unit)) {
-        for (x in top until bottom) {
-            action(x)
-        }
-    }
 
-    fun traverseY(action: ((Int) -> Unit)) {
-        for (y in left until right) {
-            action(y)
-        }
-    }
+data class Rectangle4F(val x: Float, val y: Float, val width: Float, val height: Float) {
+    constructor(pos: Vector2F, width: Float, height: Float): this(pos.x, pos.y, width, height)
+    constructor(pos: Vector2F, size: Vector2F): this(pos.x, pos.y, size.x, size.y)
+    constructor(x: Float, y: Float, size: Vector2F): this(x, y, size.x, size.y)
 
-    fun traverse(action: ((Int, Int) -> Unit)) {
-        for (y in left until right) {
-            for (x in top until bottom) {
-                action(x, y)
-            }
-        }
-    }
+    val left get() = x
+    val right get() = x + width
+    val top get() = y
+    val bottom get() = y + height
 }
