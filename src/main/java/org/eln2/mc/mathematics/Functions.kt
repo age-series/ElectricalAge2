@@ -1,5 +1,6 @@
 package org.eln2.mc.mathematics
 
+import com.mojang.math.Vector4f
 import net.minecraft.core.Vec3i
 import net.minecraft.world.phys.Vec3
 import kotlin.math.PI
@@ -281,6 +282,18 @@ object Functions {
      * */
     fun vec3iZero(): Vec3i {
         return vec3i(0)
+    }
+
+    fun vec4f(value: Float): Vector4f {
+        return Vector4f(value, value, value, value)
+    }
+
+    fun vec4fOne(): Vector4f {
+        return vec4f(1f)
+    }
+
+    fun vec4FZero(): Vector4f {
+        return vec4f(0f)
     }
 
     //#endregion
