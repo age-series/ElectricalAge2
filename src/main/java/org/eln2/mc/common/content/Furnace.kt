@@ -2,6 +2,7 @@
 
 package org.eln2.mc.common.content
 
+import com.jozufozu.flywheel.repack.joml.Vector2d
 import com.mojang.blaze3d.vertex.PoseStack
 import mcp.mobius.waila.api.IPluginConfig
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen
@@ -31,6 +32,7 @@ import net.minecraft.world.level.block.entity.BlockEntityTicker
 import net.minecraft.world.level.block.entity.BlockEntityType
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.BlockHitResult
+import net.minecraft.world.phys.Vec2
 import net.minecraft.world.phys.Vec3
 import net.minecraftforge.common.capabilities.Capability
 import net.minecraftforge.common.util.LazyOptional
@@ -38,12 +40,11 @@ import net.minecraftforge.items.CapabilityItemHandler
 import net.minecraftforge.items.ItemStackHandler
 import net.minecraftforge.items.SlotItemHandler
 import org.ageseries.libage.sim.Material
-import org.ageseries.libage.sim.thermal.ConnectionParameters
-import org.ageseries.libage.sim.thermal.Simulator
-import org.ageseries.libage.sim.thermal.ThermalMass
+import org.ageseries.libage.sim.thermal.*
 import org.eln2.mc.Eln2
 import org.eln2.mc.Eln2.LOGGER
 import org.eln2.mc.annotations.ActuallyValidUsage
+import org.eln2.mc.client.render.renderColored
 import org.eln2.mc.client.render.renderTextured
 import org.eln2.mc.common.blocks.foundation.CellBlock
 import org.eln2.mc.common.blocks.foundation.CellBlockEntity
@@ -66,10 +67,16 @@ import org.eln2.mc.extensions.ThermalExtensions.subStep
 import org.eln2.mc.extensions.Vec3Extensions.plus
 import org.eln2.mc.extensions.Vec3Extensions.toVec3
 import org.eln2.mc.integration.waila.TooltipBuilder
+import org.eln2.mc.mathematics.Functions.map
+import org.eln2.mc.mathematics.Functions.mapNormalizedDoubleShort
+import org.eln2.mc.mathematics.Functions.unmapNormalizedDoubleShort
 import org.eln2.mc.mathematics.Functions.vec4fOne
+import org.eln2.mc.mathematics.Rectangle4I
+import org.eln2.mc.mathematics.Vector2D
 import org.eln2.mc.mathematics.Vector2F
 import org.eln2.mc.mathematics.Vector2I
 import org.eln2.mc.sim.ThermalBody
+import org.eln2.mc.utility.McColors
 import java.util.*
 
 data class FurnaceOptions(
@@ -172,6 +179,9 @@ class FurnaceCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) {
     }
     var isHot: Boolean = false
         private set
+
+    val bodyTemperature: Temperature? get() = knownSmeltingBody?.temperature
+    val resistorTemperature: Temperature get() = resistorHeatBody.temperature
 
     override fun createObjectSet(): SimulationObjectSet {
         return SimulationObjectSet(ResistorObject())
@@ -377,8 +387,34 @@ class FurnaceBlockEntity(pos: BlockPos, state: BlockState) :
         val isEmpty = super.getStackInSlot(INPUT_SLOT).isEmpty && super.getStackInSlot(OUTPUT_SLOT).isEmpty
     }
 
-    class DataHandler(): SimpleContainerData(2) {
+    class FurnaceData : SimpleContainerData(5) {
+        companion object {
+            private const val RESISTOR_TEMPERATURE = 0
+            private const val RESISTOR_TARGET_TEMPERATURE = 1
+            private const val BODY_TEMPERATURE = 2
+            private const val BODY_TARGET_TEMPERATURE = 3
+            private const val SMELT_PROGRESS = 4
+        }
 
+        var resistorTemperature: Int
+            get() = this.get(RESISTOR_TEMPERATURE)
+            set(value) { this.set(RESISTOR_TEMPERATURE, value) }
+
+        var resistorTargetTemperature: Int
+            get() = this.get(RESISTOR_TARGET_TEMPERATURE)
+            set(value) { this.set(RESISTOR_TARGET_TEMPERATURE, value) }
+
+        var bodyTemperature: Int
+            get() = this.get(BODY_TEMPERATURE)
+            set(value) { this.set(BODY_TEMPERATURE, value) }
+
+        var bodyTargetTemperature: Int
+            get() = this.get(BODY_TARGET_TEMPERATURE)
+            set(value) { this.set(BODY_TARGET_TEMPERATURE, value) }
+
+        var smeltProgress: Double
+            get() = unmapNormalizedDoubleShort(this.get(SMELT_PROGRESS))
+            set(value) { this.set(SMELT_PROGRESS, mapNormalizedDoubleShort(value))}
     }
 
     private var burnTime = 0
@@ -387,7 +423,7 @@ class FurnaceBlockEntity(pos: BlockPos, state: BlockState) :
     private val inventoryHandlerLazy = LazyOptional.of { inventoryHandler }
     private var saveTag: CompoundTag? = null
 
-    val data = DataHandler()
+    val data = FurnaceData()
 
     var clientBurning = false
         private set
@@ -444,6 +480,12 @@ class FurnaceBlockEntity(pos: BlockPos, state: BlockState) :
 
         setChanged()
 
+        data.resistorTemperature = furnaceCell.resistorTemperature.kelvin.toInt()
+        data.resistorTargetTemperature = furnaceCell.options.targetTemperature.toInt()
+
+        data.bodyTemperature = (furnaceCell.bodyTemperature ?: STANDARD_TEMPERATURE).kelvin.toInt()
+        data.bodyTargetTemperature = furnaceCell.options.temperatureThreshold.toInt()
+
         inventoryHandlerLazy.ifPresent { inventory ->
             val inputStack = inventory.getStackInSlot(INPUT_SLOT)
 
@@ -477,6 +519,8 @@ class FurnaceBlockEntity(pos: BlockPos, state: BlockState) :
                 if(furnaceCell.isHot) {
                     burnTime++
                 }
+
+                data.smeltProgress = (burnTime / BURN_TIME_TARGET.toDouble()).coerceIn(0.0, 1.0)
             }
         }
     }
@@ -554,7 +598,7 @@ class FurnaceMenu constructor(
     pContainerId: Int,
     playerInventory: Inventory,
     handler: ItemStackHandler,
-    val containerData: ContainerData
+    val containerData: FurnaceBlockEntity.FurnaceData
 ) : AbstractContainerMenu(Content.FURNACE_MENU.get(), pContainerId) {
     companion object {
         fun create(id: Int, inventory: Inventory, player: Player, entity: FurnaceBlockEntity): FurnaceMenu {
@@ -570,12 +614,14 @@ class FurnaceMenu constructor(
         pContainerId,
         playerInventory,
         ItemStackHandler(2),
-        SimpleContainerData(2)
+        FurnaceBlockEntity.FurnaceData()
     )
 
     init {
         addSlot(SlotItemHandler(handler, FurnaceBlockEntity.INPUT_SLOT, 56, 35))
         addSlot(SlotItemHandler(handler, FurnaceBlockEntity.OUTPUT_SLOT, 116, 35))
+        addDataSlots(containerData)
+
         this.addPlayerGrid(playerInventory, this::addSlot)
     }
 
@@ -594,6 +640,26 @@ class FurnaceScreen(menu: FurnaceMenu, playerInventory: Inventory, title: Compon
         private val TEXTURE = Eln2.resource("textures/gui/container/furnace_test.png")
         private val TEX_SIZE = Vector2I(256, 256)
         private val GUI_SIZE = Vector2I(176, 166)
+        private val SLIDE_RANGE = Vector2D(10.0, 100.0)
+        private const val SLIDER_Y = 10
+        private const val SLIDER_SIZE = 10
+    }
+
+    override fun render(pPoseStack: PoseStack, pMouseX: Int, pMouseY: Int, pPartialTick: Float) {
+        super.render(pPoseStack, pMouseX, pMouseY, pPartialTick)
+
+        val sliderX = map(
+            menu.containerData.smeltProgress,
+            0.0,
+            1.0,
+            SLIDE_RANGE.x,
+            SLIDE_RANGE.y)
+            .toInt()
+
+        renderColored(
+            pPoseStack,
+            McColors.red,
+            Rectangle4I(sliderX, SLIDER_Y, SLIDER_SIZE, SLIDER_SIZE))
     }
 
     override fun renderBg(pPoseStack: PoseStack, pPartialTick: Float, pMouseX: Int, pMouseY: Int) {
@@ -607,7 +673,6 @@ class FurnaceScreen(menu: FurnaceMenu, playerInventory: Inventory, title: Compon
             uvPosition = Vector2F.zero(),
             textureSize = TEX_SIZE)
     }
-
 }
 
 class FurnaceBlock : CellBlock() {

@@ -467,6 +467,13 @@ data class Vector2F(val x: Float, val y: Float) {
     }
 }
 
+data class Vector2D(val x: Double, val y: Double) {
+    companion object {
+        fun one(): Vector2D = Vector2D(1.0, 1.0)
+        fun zero(): Vector2D = Vector2D(0.0, 0.0)
+    }
+}
+
 data class Rectangle4I(val x: Int, val y: Int, val width: Int, val height: Int) {
     val left get() = x
     val right get() = x + width
