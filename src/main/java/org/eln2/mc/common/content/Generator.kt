@@ -3,6 +3,7 @@ package org.eln2.mc.common.content
 import mcp.mobius.waila.api.IPluginConfig
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.resources.ResourceLocation
+import net.minecraft.world.level.block.state.BlockState
 import org.ageseries.libage.sim.Material
 import org.ageseries.libage.sim.electrical.mna.Circuit
 import org.ageseries.libage.sim.electrical.mna.component.Resistor
@@ -10,14 +11,37 @@ import org.ageseries.libage.sim.electrical.mna.component.VoltageSource
 import org.ageseries.libage.sim.thermal.Simulator
 import org.ageseries.libage.sim.thermal.Temperature
 import org.ageseries.libage.sim.thermal.ThermalMass
+import net.minecraft.core.BlockPos
+import net.minecraft.core.Direction
+import net.minecraft.network.chat.TextComponent
+import net.minecraft.world.InteractionHand
+import net.minecraft.world.InteractionResult
+import net.minecraft.world.entity.player.Player
+import net.minecraft.world.item.ItemStack
+import net.minecraft.world.item.Items
+import net.minecraft.world.level.Level
+import net.minecraft.world.level.block.entity.BlockEntity
+import net.minecraft.world.level.block.entity.BlockEntityTicker
+import net.minecraft.world.level.block.entity.BlockEntityType
+import net.minecraft.world.phys.BlockHitResult
+import net.minecraftforge.common.capabilities.Capability
+import net.minecraftforge.common.util.LazyOptional
+import net.minecraftforge.items.CapabilityItemHandler
+import net.minecraftforge.items.ItemStackHandler
+import org.eln2.mc.Eln2
+import org.eln2.mc.annotations.ActuallyValidUsage
 import org.eln2.mc.mathematics.Functions.bbVec
 import org.eln2.mc.mathematics.Functions.lerp
 import org.eln2.mc.mathematics.Functions.map
 import org.eln2.mc.annotations.CrossThreadAccess
+import org.eln2.mc.annotations.RaceCondition
 import org.eln2.mc.client.render.PartialModels
 import org.eln2.mc.client.render.PartialModels.bbOffset
 import org.eln2.mc.client.render.foundation.BasicPartRenderer
+import org.eln2.mc.common.blocks.foundation.CellBlock
+import org.eln2.mc.common.blocks.foundation.CellBlockEntity
 import org.eln2.mc.common.cells.foundation.*
+import org.eln2.mc.common.cells.foundation.behaviors.IThermalBodyAccessor
 import org.eln2.mc.common.cells.foundation.behaviors.withElectricalHeatTransfer
 import org.eln2.mc.common.cells.foundation.behaviors.withElectricalPowerConverter
 import org.eln2.mc.common.cells.foundation.objects.*
@@ -28,6 +52,9 @@ import org.eln2.mc.common.parts.foundation.ITickablePart
 import org.eln2.mc.common.parts.foundation.PartPlacementContext
 import org.eln2.mc.common.space.DirectionMask
 import org.eln2.mc.common.space.RelativeRotationDirection
+import org.eln2.mc.control.PIDCoefficients
+import org.eln2.mc.control.PIDController
+import org.eln2.mc.extensions.LevelExtensions.constructMenu
 import org.eln2.mc.extensions.LibAgeExtensions.add
 import org.eln2.mc.extensions.LibAgeExtensions.setPotentialEpsilon
 import org.eln2.mc.extensions.LibAgeExtensions.setResistanceEpsilon
@@ -37,9 +64,12 @@ import org.eln2.mc.extensions.NumberExtensions.formattedPercentN
 import org.eln2.mc.integration.waila.IWailaProvider
 import org.eln2.mc.integration.waila.TooltipBuilder
 import org.eln2.mc.mathematics.Functions.avg
+import org.eln2.mc.mathematics.epsilonEquals
 import org.eln2.mc.mathematics.evaluate
 import org.eln2.mc.sim.Datasets
 import org.eln2.mc.sim.ThermalBody
+import org.eln2.mc.utility.SelfDescriptiveUnitMultipliers.megaJoules
+import java.util.*
 import kotlin.math.abs
 import kotlin.math.min
 import kotlin.math.sqrt
@@ -474,10 +504,12 @@ fun interface IGeneratorGetAccessor {
 }
 
 class ThermocoupleBehavior(
-    val generatorAccessor: IGeneratorGetAccessor,
-    val coldAccessor: IThermalBodyProvider,
-    val hotAccessor: IThermalBodyProvider,
+    private val generatorAccessor: IGeneratorGetAccessor,
+    private val coldAccessor: IThermalBodyProvider,
+    private val hotAccessor: IThermalBodyProvider,
+
     override val model: ThermocoupleModel): ICellBehavior, IThermocoupleView, IWailaProvider {
+
     private data class BodyPair(val hot: ThermalBody, val cold: ThermalBody, val inverted: Boolean)
 
     override fun onAdded(container: CellBehaviorContainer) {}
@@ -514,16 +546,20 @@ class ThermocoupleBehavior(
     private var totalRemoved = 0.0
 
     private fun preTick(dt: Double, phase: SubscriberPhase) {
+        preTickThermalElectrical(dt)
+    }
+
+    private fun preTickThermalElectrical(dt: Double) {
         val bodies = getSortedBodyPair()
         val generator = generatorAccessor.get()
 
         energyTransfer =
             (bodies.hot.temperatureK - bodies.cold.temperatureK) * // DeltaT
 
-            // P.S. I expect the dipoles to have the same material. What to do here?
-            avg(bodies.hot.mass.material.specificHeat, bodies.cold.mass.material.specificHeat) * // Specific Heat
+                // P.S. I expect the dipoles to have the same material. What to do here?
+                avg(bodies.hot.mass.material.specificHeat, bodies.cold.mass.material.specificHeat) * // Specific Heat
 
-            systemMass // Mass
+                systemMass // Mass
 
         // Maximum energy that can be converted into electrical energy.
 
@@ -616,3 +652,191 @@ class ThermocoupleCell(pos: CellPos, id: ResourceLocation) : GeneratorCell(pos, 
 
     private val thermalBipole get() = thermalObject as ThermalBipoleObject
 }
+
+data class HeatGeneratorFuelMass(
+    @RaceCondition
+    var fuelAmount: Double,         // Unit
+    val fuelEnergyCapacity: Double, // Energy/Unit
+    val suggestedBurnRate: Double,  // Unit/Second
+    val fuelTemperature: Double
+) {
+    val availableEnergy get() = fuelAmount * fuelEnergyCapacity
+
+    fun getTheoreticalTransfer(dt: Double, burnRate: Double): Double {
+        return burnRate * fuelEnergyCapacity * dt
+    }
+
+    fun getTransfer(dt: Double, burnRate: Double): Double {
+        return min(getTheoreticalTransfer(dt, burnRate), availableEnergy)
+    }
+
+    fun removeEnergy(energy: Double) {
+        fuelAmount -= energy / fuelEnergyCapacity
+    }
+}
+
+object Fuels {
+    fun coal(mass: Double): HeatGeneratorFuelMass {
+        return HeatGeneratorFuelMass(
+            fuelAmount = mass,
+            fuelEnergyCapacity = megaJoules(24.0),
+            suggestedBurnRate = 0.005,
+            fuelTemperature = 2000.0
+        )
+    }
+}
+
+private class FuelBurnerBehavior(val bodyGetter: IThermalBodyAccessor): ICellBehavior, IWailaProvider {
+    private var fuel: HeatGeneratorFuelMass? = null
+
+    private val pid = PIDController(PIDCoefficients(
+        kP = 10.0,
+        kI = 0.01,
+        kD = 0.1
+    ))
+
+    fun replaceFuel(fuel: HeatGeneratorFuelMass) {
+        this.fuel = fuel
+        pid.unwind()
+
+        pid.minControl = 0.0
+        pid.maxControl = fuel.suggestedBurnRate
+        pid.setPoint = fuel.fuelTemperature
+    }
+
+    val availableEnergy get() = fuel?.availableEnergy ?: 0.0
+
+    private var burnRateSignal = 0.0
+
+    override fun onAdded(container: CellBehaviorContainer) { }
+
+    override fun subscribe(subscribers: SubscriberCollection) {
+        subscribers.addPreInstantaneous(this::simulationTick)
+    }
+
+    override fun destroy(subscribers: SubscriberCollection) {
+        subscribers.removeSubscriber(this::simulationTick)
+    }
+
+    private fun simulationTick(dt: Double, phase: SubscriberPhase) {
+        val fuel = this.fuel
+            ?: return
+
+        val body = bodyGetter.get()
+
+        burnRateSignal = pid.update(body.temperatureK, dt)
+
+        val energyTransfer = fuel.getTransfer(dt, burnRateSignal)
+
+        fuel.removeEnergy(energyTransfer)
+
+        body.thermalEnergy += energyTransfer
+    }
+
+    override fun appendBody(builder: TooltipBuilder, config: IPluginConfig?) {
+        builder.text("Control Signal", burnRateSignal.formatted(4))
+        builder.text("Fuel", (fuel?.fuelAmount ?: 0.0).formatted())
+    }
+}
+
+class HeatGeneratorCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) {
+    init {
+        behaviors.add(
+            FuelBurnerBehavior { thermalWireObject.body }.also {
+                it.replaceFuel(Fuels.coal(10.0))
+            }
+        )
+    }
+
+    val needsFuel get() = behaviors.getBehavior<FuelBurnerBehavior>().availableEnergy epsilonEquals 0.0
+
+    fun replaceFuel(mass: HeatGeneratorFuelMass) {
+        behaviors.getBehavior<FuelBurnerBehavior>().replaceFuel(mass)
+    }
+
+    override fun createObjectSet(): SimulationObjectSet {
+        return SimulationObjectSet(ThermalWireObject(this))
+    }
+
+    private val thermalWireObject get() = thermalObject as ThermalWireObject
+}
+
+class HeatGeneratorBlockEntity(pos: BlockPos, state: BlockState): CellBlockEntity(pos, state, Content.HEAT_GENERATOR_BLOCK_ENTITY.get()) {
+    companion object {
+        const val FUEL_SLOT = 0
+
+        fun tick(pLevel: Level?, pPos: BlockPos?, pState: BlockState?, pBlockEntity: BlockEntity?) {
+            if (pLevel == null || pBlockEntity == null) {
+                return
+            }
+
+            if (pBlockEntity !is HeatGeneratorBlockEntity) {
+                Eln2.LOGGER.error("Got $pBlockEntity instead of furnace")
+                return
+            }
+
+            if (!pLevel.isClientSide) {
+                pBlockEntity.serverTick()
+            }
+        }
+    }
+
+    class InventoryHandler(private val heatGeneratorBlockEntity: HeatGeneratorBlockEntity): ItemStackHandler(1) {
+        override fun insertItem(slot: Int, stack: ItemStack, simulate: Boolean): ItemStack {
+            if(stack.item != Items.COAL) {
+                return ItemStack.EMPTY
+            }
+
+            return super.insertItem(slot, stack, simulate)
+        }
+    }
+
+    private val inventoryHandler = InventoryHandler(this)
+    private val inventoryHandlerLazy = LazyOptional.of { inventoryHandler }
+
+    override fun <T : Any?> getCapability(cap: Capability<T>, side: Direction?): LazyOptional<T> {
+        if(cap == CapabilityItemHandler.ITEM_HANDLER_CAPABILITY) {
+            return inventoryHandlerLazy.cast()
+        }
+
+        return super.getCapability(cap, side)
+    }
+
+    fun serverTick() {
+        val cell = furnaceCell
+            ?: return
+
+        if(!cell.needsFuel) {
+            return
+        }
+
+        val stack = inventoryHandler.extractItem(FUEL_SLOT, 1, false)
+
+        if(stack.isEmpty) {
+            return
+        }
+
+        cell.replaceFuel(Fuels.coal(1.0))
+    }
+
+    private val furnaceCell = cell as? HeatGeneratorCell
+}
+
+class HeatGeneratorBlock : CellBlock() {
+    override fun getCellProvider(): ResourceLocation {
+        return Content.HEAT_GENERATOR_CELL.id
+    }
+
+    override fun newBlockEntity(pPos: BlockPos, pState: BlockState): BlockEntity {
+        return HeatGeneratorBlockEntity(pPos, pState)
+    }
+
+    override fun <T : BlockEntity?> getTicker(
+        pLevel: Level,
+        pState: BlockState,
+        pBlockEntityType: BlockEntityType<T>
+    ): BlockEntityTicker<T> {
+        return BlockEntityTicker(HeatGeneratorBlockEntity::tick)
+    }
+}
+

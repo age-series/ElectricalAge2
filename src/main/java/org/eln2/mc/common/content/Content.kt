@@ -129,6 +129,13 @@ object Content {
         BasicCellPart(id, context, Vec3(1.0, 15.0 / 16.0, 1.0), THERMOCOUPLE_CELL.get(), basicRenderer(PartialModels.PELTIER_ELEMENT, bbOffset(15.0)))
     }, Vec3(0.5, 15.0 / 16.0, 0.5)))
 
+    val HEAT_GENERATOR_CELL = CellRegistry.register("heat_generator_cell", BasicCellProvider.fourPin(::HeatGeneratorCell))
+    val HEAT_GENERATOR_PART = PartRegistry.part("heat_generator_part", BasicPartProvider( { id, context ->
+        BasicCellPart(id, context, vec3(1.0), HEAT_GENERATOR_CELL.get(), basicRenderer(PartialModels.THERMAL_WIRE_CROSSING_FULL, 0.0))
+    }, vec3(1.0)))
+    val HEAT_GENERATOR_BLOCK = BlockRegistry.registerBasicBlock("heat_generator", tab = null) { HeatGeneratorBlock() }
+    val HEAT_GENERATOR_BLOCK_ENTITY = BlockRegistry.blockEntity("heat_generator", ::HeatGeneratorBlockEntity) { HEAT_GENERATOR_BLOCK.block.get() }
+
     @Mod.EventBusSubscriber
     object ClientSetup {
         @SubscribeEvent
