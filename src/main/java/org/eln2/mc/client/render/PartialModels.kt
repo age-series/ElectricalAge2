@@ -28,21 +28,23 @@ object PartialModels {
     val SMALL_WALL_LAMP_EMITTER = partialBlock("small_wall_lamp_emitter")
     val SMALL_WALL_LAMP_CAGE = partialBlock("small_wall_lamp_cage")
 
+    val PELTIER_ELEMENT = partialBlock("peltier_element")
+
     private fun partial(path: String): PartialModel {
         return PartialModel(Eln2.resource(path))
     }
 
-    private fun partialBlock(path: String): PartialModel {
+    fun partialBlock(path: String): PartialModel {
         return PartialModel(Eln2.resource("block/$path"))
     }
 
     fun initialize() {}
 
-    fun bbOffset(height: Int): Double{
+    fun bbOffset(height: Int): Double {
         return bbOffset(height.toDouble())
     }
 
-    fun bbOffset(height: Double): Double{
+    fun bbOffset(height: Double): Double {
         return bbSize(height) / 2
     }
 }

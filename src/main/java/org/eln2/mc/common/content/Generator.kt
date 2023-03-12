@@ -544,15 +544,3 @@ class ThermocoupleCell(pos: CellPos, id: ResourceLocation) : GeneratorCell(pos, 
 
     private val thermalBipole get() = thermalObject as ThermalBipoleObject
 }
-
-class ThermocouplePart(
-    id: ResourceLocation,
-    placementContext: PartPlacementContext):
-    CellPart(id, placementContext, Content.THERMOCOUPLE_CELL.get()) {
-    override val baseSize: Vec3
-        get() = vec3(0.1)
-
-    override fun createRenderer(): IPartRenderer {
-        return BasicPartRenderer(this, PartialModels.BATTERY)
-    }
-}

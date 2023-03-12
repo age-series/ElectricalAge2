@@ -9,6 +9,8 @@ import net.minecraftforge.fml.common.Mod
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent
 import org.ageseries.libage.sim.Material
 import org.eln2.mc.Eln2.LOGGER
+import org.eln2.mc.client.render.PartialModels
+import org.eln2.mc.client.render.PartialModels.bbOffset
 import org.eln2.mc.mathematics.Functions.bbVec
 import org.eln2.mc.mathematics.Functions.lerp
 import org.eln2.mc.mathematics.Functions.vec3
@@ -17,6 +19,8 @@ import org.eln2.mc.common.cells.CellRegistry
 import org.eln2.mc.common.cells.foundation.providers.BasicCellProvider
 import org.eln2.mc.common.containers.ContainerRegistry
 import org.eln2.mc.common.parts.PartRegistry
+import org.eln2.mc.common.parts.foundation.BasicCellPart
+import org.eln2.mc.common.parts.foundation.basicRenderer
 import org.eln2.mc.common.parts.foundation.providers.BasicPartProvider
 import org.eln2.mc.utility.SelfDescriptiveUnitMultipliers.centimeters
 import org.eln2.mc.utility.SelfDescriptiveUnitMultipliers.milliOhms
@@ -121,7 +125,9 @@ object Content {
         ThermocoupleCell(pos, id)
     })
 
-    val THERMOCOUPLE_PART = PartRegistry.part("thermocouple_part", BasicPartProvider(::ThermocouplePart, vec3(0.1)))
+    val THERMOCOUPLE_PART = PartRegistry.part("thermocouple_part", BasicPartProvider({id, context ->
+        BasicCellPart(id, context, Vec3(1.0, 15.0 / 16.0, 1.0), THERMOCOUPLE_CELL.get(), basicRenderer(PartialModels.PELTIER_ELEMENT, bbOffset(15.0)))
+    }, Vec3(0.5, 15.0 / 16.0, 0.5)))
 
     @Mod.EventBusSubscriber
     object ClientSetup {
