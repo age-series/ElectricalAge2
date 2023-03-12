@@ -1,9 +1,21 @@
 package org.eln2.mc.common.content
 
 import mcp.mobius.waila.api.IPluginConfig
+import net.minecraft.core.BlockPos
+import net.minecraft.core.Direction
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.resources.ResourceLocation
+import net.minecraft.world.item.ItemStack
+import net.minecraft.world.item.Items
+import net.minecraft.world.level.Level
+import net.minecraft.world.level.block.entity.BlockEntity
+import net.minecraft.world.level.block.entity.BlockEntityTicker
+import net.minecraft.world.level.block.entity.BlockEntityType
 import net.minecraft.world.level.block.state.BlockState
+import net.minecraftforge.common.capabilities.Capability
+import net.minecraftforge.common.util.LazyOptional
+import net.minecraftforge.items.CapabilityItemHandler
+import net.minecraftforge.items.ItemStackHandler
 import org.ageseries.libage.sim.Material
 import org.ageseries.libage.sim.electrical.mna.Circuit
 import org.ageseries.libage.sim.electrical.mna.component.Resistor
@@ -11,28 +23,11 @@ import org.ageseries.libage.sim.electrical.mna.component.VoltageSource
 import org.ageseries.libage.sim.thermal.Simulator
 import org.ageseries.libage.sim.thermal.Temperature
 import org.ageseries.libage.sim.thermal.ThermalMass
-import net.minecraft.core.BlockPos
-import net.minecraft.core.Direction
-import net.minecraft.network.chat.TextComponent
-import net.minecraft.world.InteractionHand
-import net.minecraft.world.InteractionResult
-import net.minecraft.world.entity.player.Player
-import net.minecraft.world.item.ItemStack
-import net.minecraft.world.item.Items
-import net.minecraft.world.level.Level
-import net.minecraft.world.level.block.entity.BlockEntity
-import net.minecraft.world.level.block.entity.BlockEntityTicker
-import net.minecraft.world.level.block.entity.BlockEntityType
-import net.minecraft.world.phys.BlockHitResult
-import net.minecraftforge.common.capabilities.Capability
-import net.minecraftforge.common.util.LazyOptional
-import net.minecraftforge.items.CapabilityItemHandler
-import net.minecraftforge.items.ItemStackHandler
+import org.apache.commons.math3.geometry.euclidean.threed.Line
+import org.apache.commons.math3.geometry.euclidean.threed.Plane
+import org.apache.commons.math3.geometry.euclidean.threed.Vector3D
 import org.eln2.mc.Eln2
-import org.eln2.mc.annotations.ActuallyValidUsage
-import org.eln2.mc.mathematics.Functions.bbVec
-import org.eln2.mc.mathematics.Functions.lerp
-import org.eln2.mc.mathematics.Functions.map
+import org.eln2.mc.Eln2.LOGGER
 import org.eln2.mc.annotations.CrossThreadAccess
 import org.eln2.mc.annotations.RaceCondition
 import org.eln2.mc.client.render.PartialModels
@@ -54,7 +49,7 @@ import org.eln2.mc.common.space.DirectionMask
 import org.eln2.mc.common.space.RelativeRotationDirection
 import org.eln2.mc.control.PIDCoefficients
 import org.eln2.mc.control.PIDController
-import org.eln2.mc.extensions.LevelExtensions.constructMenu
+import org.eln2.mc.extensions.DirectionExtensions.toVector3D
 import org.eln2.mc.extensions.LibAgeExtensions.add
 import org.eln2.mc.extensions.LibAgeExtensions.setPotentialEpsilon
 import org.eln2.mc.extensions.LibAgeExtensions.setResistanceEpsilon
@@ -64,15 +59,16 @@ import org.eln2.mc.extensions.NumberExtensions.formattedPercentN
 import org.eln2.mc.integration.waila.IWailaProvider
 import org.eln2.mc.integration.waila.TooltipBuilder
 import org.eln2.mc.mathematics.Functions.avg
+import org.eln2.mc.mathematics.Functions.bbVec
+import org.eln2.mc.mathematics.Functions.lerp
+import org.eln2.mc.mathematics.Functions.map
 import org.eln2.mc.mathematics.epsilonEquals
 import org.eln2.mc.mathematics.evaluate
+import org.eln2.mc.mathematics.mappedHermite
 import org.eln2.mc.sim.Datasets
 import org.eln2.mc.sim.ThermalBody
 import org.eln2.mc.utility.SelfDescriptiveUnitMultipliers.megaJoules
-import java.util.*
-import kotlin.math.abs
-import kotlin.math.min
-import kotlin.math.sqrt
+import kotlin.math.*
 
 enum class GeneratorPowerDirection {
     Outgoing,
@@ -840,3 +836,117 @@ class HeatGeneratorBlock : CellBlock() {
     }
 }
 
+interface IIlluminatedBodyView {
+    val sunAngle: Double
+    val isObstructed: Boolean
+    val normal: Direction
+}
+
+abstract class SolarIlluminationBehavior(private val cell: CellBase): ICellBehavior, IIlluminatedBodyView {
+    // Is it fine to access these from our simulation threads?
+    override val sunAngle: Double
+        get() = cell.graph.level.getSunAngle(0f).toDouble()
+
+    override val isObstructed: Boolean
+        get() = !cell.graph.level.canSeeSky(cell.pos.blockPos)
+}
+
+abstract class SolarGeneratorBehavior(val generatorCell: GeneratorCell): SolarIlluminationBehavior(generatorCell) {
+    override fun onAdded(container: CellBehaviorContainer) { }
+
+    override fun subscribe(subscribers: SubscriberCollection) {
+        subscribers.addSubscriber(SubscriberOptions(100, SubscriberPhase.Pre), this::simulationTick)
+    }
+
+    override fun destroy(subscribers: SubscriberCollection) {
+        subscribers.removeSubscriber(this::simulationTick)
+    }
+
+    private fun simulationTick(dt: Double, phase: SubscriberPhase) {
+        if(!generatorCell.hasGraph){
+            // weird.
+            return
+        }
+
+        update()
+    }
+
+    abstract fun update()
+}
+
+fun interface IPhotovoltaicVoltageFunction {
+    fun compute(view: IIlluminatedBodyView): Double
+}
+
+data class PhotovoltaicModel(
+    val voltageFunction: IPhotovoltaicVoltageFunction,
+    val panelResistance: Double
+)
+
+object PhotovoltaicModels {
+    // We map angle difference to a voltage coefficient. 0 - directly overhead, 1 - under horizon
+    private val TEST_SPLINE = mappedHermite().apply {
+        point(0.0, 1.0)
+        point(0.95, 0.8)
+        point(1.0, 0.0)
+    }.buildHermite()
+
+    private fun voltageTest(maximumVoltage: Double): IPhotovoltaicVoltageFunction {
+        return IPhotovoltaicVoltageFunction { view ->
+            if(view.isObstructed) {
+                return@IPhotovoltaicVoltageFunction 0.0
+            }
+
+            val passProgress = when (val sunAngle = Math.toDegrees(view.sunAngle)) {
+                in 270.0..360.0 -> {
+                    map(sunAngle, 270.0, 360.0, 0.0, 0.5)
+                }
+                in 0.0..90.0 -> {
+                    map(sunAngle, 0.0, 90.0, 0.5, 1.0)
+                }
+                else -> {
+                    // Under horizon
+
+                    return@IPhotovoltaicVoltageFunction 0.0
+                }
+            }
+
+            // Sun moves around Z
+
+            val passAngle = passProgress * Math.PI
+            val sunDirection3 = Vector3D(cos(passAngle), sin(passAngle), 0.0)
+            val panelDirection3 = view.normal.toVector3D()
+            val rayAngle = Math.toDegrees(Vector3D.angle(sunDirection3, panelDirection3))
+
+            val value = TEST_SPLINE.evaluate(map(
+                rayAngle,
+                0.0,
+                90.0,
+                0.0,
+                1.0))
+
+            return@IPhotovoltaicVoltageFunction value * maximumVoltage
+        }
+    }
+
+    fun test24Volts(): PhotovoltaicModel {
+        //https://www.todoensolar.com/285w-24-volt-AmeriSolar-Solar-Panel
+        return PhotovoltaicModel(voltageTest(32.0), 3.5)
+    }
+}
+
+class PhotovoltaicBehavior(cell: GeneratorCell, val model: PhotovoltaicModel) : SolarGeneratorBehavior(cell) {
+    override fun update() {
+        generatorCell.generatorObject.potential = model.voltageFunction.compute(this)
+    }
+
+    override val normal: Direction
+        get() = generatorCell.pos.face
+}
+
+
+class PhotovoltaicGeneratorCell(pos: CellPos, id: ResourceLocation, model: PhotovoltaicModel) : GeneratorCell(pos, id) {
+    init {
+        behaviors.add(PhotovoltaicBehavior(this, model))
+    }
+}

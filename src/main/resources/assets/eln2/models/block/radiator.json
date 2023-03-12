@@ -1,0 +1,22 @@
+{
+	"credit": "Made with Blockbench",
+	"texture_size": [64, 64],
+	"textures": {
+		"0": "eln2:block/radiator",
+		"particle": "eln2:block/radiator"
+	},
+	"elements": [
+		{
+			"from": [0, 0, 6.5],
+			"to": [16, 16, 9.5],
+			"faces": {
+				"north": {"uv": [0, 0, 15.875, 4], "texture": "#0"},
+				"east": {"uv": [0, 4, 0.75, 8], "texture": "#0"},
+				"south": {"uv": [0, 0, 15.875, 4], "texture": "#0"},
+				"west": {"uv": [0, 4, 0.75, 8], "texture": "#0"},
+				"up": {"uv": [4.75, 4.75, 0.75, 4], "texture": "#0"},
+				"down": {"uv": [4.75, 4.75, 0.75, 5.5], "texture": "#0"}
+			}
+		}
+	]
+}
