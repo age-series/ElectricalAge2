@@ -3,17 +3,13 @@ package org.eln2.mc.common.content
 import mcp.mobius.waila.api.IPluginConfig
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.resources.ResourceLocation
-import net.minecraft.world.phys.Vec3
 import org.ageseries.libage.sim.Material
 import org.ageseries.libage.sim.electrical.mna.Circuit
 import org.ageseries.libage.sim.electrical.mna.component.Resistor
 import org.ageseries.libage.sim.electrical.mna.component.VoltageSource
-import org.ageseries.libage.sim.thermal.ConnectionParameters
 import org.ageseries.libage.sim.thermal.Simulator
 import org.ageseries.libage.sim.thermal.Temperature
 import org.ageseries.libage.sim.thermal.ThermalMass
-import org.eln2.mc.Eln2
-import org.eln2.mc.mathematics.HermiteSpline
 import org.eln2.mc.mathematics.Functions.bbVec
 import org.eln2.mc.mathematics.Functions.lerp
 import org.eln2.mc.mathematics.Functions.map
@@ -21,7 +17,6 @@ import org.eln2.mc.annotations.CrossThreadAccess
 import org.eln2.mc.client.render.PartialModels
 import org.eln2.mc.client.render.PartialModels.bbOffset
 import org.eln2.mc.client.render.foundation.BasicPartRenderer
-import org.eln2.mc.common.cells.CellRegistry
 import org.eln2.mc.common.cells.foundation.*
 import org.eln2.mc.common.cells.foundation.behaviors.withElectricalHeatTransfer
 import org.eln2.mc.common.cells.foundation.behaviors.withElectricalPowerConverter
@@ -34,7 +29,6 @@ import org.eln2.mc.common.parts.foundation.PartPlacementContext
 import org.eln2.mc.common.space.DirectionMask
 import org.eln2.mc.common.space.RelativeRotationDirection
 import org.eln2.mc.extensions.LibAgeExtensions.add
-import org.eln2.mc.extensions.LibAgeExtensions.connect
 import org.eln2.mc.extensions.LibAgeExtensions.setPotentialEpsilon
 import org.eln2.mc.extensions.LibAgeExtensions.setResistanceEpsilon
 import org.eln2.mc.extensions.NbtExtensions.useSubTag
@@ -42,14 +36,13 @@ import org.eln2.mc.extensions.NumberExtensions.formatted
 import org.eln2.mc.extensions.NumberExtensions.formattedPercentN
 import org.eln2.mc.integration.waila.IWailaProvider
 import org.eln2.mc.integration.waila.TooltipBuilder
-import org.eln2.mc.mathematics.Functions.vec3
+import org.eln2.mc.mathematics.Functions.avg
 import org.eln2.mc.mathematics.evaluate
-import org.eln2.mc.mathematics.kdVectorDOf
 import org.eln2.mc.sim.Datasets
 import org.eln2.mc.sim.ThermalBody
 import kotlin.math.abs
 import kotlin.math.min
-import kotlin.math.pow
+import kotlin.math.sqrt
 
 enum class GeneratorPowerDirection {
     Outgoing,
@@ -442,8 +435,12 @@ class ThermalBipoleObject: ThermalObject(), IWailaProvider {
     }
 }
 
-fun interface IPowerSetAccessor {
-    fun set(power: Double)
+fun interface IResistanceGetAccessor {
+    fun get(): Double
+}
+
+fun interface IVoltageSetAccessor {
+    fun set(voltage: Double)
 }
 
 fun interface IPowerGetAccessor {
@@ -458,13 +455,30 @@ fun interface ITransferRateAccessor {
     fun get(): Double
 }
 
+interface IThermocoupleView {
+    val model: ThermocoupleModel
+    val deltaTemperature: Temperature
+}
+
+fun interface IThermocoupleVoltageFunction {
+    fun compute(view: IThermocoupleView): Double
+}
+
+data class ThermocoupleModel(
+    val efficiency: Double,
+    val voltageFunction: IThermocoupleVoltageFunction
+)
+
+fun interface IGeneratorGetAccessor {
+    fun get(): GeneratorObject
+}
+
 class ThermocoupleBehavior(
-    val powerGetter: IPowerGetAccessor,
-    val powerSetter: IPowerSetAccessor,
-    val body1Accessor: IThermalBodyProvider,
-    val body2Accessor: IThermalBodyProvider,
-    val transferRateAccessor: ITransferRateAccessor): ICellBehavior, IWailaProvider {
-    private data class BodyPair(val hot: ThermalBody, val cold: ThermalBody)
+    val generatorAccessor: IGeneratorGetAccessor,
+    val coldAccessor: IThermalBodyProvider,
+    val hotAccessor: IThermalBodyProvider,
+    override val model: ThermocoupleModel): ICellBehavior, IThermocoupleView, IWailaProvider {
+    private data class BodyPair(val hot: ThermalBody, val cold: ThermalBody, val inverted: Boolean)
 
     override fun onAdded(container: CellBehaviorContainer) {}
 
@@ -479,56 +493,114 @@ class ThermocoupleBehavior(
     }
 
     private fun getSortedBodyPair(): BodyPair {
-        var cold = body1Accessor.get()
-        var hot = body2Accessor.get()
+        var cold = coldAccessor.get()
+        var hot = hotAccessor.get()
+
+        var inverted = false
 
         if(cold.temperatureK > hot.temperatureK) {
             val temp = cold
             cold = hot
             hot = temp
+            inverted = true
         }
 
-        return BodyPair(hot, cold)
+        return BodyPair(hot, cold, inverted)
     }
+
+    private var energyTransfer = 0.0
+
+    private var totalConverted = 0.0
+    private var totalRemoved = 0.0
 
     private fun preTick(dt: Double, phase: SubscriberPhase) {
         val bodies = getSortedBodyPair()
-        val deltaE = min(bodies.hot.thermalEnergy - bodies.cold.thermalEnergy, transferRateAccessor.get() * dt)
+        val generator = generatorAccessor.get()
 
-        val power = deltaE / dt
-        powerSetter.set(power)
+        energyTransfer =
+            (bodies.hot.temperatureK - bodies.cold.temperatureK) * // DeltaT
+
+            // P.S. I expect the dipoles to have the same material. What to do here?
+            avg(bodies.hot.mass.material.specificHeat, bodies.cold.mass.material.specificHeat) * // Specific Heat
+
+            systemMass // Mass
+
+        // Maximum energy that can be converted into electrical energy.
+
+        val convertibleEnergy = energyTransfer * model.efficiency
+
+        val targetVoltage = model.voltageFunction.compute(this)
+        val generatorResistance = generator.internalResistance
+
+        val targetCurrent = targetVoltage / generatorResistance
+        val targetPower = targetVoltage * targetCurrent
+
+        val maximumPower = convertibleEnergy / dt
+
+        val power = min(maximumPower, targetPower)
+
+        var voltage = sqrt(power * generatorResistance)
+
+        if(bodies.inverted) {
+            voltage = -voltage
+        }
+
+        generator.potential = voltage
     }
 
     private fun postTick(dt: Double, phase: SubscriberPhase) {
         val bodies = getSortedBodyPair()
 
-        val transferred = powerGetter.get() * dt
+        val transferredEnergy = abs(generatorAccessor.get().resistorPower * dt)
 
-        bodies.hot.thermalEnergy -= transferred
-        bodies.cold.thermalEnergy += transferred
+        totalConverted += transferredEnergy
+
+        val wastedEnergy = (transferredEnergy / model.efficiency) * (1 - model.efficiency)
+
+        val removedEnergy = wastedEnergy + transferredEnergy
+
+        totalRemoved += removedEnergy
+
+        // We converted some thermal energy into electrical energy.
+        // Wasted energy is energy that was moved into the cold body. We removed (wasted + transferred)
+        // from the hot side, and added (wasted) to the cold side.
+        bodies.hot.thermalEnergy -= removedEnergy
+        bodies.cold.thermalEnergy += wastedEnergy
     }
 
     override fun appendBody(builder: TooltipBuilder, config: IPluginConfig?) {
         val pair = getSortedBodyPair()
 
-        builder.energy(pair.hot.thermalEnergy)
-        builder.energy(pair.cold.thermalEnergy)
+        builder.text("Hot E", pair.hot.thermalEnergy.formatted())
+        builder.text("Cold E", pair.cold.thermalEnergy.formatted())
+        builder.text("Hot T", pair.hot.temperatureK.formatted())
+        builder.text("Cold T", pair.cold.temperatureK.formatted())
+        builder.text("dE", energyTransfer.formatted())
+        builder.text("Total wasted", totalRemoved.formatted())
+        builder.text("Total converted", totalConverted.formatted())
     }
+
+    override val deltaTemperature: Temperature
+        get() {
+            val bodies = getSortedBodyPair()
+
+            return bodies.hot.temperature - bodies.cold.temperature
+        }
+
+    val systemMass get() = coldAccessor.get().mass.mass + hotAccessor.get().mass.mass
 }
 
 class ThermocoupleCell(pos: CellPos, id: ResourceLocation) : GeneratorCell(pos, id) {
     init {
         behaviors.add(ThermocoupleBehavior(
-            { generatorObject.resistorPower },
-            { power ->
-                val current = power / generatorObject.potential
-                val resistance = generatorObject.potential / current
-
-                generatorObject.internalResistance = resistance
-            },
+            { generatorObject },
             { thermalBipole.b1 },
             { thermalBipole.b2 },
-            { 1000.0 }))
+            ThermocoupleModel(0.5) { view ->
+                val temperature = view.deltaTemperature.kelvin.coerceIn(0.0, 20.0)
+
+                map(temperature, 0.0, 20.0, 0.0, 100.0)
+            }))
     }
 
     override fun createObjectSet(): SimulationObjectSet {
