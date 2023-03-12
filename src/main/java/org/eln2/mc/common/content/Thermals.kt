@@ -45,6 +45,6 @@ class RadiatorPart(id: ResourceLocation, placementContext: PartPlacementContext)
         get() = Vec3(1.0, 0.5, 1.0)
 
     override fun createRenderer(): IPartRenderer {
-        return BasicPartRenderer(this, PartialModels.THERMAL_WIRE_CROSSING_FULL)
+        return BasicPartRenderer(this, PartialModels.RADIATOR)
     }
 }

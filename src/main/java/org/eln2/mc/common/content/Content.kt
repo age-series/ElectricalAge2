@@ -22,6 +22,7 @@ import org.eln2.mc.common.parts.PartRegistry
 import org.eln2.mc.common.parts.foundation.BasicCellPart
 import org.eln2.mc.common.parts.foundation.basicRenderer
 import org.eln2.mc.common.parts.foundation.providers.BasicPartProvider
+import org.eln2.mc.mathematics.Functions.bbSize
 import org.eln2.mc.utility.SelfDescriptiveUnitMultipliers.centimeters
 import org.eln2.mc.utility.SelfDescriptiveUnitMultipliers.milliOhms
 import org.eln2.mc.utility.UnitConversions.kwHoursInJ
@@ -135,6 +136,14 @@ object Content {
     }, vec3(1.0)))
     val HEAT_GENERATOR_BLOCK = BlockRegistry.registerBasicBlock("heat_generator", tab = null) { HeatGeneratorBlock() }
     val HEAT_GENERATOR_BLOCK_ENTITY = BlockRegistry.blockEntity("heat_generator", ::HeatGeneratorBlockEntity) { HEAT_GENERATOR_BLOCK.block.get() }
+
+    val PHOTOVOLTAIC_GENERATOR_CELL = CellRegistry.register("photovoltaic_cell", BasicCellProvider.polarFB { pos, id ->
+        PhotovoltaicGeneratorCell(pos, id, PhotovoltaicModels.test24Volts())
+    })
+
+    val PHOTOVOLTAIC_PANEL_PART = PartRegistry.part("photovoltaic_panel_part", BasicPartProvider({id, context ->
+        BasicCellPart(id, context, Vec3(1.0, bbSize(2.0), 1.0), PHOTOVOLTAIC_GENERATOR_CELL.get(), basicRenderer(PartialModels.SOLAR_PANEL_ONE_BLOCK, bbOffset(2.0)))
+    }, Vec3(1.0, bbSize(2.0), 1.0)))
 
     @Mod.EventBusSubscriber
     object ClientSetup {

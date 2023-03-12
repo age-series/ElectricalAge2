@@ -29,6 +29,9 @@ object PartialModels {
     val SMALL_WALL_LAMP_CAGE = partialBlock("small_wall_lamp_cage")
 
     val PELTIER_ELEMENT = partialBlock("peltier_element")
+    val RADIATOR = partialBlock("radiator")
+
+    val SOLAR_PANEL_ONE_BLOCK = partialBlock("solar_panel_one_block")
 
     private fun partial(path: String): PartialModel {
         return PartialModel(Eln2.resource(path))

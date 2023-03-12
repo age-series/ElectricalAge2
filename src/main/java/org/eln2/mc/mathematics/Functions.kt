@@ -4,6 +4,7 @@ import com.mojang.math.Vector4f
 import net.minecraft.core.Vec3i
 import net.minecraft.world.phys.Vec3
 import kotlin.math.PI
+import kotlin.math.abs
 import kotlin.math.floor
 
 object Functions {
@@ -355,4 +356,11 @@ object Geometry {
     fun circleSurfaceArea(radius: Double): Double {
         return PI * radius * radius
     }
+
+    fun angleNorm(angle: Double, range: Double): Double {
+        return angle % range
+    }
+
+    fun angleNormDeg(angle: Double): Double = angleNorm(angle, 360.0)
+    fun angleNorm(angle: Double): Double = angleNorm(angle, PI * 2.0)
 }
