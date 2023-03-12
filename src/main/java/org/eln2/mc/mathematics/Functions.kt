@@ -329,6 +329,16 @@ object Functions {
             1.0
         )
     }
+
+    fun avg(a: Double, b: Double): Double = (a + b) / 2.0
+    fun avg(a: Double, b: Double, c: Double): Double = (a + b + c) / 3.0
+    fun avg(vararg values: Double): Double{
+        if(values.isEmpty()) {
+            error("Cannot compute average of empty set")
+        }
+
+        return values.sum() / values.size
+    }
 }
 
 object Geometry {
