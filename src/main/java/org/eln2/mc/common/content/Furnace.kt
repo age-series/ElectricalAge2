@@ -449,10 +449,8 @@ class FurnaceBlockEntity(pos: BlockPos, state: BlockState) :
         val inputStack = inventoryHandler.getStackInSlot(INPUT_SLOT)
 
         isBurning = if(!inputStack.isEmpty){
-            furnaceCell.loadSmeltingBody(
-                ThermalBody(
-                    ThermalMass(Material.IRON), 1.0)
-            )
+            furnaceCell.loadSmeltingBody(ThermalBody(ThermalMass(Material.IRON, mass = 0.1), 1.0))
+
             true
         } else{
             furnaceCell.unloadSmeltingBody()
@@ -461,7 +459,7 @@ class FurnaceBlockEntity(pos: BlockPos, state: BlockState) :
         }
     }
 
-    private fun inputChanged() {
+    fun inputChanged() {
         if(!isBurning){
             EventScheduler.scheduleWorkPre(0) {
                 if(!isRemoved) {
@@ -513,14 +511,11 @@ class FurnaceBlockEntity(pos: BlockPos, state: BlockState) :
                         inventory.setStackInSlot(INPUT_SLOT, ItemStack(inputStack.item, inputStack.count - 1))
 
                         loadBurningItem()
-
-                        LOGGER.info("Export")
                     }
                 }, {
                     error("Could not smelt")
                 })
             } else {
-                LOGGER.info("Trying to burn")
                 if(furnaceCell.isHot) {
                     burnTime++
                 }
@@ -603,7 +598,8 @@ class FurnaceMenu constructor(
     pContainerId: Int,
     playerInventory: Inventory,
     handler: ItemStackHandler,
-    val containerData: FurnaceBlockEntity.FurnaceData
+    val containerData: FurnaceBlockEntity.FurnaceData,
+    val entity: FurnaceBlockEntity?
 ) : AbstractContainerMenu(Content.FURNACE_MENU.get(), pContainerId) {
     companion object {
         fun create(id: Int, inventory: Inventory, player: Player, entity: FurnaceBlockEntity): FurnaceMenu {
@@ -611,7 +607,8 @@ class FurnaceMenu constructor(
                 id,
                 inventory,
                 entity.inventoryHandler,
-                entity.data)
+                entity.data,
+                entity)
         }
     }
 
@@ -619,15 +616,20 @@ class FurnaceMenu constructor(
         pContainerId,
         playerInventory,
         ItemStackHandler(2),
-        FurnaceBlockEntity.FurnaceData()
+        FurnaceBlockEntity.FurnaceData(),
+        null
     )
+
+    private val playerGridStart: Int
+    private val playerGridEnd: Int
 
     init {
         addSlot(SlotItemHandler(handler, FurnaceBlockEntity.INPUT_SLOT, 56, 35))
         addSlot(SlotItemHandler(handler, FurnaceBlockEntity.OUTPUT_SLOT, 116, 35))
         addDataSlots(containerData)
 
-        this.addPlayerGrid(playerInventory, this::addSlot)
+        playerGridStart = 2
+        playerGridEnd = playerGridStart + this.addPlayerGrid(playerInventory, this::addSlot)
     }
 
     override fun stillValid(pPlayer: Player): Boolean {
@@ -635,7 +637,38 @@ class FurnaceMenu constructor(
     }
 
     override fun quickMoveStack(pPlayer: Player, pIndex: Int): ItemStack {
-        return ItemStack.EMPTY
+        val slot = slots[pIndex]
+
+        if(!slot.hasItem()) {
+            return ItemStack.EMPTY
+        }
+
+        val stack = slot.item
+
+        if(pIndex == FurnaceBlockEntity.INPUT_SLOT || pIndex == FurnaceBlockEntity.OUTPUT_SLOT) {
+            // Quick move from input/output to player
+
+            if (!moveItemStackTo(stack, playerGridStart, playerGridEnd, true)) {
+                return ItemStack.EMPTY
+            }
+        }
+        else {
+            // Only move into input slot
+
+            if(!moveItemStackTo(stack,
+                    FurnaceBlockEntity.INPUT_SLOT,
+                    FurnaceBlockEntity.INPUT_SLOT + 1,
+                    true)){
+
+                return ItemStack.EMPTY
+            }
+        }
+
+        slot.setChanged()
+
+        entity?.inputChanged()
+
+        return stack
     }
 }
 
