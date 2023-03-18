@@ -24,7 +24,7 @@ apply from: 'https://raw.githubusercontent.com/thedarkcolour/KotlinForForge/site
 apply plugin: 'eclipse'
 apply plugin: 'maven-publish'
 
-version = '1.0.1'
+version = '2.0.0'
 group = 'org.eln2.mc'
 archivesBaseName = 'eln2'
 
@@ -151,7 +151,7 @@ jar {
         attributes([
                 "Specification-Title"     : "eln2",
                 "Specification-Vendor"    : "age-series-team",
-                "Specification-Version"   : "1",
+                "Specification-Version"   : "2",
                 "Implementation-Title"    : project.name,
                 "Implementation-Version"  : project.jar.archiveVersion,
                 "Implementation-Vendor"   : "age-series-team",
