@@ -5,22 +5,21 @@ import org.eln2.mc.Eln2
 import org.eln2.mc.mathematics.Functions.bbSize
 
 object PartialModels {
-    val WIRE_CROSSING_EMPTY = partialBlock("wire/wire_crossing_empty")
-    val WIRE_CROSSING_SINGLE_WIRE = partialBlock("wire/wire_crossing_singlewire")
-    val WIRE_STRAIGHT = partialBlock("wire/wire_straight")
-    val WIRE_CORNER = partialBlock("wire/wire_corner")
-    val WIRE_CROSSING = partialBlock("wire/wire_crossing")
-    val WIRE_CROSSING_FULL = partialBlock("wire/wire_crossing_full")
+    val ELECTRICAL_WIRE_CROSSING_EMPTY = partialBlock("wire/electrical/wire_crossing_empty")
+    val ELECTRICAL_WIRE_CROSSING_SINGLE_WIRE = partialBlock("wire/electrical/wire_crossing_single")
+    val ELECTRICAL_WIRE_STRAIGHT = partialBlock("wire/electrical/wire_straight")
+    val ELECTRICAL_WIRE_CORNER = partialBlock("wire/electrical/wire_corner")
+    val ELECTRICAL_WIRE_CROSSING = partialBlock("wire/electrical/wire_crossing")
+    val ELECTRICAL_WIRE_CROSSING_FULL = partialBlock("wire/electrical/wire_crossing_full")
 
-    val THERMAL_WIRE_CROSSING_EMPTY = partialBlock("thermalwire/wire_crossing_empty")
-    val THERMAL_WIRE_CROSSING_SINGLE_WIRE = partialBlock("thermalwire/wire_crossing_singlewire")
-    val THERMAL_WIRE_STRAIGHT = partialBlock("thermalwire/wire_straight")
-    val THERMAL_WIRE_CORNER = partialBlock("thermalwire/wire_corner")
-    val THERMAL_WIRE_CROSSING = partialBlock("thermalwire/wire_crossing")
-    val THERMAL_WIRE_CROSSING_FULL = partialBlock("thermalwire/wire_crossing_full")
+    val THERMAL_WIRE_CROSSING_EMPTY = partialBlock("wire/thermal/wire_crossing_empty")
+    val THERMAL_WIRE_CROSSING_SINGLE_WIRE = partialBlock("wire/thermal/wire_crossing_single")
+    val THERMAL_WIRE_STRAIGHT = partialBlock("wire/thermal/wire_straight")
+    val THERMAL_WIRE_CORNER = partialBlock("wire/thermal/wire_corner")
+    val THERMAL_WIRE_CROSSING = partialBlock("wire/thermal/wire_crossing")
+    val THERMAL_WIRE_CROSSING_FULL = partialBlock("wire/thermal/wire_crossing_full")
 
-    val BATTERY_OLD = partialBlock("12v_battery")
-    val BATTERY = partialBlock("accumulator1")
+    val BATTERY = partialBlock("battery/lead_acid")
 
     val VOLTAGE_SOURCE = partialBlock("voltage_source")
     val RESISTOR = partialBlock("resistor")

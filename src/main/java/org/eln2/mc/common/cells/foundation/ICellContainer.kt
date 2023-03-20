@@ -47,7 +47,7 @@ interface ICellContainer {
      * @param direction The local direction towards the remote cell.
      * */
     fun recordConnection(location: CellInfo, direction: RelativeRotationDirection, neighborSpace: CellInfo)
-
+ 
     /**
      * Called by the connection manager when a connection is destroyed.
      * @param location The cell whose connection was destroyed.

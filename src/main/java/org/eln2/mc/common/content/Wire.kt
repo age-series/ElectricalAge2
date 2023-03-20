@@ -386,12 +386,12 @@ object WireMeshSets {
     // todo replace when models are available
 
     val electricalWireMap = mapOf(
-        (DirectionMask.EMPTY) to PartialModels.WIRE_CROSSING_EMPTY,
-        (DirectionMask.FRONT) to PartialModels.WIRE_CROSSING_SINGLE_WIRE,
-        (DirectionMask.FRONT + DirectionMask.BACK) to PartialModels.WIRE_STRAIGHT,
-        (DirectionMask.FRONT + DirectionMask.LEFT) to PartialModels.WIRE_CORNER,
-        (DirectionMask.LEFT + DirectionMask.FRONT + DirectionMask.RIGHT) to PartialModels.WIRE_CROSSING,
-        (DirectionMask.HORIZONTALS) to PartialModels.WIRE_CROSSING_FULL
+        (DirectionMask.EMPTY) to PartialModels.ELECTRICAL_WIRE_CROSSING_EMPTY,
+        (DirectionMask.FRONT) to PartialModels.ELECTRICAL_WIRE_CROSSING_SINGLE_WIRE,
+        (DirectionMask.FRONT + DirectionMask.BACK) to PartialModels.ELECTRICAL_WIRE_STRAIGHT,
+        (DirectionMask.FRONT + DirectionMask.LEFT) to PartialModels.ELECTRICAL_WIRE_CORNER,
+        (DirectionMask.LEFT + DirectionMask.FRONT + DirectionMask.RIGHT) to PartialModels.ELECTRICAL_WIRE_CROSSING,
+        (DirectionMask.HORIZONTALS) to PartialModels.ELECTRICAL_WIRE_CROSSING_FULL
     )
 
     val thermalWireMap = mapOf(

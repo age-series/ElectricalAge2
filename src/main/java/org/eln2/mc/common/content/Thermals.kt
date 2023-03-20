@@ -40,7 +40,7 @@ class ThermalRadiatorCell(pos: CellPos, id: ResourceLocation, val model: Radiato
 }
 
 class RadiatorPart(id: ResourceLocation, placementContext: PartPlacementContext)
-    : CellPart(id, placementContext, Content.THERMAL_COPPER_WIRE_CELL.get()) {
+    : CellPart(id, placementContext, Content.THERMAL_WIRE_CELL_COPPER.get()) {
     override val baseSize: Vec3
         get() = Vec3(1.0, 0.5, 1.0)
 
