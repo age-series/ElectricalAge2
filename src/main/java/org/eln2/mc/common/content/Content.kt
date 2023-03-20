@@ -37,12 +37,26 @@ object Content {
      */
     fun initialize() {}
 
-    val ELECTRICAL_COPPER_WIRE_CELL = CellRegistry.register("electrical_wire_cell_copper", BasicCellProvider.fourPin  { a, b ->
+    //#region Wires
+
+    val ELECTRICAL_WIRE_CELL_COPPER = CellRegistry.register("electrical_wire_cell_copper", BasicCellProvider.fourPin  { a, b ->
         WireCell(a, b, ElectricalWireModels.copper(centimeters(5.0)), WireType.Electrical)
     })
-    val THERMAL_COPPER_WIRE_CELL = CellRegistry.register("thermal_wire_cell_copper", BasicCellProvider.fourPin  { a, b ->
+
+    val THERMAL_WIRE_CELL_COPPER = CellRegistry.register("thermal_wire_cell_copper", BasicCellProvider.fourPin  { a, b ->
         WireCell(a, b, ElectricalWireModels.copper(centimeters(5.0)), WireType.Thermal)
     })
+
+    val ELECTRICAL_WIRE_PART_COPPER: PartRegistry.PartRegistryItem = PartRegistry.part("electrical_wire_part_copper", BasicPartProvider({ a, b ->
+        WirePart(a, b, ELECTRICAL_WIRE_CELL_COPPER.get(), WireType.Electrical)
+    }, Vec3(0.1, 0.1, 0.1)))
+
+    val THERMAL_WIRE_PART_COPPER: PartRegistry.PartRegistryItem = PartRegistry.part("thermal_wire_part_copper", BasicPartProvider({ a, b ->
+        WirePart(a, b, THERMAL_WIRE_CELL_COPPER.get(), WireType.Thermal)
+    }, Vec3(0.1, 0.1, 0.1)))
+
+    //#endregion
+
     val THERMAL_RADIATOR_CELL = CellRegistry.register("thermal_radiator_cell", BasicCellProvider.fourPin { a, b ->
         ThermalRadiatorCell(a, b, RadiatorModel(
             2000.0,
@@ -52,14 +66,6 @@ object Content {
         ))
     })
     val THERMAL_RADIATOR = PartRegistry.part("thermal_radiator_part", BasicPartProvider(::RadiatorPart, Vec3(1.0, 0.5, 1.0)))
-
-    val ELECTRICAL_COPPER_WIRE_PART: PartRegistry.PartRegistryItem = PartRegistry.part("electrical_wire_part_copper", BasicPartProvider({ a, b ->
-        WirePart(a, b, ELECTRICAL_COPPER_WIRE_CELL.get(), WireType.Electrical)
-    }, Vec3(0.1, 0.1, 0.1)))
-
-    val THERMAL_COPPER_WIRE_PART: PartRegistry.PartRegistryItem = PartRegistry.part("thermal_wire_part_copper", BasicPartProvider({ a, b ->
-        WirePart(a, b, THERMAL_COPPER_WIRE_CELL.get(), WireType.Thermal)
-    }, Vec3(0.1, 0.1, 0.1)))
 
     val RESISTOR_CELL = CellRegistry.register("resistor_cell", BasicCellProvider.polarFB(::ResistorCell))
     val RESISTOR_PART = PartRegistry.part("resistor_part", BasicPartProvider(::ResistorPart, Vec3(1.0, 0.4, 0.4)))
