@@ -1,9 +1,11 @@
 package org.eln2.mc.common.items.foundation
 
+import net.minecraft.core.NonNullList
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.InteractionResult
 import net.minecraft.world.item.BlockItem
 import net.minecraft.world.item.CreativeModeTab
+import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.context.UseOnContext
 import org.eln2.mc.Eln2
 import org.eln2.mc.common.blocks.BlockRegistry
@@ -76,5 +78,11 @@ class PartItem(private val provider: PartProvider, tab: CreativeModeTab) : Block
         // This is not what we want.
 
         return orCreateDescriptionId
+    }
+
+    override fun fillItemCategory(pGroup: CreativeModeTab, pItems: NonNullList<ItemStack>) {
+        if (allowdedIn(pGroup)) {
+            pItems.add(ItemStack(this))
+        }
     }
 }

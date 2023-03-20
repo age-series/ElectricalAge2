@@ -1,17 +1,12 @@
 package org.eln2.mc.common.parts
 
-import com.jozufozu.flywheel.core.PartialModel
 import net.minecraft.resources.ResourceLocation
 import net.minecraftforge.eventbus.api.IEventBus
 import net.minecraftforge.registries.*
 import org.eln2.mc.Eln2
-import org.eln2.mc.common.cells.foundation.CellProvider
+import org.eln2.mc.common.items.eln2Tab
 import org.eln2.mc.common.items.foundation.PartItem
-import org.eln2.mc.common.parts.foundation.BasicCellPart
 import org.eln2.mc.common.parts.foundation.PartProvider
-import org.eln2.mc.common.parts.foundation.providers.BasicPartProvider
-import org.eln2.mc.common.space.DirectionMask
-import org.eln2.mc.common.tabs.eln2Tab
 import java.util.function.Supplier
 
 object PartRegistry {
