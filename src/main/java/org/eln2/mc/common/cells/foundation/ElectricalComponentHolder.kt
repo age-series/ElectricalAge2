@@ -1,7 +1,6 @@
 package org.eln2.mc.common.cells.foundation
 
 import org.ageseries.libage.sim.electrical.mna.component.Component
-import org.ageseries.libage.sim.electrical.mna.component.Port
 import org.eln2.mc.common.cells.foundation.objects.ElectricalComponentInfo
 import org.eln2.mc.common.cells.foundation.objects.ElectricalConnectionInfo
 import org.eln2.mc.common.cells.foundation.objects.ElectricalObject
@@ -11,7 +10,7 @@ fun interface IComponentFactory<T> {
     fun create(): T
 }
 
-class ComponentHolder<T : Component>(private val factory: IComponentFactory<T>) {
+class ElectricalComponentHolder<T : Component>(private val factory: IComponentFactory<T>) {
     private var value: T? = null
 
     val instance: T get() {

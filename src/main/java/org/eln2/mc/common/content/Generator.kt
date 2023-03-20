@@ -23,11 +23,8 @@ import org.ageseries.libage.sim.electrical.mna.component.VoltageSource
 import org.ageseries.libage.sim.thermal.Simulator
 import org.ageseries.libage.sim.thermal.Temperature
 import org.ageseries.libage.sim.thermal.ThermalMass
-import org.apache.commons.math3.geometry.euclidean.threed.Line
-import org.apache.commons.math3.geometry.euclidean.threed.Plane
 import org.apache.commons.math3.geometry.euclidean.threed.Vector3D
 import org.eln2.mc.Eln2
-import org.eln2.mc.Eln2.LOGGER
 import org.eln2.mc.annotations.CrossThreadAccess
 import org.eln2.mc.annotations.RaceCondition
 import org.eln2.mc.client.render.PartialModels
@@ -97,11 +94,11 @@ class GeneratorObject : ElectricalObject(), IWailaProvider {
             source.ifPresent { it.setPotentialEpsilon(value) }
         }
 
-    private val resistor = ComponentHolder {
+    private val resistor = ElectricalComponentHolder {
         Resistor().also { it.resistance = internalResistance }
     }
 
-    private val source = ComponentHolder {
+    private val source = ElectricalComponentHolder {
         VoltageSource().also { it.potential = potential }
     }
 
