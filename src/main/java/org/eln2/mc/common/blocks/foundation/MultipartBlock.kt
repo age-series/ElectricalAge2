@@ -21,6 +21,7 @@ import net.minecraft.world.level.block.state.StateDefinition
 import net.minecraft.world.level.material.FluidState
 import net.minecraft.world.level.material.Material
 import net.minecraft.world.phys.BlockHitResult
+import net.minecraft.world.phys.HitResult
 import net.minecraft.world.phys.shapes.CollisionContext
 import net.minecraft.world.phys.shapes.EntityCollisionContext
 import net.minecraft.world.phys.shapes.VoxelShape
@@ -237,5 +238,22 @@ class MultipartBlock : BaseEntityBlock(Properties.of(Material.STONE)
 
     override fun createBlockStateDefinition(pBuilder: StateDefinition.Builder<Block, BlockState>) {
         pBuilder.add(GhostLightBlock.brightnessProperty)
+    }
+
+    override fun getCloneItemStack(
+        state: BlockState?,
+        target: HitResult?,
+        level: BlockGetter?,
+        pos: BlockPos?,
+        player: Player?
+    ): ItemStack {
+        if(level == null || pos == null || player == null){
+            return ItemStack.EMPTY
+        }
+
+        val picked = pickPart(level, pos, player)
+            ?: return ItemStack.EMPTY
+
+        return ItemStack(PartRegistry.getPartItem(picked.id))
     }
 }
