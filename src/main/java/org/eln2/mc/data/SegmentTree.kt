@@ -1,5 +1,11 @@
 package org.eln2.mc.data
 
+/**
+ * Represents the numeric range of a segment.
+ * @param start The lower boundary of this segment.
+ * @param end The upper boundary of this segment.
+ * [start] must be smaller than [end].
+ * */
 data class SegmentRange(val start: Double, val end: Double) {
     init {
         if(start >= end) {
@@ -10,13 +16,29 @@ data class SegmentRange(val start: Double, val end: Double) {
     fun contains(point: Double): Boolean = point in start..end
 }
 
+/**
+ * The [SegmentTreeNode] encompasses a [SegmentRange], may have an associated [data] value (if it is a leaf node), and may have two children nodes.
+ * @param range The value range of this node.
+ * @param data The data value associated with this node.
+ * @param left The left child of this node. Its [SegmentTreeNode.range]'s lower boundary will be equal to this node's lower boundary.
+ * @param right The right child of this node. Its [SegmentTreeNode.range]'s upper boundary will be equal to this node's upper boundary.
+ * Continuity of the ranges is not verified here.
+ * */
 data class SegmentTreeNode<T>(val range: SegmentRange, val data: T?, private val left: SegmentTreeNode<T>?, private val right: SegmentTreeNode<T>?) {
     constructor(range: SegmentRange, segment: T?): this(range, segment, null, null)
 
+    /**
+     * @return True if this segment's [range] contains the [point]. Otherwise, false.
+     * */
     fun contains(point: Double): Boolean {
         return range.contains(point)
     }
 
+    /**
+     * Recursively queries until a leaf node containing [point] is found.
+     * @param point A point contained within a segment. If this segment does not contain the point, an error will be produced.
+     * @return The data value associated with the leaf node that contains [point]. An error will be produced if segment continuity is broken (parent contains point but the child nodes do not).
+     * */
     fun query(point: Double): T {
         if(!contains(point)) {
             error("Segment $range doesn't have $point")
@@ -37,6 +59,9 @@ data class SegmentTreeNode<T>(val range: SegmentRange, val data: T?, private val
     }
 }
 
+/**
+ * The [SegmentTree] wraps a root [SegmentTreeNode] and offers [query] functions.
+ * */
 class SegmentTree<T>(private val root: SegmentTreeNode<T>) {
     fun queryOrNull(point: Double): T? {
         if(!root.contains(point)) {
@@ -54,19 +79,33 @@ class SegmentTree<T>(private val root: SegmentTreeNode<T>) {
     }
 }
 
+/**
+ * Builds a segment tree from a mapping of [SegmentRange]s and data values.
+ * */
 class SegmentTreeBuilder<TSegment> {
     private data class PendingSegment<T>(val segment: T, val range: SegmentRange)
 
     private val pending = ArrayList<PendingSegment<TSegment>>()
 
+    /**
+     * Inserts a segment into the pending set. If its range is not sorted with the previously inserted segments,
+     * [sort] must be called before attempting to [build].
+     * */
     fun insert(segment: TSegment, range: SegmentRange) {
         pending.add(PendingSegment(segment, range))
     }
 
+    /**
+     * Sorts the segments by range.
+     * */
     fun sort() {
         pending.sortBy { it.range.start }
     }
 
+    /**
+     * Builds a [SegmentTree] from the pending set.
+     * If segment continuity is broken, an error will be produced.
+     * */
     fun build(): SegmentTree<TSegment> {
         if(pending.isEmpty()) {
             error("Tried to build empty segment tree")
