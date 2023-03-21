@@ -65,7 +65,7 @@ object Content {
             100.0
         ))
     })
-    val THERMAL_RADIATOR = PartRegistry.part("thermal_radiator_part", BasicPartProvider(::RadiatorPart, Vec3(1.0, 0.5, 1.0)))
+    val THERMAL_RADIATOR = PartRegistry.part("thermal_radiator_part", BasicPartProvider(::RadiatorPart, Vec3(1.0, 3.0 / 16.0, 1.0)))
 
     val RESISTOR_CELL = CellRegistry.register("resistor_cell", BasicCellProvider.polarFB(::ResistorCell))
     val RESISTOR_PART = PartRegistry.part("resistor_part", BasicPartProvider(::ResistorPart, Vec3(1.0, 0.4, 0.4)))
