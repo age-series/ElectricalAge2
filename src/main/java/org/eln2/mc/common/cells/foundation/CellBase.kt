@@ -22,8 +22,6 @@ abstract class CellBase(val pos: CellPos, val id: ResourceLocation) : IWailaProv
     companion object {
         private const val CELL_DATA = "cellData"
         private const val OBJECT_DATA = "objectData"
-        private const val ELECTRICAL = "electrical"
-        private const val THERMAL = "thermal"
     }
 
     lateinit var graph: CellGraph

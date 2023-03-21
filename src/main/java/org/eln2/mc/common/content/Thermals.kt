@@ -10,6 +10,7 @@ import org.ageseries.libage.sim.thermal.Temperature
 import org.ageseries.libage.sim.thermal.ThermalMass
 import org.eln2.mc.client.render.MultipartBlockEntityInstance
 import org.eln2.mc.client.render.PartialModels
+import org.eln2.mc.client.render.PartialModels.bbOffset
 import org.eln2.mc.client.render.foundation.BasicPartRenderer
 import org.eln2.mc.client.render.foundation.RadiantBodyColor
 import org.eln2.mc.client.render.foundation.createPartInstance
@@ -52,10 +53,12 @@ class ThermalRadiatorCell(pos: CellPos, id: ResourceLocation, val model: Radiato
 class RadiatorPart(id: ResourceLocation, placementContext: PartPlacementContext)
     : CellPart(id, placementContext, Content.THERMAL_WIRE_CELL_COPPER.get()) {
     override val baseSize: Vec3
-        get() = Vec3(1.0, 0.5, 1.0)
+        get() = Vec3(1.0, 3.0 / 16.0, 1.0)
 
     override fun createRenderer(): IPartRenderer {
-        return BasicPartRenderer(this, PartialModels.RADIATOR)
+        return BasicPartRenderer(this, PartialModels.RADIATOR).also {
+            it.downOffset = bbOffset(3.0)
+        }
     }
 }
 
@@ -72,7 +75,6 @@ class RadiantBipoleRenderer(
     val rightRotation: Float,
     val leftColor: RadiantBodyColor,
     val rightColor: RadiantBodyColor) : IPartRenderer {
-
     constructor(part: Part, body: PartialModel, left: PartialModel, right: PartialModel, downOffset: Double, rotation: Float, leftColor: RadiantBodyColor, rightColor: RadiantBodyColor) :
         this(part, body, left, right, downOffset, rotation, downOffset, rotation, downOffset, rotation, leftColor, rightColor)
 
