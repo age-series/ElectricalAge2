@@ -52,6 +52,7 @@ import org.eln2.mc.extensions.LibAgeExtensions.setResistanceEpsilon
 import org.eln2.mc.extensions.NbtExtensions.getTemperature
 import org.eln2.mc.extensions.NbtExtensions.putTemperature
 import org.eln2.mc.extensions.NbtExtensions.useSubTag
+import org.eln2.mc.extensions.NbtExtensions.useSubTagIfPreset
 import org.eln2.mc.extensions.NumberExtensions.formatted
 import org.eln2.mc.extensions.NumberExtensions.formattedPercentN
 import org.eln2.mc.integration.waila.IWailaProvider
@@ -391,7 +392,8 @@ class BatteryCell(pos: CellPos, id: ResourceLocation, override val model: Batter
 
 class BatteryPart(id: ResourceLocation, placementContext: PartPlacementContext, provider: CellProvider):
     CellPart(id, placementContext, provider),
-    ITickablePart {
+    ITickablePart,
+    IItemPersistentPart {
 
     companion object {
         private const val BATTERY = "battery"
@@ -428,6 +430,16 @@ class BatteryPart(id: ResourceLocation, placementContext: PartPlacementContext, 
     override fun tick() {
         invalidateSave()
     }
+
+    override fun saveItemTag(tag: CompoundTag) {
+        tag.put(BATTERY, batteryCell.serializeNbt())
+    }
+
+    override fun loadItemTag(tag: CompoundTag?) {
+        tag?.useSubTagIfPreset(BATTERY, batteryCell::deserializeNbt)
+    }
+
+    override val order: ItemPersistentPartLoadOrder = ItemPersistentPartLoadOrder.AfterSim
 }
 
 class ThermalBipoleObject: ThermalObject(), IWailaProvider {
