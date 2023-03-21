@@ -133,7 +133,7 @@ object Content {
     })
 
     val THERMOCOUPLE_PART = PartRegistry.part("thermocouple_part", BasicPartProvider({id, context ->
-        BasicCellPart(id, context, Vec3(1.0, 15.0 / 16.0, 1.0), THERMOCOUPLE_CELL.get(), basicRenderer(PartialModels.PELTIER_ELEMENT, bbOffset(15.0)))
+        ThermocouplePart(id, context)
     }, Vec3(0.5, 15.0 / 16.0, 0.5)))
 
     val HEAT_GENERATOR_CELL = CellRegistry.register("heat_generator_cell", BasicCellProvider.fourPin(::HeatGeneratorCell))

@@ -12,6 +12,7 @@ import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.entity.BlockEntityTicker
 import net.minecraft.world.level.block.entity.BlockEntityType
 import net.minecraft.world.level.block.state.BlockState
+import net.minecraft.world.phys.Vec3
 import net.minecraftforge.common.capabilities.Capability
 import net.minecraftforge.common.util.LazyOptional
 import net.minecraftforge.items.CapabilityItemHandler
@@ -38,10 +39,8 @@ import org.eln2.mc.common.cells.foundation.behaviors.withElectricalHeatTransfer
 import org.eln2.mc.common.cells.foundation.behaviors.withElectricalPowerConverter
 import org.eln2.mc.common.cells.foundation.objects.*
 import org.eln2.mc.common.events.AtomicUpdate
-import org.eln2.mc.common.parts.foundation.CellPart
-import org.eln2.mc.common.parts.foundation.IPartRenderer
-import org.eln2.mc.common.parts.foundation.ITickablePart
-import org.eln2.mc.common.parts.foundation.PartPlacementContext
+import org.eln2.mc.common.events.EventScheduler
+import org.eln2.mc.common.parts.foundation.*
 import org.eln2.mc.common.space.DirectionMask
 import org.eln2.mc.common.space.RelativeRotationDirection
 import org.eln2.mc.control.PIDCoefficients
@@ -50,6 +49,8 @@ import org.eln2.mc.extensions.DirectionExtensions.toVector3D
 import org.eln2.mc.extensions.LibAgeExtensions.add
 import org.eln2.mc.extensions.LibAgeExtensions.setPotentialEpsilon
 import org.eln2.mc.extensions.LibAgeExtensions.setResistanceEpsilon
+import org.eln2.mc.extensions.NbtExtensions.getTemperature
+import org.eln2.mc.extensions.NbtExtensions.putTemperature
 import org.eln2.mc.extensions.NbtExtensions.useSubTag
 import org.eln2.mc.extensions.NumberExtensions.formatted
 import org.eln2.mc.extensions.NumberExtensions.formattedPercentN
@@ -502,7 +503,6 @@ class ThermocoupleBehavior(
     private val hotAccessor: IThermalBodyProvider,
 
     override val model: ThermocoupleModel): ICellBehavior, IThermocoupleView, IWailaProvider {
-
     private data class BodyPair(val hot: ThermalBody, val cold: ThermalBody, val inverted: Boolean)
 
     override fun onAdded(container: CellBehaviorContainer) {}
@@ -644,6 +644,61 @@ class ThermocoupleCell(pos: CellPos, id: ResourceLocation) : GeneratorCell(pos, 
     }
 
     private val thermalBipole get() = thermalObject as ThermalBipoleObject
+
+    val b1Temperature get() = thermalBipole.b1.temperature
+    val b2Temperature get() = thermalBipole.b2.temperature
+}
+
+class ThermocouplePart(id: ResourceLocation, placementContext: PartPlacementContext) : CellPart(id, placementContext, Content.THERMOCOUPLE_CELL.get()) {
+    companion object {
+        private const val LEFT_TEMP = "left"
+        private const val RIGHT_TEMP = "right"
+    }
+
+    override val baseSize: Vec3
+        get() = Vec3(1.0, 15.0 / 16.0, 1.0)
+
+    override fun createRenderer(): IPartRenderer {
+        return RadiantBipoleRenderer(
+            this,
+            PartialModels.PELTIER_BODY,
+            PartialModels.PELTIER_LEFT,
+            PartialModels.PELTIER_RIGHT,
+            bbOffset(15.0),
+            0f
+        )
+    }
+
+    override fun getSyncTag(): CompoundTag {
+        return CompoundTag().also { tag ->
+            val cell = cell as ThermocoupleCell
+
+            tag.putTemperature(LEFT_TEMP, cell.b2Temperature)
+            tag.putTemperature(RIGHT_TEMP, cell.b1Temperature)
+        }
+    }
+
+    override fun handleSyncTag(tag: CompoundTag) {
+        val renderer = renderer as? RadiantBipoleRenderer
+            ?: return
+
+        renderer.updateLeftSideTemperature(tag.getTemperature(LEFT_TEMP))
+        renderer.updateRightSideTemperature(tag.getTemperature(RIGHT_TEMP))
+    }
+
+    override fun onCellAcquired() {
+        sendTemperatureUpdates()
+    }
+
+    private fun sendTemperatureUpdates() {
+        if(!isAlive) {
+            return
+        }
+
+        syncChanges()
+
+        EventScheduler.scheduleWorkPre(20, this::sendTemperatureUpdates)
+    }
 }
 
 data class HeatGeneratorFuelMass(

@@ -23,6 +23,8 @@ import org.eln2.mc.client.render.MultipartBlockEntityInstance
 import org.eln2.mc.client.render.PartialModels
 import org.eln2.mc.client.render.animations.colors.ColorInterpolators
 import org.eln2.mc.client.render.animations.colors.Utilities.colorF
+import org.eln2.mc.client.render.foundation.RadiantBodyColorBuilder
+import org.eln2.mc.client.render.foundation.defaultRadiantBodyColor
 import org.eln2.mc.common.cells.foundation.CellBase
 import org.eln2.mc.common.cells.foundation.CellPos
 import org.eln2.mc.common.cells.foundation.CellProvider
@@ -406,11 +408,7 @@ object WireMeshSets {
 
 class WirePartRenderer(val part: WirePart, val meshes: Map<DirectionMask, PartialModel>, val type: WireType) : IPartRenderer {
     companion object {
-        private val COLD_TINT = colorF(1f, 1f, 1f, 1f)
-        private val HOT_TINT = colorF(5f, 0.1f, 0.2f, 1f)
-        private val COLD_TEMP = STANDARD_TEMPERATURE
-        private val HOT_TEMP = Temperature.from(1000.0, ThermalUnits.CELSIUS)
-        private val INTERPOLATOR = ColorInterpolators.rgbLinear()
+        private val COLOR = defaultRadiantBodyColor()
     }
 
     private lateinit var multipartInstance: MultipartBlockEntityInstance
@@ -473,10 +471,7 @@ class WirePartRenderer(val part: WirePart, val meshes: Map<DirectionMask, Partia
         }
 
         temperatureUpdate.consume {
-            val temperature = it.coerceIn(COLD_TEMP.kelvin, HOT_TEMP.kelvin)
-            val progress = map(temperature, COLD_TEMP.kelvin, HOT_TEMP.kelvin, 0.0, 1.0)
-
-            modelInstance?.setColor(INTERPOLATOR.interpolate(COLD_TINT, HOT_TINT, progress.toFloat()))
+            modelInstance?.setColor(COLOR.evaluate(Temperature(it)))
         }
     }
 

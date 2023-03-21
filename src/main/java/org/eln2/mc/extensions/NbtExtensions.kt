@@ -5,6 +5,7 @@ import net.minecraft.core.Direction
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.resources.ResourceLocation
 import org.ageseries.libage.sim.Material
+import org.ageseries.libage.sim.thermal.Temperature
 import org.ageseries.libage.sim.thermal.ThermalMass
 import org.eln2.mc.common.cells.foundation.CellPos
 import org.eln2.mc.common.parts.foundation.PartUpdateType
@@ -264,5 +265,13 @@ object NbtExtensions {
         return this.getThermalMass(id) { key, tag ->
             tag.getMaterialMapped(key)
         }
+    }
+
+    fun CompoundTag.putTemperature(id: String, temperature: Temperature) {
+        this.putDouble(id, temperature.kelvin)
+    }
+
+    fun CompoundTag.getTemperature(id: String): Temperature {
+        return Temperature(this.getDouble(id))
     }
 }

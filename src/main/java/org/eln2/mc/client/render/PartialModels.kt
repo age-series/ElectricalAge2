@@ -28,6 +28,10 @@ object PartialModels {
     val SMALL_WALL_LAMP_CAGE = partialBlock("small_wall_lamp_cage")
 
     val PELTIER_ELEMENT = partialBlock("peltier_element")
+    val PELTIER_BODY = partialBlock("peltier/body")
+    val PELTIER_LEFT = partialBlock("peltier/left")
+    val PELTIER_RIGHT = partialBlock("peltier/right")
+
     val RADIATOR = partialBlock("radiator")
 
     val SOLAR_PANEL_ONE_BLOCK = partialBlock("solar_panel_one_block")
