@@ -61,8 +61,7 @@ class PartItem(private val provider: PartProvider, tab: CreativeModeTab) : Block
             return InteractionResult.FAIL
         }
 
-        val placed = (entity as MultipartBlockEntity)
-            .place(pContext.player!!, targetPos, pContext.clickedFace, provider)
+        val placed = (entity as MultipartBlockEntity).place(pContext.player!!, targetPos, pContext.clickedFace, provider, pContext.itemInHand.tag)
 
         // If the part was placed successfully, let us consume this item.
 

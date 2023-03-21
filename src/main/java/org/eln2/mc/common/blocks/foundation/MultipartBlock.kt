@@ -2,6 +2,7 @@ package org.eln2.mc.common.blocks.foundation
 
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
+import net.minecraft.nbt.CompoundTag
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.InteractionHand
 import net.minecraft.world.InteractionResult
@@ -108,14 +109,13 @@ class MultipartBlock : BaseEntityBlock(Properties.of(Material.STONE)
             return false
         }
 
-        val removedId =
-            multipart.remove(player, level)
-                ?: return false
+        val saveTag = CompoundTag()
 
-        val item = PartRegistry.getPartItem(removedId)
+        val removedId = multipart.remove(player, level, saveTag)
+            ?: return false
 
         if (!player.isCreative) {
-            player.inventory.add(ItemStack(item))
+            player.inventory.add(Part.createPartDropStack(removedId, saveTag))
         }
 
         // We want to destroy the multipart only if it is empty

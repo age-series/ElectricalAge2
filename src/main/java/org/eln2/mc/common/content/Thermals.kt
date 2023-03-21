@@ -81,6 +81,10 @@ class RadiantBipoleRenderer(
     constructor(part: Part, body: PartialModel, left: PartialModel, right: PartialModel, downOffset: Double, rotation: Float) :
         this(part, body, left, right, downOffset, rotation, defaultRadiantBodyColor(), defaultRadiantBodyColor())
 
+    override fun isSetupWith(multipartBlockEntityInstance: MultipartBlockEntityInstance): Boolean {
+        return this::multipart.isInitialized && this.multipart == multipartBlockEntityInstance
+    }
+
     private var bodyInstance: ModelData? = null
     private var leftInstance: ModelData? = null
     private var rightInstance: ModelData? = null

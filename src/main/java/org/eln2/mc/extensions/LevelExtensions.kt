@@ -14,6 +14,7 @@ import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.phys.Vec3
 import net.minecraft.core.BlockPos
+import net.minecraft.nbt.CompoundTag
 import net.minecraft.server.level.ServerPlayer
 import net.minecraft.world.MenuProvider
 import net.minecraft.world.inventory.AbstractContainerMenu
@@ -68,16 +69,16 @@ object LevelExtensions {
             return
         }
 
-        val item = PartRegistry.getPartItem(part.id)
+        val saveTag = CompoundTag()
 
-        multipart.breakPart(part)
+        multipart.breakPart(part, saveTag)
 
         val itemEntity = ItemEntity(
             this,
             pos.x.toDouble(),
             pos.y.toDouble(),
             pos.z.toDouble(),
-            ItemStack(item)
+            Part.createPartDropStack(part.id, saveTag)
         )
 
         this.addFreshEntity(itemEntity)

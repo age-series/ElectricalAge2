@@ -164,7 +164,7 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
      * @return True if the part was successfully placed. Otherwise, false.
      * */
     @ServerOnly
-    fun place(entity: Player, pos: BlockPos, face: Direction, provider: PartProvider): Boolean {
+    fun place(entity: Player, pos: BlockPos, face: Direction, provider: PartProvider, saveTag: CompoundTag? = null): Boolean {
         if (entity.level.isClientSide) {
             return false
         }
@@ -213,10 +213,18 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
         placementUpdates.add(PartUpdate(part, PartUpdateType.Add))
         joinCollider(part)
 
+        if(part is IItemPersistentPart && part.order == ItemPersistentPartLoadOrder.BeforeSim) {
+            part.loadItemTag(saveTag)
+        }
+
         part.onPlaced()
 
         if (part is IPartCellContainer) {
             CellConnectionManager.connect(this, CellInfo(part.cell, part.placementContext.face))
+        }
+
+        if(part is IItemPersistentPart && part.order == ItemPersistentPartLoadOrder.AfterSim) {
+            part.loadItemTag(saveTag)
         }
 
         saveData()
@@ -227,18 +235,21 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
 
     /**
      * Tries to destroy a part.
+     * @param saveTag A tag to save part data, if required.
      * @return The ID of the part that was broken, if any were picked. Otherwise, null.
      * */
     @ServerOnly
-    fun remove(entity: Player, level: Level): ResourceLocation? {
+    fun remove(entity: Player, level: Level, saveTag: CompoundTag? = null): ResourceLocation? {
         if (level.isClientSide) {
             return null
         }
 
-        val part = pickPart(entity) ?: return null
+        val part = pickPart(entity)
+            ?: return null
 
         val id = part.id
-        breakPart(part)
+
+        breakPart(part, saveTag)
 
         return id
     }
@@ -247,7 +258,7 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
      * Destroys a part, saves and synchronizes the changes.
      * */
     @ServerOnly
-    fun breakPart(part: Part) {
+    fun breakPart(part: Part, saveTag: CompoundTag? = null) {
         if (part is IPartCellContainer) {
             CellConnectionManager.destroy(
                 CellInfo(
@@ -256,6 +267,10 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
                 ),
                 this
             )
+        }
+
+        if(part is IItemPersistentPart && saveTag != null) {
+            part.saveItemTag(saveTag)
         }
 
         destroyPart(part.placementContext.face)

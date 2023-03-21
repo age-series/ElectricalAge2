@@ -11,6 +11,8 @@ import org.eln2.mc.client.render.MultipartBlockEntityInstance
  * */
 @CrossThreadAccess
 interface IPartRenderer {
+    fun isSetupWith(multipartBlockEntityInstance: MultipartBlockEntityInstance): Boolean
+
     /**
      * Called when the part is picked up by the renderer.
      * @param multipart The renderer instance.

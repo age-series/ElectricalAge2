@@ -411,6 +411,10 @@ class WirePartRenderer(val part: WirePart, val meshes: Map<DirectionMask, Partia
         private val COLOR = defaultRadiantBodyColor()
     }
 
+    override fun isSetupWith(multipartBlockEntityInstance: MultipartBlockEntityInstance): Boolean {
+        return this::multipartInstance.isInitialized && this.multipartInstance == multipartBlockEntityInstance
+    }
+
     private lateinit var multipartInstance: MultipartBlockEntityInstance
     private var modelInstance: ModelData? = null
 

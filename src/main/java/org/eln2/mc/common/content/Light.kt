@@ -263,6 +263,10 @@ class LightRenderer(
         val WARM_TINT = Color(254, 196, 127, 255)
     }
 
+    override fun isSetupWith(multipartBlockEntityInstance: MultipartBlockEntityInstance): Boolean {
+        return this::multipart.isInitialized && this.multipart == multipartBlockEntityInstance
+    }
+
     private val brightnessUpdate = AtomicUpdate<Double>()
 
     fun updateBrightness(newValue: Double){

@@ -23,6 +23,10 @@ fun createPartInstance(multipart: MultipartBlockEntityInstance, model: PartialMo
  * The basic part renderer is used to render a single partial model.
  * */
 open class BasicPartRenderer(val part: Part, val model: PartialModel) : IPartRenderer {
+    override fun isSetupWith(multipartBlockEntityInstance: MultipartBlockEntityInstance): Boolean {
+        return this::multipart.isInitialized && this.multipart == multipartBlockEntityInstance
+    }
+
     /**
      * Useful if the model needs to be rotated to match the networked behavior.
      * Alternatively, the model may be rotated in the 3D editor.
