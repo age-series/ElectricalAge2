@@ -10,7 +10,7 @@ import org.eln2.mc.utility.ResourceReader
 import kotlin.math.floor
 
 /**
- * The grid interpolator can be used to query arbitrary coordinates inside a KD grid, with interpolation
+ * The grid interpolator is used to query arbitrary coordinates inside a [KDGridD], with interpolation
  * of the neighbor cells.
  * */
 class GridInterpolator(val grid: KDGridD) {
@@ -198,6 +198,12 @@ class HermiteSpline {
     }
 }
 
+/**
+ * Segment of a piecewise spline.
+ * @param keyStart Parameter range lower boundary.
+ * @param keyEnd Parameter range upper boundary.
+ * @param points Spline knots.
+ * */
 data class SplineSegment(val keyStart: Double, val keyEnd: Double, val points: List<Double>) {
     init {
         if (points.size < 2) {
@@ -209,7 +215,14 @@ data class SplineSegment(val keyStart: Double, val keyEnd: Double, val points: L
         }
     }
 
+    /**
+     * Gets the leftmost value in this segment.
+     * */
     val valueStart get() = points.first()
+
+    /**
+     * Gets the rightmost value in this segment.
+     * */
     val valueEnd get() = points.last()
 }
 
@@ -251,12 +264,12 @@ interface ISplineSegmentList {
     val endKey: Double
 
     /**
-     * Gets the leftmost (smallest) value in this segment list.
+     * Gets the leftmost value in this segment list.
      * */
     val startValue: Double
 
     /**
-     * Gets the rightmost (largest) value in this segment list.
+     * Gets the rightmost value in this segment list.
      * */
     val endValue: Double
 
@@ -266,6 +279,9 @@ interface ISplineSegmentList {
     val count: Int
 }
 
+/**
+ * Base [SplineSegmentList] behavior. Search is not implemented here.
+ * */
 abstract class SplineSegmentList(protected val segments: List<SplineSegment>): ISplineSegmentList {
     override fun left(index: Int): SplineSegment {
         if (index <= 0) {
@@ -304,7 +320,7 @@ abstract class SplineSegmentList(protected val segments: List<SplineSegment>): I
 }
 
 /**
- * This is a spline segment list with O(n) search time.
+ * This is a [SplineSegmentList] with *O(n)* search time.
  * */
 class LinearSplineSegmentList(segments: List<SplineSegment>) : SplineSegmentList(segments) {
     init {
@@ -353,6 +369,7 @@ class TreeSplineSegmentList(segments: List<SplineSegment>): SplineSegmentList(se
         }
     }.build()
 
+    //FIXME: we should be returning the boundary index, not ERROR!
     override fun find(key: Double): Int {
         return segmentTree.queryOrNull(key) ?: error("Spline index $key out of range")
     }

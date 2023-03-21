@@ -6,14 +6,13 @@ import net.minecraft.world.phys.Vec3
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.floor
+import kotlin.math.pow
 
 object Functions {
     //#region Interpolations
-
     fun lerp(from: Double, to: Double, factor: Double): Double {
         return (1.0 - factor) * from + factor * to
     }
-
     fun lerp(from: Float, to: Float, factor: Float): Float {
         return (1f - factor) * from + factor * to
     }
@@ -81,6 +80,21 @@ object Functions {
     fun pow2I(exponent: Int): Int {
         return powI(2, exponent)
     }
+
+    /**
+     * Computes [x]².
+     * */
+    fun sqr(x: Double): Double = x * x
+
+    /**
+     * Computes [x]³.
+     * */
+    fun cube(x: Double): Double = x * x * x
+
+    /**
+     * Computes the cube root of [x].
+     * */
+    fun cbrt(x: Double): Double = x.pow(1.0 / 3.0)
 
     //#endregion
 
@@ -311,6 +325,9 @@ object Functions {
 
     //#endregion
 
+    /**
+     * Maps [value] ranging from 0-1 to an integer ranging from [Short.MIN_VALUE] to [Short.MAX_VALUE].
+     * */
     fun mapNormalizedDoubleShort(value: Double): Int {
         return map(
             value,
@@ -321,6 +338,9 @@ object Functions {
             .toInt()
     }
 
+    /**
+     * Maps an integer ranging from [Short.MIN_VALUE] to [Short.MAX_VALUE] to a value ranging from 0-1.
+     * */
     fun unmapNormalizedDoubleShort(value: Int): Double {
         return map(
             value.toDouble(),
@@ -331,8 +351,19 @@ object Functions {
         )
     }
 
+    /**
+     * Computes the arithmetic mean of [a] and [b].
+     * */
     fun avg(a: Double, b: Double): Double = (a + b) / 2.0
+
+    /**
+     * Computes the arithmetic mean of [a], [b] and [c].
+     * */
     fun avg(a: Double, b: Double, c: Double): Double = (a + b + c) / 3.0
+
+    /**
+     * Computes the arithmetic mean of the [values].
+     * */
     fun avg(vararg values: Double): Double{
         if(values.isEmpty()) {
             error("Cannot compute average of empty set")
@@ -361,6 +392,13 @@ object Geometry {
         return angle % range
     }
 
+    /**
+     * Normalizes an [angle] to range from 0-360 degrees.
+     * */
     fun angleNormDeg(angle: Double): Double = angleNorm(angle, 360.0)
+
+    /**
+     * Normalizes an [angle] to range from 0-2π
+     * */
     fun angleNorm(angle: Double): Double = angleNorm(angle, PI * 2.0)
 }
