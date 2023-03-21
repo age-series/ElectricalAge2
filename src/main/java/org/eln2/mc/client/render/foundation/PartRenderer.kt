@@ -9,6 +9,16 @@ import org.eln2.mc.client.render.foundation.PartRendererTransforms.applyBlockBen
 import org.eln2.mc.common.parts.foundation.IPartRenderer
 import org.eln2.mc.common.parts.foundation.Part
 
+fun createPartInstance(multipart: MultipartBlockEntityInstance, model: PartialModel, part: Part, downOffset: Double, yRotation: Float): ModelData {
+    return multipart.materialManager
+        .defaultSolid()
+        .material(Materials.TRANSFORMED)
+        .getModel(model)
+        .createInstance()
+        .loadIdentity()
+        .applyBlockBenchTransform(part, downOffset, yRotation)
+}
+
 /**
  * The basic part renderer is used to render a single partial model.
  * */
@@ -40,13 +50,7 @@ open class BasicPartRenderer(val part: Part, val model: PartialModel) : IPartRen
 
         modelInstance?.delete()
 
-        modelInstance = multipart.materialManager
-            .defaultSolid()
-            .material(Materials.TRANSFORMED)
-            .getModel(model)
-            .createInstance()
-            .loadIdentity()
-            .applyBlockBenchTransform(part, downOffset, yRotation)
+        modelInstance = createPartInstance(multipart, model, part, downOffset, yRotation)
 
         multipart.relightPart(part)
     }

@@ -1,17 +1,27 @@
 package org.eln2.mc.common.content
 
+import com.jozufozu.flywheel.core.PartialModel
+import com.jozufozu.flywheel.core.materials.FlatLit
+import com.jozufozu.flywheel.core.materials.model.ModelData
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.world.phys.Vec3
 import org.ageseries.libage.sim.Material
+import org.ageseries.libage.sim.thermal.Temperature
 import org.ageseries.libage.sim.thermal.ThermalMass
+import org.eln2.mc.client.render.MultipartBlockEntityInstance
 import org.eln2.mc.client.render.PartialModels
 import org.eln2.mc.client.render.foundation.BasicPartRenderer
+import org.eln2.mc.client.render.foundation.RadiantBodyColor
+import org.eln2.mc.client.render.foundation.createPartInstance
+import org.eln2.mc.client.render.foundation.defaultRadiantBodyColor
 import org.eln2.mc.common.cells.foundation.CellBase
 import org.eln2.mc.common.cells.foundation.CellPos
 import org.eln2.mc.common.cells.foundation.behaviors.withStandardExplosionBehavior
 import org.eln2.mc.common.cells.foundation.objects.SimulationObjectSet
+import org.eln2.mc.common.events.AtomicUpdate
 import org.eln2.mc.common.parts.foundation.CellPart
 import org.eln2.mc.common.parts.foundation.IPartRenderer
+import org.eln2.mc.common.parts.foundation.Part
 import org.eln2.mc.common.parts.foundation.PartPlacementContext
 import org.eln2.mc.sim.ThermalBody
 
@@ -46,5 +56,84 @@ class RadiatorPart(id: ResourceLocation, placementContext: PartPlacementContext)
 
     override fun createRenderer(): IPartRenderer {
         return BasicPartRenderer(this, PartialModels.RADIATOR)
+    }
+}
+
+class RadiantBipoleRenderer(
+    val part: Part,
+    val body: PartialModel,
+    val left: PartialModel,
+    val right: PartialModel,
+    val bodyDownOffset: Double,
+    val bodyRotation: Float,
+    val leftDownOffset: Double,
+    val leftRotation: Float,
+    val rightDownOffset: Double,
+    val rightRotation: Float,
+    val leftColor: RadiantBodyColor,
+    val rightColor: RadiantBodyColor) : IPartRenderer {
+
+    constructor(part: Part, body: PartialModel, left: PartialModel, right: PartialModel, downOffset: Double, rotation: Float, leftColor: RadiantBodyColor, rightColor: RadiantBodyColor) :
+        this(part, body, left, right, downOffset, rotation, downOffset, rotation, downOffset, rotation, leftColor, rightColor)
+
+    constructor(part: Part, body: PartialModel, left: PartialModel, right: PartialModel, downOffset: Double, rotation: Float) :
+        this(part, body, left, right, downOffset, rotation, defaultRadiantBodyColor(), defaultRadiantBodyColor())
+
+    private var bodyInstance: ModelData? = null
+    private var leftInstance: ModelData? = null
+    private var rightInstance: ModelData? = null
+
+    private lateinit var multipart: MultipartBlockEntityInstance
+
+    private val leftSideUpdate = AtomicUpdate<Temperature>()
+    private val rightSideUpdate = AtomicUpdate<Temperature>()
+
+    fun updateLeftSideTemperature(value: Temperature) {
+        leftSideUpdate.setLatest(value)
+    }
+
+    fun updateRightSideTemperature(value: Temperature) {
+        rightSideUpdate.setLatest(value)
+    }
+
+    override fun setupRendering(multipart: MultipartBlockEntityInstance) {
+        this.multipart = multipart
+
+        buildInstance()
+    }
+
+    fun buildInstance() {
+        if (!this::multipart.isInitialized) {
+            error("Multipart not initialized!")
+        }
+
+        bodyInstance?.delete()
+        leftInstance?.delete()
+        rightInstance?.delete()
+
+        bodyInstance = createPartInstance(multipart, body, part, bodyDownOffset, bodyRotation)
+        leftInstance = createPartInstance(multipart, left, part, leftDownOffset, leftRotation)
+        rightInstance = createPartInstance(multipart, right, part, rightDownOffset, rightRotation)
+
+        multipart.relightPart(part)
+    }
+
+    override fun beginFrame() {
+        leftSideUpdate.consume { leftInstance?.setColor(leftColor.evaluate(it)) }
+        rightSideUpdate.consume { rightInstance?.setColor(rightColor.evaluate(it)) }
+    }
+
+    override fun relightModels(): List<FlatLit<*>>? {
+        return ArrayList<FlatLit<*>>().also {
+            bodyInstance?.apply { it.add(this) }
+            leftInstance?.apply { it.add(this) }
+            rightInstance?.apply { it.add(this) }
+        }
+    }
+
+    override fun remove() {
+        bodyInstance?.delete()
+        leftInstance?.delete()
+        rightInstance?.delete()
     }
 }
