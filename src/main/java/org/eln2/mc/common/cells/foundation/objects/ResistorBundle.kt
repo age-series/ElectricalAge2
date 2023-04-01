@@ -4,6 +4,7 @@ import org.ageseries.libage.sim.electrical.mna.Circuit
 import org.ageseries.libage.sim.electrical.mna.component.Resistor
 import org.eln2.mc.common.cells.foundation.Conventions
 import org.eln2.mc.common.space.RelativeRotationDirection
+import kotlin.math.abs
 
 /**
  * Utility class that holds a collection of resistors to be used as contact points for external components.
@@ -16,7 +17,7 @@ class ResistorBundle(var resistance: Double) {
     /**
      * This must be called once the circuit is made available, in order to register the resistors.
      * This "prepares" the bundle, so future calls to *getOfferedResistor* that result in a new resistor being created will cause an error.
-     * @see ElectricalObject.registerComponents
+     * @see ElectricalObject.addComponents
      * */
     fun register(connections: List<ElectricalConnectionInfo>, circuit: Circuit) {
         if (prepared) {
@@ -85,4 +86,6 @@ class ResistorBundle(var resistance: Double) {
         resistors.clear()
         prepared = false
     }
+
+    val power get() = resistors.values.sumOf { abs(it.power) }
 }

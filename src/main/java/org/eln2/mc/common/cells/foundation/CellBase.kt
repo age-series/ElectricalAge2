@@ -1,12 +1,13 @@
 package org.eln2.mc.common.cells.foundation
 
 import mcp.mobius.waila.api.IPluginConfig
+import net.minecraft.nbt.CompoundTag
 import net.minecraft.resources.ResourceLocation
-import org.eln2.mc.common.cells.foundation.objects.ElectricalConnectionInfo
-import org.eln2.mc.common.cells.foundation.objects.ElectricalObject
-import org.eln2.mc.common.cells.foundation.objects.SimulationObjectSet
-import org.eln2.mc.common.cells.foundation.objects.SimulationObjectType
+import org.eln2.mc.common.cells.foundation.objects.*
 import org.eln2.mc.common.space.RelativeRotationDirection
+import org.eln2.mc.extensions.NbtExtensions.putSubTag
+import org.eln2.mc.extensions.NbtExtensions.useSubTagIfPreset
+import org.eln2.mc.extensions.NbtExtensions.withSubTagOptional
 import org.eln2.mc.integration.waila.IWailaProvider
 import org.eln2.mc.integration.waila.TooltipBuilder
 
@@ -18,6 +19,11 @@ data class CellConnectionInfo(val cell: CellBase, val sourceDirection: RelativeR
  * Cells create connections with other cells, and objects create connections with other objects of the same simulation type.
  * */
 abstract class CellBase(val pos: CellPos, val id: ResourceLocation) : IWailaProvider {
+    companion object {
+        private const val CELL_DATA = "cellData"
+        private const val OBJECT_DATA = "objectData"
+    }
+
     lateinit var graph: CellGraph
     lateinit var connections: ArrayList<CellConnectionInfo>
 
@@ -34,6 +40,14 @@ abstract class CellBase(val pos: CellPos, val id: ResourceLocation) : IWailaProv
 
     private var createdSet: SimulationObjectSet? = null
 
+    private val behaviorsLazy = lazy {
+        CellBehaviorContainer(this)
+    }
+
+    protected val behaviorsInitialized get() = behaviorsLazy.isInitialized()
+
+    protected val behaviors get() = behaviorsLazy.value
+
     /**
      * Called once when the object set is requested. The result is then cached.
      * @return A new object set, with all the desired objects.
@@ -48,6 +62,42 @@ abstract class CellBase(val pos: CellPos, val id: ResourceLocation) : IWailaProv
 
             return createdSet!!
         }
+
+    fun loadTag(tag: CompoundTag) {
+        tag.useSubTagIfPreset(CELL_DATA, this::loadCellData)
+        tag.useSubTagIfPreset(OBJECT_DATA, this::loadObjectData)
+    }
+
+    fun createTag(): CompoundTag {
+        return CompoundTag().also { tag ->
+            tag.apply {
+                withSubTagOptional(CELL_DATA, saveCellData())
+                putSubTag(OBJECT_DATA) { saveObjectData(it) }
+            }
+        }
+    }
+
+    open fun loadCellData(tag: CompoundTag) { }
+
+    open fun saveCellData(): CompoundTag? {
+        return null
+    }
+
+    private fun saveObjectData(tag: CompoundTag) {
+        objectSet.process { obj ->
+            if(obj is IPersistentObject) {
+                tag.put(obj.type.name, obj.save())
+            }
+        }
+    }
+
+    private fun loadObjectData(tag: CompoundTag) {
+        objectSet.process { obj ->
+            if(obj is IPersistentObject) {
+                obj.load(tag.getCompound(obj.type.name))
+            }
+        }
+    }
 
     /**
      * Called when the tile entity is being unloaded.
@@ -66,10 +116,25 @@ abstract class CellBase(val pos: CellPos, val id: ResourceLocation) : IWailaProv
      */
     open fun onLoadedFromDisk() {}
 
+    fun create() {
+        onCreated()
+    }
+
     /**
      * Called after the cell was created.
      */
-    open fun onCreated() {}
+    protected open fun onCreated() {}
+
+    fun remove() {
+        behaviors.destroy()
+        onRemoving()
+    }
+
+    /**
+     * Called while the cell is being destroyed, just after the simulation was stopped.
+     * Subscribers may be cleaned up here.
+     * */
+    protected open fun onRemoving() {}
 
     /**
      * Called after the cell was destroyed.
@@ -83,7 +148,27 @@ abstract class CellBase(val pos: CellPos, val id: ResourceLocation) : IWailaProv
      * @param connectionsChanged True if the neighbouring cells changed.
      * @param graphChanged True if the graph that owns this cell has been updated.
      */
-    open fun update(connectionsChanged: Boolean, graphChanged: Boolean) {}
+    open fun update(connectionsChanged: Boolean, graphChanged: Boolean) {
+        if(connectionsChanged) {
+            onConnectionsChanged()
+        }
+
+        if(graphChanged) {
+            behaviors.changeGraph()
+            onGraphChanged()
+        }
+    }
+
+    /**
+     * Called when this cell's connection list changes.
+     * */
+    open fun onConnectionsChanged() {}
+
+    /**
+     * Called when this cell joined another graph.
+     * Subscribers may be added here.
+     * */
+    open fun onGraphChanged() {}
 
     /**
      * Called when the solver is being built, in order to clear and prepare the objects.
@@ -97,22 +182,49 @@ abstract class CellBase(val pos: CellPos, val id: ResourceLocation) : IWailaProv
      * */
     fun recordObjectConnections() {
         objectSet.process {
-            connections.forEach { neighborInfo ->
-                if (neighborInfo.cell.hasObject(it.type)) {
-                    // We can form a connection here.
+            connections.forEach { (remoteCell, sourceDirection) ->
+                if(!it.connectionMask.has(sourceDirection)) {
+                    return@forEach
+                }
 
-                    when (it.type) {
-                        SimulationObjectType.Electrical -> {
-                            val localElectrical = it as ElectricalObject
-                            val remoteElectrical = neighborInfo.cell.objectSet.electricalObject
+                if (!remoteCell.hasObject(it.type)) {
+                    return@forEach
+                }
 
-                            localElectrical.addConnection(
-                                ElectricalConnectionInfo(
-                                    remoteElectrical,
-                                    neighborInfo.sourceDirection
-                                )
+                val remoteObj = remoteCell.objectSet[it.type]
+
+                val remoteConnection = remoteCell.connections.firstOrNull { it.cell == this }
+                    ?: error("Mismatched connection sets")
+
+                if(!remoteObj.connectionMask.has(remoteConnection.sourceDirection)) {
+                    return@forEach
+                }
+
+                // We can form a connection here.
+
+                when (it.type) {
+                    SimulationObjectType.Electrical -> {
+                        val localElectrical = it as ElectricalObject
+                        val remoteElectrical = remoteCell.objectSet.electricalObject
+
+                        localElectrical.addConnection(
+                            ElectricalConnectionInfo(
+                                remoteElectrical,
+                                sourceDirection
                             )
-                        }
+                        )
+                    }
+
+                    SimulationObjectType.Thermal -> {
+                        val localThermal = it as ThermalObject
+                        val remoteThermal = remoteCell.objectSet.thermalObject
+
+                        localThermal.addConnection(
+                            ThermalConnectionInfo(
+                                remoteThermal,
+                                sourceDirection
+                            )
+                        )
                     }
                 }
             }
@@ -139,6 +251,7 @@ abstract class CellBase(val pos: CellPos, val id: ResourceLocation) : IWailaProv
      * Gets the electrical object. Only call if it has been ensured that this cell has an electrical object.
      * */
     val electricalObject get() = objectSet.electricalObject
+    val thermalObject get() = objectSet.thermalObject
 
     /**
      * By default, the cell just passes down the call to objects that implement the WAILA provider.
@@ -154,6 +267,12 @@ abstract class CellBase(val pos: CellPos, val id: ResourceLocation) : IWailaProv
 
         objectSet.process {
             if (it is IWailaProvider) {
+                it.appendBody(builder, config)
+            }
+        }
+
+        behaviors.process {
+            if(it is IWailaProvider) {
                 it.appendBody(builder, config)
             }
         }

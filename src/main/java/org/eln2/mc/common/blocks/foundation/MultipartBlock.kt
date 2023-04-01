@@ -2,6 +2,7 @@ package org.eln2.mc.common.blocks.foundation
 
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
+import net.minecraft.nbt.CompoundTag
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.InteractionHand
 import net.minecraft.world.InteractionResult
@@ -17,19 +18,26 @@ import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.entity.BlockEntityTicker
 import net.minecraft.world.level.block.entity.BlockEntityType
 import net.minecraft.world.level.block.state.BlockState
+import net.minecraft.world.level.block.state.StateDefinition
 import net.minecraft.world.level.material.FluidState
 import net.minecraft.world.level.material.Material
 import net.minecraft.world.phys.BlockHitResult
+import net.minecraft.world.phys.HitResult
 import net.minecraft.world.phys.shapes.CollisionContext
 import net.minecraft.world.phys.shapes.EntityCollisionContext
 import net.minecraft.world.phys.shapes.VoxelShape
 import org.eln2.mc.Eln2
 import org.eln2.mc.common.blocks.BlockRegistry
+import org.eln2.mc.common.content.GhostLightBlock
 import org.eln2.mc.common.parts.PartRegistry
 import org.eln2.mc.common.parts.foundation.Part
 import java.util.*
 
-class MultipartBlock : BaseEntityBlock(Properties.of(Material.STONE).noOcclusion().destroyTime(0.2f)) {
+class MultipartBlock : BaseEntityBlock(Properties.of(Material.STONE)
+    .noOcclusion()
+    .destroyTime(0.2f)
+    .lightLevel { it.getValue(GhostLightBlock.brightnessProperty) }) {
+
     private val epsilon = 0.00001
     private val emptyBox = box(0.0, 0.0, 0.0, epsilon, epsilon, epsilon)
 
@@ -101,14 +109,13 @@ class MultipartBlock : BaseEntityBlock(Properties.of(Material.STONE).noOcclusion
             return false
         }
 
-        val removedId =
-            multipart.remove(player, level)
-                ?: return false
+        val saveTag = CompoundTag()
 
-        val item = PartRegistry.getPartItem(removedId)
+        val removedId = multipart.remove(player, level, saveTag)
+            ?: return false
 
         if (!player.isCreative) {
-            player.inventory.add(ItemStack(item))
+            player.inventory.add(Part.createPartDropStack(removedId, saveTag))
         }
 
         // We want to destroy the multipart only if it is empty
@@ -227,5 +234,26 @@ class MultipartBlock : BaseEntityBlock(Properties.of(Material.STONE).noOcclusion
             BlockRegistry.MULTIPART_BLOCK_ENTITY.get(),
             MultipartBlockEntity.Companion::blockTick
         )
+    }
+
+    override fun createBlockStateDefinition(pBuilder: StateDefinition.Builder<Block, BlockState>) {
+        pBuilder.add(GhostLightBlock.brightnessProperty)
+    }
+
+    override fun getCloneItemStack(
+        state: BlockState?,
+        target: HitResult?,
+        level: BlockGetter?,
+        pos: BlockPos?,
+        player: Player?
+    ): ItemStack {
+        if(level == null || pos == null || player == null){
+            return ItemStack.EMPTY
+        }
+
+        val picked = pickPart(level, pos, player)
+            ?: return ItemStack.EMPTY
+
+        return ItemStack(PartRegistry.getPartItem(picked.id))
     }
 }

@@ -23,11 +23,13 @@ import net.minecraft.world.phys.shapes.BooleanOp
 import net.minecraft.world.phys.shapes.Shapes
 import net.minecraft.world.phys.shapes.VoxelShape
 import org.eln2.mc.Eln2
+import org.eln2.mc.Eln2.LOGGER
 import org.eln2.mc.annotations.ClientOnly
 import org.eln2.mc.annotations.ServerOnly
 import org.eln2.mc.client.render.MultipartBlockEntityInstance
 import org.eln2.mc.common.blocks.BlockRegistry
 import org.eln2.mc.common.cells.foundation.*
+import org.eln2.mc.common.content.GhostLightBlock
 import org.eln2.mc.common.parts.PartRegistry
 import org.eln2.mc.common.parts.foundation.*
 import org.eln2.mc.common.space.DirectionMask
@@ -44,6 +46,7 @@ import org.eln2.mc.extensions.NbtExtensions.putBlockPos
 import org.eln2.mc.extensions.NbtExtensions.putDirection
 import org.eln2.mc.extensions.NbtExtensions.putPartUpdateType
 import org.eln2.mc.extensions.NbtExtensions.putResourceLocation
+import org.eln2.mc.extensions.PartExtensions.allows
 import org.eln2.mc.integration.waila.IWailaProvider
 import org.eln2.mc.integration.waila.TooltipBuilder
 import org.eln2.mc.utility.BoundingBox
@@ -57,10 +60,16 @@ import java.util.concurrent.ConcurrentLinkedQueue
  *  - The multipart entity saves data for all the parts. Parts are responsible for their rendering.
  *  - A part can also be included in the simulation. Special connection logic is implemented for CellPart.
  * */
-class MultipartBlockEntity(var pos: BlockPos, var state: BlockState) :
+class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
     BlockEntity(BlockRegistry.MULTIPART_BLOCK_ENTITY.get(), pos, state),
     ICellContainer,
     IWailaProvider {
+
+    // Interesting issue.
+    // If we try to add tickers before the block receives the first tick,
+    // we will cause some deadlock in Minecraft's code.
+    // This is set to TRUE when this block first ticks. We only update the ticker if this is set to true.
+    private var worldLoaded = false
 
     private val parts = HashMap<Direction, Part>()
 
@@ -89,6 +98,10 @@ class MultipartBlockEntity(var pos: BlockPos, var state: BlockState) :
         collisionShape = Shapes.empty()
     }
 
+    fun getPart(face: Direction): Part? {
+        return parts[face]
+    }
+
     private fun destroyPart(face: Direction): Part? {
         val result = parts.remove(face)
             ?: return null
@@ -96,6 +109,14 @@ class MultipartBlockEntity(var pos: BlockPos, var state: BlockState) :
         tickingParts.removeIf { it == result }
 
         result.onRemoved()
+
+        level?.also {
+            if(!it.isClientSide){
+                // Remove lingering lights
+
+                updateBrightness()
+            }
+        }
 
         return result
     }
@@ -118,7 +139,7 @@ class MultipartBlockEntity(var pos: BlockPos, var state: BlockState) :
      * */
     @ServerOnly
     private fun syncData() {
-        level!!.sendBlockUpdated(blockPos, state, state, Block.UPDATE_CLIENTS)
+        level!!.sendBlockUpdated(blockPos, blockState, blockState, Block.UPDATE_CLIENTS)
     }
 
     /**
@@ -143,7 +164,7 @@ class MultipartBlockEntity(var pos: BlockPos, var state: BlockState) :
      * @return True if the part was successfully placed. Otherwise, false.
      * */
     @ServerOnly
-    fun place(entity: Player, pos: BlockPos, face: Direction, provider: PartProvider): Boolean {
+    fun place(entity: Player, pos: BlockPos, face: Direction, provider: PartProvider, saveTag: CompoundTag? = null): Boolean {
         if (entity.level.isClientSide) {
             return false
         }
@@ -192,10 +213,18 @@ class MultipartBlockEntity(var pos: BlockPos, var state: BlockState) :
         placementUpdates.add(PartUpdate(part, PartUpdateType.Add))
         joinCollider(part)
 
+        if(part is IItemPersistentPart && part.order == ItemPersistentPartLoadOrder.BeforeSim) {
+            part.loadItemTag(saveTag)
+        }
+
         part.onPlaced()
 
         if (part is IPartCellContainer) {
             CellConnectionManager.connect(this, CellInfo(part.cell, part.placementContext.face))
+        }
+
+        if(part is IItemPersistentPart && part.order == ItemPersistentPartLoadOrder.AfterSim) {
+            part.loadItemTag(saveTag)
         }
 
         saveData()
@@ -206,18 +235,21 @@ class MultipartBlockEntity(var pos: BlockPos, var state: BlockState) :
 
     /**
      * Tries to destroy a part.
+     * @param saveTag A tag to save part data, if required.
      * @return The ID of the part that was broken, if any were picked. Otherwise, null.
      * */
     @ServerOnly
-    fun remove(entity: Player, level: Level): ResourceLocation? {
+    fun remove(entity: Player, level: Level, saveTag: CompoundTag? = null): ResourceLocation? {
         if (level.isClientSide) {
             return null
         }
 
-        val part = pickPart(entity) ?: return null
+        val part = pickPart(entity)
+            ?: return null
 
         val id = part.id
-        breakPart(part)
+
+        breakPart(part, saveTag)
 
         return id
     }
@@ -226,7 +258,7 @@ class MultipartBlockEntity(var pos: BlockPos, var state: BlockState) :
      * Destroys a part, saves and synchronizes the changes.
      * */
     @ServerOnly
-    private fun breakPart(part: Part) {
+    fun breakPart(part: Part, saveTag: CompoundTag? = null) {
         if (part is IPartCellContainer) {
             CellConnectionManager.destroy(
                 CellInfo(
@@ -235,6 +267,10 @@ class MultipartBlockEntity(var pos: BlockPos, var state: BlockState) :
                 ),
                 this
             )
+        }
+
+        if(part is IItemPersistentPart && saveTag != null) {
+            part.saveItemTag(saveTag)
         }
 
         destroyPart(part.placementContext.face)
@@ -439,7 +475,12 @@ class MultipartBlockEntity(var pos: BlockPos, var state: BlockState) :
             return
         }
 
-        val tag = packet.tag!!
+        val tag = packet.tag
+
+        if(tag == null){
+            Eln2.LOGGER.error("Got null update tag")
+            return
+        }
 
         unpackPlacementUpdates(tag)
         unpackPartUpdates(tag)
@@ -531,7 +572,12 @@ class MultipartBlockEntity(var pos: BlockPos, var state: BlockState) :
             return
         }
 
-        saveParts(pTag)
+        try {
+            saveParts(pTag)
+        }
+        catch (t: Throwable){
+            Eln2.LOGGER.error("MULTIPART SAVE EX $t")
+        }
     }
 
     /**
@@ -559,14 +605,11 @@ class MultipartBlockEntity(var pos: BlockPos, var state: BlockState) :
             }
 
             if (this.savedTag != null) {
-                Eln2.LOGGER.info("Completing multipart disk load at $pos with ${savedTag!!.size()}")
                 loadParts(savedTag!!)
-                Eln2.LOGGER.info("Loaded from tag")
+
                 parts.values.forEach { part ->
                     part.onLoaded()
                 }
-
-                Eln2.LOGGER.info("Done")
 
                 // GC reference tracking
                 savedTag = null
@@ -743,12 +786,18 @@ class MultipartBlockEntity(var pos: BlockPos, var state: BlockState) :
         DirectionMask.perpendicular(partFace).process { searchDirection ->
             val partRelative = part.getRelativeDirection(searchDirection)
 
+            fun scanConsumer(remoteSpace: CellInfo, remoteContainer: ICellContainer, remoteRelative: RelativeRotationDirection){
+                results.add(CellNeighborInfo(remoteSpace, remoteContainer, partRelative, remoteRelative))
+            }
+
             if (!part.provider.canConnectFrom(partRelative)) {
                 Eln2.LOGGER.info("Part rejected connection on $partRelative - ${part.provider}")
                 return@process
             }
 
             fun innerScan() {
+                // Inner scan does not make sense outside multiparts, so I did not move it to CellScanner
+
                 if (part.allowInnerConnections) {
                     val innerFace = searchDirection.opposite
 
@@ -781,44 +830,14 @@ class MultipartBlockEntity(var pos: BlockPos, var state: BlockState) :
             }
 
             fun planarScan() {
-                if (part.allowPlanarConnections && level!!.getBlockEntity(pos + searchDirection) is ICellContainer) {
-                    val remoteContainer = level!!
-                        .getBlockEntity(pos + searchDirection)
-                        as? ICellContainer
-                        ?: return
-
-                    val remoteConnectionFace = searchDirection.opposite
-
-                    val remoteSpace = remoteContainer
-                        .query(CellQuery(remoteConnectionFace, partFace))
-                        ?: return
-
-                    val remoteRelative = remoteContainer
-                        .probeConnectionCandidate(remoteSpace, remoteConnectionFace)
-                        ?: return
-
-                    results.add(CellNeighborInfo(remoteSpace, remoteContainer, partRelative, remoteRelative))
+                if (part.allowPlanarConnections) {
+                    CellScanner.planarScan(level!!, pos, searchDirection, partFace, ::scanConsumer)
                 }
             }
 
             fun wrappedScan() {
                 if (part.allowWrappedConnections) {
-                    val wrapDirection = partFace.opposite
-
-                    val remoteContainer = level!!
-                        .getBlockEntity(pos + searchDirection + wrapDirection)
-                        as? ICellContainer
-                        ?: return
-
-                    val remoteSpace = remoteContainer
-                        .query(CellQuery(part.placementContext.face, searchDirection))
-                        ?: return
-
-                    val remoteRelative = remoteContainer
-                        .probeConnectionCandidate(remoteSpace, wrapDirection.opposite)
-                        ?: return
-
-                    results.add(CellNeighborInfo(remoteSpace, remoteContainer, partRelative, remoteRelative))
+                    CellScanner.wrappedScan(level!!, pos, searchDirection, partFace, ::scanConsumer)
                 }
             }
 
@@ -830,11 +849,17 @@ class MultipartBlockEntity(var pos: BlockPos, var state: BlockState) :
         return ArrayList(results)
     }
 
-    override fun probeConnectionCandidate(location: CellInfo, direction: Direction): RelativeRotationDirection? {
+    override fun probeConnectionCandidate(location: CellInfo, direction: Direction, mode: ConnectionMode): RelativeRotationDirection? {
         val part = (parts[location.innerFace]!!)
+        val partCell = part as IPartCellContainer
+
+        if(!partCell.allows(mode)){
+            return null
+        }
+
         val relative = part.getRelativeDirection(direction)
 
-        return if ((part as IPartCellContainer).provider.canConnectFrom(relative)) {
+        return if (partCell.provider.canConnectFrom(relative)) {
             relative
         } else {
             null
@@ -900,6 +925,10 @@ class MultipartBlockEntity(var pos: BlockPos, var state: BlockState) :
     }
 
     fun addTicker(part: ITickablePart) {
+        if(level == null){
+            error("Illegal ticker add before level is available")
+        }
+
         if (!parts.values.any { it == part }) {
             error("Cannot register ticker for a part that is not added!")
         }
@@ -910,11 +939,13 @@ class MultipartBlockEntity(var pos: BlockPos, var state: BlockState) :
 
         tickingParts.add(part)
 
+        if(!worldLoaded){
+            return
+        }
+
         val chunk = level!!.getChunkAt(pos)
 
         chunk.updateBlockEntityTicker(this)
-
-        Eln2.LOGGER.info("activated ticker")
     }
 
     fun removeTicker(part: ITickablePart) {
@@ -922,6 +953,33 @@ class MultipartBlockEntity(var pos: BlockPos, var state: BlockState) :
     }
 
     val needsTicks get() = tickingParts.isNotEmpty()
+
+    private fun setBlockBrightness(value: Int){
+        level!!.setBlockAndUpdate(pos, blockState.setValue(GhostLightBlock.brightnessProperty, value))
+    }
+
+    fun updateBrightness() {
+        if(level!!.isClientSide){
+            error("Cannot update brightness on client")
+        }
+
+        if(!worldLoaded) {
+            return
+        }
+
+        val currentBrightness = blockState.getValue(GhostLightBlock.brightnessProperty)
+
+        val targetBrightness = parts.values.maxOfOrNull { it.brightness }
+
+        if(targetBrightness == null) {
+            setBlockBrightness(0)
+            return
+        }
+
+        if(targetBrightness != currentBrightness) {
+            setBlockBrightness(targetBrightness)
+        }
+    }
 
     companion object {
         fun <T : BlockEntity> blockTick(level: Level?, pos: BlockPos?, state: BlockState?, entity: T?) {
@@ -945,14 +1003,18 @@ class MultipartBlockEntity(var pos: BlockPos, var state: BlockState) :
                 return
             }
 
+            entity.worldLoaded = true
+
+            if(!level.isClientSide) {
+                entity.updateBrightness()
+            }
+
             if (!entity.needsTicks) {
                 // Remove the ticker
 
                 val chunk = level.getChunkAt(pos)
 
                 chunk.removeBlockEntityTicker(pos)
-
-                Eln2.LOGGER.info("Removed ticker!")
 
                 return
             }
@@ -966,8 +1028,6 @@ class MultipartBlockEntity(var pos: BlockPos, var state: BlockState) :
                     error("Tried to remove part ticker $removed that was not registered")
                 }
             }
-
-            Eln2.LOGGER.info("Multipart tick")
         }
     }
 

@@ -11,4 +11,6 @@ class Stopwatch {
 
         return Time.toSeconds(elapsedNanoseconds)
     }
+
+    val total get() = Time.toSeconds(System.nanoTime() - initialTimeStamp)
 }

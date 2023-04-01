@@ -3,7 +3,6 @@ package org.eln2.mc.client.render
 import com.jozufozu.flywheel.api.MaterialManager
 import com.jozufozu.flywheel.api.instance.DynamicInstance
 import com.jozufozu.flywheel.backend.instancing.blockentity.BlockEntityInstance
-import org.eln2.mc.Eln2
 import org.eln2.mc.annotations.ClientOnly
 import org.eln2.mc.common.blocks.foundation.MultipartBlockEntity
 import org.eln2.mc.common.parts.foundation.Part
@@ -31,6 +30,11 @@ class MultipartBlockEntityInstance(val materialManager: MaterialManager, blockEn
 
         parts.forEach { part ->
             val renderer = part.renderer
+
+            // todo: maybe get jozufozu to document this?
+            if(!renderer.isSetupWith(this)){
+                renderer.setupRendering(this)
+            }
 
             renderer.beginFrame()
         }
@@ -82,8 +86,6 @@ class MultipartBlockEntityInstance(val materialManager: MaterialManager, blockEn
      * This also calls a cleanup method on the part renderers.
      * */
     override fun remove() {
-        Eln2.LOGGER.info("Removing multipart renderer")
-
         parts.forEach { part ->
             part.destroyRenderer()
         }

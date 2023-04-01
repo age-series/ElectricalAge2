@@ -25,7 +25,7 @@ object CellConnectionManager {
      * */
     fun connect(container: ICellContainer, cellInfo: CellInfo) {
         connectCell(cellInfo, container)
-        cellInfo.cell.onCreated()
+        cellInfo.cell.create()
     }
 
     /**
@@ -45,7 +45,7 @@ object CellConnectionManager {
         // Stop all running simulations
 
         neighborCells.map { it.graph }.distinct().forEach {
-            it.stopSimulation()
+            it.ensureStopped()
         }
 
         /*
@@ -145,6 +145,8 @@ object CellConnectionManager {
 
         // Stop Simulation
         graph.stopSimulation()
+
+        cell.remove()
 
         // This is common logic for all cases.
         neighborCells.forEach { neighborInfo ->

@@ -8,7 +8,7 @@ package org.eln2.mc.common.cells.foundation.objects
 class SimulationObjectSet(objects: List<ISimulationObject>) {
     constructor(vararg objects: ISimulationObject) : this(objects.asList())
 
-    private var electrical: ElectricalObject? = null
+    private val objects = HashMap<SimulationObjectType, ISimulationObject>()
 
     private val mask: SimulationObjectMask
 
@@ -20,14 +20,8 @@ class SimulationObjectSet(objects: List<ISimulationObject>) {
         var objectMask = SimulationObjectMask.EMPTY
 
         objects.forEach {
-            when (it.type) {
-                SimulationObjectType.Electrical -> {
-                    if (electrical != null) {
-                        error("Duplicate electrical object")
-                    }
-
-                    electrical = it as ElectricalObject
-                }
+            if(this.objects.put(it.type, it) != null) {
+                error("Duplicate object of type ${it.type}")
             }
 
             objectMask += it.type
@@ -41,22 +35,17 @@ class SimulationObjectSet(objects: List<ISimulationObject>) {
     }
 
     private fun getObject(type: SimulationObjectType): ISimulationObject {
-        when (type) {
-            SimulationObjectType.Electrical -> {
-                if (electrical == null) {
-                    error("Tried to get electrical component, which was null")
-                }
-
-                return electrical!!
-            }
-        }
+        return objects[type] ?: error("Object set does not have $type")
     }
 
     val electricalObject get() = getObject(SimulationObjectType.Electrical) as ElectricalObject
+    val thermalObject get() = getObject(SimulationObjectType.Thermal) as ThermalObject
 
     fun process(function: ((ISimulationObject) -> Unit)) {
-        if (electrical != null) {
-            function(electrical!!)
-        }
+        objects.values.forEach(function)
+    }
+
+    operator fun get(type: SimulationObjectType): ISimulationObject {
+        return objects[type] ?: error("Object set does not have $type")
     }
 }

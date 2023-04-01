@@ -5,12 +5,14 @@ import net.minecraft.core.Direction
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.world.InteractionResult
+import net.minecraft.world.item.ItemStack
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
 import net.minecraft.world.phys.shapes.Shapes
 import net.minecraft.world.phys.shapes.VoxelShape
 import org.eln2.mc.annotations.ClientOnly
 import org.eln2.mc.annotations.ServerOnly
+import org.eln2.mc.common.parts.PartRegistry
 import org.eln2.mc.common.space.RelativeRotationDirection
 
 /**
@@ -19,6 +21,17 @@ import org.eln2.mc.common.space.RelativeRotationDirection
  * They are placed on the inner faces of a multipart container block space.
  * */
 abstract class Part(val id: ResourceLocation, val placementContext: PartPlacementContext) {
+    companion object {
+        fun createPartDropStack(id: ResourceLocation, saveTag: CompoundTag?, count: Int = 1): ItemStack {
+            val item = PartRegistry.getPartItem(id)
+            val stack = ItemStack(item, count)
+
+            stack.tag = saveTag
+
+            return stack
+        }
+    }
+
     /**
      * This is the size that will be used to create the bounding box for this part.
      * It should not exceed the block size, but that is not enforced.
@@ -26,6 +39,9 @@ abstract class Part(val id: ResourceLocation, val placementContext: PartPlacemen
     abstract val baseSize: Vec3
 
     private var cachedShape: VoxelShape? = null
+
+    var brightness: Int = 0
+        private set
 
     /**
      * This gets the relative direction towards the global direction, taking into account the facing of this part.
@@ -245,5 +261,14 @@ abstract class Part(val id: ResourceLocation, val placementContext: PartPlacemen
     open fun destroyRenderer() {
         cachedRenderer?.remove()
         cachedRenderer = null
+    }
+
+    /**
+     * Sends a light update to the multipart.
+     * */
+    fun updateBrightness(newValue: Int){
+        brightness = newValue
+
+        placementContext.multipart.updateBrightness()
     }
 }

@@ -10,6 +10,8 @@ import org.eln2.mc.common.cells.foundation.CellBase
 import org.eln2.mc.common.cells.foundation.CellGraphManager
 import org.eln2.mc.common.cells.foundation.CellPos
 import org.eln2.mc.common.cells.foundation.CellProvider
+import org.eln2.mc.common.space.RelativeRotationDirection
+import org.eln2.mc.extensions.NbtExtensions.useSubTagIfPreset
 import org.eln2.mc.integration.waila.IWailaProvider
 import org.eln2.mc.integration.waila.TooltipBuilder
 import java.util.*
@@ -26,6 +28,11 @@ abstract class CellPart(
     Part(id, placementContext),
     IPartCellContainer,
     IWailaProvider {
+
+    companion object {
+        private const val GRAPH_ID = "GraphID"
+        private const val CUSTOM_SIMULATION_DATA = "SimulationData"
+    }
 
     /**
      * The actual cell contained within this part.
@@ -45,12 +52,20 @@ abstract class CellPart(
     @ServerOnly
     private lateinit var loadGraphId: UUID
 
+    @ServerOnly
+    private var customSimulationData: CompoundTag? = null
+
+    protected var isAlive = false
+        private set
+
     /**
      * Notifies the cell of the new container.
      * */
     override fun onPlaced() {
         cell = provider.create(cellPos)
         cell.container = placementContext.multipart
+        isAlive = true
+        onCellAcquired()
     }
 
     /**
@@ -60,7 +75,15 @@ abstract class CellPart(
         if (hasCell) {
             cell.onContainerUnloaded()
             cell.container = null
+            isAlive = false
+            onCellReleased()
         }
+    }
+
+    override fun onRemoved() {
+        super.onRemoved()
+
+        isAlive = false
     }
 
     /**
@@ -74,7 +97,11 @@ abstract class CellPart(
 
         val tag = CompoundTag()
 
-        tag.putUUID("GraphID", cell.graph.id)
+        tag.putUUID(GRAPH_ID, cell.graph.id)
+
+        saveCustomSimData()?.also {
+            tag.put(CUSTOM_SIMULATION_DATA, it)
+        }
 
         return tag
     }
@@ -88,11 +115,13 @@ abstract class CellPart(
             return
         }
 
-        if (tag.contains("GraphID")) {
+        if (tag.contains(GRAPH_ID)) {
             loadGraphId = tag.getUUID("GraphID")
         } else {
             Eln2.LOGGER.info("Part at $cellPos did not have saved data")
         }
+
+        tag.useSubTagIfPreset(CUSTOM_SIMULATION_DATA) { customSimulationData = it }
     }
 
     /**
@@ -105,10 +134,9 @@ abstract class CellPart(
 
         cell = if (!this::loadGraphId.isInitialized) {
             Eln2.LOGGER.error("Part cell not initialized!")
+            // Should we blow up the game?
             provider.create(cellPos)
         } else {
-            Eln2.LOGGER.info("Part loading cell from disk $loadGraphId")
-
             CellGraphManager
                 .getFor(placementContext.level as ServerLevel)
                 .getGraph(loadGraphId)
@@ -117,17 +145,35 @@ abstract class CellPart(
 
         cell.container = placementContext.multipart
         cell.onContainerLoaded()
+
+        if(customSimulationData != null){
+            Eln2.LOGGER.info(customSimulationData)
+            loadCustomSimData(customSimulationData!!)
+            customSimulationData = null
+        }
+
+        isAlive = true
+        onCellAcquired()
     }
+
+    open fun saveCustomSimData(): CompoundTag?{
+        return null
+    }
+
+    open fun loadCustomSimData(tag: CompoundTag) {}
 
     override fun appendBody(builder: TooltipBuilder, config: IPluginConfig?) {
         if (hasCell) {
-            val cell = this.cell
-
-            if (cell is IWailaProvider) {
-                cell.appendBody(builder, config)
-            }
+            this.cell.appendBody(builder, config)
         }
     }
+
+    override fun recordConnection(direction: RelativeRotationDirection, mode: ConnectionMode) {}
+
+    override fun recordDeletedConnection(direction: RelativeRotationDirection) {}
+
+    open fun onCellAcquired() {}
+    open fun onCellReleased() { }
 
     override val allowPlanarConnections = true
     override val allowInnerConnections = true

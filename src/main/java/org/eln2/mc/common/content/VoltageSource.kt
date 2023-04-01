@@ -2,22 +2,19 @@ package org.eln2.mc.common.content
 
 import mcp.mobius.waila.api.IPluginConfig
 import net.minecraft.resources.ResourceLocation
-import net.minecraft.world.phys.Vec3
 import org.ageseries.libage.sim.electrical.mna.Circuit
 import org.ageseries.libage.sim.electrical.mna.component.VoltageSource
-import org.eln2.mc.Eln2
+import org.eln2.mc.mathematics.Functions.bbVec
 import org.eln2.mc.client.render.PartialModels
+import org.eln2.mc.client.render.PartialModels.bbOffset
 import org.eln2.mc.client.render.foundation.BasicPartRenderer
-import org.eln2.mc.common.cells.CellRegistry
 import org.eln2.mc.common.cells.foundation.CellBase
 import org.eln2.mc.common.cells.foundation.CellPos
 import org.eln2.mc.common.cells.foundation.Conventions
 import org.eln2.mc.common.cells.foundation.objects.*
 import org.eln2.mc.common.parts.foundation.CellPart
-import org.eln2.mc.common.parts.foundation.ConnectionMode
 import org.eln2.mc.common.parts.foundation.IPartRenderer
 import org.eln2.mc.common.parts.foundation.PartPlacementContext
-import org.eln2.mc.common.space.RelativeRotationDirection
 import org.eln2.mc.extensions.TooltipBuilderExtensions.voltageSource
 import org.eln2.mc.integration.waila.IWailaProvider
 import org.eln2.mc.integration.waila.TooltipBuilder
@@ -35,7 +32,7 @@ class VoltageSourceObject : ElectricalObject(), IWailaProvider {
     /**
      * Gets or sets the potential of the voltage source.
      * */
-    var potential: Double = 100.0
+    var potential: Double = 1200.0
         set(value) {
             field = value
 
@@ -56,14 +53,14 @@ class VoltageSourceObject : ElectricalObject(), IWailaProvider {
         return resistors.getOfferedResistor(directionOf(neighbour))
     }
 
-    override fun recreateComponents() {
+    override fun clearComponents() {
         source = VoltageSource()
-        source.potential = 100.0
+        source.potential = potential
 
         resistors.clear()
     }
 
-    override fun registerComponents(circuit: Circuit) {
+    override fun addComponents(circuit: Circuit) {
         circuit.add(source)
         resistors.register(connections, circuit)
     }
@@ -78,12 +75,6 @@ class VoltageSourceObject : ElectricalObject(), IWailaProvider {
     override fun appendBody(builder: TooltipBuilder, config: IPluginConfig?) {
         builder.voltageSource(source)
     }
-
-    override fun addConnection(connectionInfo: ElectricalConnectionInfo) {
-        super.addConnection(connectionInfo)
-
-        Eln2.LOGGER.info("VS Record connection")
-    }
 }
 
 class VoltageSourceCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) {
@@ -93,15 +84,13 @@ class VoltageSourceCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) 
 }
 
 class VoltageSourcePart(id: ResourceLocation, placementContext: PartPlacementContext) :
-    CellPart(id, placementContext, CellRegistry.VOLTAGE_SOURCE_CELL.get()) {
+    CellPart(id, placementContext, Content.VOLTAGE_SOURCE_CELL.get()) {
 
-    override val baseSize = Vec3(1.0, 1.0, 1.0)
+    override val baseSize = bbVec(6.0, 2.5, 6.0)
 
     override fun createRenderer(): IPartRenderer {
-        return BasicPartRenderer(this, PartialModels.WIRE_CROSSING_FULL)
+        return BasicPartRenderer(this, PartialModels.VOLTAGE_SOURCE).also {
+            it.downOffset = bbOffset(2.5)
+        }
     }
-
-    override fun recordConnection(direction: RelativeRotationDirection, mode: ConnectionMode) {}
-
-    override fun recordDeletedConnection(direction: RelativeRotationDirection) {}
 }

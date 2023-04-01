@@ -4,9 +4,13 @@ import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.resources.ResourceLocation
+import org.ageseries.libage.sim.Material
+import org.ageseries.libage.sim.thermal.Temperature
+import org.ageseries.libage.sim.thermal.ThermalMass
 import org.eln2.mc.common.cells.foundation.CellPos
 import org.eln2.mc.common.parts.foundation.PartUpdateType
 import org.eln2.mc.common.space.RelativeRotationDirection
+import org.eln2.mc.sim.MaterialMapping
 
 object NbtExtensions {
     fun CompoundTag.putBlockPos(key: String, pos: BlockPos) {
@@ -118,5 +122,156 @@ object NbtExtensions {
         val data = this.getInt(key)
 
         return PartUpdateType.fromId(data)
+    }
+
+    /**
+     * Creates a new compound tag, calls the consumer method with the new tag, and adds the created tag to this instance.
+     * @return The Compound Tag that was created.
+     * */
+    fun CompoundTag.putSubTag(key: String, consumer: ((CompoundTag) -> Unit)): CompoundTag {
+        val tag = CompoundTag()
+
+        consumer(tag)
+
+        this.put(key, tag)
+
+        return tag
+    }
+
+    fun CompoundTag.withSubTag(key: String, tag: CompoundTag): CompoundTag {
+        this.put(key, tag)
+        return this
+    }
+
+    fun CompoundTag.withSubTagOptional(key: String, tag: CompoundTag?): CompoundTag {
+        if(tag != null) {
+            this.put(key, tag)
+        }
+
+        return this
+    }
+
+    /**
+     * Gets the compound tag from this instance, and calls the consumer method with the found tag.
+     * @return The tag that was found.
+     * */
+    fun CompoundTag.useSubTag(key: String, consumer: ((CompoundTag) -> Unit)): CompoundTag {
+        val tag = this.get(key) as CompoundTag
+        consumer(tag)
+
+        return tag
+    }
+
+    fun CompoundTag.placeSubTag(key: String, consumer: ((CompoundTag) -> Unit)): CompoundTag {
+        val tag = CompoundTag()
+        consumer(tag)
+
+        this.put(key, tag)
+
+        return tag
+    }
+
+    /**
+     * Gets the compound tag from this instance, and calls the consumer method with the found tag.
+     * @return The tag that was found.
+     * */
+    fun CompoundTag.useSubTagIfPreset(key: String, consumer: ((CompoundTag) -> Unit)): CompoundTag? {
+        val tag = this.get(key) as? CompoundTag
+            ?: return null
+
+        consumer(tag)
+
+        return tag
+    }
+
+    private const val ELECTRICAL_RESISTIVITY = "electricalResistivity"
+    private const val THERMAL_CONDUCTIVITY = "thermalConductivity"
+    private const val SPECIFIC_HEAT = "specificHeat"
+    private const val DENSITY = "density"
+    private const val MATERIAL_NAME = "materialName"
+    private const val ENERGY = "energy"
+    private const val MASS = "mass"
+    private const val MATERIAL = "material"
+
+    fun CompoundTag.putMaterial(id: String, material: Material){
+        this.putSubTag(id) {
+            it.putDouble(ELECTRICAL_RESISTIVITY, material.electricalResistivity)
+            it.putDouble(THERMAL_CONDUCTIVITY, material.thermalConductivity)
+            it.putDouble(SPECIFIC_HEAT, material.specificHeat)
+            it.putDouble(DENSITY, material.density)
+        }
+    }
+
+    fun CompoundTag.getMaterial(id: String): Material {
+        val tag = this.getCompound(id)
+
+        return Material(
+            tag.getDouble(ELECTRICAL_RESISTIVITY),
+            tag.getDouble(THERMAL_CONDUCTIVITY),
+            tag.getDouble(SPECIFIC_HEAT),
+            tag.getDouble(DENSITY)
+        )
+    }
+
+    fun CompoundTag.putMaterialMapped(id: String, material: Material) {
+        this.putSubTag(id) {
+            it.putString(MATERIAL_NAME, MaterialMapping.getName(material))
+        }
+    }
+
+    fun CompoundTag.getMaterialMapped(id: String): Material {
+        val tag = this.getCompound(id)
+
+        return MaterialMapping.getMaterial(tag.getString(MATERIAL_NAME))
+    }
+
+    fun CompoundTag.putThermalMass(id: String, thermalMass: ThermalMass, materialSerializer : ((String, Material, CompoundTag) -> Unit)) {
+        this.putSubTag(id) {
+            materialSerializer(MATERIAL, thermalMass.material, it)
+            it.putDouble(ENERGY, thermalMass.energy)
+            it.putDouble(MASS, thermalMass.mass)
+        }
+    }
+
+    fun CompoundTag.getThermalMass(id: String, materialDeserializer: ((String, CompoundTag) -> Material)): ThermalMass {
+        val tag = this.getCompound(id)
+
+        return ThermalMass(
+            materialDeserializer(MATERIAL, tag),
+            tag.getDouble(ENERGY),
+            tag.getDouble(MASS)
+        )
+    }
+
+    fun CompoundTag.putThermalMass(id: String, thermalMass: ThermalMass) {
+        this.putThermalMass(id, thermalMass) { key, material, tag ->
+            tag.putMaterial(key, material)
+        }
+    }
+
+    fun CompoundTag.putThermalMassMapped(id: String, thermalMass: ThermalMass) {
+        this.putThermalMass(id, thermalMass) { key, material, tag ->
+            tag.putMaterialMapped(key, material)
+        }
+    }
+
+    fun CompoundTag.getThermalMass(id: String): ThermalMass {
+        return this.getThermalMass(id) { key, tag ->
+            tag.getMaterial(key)
+        }
+    }
+
+    fun CompoundTag.getThermalMassMapped(id: String): ThermalMass {
+        return this.getThermalMass(id) { key, tag ->
+            tag.getMaterialMapped(key)
+        }
+    }
+
+    fun CompoundTag.putTemperature(id: String, temperature: Temperature) {
+        this.putDouble(id, temperature.kelvin)
+    }
+
+    fun CompoundTag.getTemperature(id: String): Temperature {
+        return Temperature(this.getDouble(id))
     }
 }

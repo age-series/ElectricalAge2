@@ -1,8 +1,0 @@
-{
-    "loader": "forge:obj",
-    "model": "eln2:models/block/diode/diode.obj",
-    "flip-v": true,
-    "textures": {
-        "particle": "minecraft:block/stone"
-    }
-}

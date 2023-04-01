@@ -1,8 +1,0 @@
-{
-    "loader": "forge:obj",
-    "model": "eln2:models/block/solar_light/solar_light.obj",
-    "flip-v": true,
-    "textures": {
-        "particle": "minecraft:block/stone"
-    }
-}

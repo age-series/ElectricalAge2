@@ -3,8 +3,12 @@ package org.eln2.mc.common.cells.foundation
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.nbt.ListTag
 import net.minecraft.resources.ResourceLocation
+import net.minecraft.server.level.ServerLevel
 import net.minecraftforge.server.ServerLifecycleHooks
+import org.ageseries.libage.debug.dprintln
 import org.ageseries.libage.sim.electrical.mna.Circuit
+import org.ageseries.libage.sim.electrical.mna.component.VoltageSource
+import org.ageseries.libage.sim.thermal.Simulator
 import org.eln2.mc.Eln2.LOGGER
 import org.eln2.mc.annotations.CrossThreadAccess
 import org.eln2.mc.common.cells.CellRegistry
@@ -20,9 +24,14 @@ import java.util.*
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.collections.ArrayDeque
 import kotlin.system.measureNanoTime
+
+fun interface ICellGraphSubscriber {
+    fun simulationTick(elapsed: Double)
+}
 
 /**
  * The cell graph represents a physical network of cells.
@@ -30,22 +39,27 @@ import kotlin.system.measureNanoTime
  * The cell graph manages the solver and simulation.
  * It also has serialization/deserialization logic for saving to the disk using NBT.
  * */
-class CellGraph(val id: UUID, val manager: CellGraphManager) {
+class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLevel) {
     val cells = ArrayList<CellBase>()
 
     private val posCells = HashMap<CellPos, CellBase>()
 
     private val circuits = ArrayList<Circuit>()
-
+    private val thermalSimulations = ArrayList<Simulator>()
+    
     private val simulationStopLock = ReentrantLock()
 
     // This is the simulation task. It will be null if the simulation is stopped
     private var runningTask: ScheduledFuture<*>? = null
 
+    val isRunning get() = runningTask != null
+
     @CrossThreadAccess
     private var updates = 0L
 
     private var updatesCheckpoint = 0L
+
+    val subscribers = SubscriberCollection()
 
     @CrossThreadAccess
     var lastTickTime = 0.0
@@ -64,7 +78,7 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
     /**
      * True, if the solution was found last simulation tick. Otherwise, false.
      * */
-    var successful = false
+    var electricalSuccessful = false
         private set
 
     /**
@@ -88,13 +102,29 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
     private fun update() {
         simulationStopLock.lock()
 
+        val elapsed = 1.0 / 100.0
+
+        subscribers.update(elapsed, SubscriberPhase.Pre)
+
         lastTickTime = Time.toSeconds(measureNanoTime {
-            successful = true
+            electricalSuccessful = true
 
             circuits.forEach {
-                successful = successful && it.step(0.05)
+                val success = it.step(elapsed)
+
+                electricalSuccessful = electricalSuccessful && success
+
+                if(!success && !it.isFloating){
+                    LOGGER.error("Failed to update non-floating circuit!")
+                }
+            }
+
+            thermalSimulations.forEach {
+                it.step(elapsed)
             }
         })
+
+        subscribers.update(elapsed, SubscriberPhase.Post)
 
         updates++
 
@@ -113,8 +143,10 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
         cells.forEach { it.recordObjectConnections() }
 
         realizeElectrical()
+        realizeThermal()
 
         cells.forEach { it.build() }
+        circuits.forEach { postProcessCircuit(it) }
     }
 
     /**
@@ -133,6 +165,22 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
             circuits.add(circuit)
 
             LOGGER.info("Found circuit with ${circuit.components.size} components")
+        }
+    }
+
+    private fun realizeThermal() {
+        LOGGER.info("Realizing thermal components.")
+
+        thermalSimulations.clear()
+
+        realizeComponents(SimulationObjectType.Thermal) { set ->
+            val simulation = Simulator()
+
+            set.forEach { it.thermalObject.setNewSimulation(simulation) }
+
+            thermalSimulations.add(simulation)
+
+            LOGGER.info("Found thermal simulation with ${simulation.masses.size} components")
         }
     }
 
@@ -193,6 +241,25 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
         }
     }
 
+    private fun postProcessCircuit(circuit: Circuit){
+        if(circuit.isFloating){
+            fixFloating(circuit)
+        }
+    }
+
+    private fun fixFloating(circuit: Circuit){
+        var found = false
+        for (comp in circuit.components) {
+            if (comp is VoltageSource) {
+                dprintln("F.<init>: floating: ground $comp pin 1 (node ${comp.node(1)}")
+                comp.ground(1)
+                found = true
+                break
+            }
+        }
+        if (!found) println("WARN: F.<init>: floating circuit and no VSource; the matrix is likely underconstrained.")
+    }
+
     /**
      * Gets the cell at the specified CellPos.
      * @return The cell, if found, or throws an exception, if the cell does not exist.
@@ -247,6 +314,7 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
         validateMutationAccess()
 
         graph.cells.addAll(cells)
+
         manager.setDirty()
     }
 
@@ -259,6 +327,12 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
 
         manager.removeGraph(this)
         manager.setDirty()
+    }
+
+    fun ensureStopped() {
+        if(isRunning) {
+            stopSimulation()
+        }
     }
 
     /**
@@ -291,42 +365,75 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
         LOGGER.info("Started simulation for $this")
     }
 
-    fun toNbt(): CompoundTag {
-        stopSimulation()
+    private fun runSuspended(action: (() -> Unit)) {
+        val running = isRunning
 
-        val circuitCompound = CompoundTag()
-        circuitCompound.putUUID("ID", id)
-
-        val cellListTag = ListTag()
-
-        cells.forEach { cell ->
-            val cellTag = CompoundTag()
-            val connectionsTag = ListTag()
-
-            cell.connections.forEach { connectionInfo ->
-                val connectionCompound = CompoundTag()
-                connectionCompound.putCellPos("Position", connectionInfo.cell.pos)
-                connectionCompound.putRelativeDirection("Direction", connectionInfo.sourceDirection)
-                connectionsTag.add(connectionCompound)
-            }
-
-            cellTag.putCellPos("Position", cell.pos)
-            cellTag.putString("ID", cell.id.toString())
-            cellTag.put("Connections", connectionsTag)
-
-            cellListTag.add(cellTag)
+        if (running){
+            stopSimulation()
         }
 
-        circuitCompound.put("Cells", cellListTag)
+        action()
 
-        startSimulation()
+        if(running) {
+            startSimulation()
+        }
+    }
+
+    fun toNbt(): CompoundTag {
+        val circuitCompound = CompoundTag()
+
+        runSuspended {
+            circuitCompound.putUUID(ID, id)
+
+            val cellListTag = ListTag()
+
+            cells.forEach { cell ->
+                val cellTag = CompoundTag()
+                val connectionsTag = ListTag()
+
+                cell.connections.forEach { connectionInfo ->
+                    val connectionCompound = CompoundTag()
+                    connectionCompound.putCellPos(POSITION, connectionInfo.cell.pos)
+                    connectionCompound.putRelativeDirection(DIRECTION, connectionInfo.sourceDirection)
+                    connectionsTag.add(connectionCompound)
+                }
+
+                cellTag.putCellPos(POSITION, cell.pos)
+                cellTag.putString(ID, cell.id.toString())
+                cellTag.put(CONNECTIONS, connectionsTag)
+
+                try{
+                    cellTag.put(CELL_DATA, cell.createTag())
+                }
+                catch (t: Throwable) {
+                    LOGGER.error("Cell save error: $t")
+                }
+
+                cellListTag.add(cellTag)
+            }
+
+            circuitCompound.put(CELLS, cellListTag)
+        }
 
         return circuitCompound
+    }
+
+    fun serverStop(){
+        if(runningTask != null) {
+            stopSimulation()
+        }
     }
 
     private data class ConnectionInfoCell(val cellPos: CellPos, val direction: RelativeRotationDirection)
 
     companion object {
+        private const val CELL_DATA = "data"
+        private const val ID = "id"
+        private const val CELLS = "cells"
+        private const val POSITION = "pos"
+        private const val CONNECTIONS = "connections"
+        private const val DIRECTION = "dir"
+
         init {
             // We do get an exception from thread pool creation, but explicit handling is better here.
             if (Configuration.config.simulationThreads == 0) {
@@ -336,30 +443,50 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
             LOGGER.info("Using ${Configuration.config.simulationThreads} simulation threads")
         }
 
-        private val pool = Executors.newScheduledThreadPool(Configuration.config.simulationThreads)
+        private val threadNumber = AtomicInteger()
 
-        fun fromNbt(graphCompound: CompoundTag, manager: CellGraphManager): CellGraph {
-            val id = graphCompound.getUUID("ID")
-            val result = CellGraph(id, manager)
-            val cellListTag = graphCompound.get("Cells") as ListTag?
+        private fun createThread(r: Runnable): Thread{
+            val t = Thread(r, "cell-graph-${threadNumber.getAndIncrement()}")
+
+            if (t.isDaemon){
+                t.isDaemon = false
+            }
+
+            if (t.priority != Thread.NORM_PRIORITY){
+                t.priority = Thread.NORM_PRIORITY
+            }
+
+            return t
+        }
+
+        private val pool = Executors.newScheduledThreadPool(
+            Configuration.config.simulationThreads, ::createThread)
+
+        fun fromNbt(graphCompound: CompoundTag, manager: CellGraphManager, level: ServerLevel): CellGraph {
+            val id = graphCompound.getUUID(ID)
+            val result = CellGraph(id, manager, level)
+            val cellListTag = graphCompound.get(CELLS) as ListTag?
                 ?: // no cells are to be loaded
                 return result
 
             // used to assign the connections after all cells have been loaded
             val cellConnections = HashMap<CellBase, ArrayList<ConnectionInfoCell>>()
 
+            // used to load cell custom data
+            val cellData = HashMap<CellBase, CompoundTag>()
+
             cellListTag.forEach { cellNbt ->
                 val cellCompound = cellNbt as CompoundTag
-                val pos = cellCompound.getCellPos("Position")
-                val cellId = ResourceLocation.tryParse(cellCompound.getString("ID"))!!
+                val pos = cellCompound.getCellPos(POSITION)
+                val cellId = ResourceLocation.tryParse(cellCompound.getString(ID))!!
 
                 val connectionPositions = ArrayList<ConnectionInfoCell>()
-                val connectionsTag = cellCompound.get("Connections") as ListTag
+                val connectionsTag = cellCompound.get(CONNECTIONS) as ListTag
 
                 connectionsTag.forEach {
                     val connectionCompound = it as CompoundTag
-                    val connectionPos = connectionCompound.getCellPos("Position")
-                    val connectionDirection = connectionCompound.getRelativeDirection("Direction")
+                    val connectionPos = connectionCompound.getCellPos(POSITION)
+                    val connectionDirection = connectionCompound.getRelativeDirection(DIRECTION)
                     connectionPositions.add(ConnectionInfoCell(connectionPos, connectionDirection))
                 }
 
@@ -368,6 +495,9 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
                 cellConnections[cell] = connectionPositions
 
                 result.addCell(cell)
+
+                cellData[cell] = cellCompound.getCompound(CELL_DATA)
+                LOGGER.info("Loaded tag")
             }
 
             // now assign all connections and the graph
@@ -384,8 +514,18 @@ class CellGraph(val id: UUID, val manager: CellGraphManager) {
                 cell.graph = result
                 cell.connections = connections
                 cell.update(connectionsChanged = true, graphChanged = true)
+
+                try {
+                    cell.loadTag(cellData[cell]!!)
+                }
+                catch (t: Throwable) {
+                    LOGGER.error("Cell loading exception: $t")
+                }
+
                 cell.onLoadedFromDisk()
             }
+
+            result.cells.forEach { it.create() }
 
             return result
         }
