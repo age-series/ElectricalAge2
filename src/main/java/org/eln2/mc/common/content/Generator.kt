@@ -51,7 +51,6 @@ import org.eln2.mc.extensions.LibAgeExtensions.setPotentialEpsilon
 import org.eln2.mc.extensions.LibAgeExtensions.setResistanceEpsilon
 import org.eln2.mc.extensions.NbtExtensions.getTemperature
 import org.eln2.mc.extensions.NbtExtensions.putTemperature
-import org.eln2.mc.extensions.NbtExtensions.useSubTag
 import org.eln2.mc.extensions.NbtExtensions.useSubTagIfPreset
 import org.eln2.mc.extensions.NumberExtensions.formatted
 import org.eln2.mc.extensions.NumberExtensions.formattedPercentN
@@ -922,7 +921,7 @@ class HeatGeneratorBlockEntity(pos: BlockPos, state: BlockState): CellBlockEntit
             }
 
             if (pBlockEntity !is HeatGeneratorBlockEntity) {
-                LOGGER.error("Got $pBlockEntity instead of furnace")
+                LOGGER.error("Got $pBlockEntity instead of heat generator")
                 return
             }
 
@@ -954,7 +953,7 @@ class HeatGeneratorBlockEntity(pos: BlockPos, state: BlockState): CellBlockEntit
     }
 
     fun serverTick() {
-        val cell = furnaceCell
+        val cell = heatGeneratorCell
             ?: return
 
         if(!cell.needsFuel) {
@@ -970,7 +969,7 @@ class HeatGeneratorBlockEntity(pos: BlockPos, state: BlockState): CellBlockEntit
         cell.replaceFuel(Fuels.coal(1.0))
     }
 
-    private val furnaceCell = cell as? HeatGeneratorCell
+    private val heatGeneratorCell get() = cell as? HeatGeneratorCell
 }
 
 class HeatGeneratorBlock : CellBlock() {
