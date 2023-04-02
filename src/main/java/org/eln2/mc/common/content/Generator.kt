@@ -1,11 +1,20 @@
 package org.eln2.mc.common.content
 
+import com.mojang.blaze3d.vertex.PoseStack
 import mcp.mobius.waila.api.IPluginConfig
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
 import net.minecraft.nbt.CompoundTag
+import net.minecraft.network.chat.Component
+import net.minecraft.network.chat.TextComponent
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.level.ServerLevel
+import net.minecraft.world.InteractionHand
+import net.minecraft.world.InteractionResult
+import net.minecraft.world.entity.player.Inventory
+import net.minecraft.world.entity.player.Player
+import net.minecraft.world.inventory.AbstractContainerMenu
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
 import net.minecraft.world.level.Level
@@ -13,11 +22,13 @@ import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.entity.BlockEntityTicker
 import net.minecraft.world.level.block.entity.BlockEntityType
 import net.minecraft.world.level.block.state.BlockState
+import net.minecraft.world.phys.BlockHitResult
 import net.minecraft.world.phys.Vec3
 import net.minecraftforge.common.capabilities.Capability
 import net.minecraftforge.common.util.LazyOptional
 import net.minecraftforge.items.CapabilityItemHandler
 import net.minecraftforge.items.ItemStackHandler
+import net.minecraftforge.items.SlotItemHandler
 import org.ageseries.libage.sim.Material
 import org.ageseries.libage.sim.electrical.mna.Circuit
 import org.ageseries.libage.sim.electrical.mna.component.Resistor
@@ -26,12 +37,15 @@ import org.ageseries.libage.sim.thermal.Simulator
 import org.ageseries.libage.sim.thermal.Temperature
 import org.ageseries.libage.sim.thermal.ThermalMass
 import org.apache.commons.math3.geometry.euclidean.threed.Vector3D
+import org.eln2.mc.Eln2
 import org.eln2.mc.Eln2.LOGGER
+import org.eln2.mc.annotations.ActuallyValidUsage
 import org.eln2.mc.annotations.CrossThreadAccess
 import org.eln2.mc.annotations.RaceCondition
 import org.eln2.mc.client.render.PartialModels
 import org.eln2.mc.client.render.PartialModels.bbOffset
 import org.eln2.mc.client.render.foundation.BasicPartRenderer
+import org.eln2.mc.client.render.renderTextured
 import org.eln2.mc.common.blocks.foundation.CellBlock
 import org.eln2.mc.common.blocks.foundation.CellBlockEntity
 import org.eln2.mc.common.cells.foundation.*
@@ -46,23 +60,27 @@ import org.eln2.mc.common.space.DirectionMask
 import org.eln2.mc.common.space.RelativeRotationDirection
 import org.eln2.mc.control.pid
 import org.eln2.mc.extensions.DirectionExtensions.toVector3D
+import org.eln2.mc.extensions.GuiExtensions.addPlayerGrid
+import org.eln2.mc.extensions.LevelExtensions.constructMenu
 import org.eln2.mc.extensions.LibAgeExtensions.add
 import org.eln2.mc.extensions.LibAgeExtensions.setPotentialEpsilon
 import org.eln2.mc.extensions.LibAgeExtensions.setResistanceEpsilon
 import org.eln2.mc.extensions.NbtExtensions.getTemperature
+import org.eln2.mc.extensions.NbtExtensions.putSubTag
 import org.eln2.mc.extensions.NbtExtensions.putTemperature
 import org.eln2.mc.extensions.NbtExtensions.useSubTagIfPreset
+import org.eln2.mc.extensions.NbtExtensions.withSubTag
+import org.eln2.mc.extensions.NbtExtensions.withSubTagOptional
 import org.eln2.mc.extensions.NumberExtensions.formatted
 import org.eln2.mc.extensions.NumberExtensions.formattedPercentN
 import org.eln2.mc.integration.waila.IWailaProvider
 import org.eln2.mc.integration.waila.TooltipBuilder
+import org.eln2.mc.mathematics.*
 import org.eln2.mc.mathematics.Functions.avg
 import org.eln2.mc.mathematics.Functions.bbVec
 import org.eln2.mc.mathematics.Functions.lerp
 import org.eln2.mc.mathematics.Functions.map
-import org.eln2.mc.mathematics.epsilonEquals
-import org.eln2.mc.mathematics.evaluate
-import org.eln2.mc.mathematics.mappedHermite
+import org.eln2.mc.mathematics.Functions.vec4fOne
 import org.eln2.mc.sim.Datasets
 import org.eln2.mc.sim.ThermalBody
 import org.eln2.mc.utility.SelfDescriptiveUnitMultipliers.megaJoules
@@ -790,6 +808,22 @@ data class HeatGeneratorFuelMass(
     val suggestedBurnRate: Double,  // Unit/Second
     val fuelTemperature: Double
 ) {
+    companion object {
+        private const val AMOUNT = "amount"
+        private const val ENERGY_CAPACITY = "energyCapacity"
+        private const val SUGGESTED_BURN_RATE = "suggestedBurnRate"
+        private const val FUEL_TEMPERATURE = "fuelTemperature"
+
+        fun fromNbt(tag: CompoundTag): HeatGeneratorFuelMass {
+            return HeatGeneratorFuelMass(
+                tag.getDouble(AMOUNT),
+                tag.getDouble(ENERGY_CAPACITY),
+                tag.getDouble(SUGGESTED_BURN_RATE),
+                tag.getDouble(FUEL_TEMPERATURE)
+            )
+        }
+    }
+
     val availableEnergy get() = fuelAmount * fuelEnergyCapacity
 
     /**
@@ -813,6 +847,15 @@ data class HeatGeneratorFuelMass(
     fun removeEnergy(energy: Double) {
         fuelAmount -= energy / fuelEnergyCapacity
     }
+
+    fun toNbt(): CompoundTag {
+        return CompoundTag().also {
+            it.putDouble(AMOUNT, fuelAmount)
+            it.putDouble(ENERGY_CAPACITY, fuelEnergyCapacity)
+            it.putDouble(SUGGESTED_BURN_RATE, suggestedBurnRate)
+            it.putDouble(FUEL_TEMPERATURE, fuelTemperature)
+        }
+    }
 }
 
 object Fuels {
@@ -829,7 +872,11 @@ object Fuels {
     }
 }
 
-private class FuelBurnerBehavior(val bodyGetter: IThermalBodyAccessor): ICellBehavior, IWailaProvider {
+private class FuelBurnerBehavior(val cell: CellBase, val bodyGetter: IThermalBodyAccessor): ICellBehavior, IWailaProvider {
+    companion object {
+        private const val FUEL = "fuel"
+    }
+
     private var fuel: HeatGeneratorFuelMass? = null
 
     private val pid = pid(
@@ -848,6 +895,8 @@ private class FuelBurnerBehavior(val bodyGetter: IThermalBodyAccessor): ICellBeh
         pid.minControl = 0.0
         pid.maxControl = fuel.suggestedBurnRate
         pid.setPoint = fuel.fuelTemperature
+
+        cell.setChanged()
     }
 
     /**
@@ -880,18 +929,34 @@ private class FuelBurnerBehavior(val bodyGetter: IThermalBodyAccessor): ICellBeh
         fuel.removeEnergy(energyTransfer)
 
         body.thermalEnergy += energyTransfer
+
+        cell.setChanged()
     }
 
     override fun appendBody(builder: TooltipBuilder, config: IPluginConfig?) {
         builder.text("Control Signal x1000", (burnRateSignal * 1000).formatted(2))
         builder.text("Fuel", (fuel?.fuelAmount ?: 0.0).formatted())
     }
+
+    fun saveNbt(): CompoundTag {
+        return CompoundTag().withSubTagOptional(FUEL, fuel?.toNbt())
+    }
+
+    fun loadNbt(tag: CompoundTag) {
+        tag.useSubTagIfPreset(FUEL) {
+            replaceFuel(HeatGeneratorFuelMass.fromNbt(it))
+        }
+    }
 }
 
 class HeatGeneratorCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) {
+    companion object {
+        const val BURNER_BEHAVIOR = "burner"
+    }
+
     init {
         behaviors.add(
-            FuelBurnerBehavior { thermalWireObject.body }
+            FuelBurnerBehavior(this) { thermalWireObject.body }
         )
     }
 
@@ -908,12 +973,22 @@ class HeatGeneratorCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) 
         return SimulationObjectSet(ThermalWireObject(this))
     }
 
+    override fun loadCellData(tag: CompoundTag) {
+        tag.useSubTagIfPreset(BURNER_BEHAVIOR, behaviors.getBehavior<FuelBurnerBehavior>()::loadNbt)
+    }
+
+    override fun saveCellData(): CompoundTag {
+        return CompoundTag().withSubTag(BURNER_BEHAVIOR, behaviors.getBehavior<FuelBurnerBehavior>().saveNbt())
+    }
+
     private val thermalWireObject get() = thermalObject as ThermalWireObject
 }
 
 class HeatGeneratorBlockEntity(pos: BlockPos, state: BlockState): CellBlockEntity(pos, state, Content.HEAT_GENERATOR_BLOCK_ENTITY.get()) {
     companion object {
         const val FUEL_SLOT = 0
+
+        private const val INVENTORY = "inventory"
 
         fun tick(pLevel: Level?, pPos: BlockPos?, pState: BlockState?, pBlockEntity: BlockEntity?) {
             if (pLevel == null || pBlockEntity == null) {
@@ -931,17 +1006,19 @@ class HeatGeneratorBlockEntity(pos: BlockPos, state: BlockState): CellBlockEntit
         }
     }
 
-    class InventoryHandler : ItemStackHandler(1) {
+    class InventoryHandler(val entity: HeatGeneratorBlockEntity) : ItemStackHandler(1) {
         override fun insertItem(slot: Int, stack: ItemStack, simulate: Boolean): ItemStack {
             if(stack.item != Items.COAL) {
                 return ItemStack.EMPTY
             }
 
-            return super.insertItem(slot, stack, simulate)
+            return super.insertItem(slot, stack, simulate).also {
+                entity.inputChanged()
+            }
         }
     }
 
-    private val inventoryHandler = InventoryHandler()
+    val inventoryHandler = InventoryHandler(this)
     private val inventoryHandlerLazy = LazyOptional.of { inventoryHandler }
 
     override fun <T : Any?> getCapability(cap: Capability<T>, side: Direction?): LazyOptional<T> {
@@ -950,6 +1027,18 @@ class HeatGeneratorBlockEntity(pos: BlockPos, state: BlockState): CellBlockEntit
         }
 
         return super.getCapability(cap, side)
+    }
+
+    override fun saveAdditional(pTag: CompoundTag) {
+        super.saveAdditional(pTag)
+
+        pTag.put(INVENTORY, inventoryHandler.serializeNBT())
+    }
+
+    override fun load(pTag: CompoundTag) {
+        super.load(pTag)
+
+        pTag.useSubTagIfPreset(INVENTORY, inventoryHandler::deserializeNBT)
     }
 
     fun serverTick() {
@@ -967,9 +1056,99 @@ class HeatGeneratorBlockEntity(pos: BlockPos, state: BlockState): CellBlockEntit
         }
 
         cell.replaceFuel(Fuels.coal(1.0))
+
+        // Inventory changed:
+        setChanged()
+    }
+
+    fun inputChanged(){
+        setChanged()
     }
 
     private val heatGeneratorCell get() = cell as? HeatGeneratorCell
+}
+
+class HeatGeneratorMenu(pContainerId: Int, playerInventory: Inventory, handler: ItemStackHandler) :
+    AbstractContainerMenu(Content.HEAT_GENERATOR_MENU.get(), pContainerId){
+
+    companion object {
+        fun create(id: Int, inventory: Inventory, player: Player, entity: HeatGeneratorBlockEntity): HeatGeneratorMenu {
+            return HeatGeneratorMenu(
+                id,
+                inventory,
+                entity.inventoryHandler)
+        }
+    }
+
+    constructor(pContainerId: Int, playerInventory: Inventory): this(
+        pContainerId,
+        playerInventory,
+        ItemStackHandler(1),
+    )
+
+    private val playerGridStart: Int
+    private val playerGridEnd: Int
+
+    init {
+        addSlot(SlotItemHandler(handler, HeatGeneratorBlockEntity.FUEL_SLOT, 56, 35))
+
+        playerGridStart = 1
+        playerGridEnd = playerGridStart + this.addPlayerGrid(playerInventory, this::addSlot)
+    }
+
+    override fun quickMoveStack(pPlayer: Player, pIndex: Int): ItemStack {
+        val slot = slots[pIndex]
+
+        if(!slot.hasItem()) {
+            return ItemStack.EMPTY
+        }
+
+        val stack = slot.item
+
+        if(pIndex == HeatGeneratorBlockEntity.FUEL_SLOT) {
+            // Quick move from input to player
+
+            if (!moveItemStackTo(stack, playerGridStart, playerGridEnd, true)) {
+                return ItemStack.EMPTY
+            }
+        }
+        else {
+            // Only move into input slot
+
+            if(!moveItemStackTo(stack, HeatGeneratorBlockEntity.FUEL_SLOT, HeatGeneratorBlockEntity.FUEL_SLOT + 1, true)){
+                return ItemStack.EMPTY
+            }
+        }
+
+        slot.setChanged()
+
+        return stack
+    }
+
+    override fun stillValid(pPlayer: Player): Boolean {
+        return true
+    }
+}
+
+class HeatGeneratorScreen(menu: HeatGeneratorMenu, playerInventory: Inventory, title: Component) : AbstractContainerScreen<HeatGeneratorMenu>(menu, playerInventory, title) {
+    companion object {
+        private val TEXTURE = Eln2.resource("textures/gui/container/furnace_test.png")
+        private val TEX_SIZE = Vector2I(256, 256)
+        private val BACKGROUND_UV_SIZE = Vector2I(176, 166)
+    }
+
+    override fun renderBg(pPoseStack: PoseStack, pPartialTick: Float, pMouseX: Int, pMouseY: Int) {
+        renderTextured(
+            texture = TEXTURE,
+            poseStack = pPoseStack,
+            blitOffset = 0,
+            color = vec4fOne(),
+            position = Vector2I(leftPos, topPos),
+            uvSize = BACKGROUND_UV_SIZE,
+            uvPosition = Vector2F.zero(),
+            textureSize = TEX_SIZE
+        )
+    }
 }
 
 class HeatGeneratorBlock : CellBlock() {
@@ -987,6 +1166,19 @@ class HeatGeneratorBlock : CellBlock() {
         pBlockEntityType: BlockEntityType<T>
     ): BlockEntityTicker<T> {
         return BlockEntityTicker(HeatGeneratorBlockEntity::tick)
+    }
+
+    @ActuallyValidUsage
+    @Deprecated("Deprecated in Java")
+    override fun use(
+        pState: BlockState,
+        pLevel: Level,
+        pPos: BlockPos,
+        pPlayer: Player,
+        pHand: InteractionHand,
+        pHit: BlockHitResult
+    ): InteractionResult {
+        return pLevel.constructMenu(pPos, pPlayer, { TextComponent("Test") }, HeatGeneratorMenu::create)
     }
 }
 

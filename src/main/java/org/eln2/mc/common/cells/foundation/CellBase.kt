@@ -30,7 +30,7 @@ abstract class CellBase(val pos: CellPos, val id: ResourceLocation) : IWailaProv
     /**
      * If [hasGraph], [CellGraph.setChanged] is called to ensure the cell data will be saved.
      * */
-    private fun setChanged(){
+    fun setChanged(){
         if(hasGraph){
             graph.setChanged()
         }
