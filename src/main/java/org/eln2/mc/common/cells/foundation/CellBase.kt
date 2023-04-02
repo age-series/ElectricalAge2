@@ -27,6 +27,15 @@ abstract class CellBase(val pos: CellPos, val id: ResourceLocation) : IWailaProv
     lateinit var graph: CellGraph
     lateinit var connections: ArrayList<CellConnectionInfo>
 
+    /**
+     * If [hasGraph], [CellGraph.setChanged] is called to ensure the cell data will be saved.
+     * */
+    private fun setChanged(){
+        if(hasGraph){
+            graph.setChanged()
+        }
+    }
+
     val hasGraph get() = this::graph.isInitialized
 
     fun removeConnection(cell: CellBase) {
@@ -77,11 +86,15 @@ abstract class CellBase(val pos: CellPos, val id: ResourceLocation) : IWailaProv
         }
     }
 
+    /**
+     * Called when the graph is being loaded. Custom data saved by [saveCellData] will be passed here.
+     * */
     open fun loadCellData(tag: CompoundTag) { }
 
-    open fun saveCellData(): CompoundTag? {
-        return null
-    }
+    /**
+     * Called when the graph is being saved. Custom data should be saved here.
+     * */
+    open fun saveCellData(): CompoundTag? = null
 
     private fun saveObjectData(tag: CompoundTag) {
         objectSet.process { obj ->

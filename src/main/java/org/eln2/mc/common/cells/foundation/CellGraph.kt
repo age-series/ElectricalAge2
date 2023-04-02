@@ -29,10 +29,6 @@ import java.util.concurrent.locks.ReentrantLock
 import kotlin.collections.ArrayDeque
 import kotlin.system.measureNanoTime
 
-fun interface ICellGraphSubscriber {
-    fun simulationTick(elapsed: Double)
-}
-
 /**
  * The cell graph represents a physical network of cells.
  * It may have multiple simulation subsets, formed between objects in the cells of this graph.
@@ -64,6 +60,10 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
     @CrossThreadAccess
     var lastTickTime = 0.0
         private set
+
+    fun setChanged(){
+        manager.setDirty()
+    }
 
     /**
      * Gets the number of updates that have occurred since the last call to this method.

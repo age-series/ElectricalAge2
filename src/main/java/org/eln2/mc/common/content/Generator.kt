@@ -387,6 +387,14 @@ class BatteryCell(pos: CellPos, id: ResourceLocation, override val model: Batter
         return tag
     }
 
+    override fun saveCellData(): CompoundTag {
+        return serializeNbt()
+    }
+
+    override fun loadCellData(tag: CompoundTag) {
+        deserializeNbt(tag)
+    }
+
     override fun onGraphChanged() {
         graph.subscribers.addPreInstantaneous(this::simulationTick)
     }
@@ -400,6 +408,8 @@ class BatteryCell(pos: CellPos, id: ResourceLocation, override val model: Batter
             energy = it.energy
             life = it.life
             energyIo = it.energyIo
+
+            graph.setChanged()
         }
     }
 
@@ -451,6 +461,8 @@ class BatteryCell(pos: CellPos, id: ResourceLocation, override val model: Batter
         generatorObject.internalResistance = model.resistanceFunction.computeResistance(this, elapsed)
         life -= model.damageFunction.computeDamage(this, elapsed)
         life = life.coerceIn(0.0, 1.0)
+
+        graph.setChanged()
     }
 
     override fun appendBody(builder: TooltipBuilder, config: IPluginConfig?) {
@@ -469,7 +481,6 @@ class BatteryCell(pos: CellPos, id: ResourceLocation, override val model: Batter
 
 class BatteryPart(id: ResourceLocation, placementContext: PartPlacementContext, provider: CellProvider):
     CellPart(id, placementContext, provider),
-    ITickablePart,
     IItemPersistentPart {
 
     companion object {
@@ -484,30 +495,7 @@ class BatteryPart(id: ResourceLocation, placementContext: PartPlacementContext, 
         }
     }
 
-    override fun saveCustomSimData(): CompoundTag {
-        return CompoundTag().also {
-            it.put(BATTERY, batteryCell.serializeNbt())
-        }
-    }
-
-    // FIXME: MOVE BATTERY DATA TO CELL
-    override fun loadCustomSimData(tag: CompoundTag) {
-        tag.useSubTag(BATTERY) { batteryCell.deserializeNbt(it) }
-    }
-
-    override fun onAdded() {
-        super.onAdded()
-
-        if(!placementContext.level.isClientSide){
-            placementContext.multipart.addTicker(this)
-        }
-    }
-
     private val batteryCell get() = cell as BatteryCell
-
-    override fun tick() {
-        invalidateSave()
-    }
 
     override fun saveItemTag(tag: CompoundTag) {
         tag.put(BATTERY, batteryCell.serializeNbt())
