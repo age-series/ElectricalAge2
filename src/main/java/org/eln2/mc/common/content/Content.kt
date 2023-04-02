@@ -142,6 +142,7 @@ object Content {
     }, vec3(1.0)))
     val HEAT_GENERATOR_BLOCK = BlockRegistry.registerBasicBlock("heat_generator", tab = null) { HeatGeneratorBlock() }
     val HEAT_GENERATOR_BLOCK_ENTITY = BlockRegistry.blockEntity("heat_generator", ::HeatGeneratorBlockEntity) { HEAT_GENERATOR_BLOCK.block.get() }
+    val HEAT_GENERATOR_MENU = ContainerRegistry.registerMenu("heat_generator_menu", ::HeatGeneratorMenu)
 
     val PHOTOVOLTAIC_GENERATOR_CELL = CellRegistry.register("photovoltaic_cell", BasicCellProvider.polarFB { pos, id ->
         PhotovoltaicGeneratorCell(pos, id, PhotovoltaicModels.test24Volts())
@@ -164,6 +165,7 @@ object Content {
 
         private fun clientWork() {
             MenuScreens.register(FURNACE_MENU.get(), ::FurnaceScreen)
+            MenuScreens.register(HEAT_GENERATOR_MENU.get(), ::HeatGeneratorScreen)
         }
     }
 }
