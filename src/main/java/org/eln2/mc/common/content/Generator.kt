@@ -66,7 +66,6 @@ import org.eln2.mc.extensions.LibAgeExtensions.add
 import org.eln2.mc.extensions.LibAgeExtensions.setPotentialEpsilon
 import org.eln2.mc.extensions.LibAgeExtensions.setResistanceEpsilon
 import org.eln2.mc.extensions.NbtExtensions.getTemperature
-import org.eln2.mc.extensions.NbtExtensions.putSubTag
 import org.eln2.mc.extensions.NbtExtensions.putTemperature
 import org.eln2.mc.extensions.NbtExtensions.useSubTagIfPreset
 import org.eln2.mc.extensions.NbtExtensions.withSubTag
@@ -76,11 +75,11 @@ import org.eln2.mc.extensions.NumberExtensions.formattedPercentN
 import org.eln2.mc.integration.waila.IWailaProvider
 import org.eln2.mc.integration.waila.TooltipBuilder
 import org.eln2.mc.mathematics.*
-import org.eln2.mc.mathematics.Functions.avg
-import org.eln2.mc.mathematics.Functions.bbVec
-import org.eln2.mc.mathematics.Functions.lerp
-import org.eln2.mc.mathematics.Functions.map
-import org.eln2.mc.mathematics.Functions.vec4fOne
+import org.eln2.mc.mathematics.avg
+import org.eln2.mc.mathematics.bbVec
+import org.eln2.mc.mathematics.lerp
+import org.eln2.mc.mathematics.map
+import org.eln2.mc.mathematics.vec4fOne
 import org.eln2.mc.sim.Datasets
 import org.eln2.mc.sim.ThermalBody
 import org.eln2.mc.utility.SelfDescriptiveUnitMultipliers.megaJoules
@@ -1283,12 +1282,14 @@ object PhotovoltaicModels {
             val panelDirection3 = view.normal.toVector3D()
             val rayAngle = Math.toDegrees(Vector3D.angle(sunDirection3, panelDirection3))
 
-            val value = TEST_SPLINE.evaluate(map(
+            val value = TEST_SPLINE.evaluate(
+                map(
                 rayAngle,
                 0.0,
                 90.0,
                 0.0,
-                1.0))
+                1.0)
+            )
 
             return@IPhotovoltaicVoltageFunction value * maximumVoltage
         }

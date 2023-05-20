@@ -4,8 +4,6 @@ import org.eln2.mc.Eln2
 import org.eln2.mc.data.SegmentRange
 import org.eln2.mc.data.SegmentTree
 import org.eln2.mc.data.SegmentTreeBuilder
-import org.eln2.mc.mathematics.Functions.map
-import org.eln2.mc.mathematics.Functions.pow2I
 import org.eln2.mc.utility.ResourceReader
 import kotlin.math.floor
 
@@ -476,7 +474,7 @@ class MappedGridInterpolator(
             gridCoordinates[dim] = mappings[dim].evaluate(coordinates[dim])
         }
 
-        return interpolator.evaluate(gridCoordinates, Functions::lerp)
+        return interpolator.evaluate(gridCoordinates, ::lerp)
     }
 }
 

@@ -18,12 +18,9 @@ import org.ageseries.libage.sim.electrical.mna.Circuit
 import org.ageseries.libage.sim.electrical.mna.component.Resistor
 import org.ageseries.libage.sim.thermal.*
 import org.eln2.mc.Eln2.LOGGER
-import org.eln2.mc.mathematics.Functions.bbVec
+import org.eln2.mc.mathematics.bbVec
 import org.eln2.mc.client.render.MultipartBlockEntityInstance
 import org.eln2.mc.client.render.PartialModels
-import org.eln2.mc.client.render.animations.colors.ColorInterpolators
-import org.eln2.mc.client.render.animations.colors.Utilities.colorF
-import org.eln2.mc.client.render.foundation.RadiantBodyColorBuilder
 import org.eln2.mc.client.render.foundation.defaultRadiantBodyColor
 import org.eln2.mc.common.cells.foundation.CellBase
 import org.eln2.mc.common.cells.foundation.CellPos
@@ -51,8 +48,8 @@ import org.eln2.mc.extensions.Vec3Extensions.times
 import org.eln2.mc.extensions.Vec3Extensions.toVec3
 import org.eln2.mc.integration.waila.IWailaProvider
 import org.eln2.mc.integration.waila.TooltipBuilder
-import org.eln2.mc.mathematics.Functions.lerp
-import org.eln2.mc.mathematics.Functions.map
+import org.eln2.mc.mathematics.lerp
+import org.eln2.mc.mathematics.map
 import org.eln2.mc.mathematics.Geometry.cylinderSurfaceArea
 import org.eln2.mc.sim.BiomeEnvironments
 import org.eln2.mc.sim.ThermalBody
@@ -315,7 +312,8 @@ class WirePart(id: ResourceLocation, context: PartPlacementContext, cellProvider
                 COLD_LIGHT_TEMPERATURE,
                 HOT_LIGHT_TEMPERATURE,
                 0.0,
-                1.0)))
+                1.0)
+        ))
             .toInt()
             .coerceIn(0, 15)
 
