@@ -27,7 +27,7 @@ object ItemRegistry {
         val item: RegistryObject<Item>
     )
 
-    private fun registerBasicItem(name: String, supplier: () -> Item): ItemRegistryItem {
+    fun registerBasicItem(name: String, supplier: () -> Item): ItemRegistryItem {
         val item = REGISTRY.register(name) { supplier() }
         return ItemRegistryItem(name, item)
     }

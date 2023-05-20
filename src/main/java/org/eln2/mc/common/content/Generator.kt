@@ -58,6 +58,8 @@ import org.eln2.mc.common.parts.foundation.*
 import org.eln2.mc.common.space.DirectionMask
 import org.eln2.mc.common.space.RelativeRotationDirection
 import org.eln2.mc.control.pid
+import org.eln2.mc.data.DataAccessNode
+import org.eln2.mc.data.IDataEntity
 import org.eln2.mc.extensions.DirectionExtensions.toVector3D
 import org.eln2.mc.extensions.GuiExtensions.addPlayerGrid
 import org.eln2.mc.extensions.LevelExtensions.constructMenu
@@ -92,7 +94,7 @@ enum class GeneratorPowerDirection {
 /**
  * Represents an Electrical Generator. It is characterised by a voltage and internal resistance.
  * */
-class GeneratorObject : ElectricalObject(), IWailaProvider {
+class GeneratorObject : ElectricalObject(), IWailaProvider, IDataEntity {
     var plusDirection = RelativeRotationDirection.Front
     var minusDirection = RelativeRotationDirection.Back
 
@@ -165,6 +167,16 @@ class GeneratorObject : ElectricalObject(), IWailaProvider {
         builder.voltage(source.instance.potential)
         builder.text("Flow", powerFlowDirection)
         builder.power(abs(resistorPower))
+    }
+
+    override val dataAccessNode = DataAccessNode().also {
+        it.data.withField {
+            VoltageField { potential }
+        }
+
+        it.data.withField {
+            CurrentField { resistorCurrent }
+        }
     }
 }
 
@@ -488,10 +500,7 @@ class BatteryCell(pos: CellPos, id: ResourceLocation, override val model: Batter
     private val thermalWireObject get() = thermalObject as ThermalWireObject
 }
 
-class BatteryPart(id: ResourceLocation, placementContext: PartPlacementContext, provider: CellProvider):
-    CellPart(id, placementContext, provider),
-    IItemPersistentPart {
-
+class BatteryPart(id: ResourceLocation, placementContext: PartPlacementContext, provider: CellProvider): CellPart(id, placementContext, provider), IItemPersistentPart {
     companion object {
         private const val BATTERY = "battery"
     }
@@ -589,8 +598,10 @@ class ThermocoupleBehavior(
     private val generatorAccessor: IGeneratorGetAccessor,
     private val coldAccessor: IThermalBodyProvider,
     private val hotAccessor: IThermalBodyProvider,
-
-    override val model: ThermocoupleModel): ICellBehavior, IThermocoupleView, IWailaProvider {
+    override val model: ThermocoupleModel):
+    ICellBehavior,
+    IThermocoupleView,
+    IWailaProvider {
 
     private data class BodyPair(val hot: ThermalBody, val cold: ThermalBody, val inverted: Boolean)
 
@@ -791,6 +802,8 @@ class ThermocouplePart(id: ResourceLocation, placementContext: PartPlacementCont
 
         EventScheduler.scheduleWorkPre(20, this::sendTemperatureUpdates)
     }
+
+    val thermocoupleCell get() = cell as ThermocoupleCell
 }
 
 data class HeatGeneratorFuelMass(
@@ -974,7 +987,7 @@ class HeatGeneratorCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) 
         return CompoundTag().withSubTag(BURNER_BEHAVIOR, behaviors.getBehavior<FuelBurnerBehavior>().saveNbt())
     }
 
-    private val thermalWireObject get() = thermalObject as ThermalWireObject
+    val thermalWireObject get() = thermalObject as ThermalWireObject
 }
 
 class HeatGeneratorBlockEntity(pos: BlockPos, state: BlockState): CellBlockEntity(pos, state, Content.HEAT_GENERATOR_BLOCK_ENTITY.get()) {
@@ -1303,5 +1316,7 @@ class PhotovoltaicBehavior(cell: GeneratorCell, val model: PhotovoltaicModel) : 
 }
 
 class PhotovoltaicGeneratorCell(pos: CellPos, id: ResourceLocation, model: PhotovoltaicModel) : GeneratorCell(pos, id) {
-    init { behaviors.add(PhotovoltaicBehavior(this, model)) }
+    init {
+        behaviors.add(PhotovoltaicBehavior(this, model))
+    }
 }

@@ -18,6 +18,7 @@ import org.eln2.mc.common.blocks.BlockRegistry
 import org.eln2.mc.common.cells.CellRegistry
 import org.eln2.mc.common.cells.foundation.providers.BasicCellProvider
 import org.eln2.mc.common.containers.ContainerRegistry
+import org.eln2.mc.common.items.ItemRegistry
 import org.eln2.mc.common.parts.PartRegistry
 import org.eln2.mc.common.parts.foundation.BasicCellPart
 import org.eln2.mc.common.parts.foundation.basicRenderer
@@ -149,8 +150,35 @@ object Content {
     })
 
     val PHOTOVOLTAIC_PANEL_PART = PartRegistry.part("photovoltaic_panel_part", BasicPartProvider({id, context ->
-        BasicCellPart(id, context, Vec3(1.0, bbSize(2.0), 1.0), PHOTOVOLTAIC_GENERATOR_CELL.get(), basicRenderer(PartialModels.SOLAR_PANEL_ONE_BLOCK, bbOffset(2.0)))
+        BasicCellPart(
+            id,
+            context,
+            Vec3(1.0, bbSize(2.0), 1.0),
+            PHOTOVOLTAIC_GENERATOR_CELL.get(),
+            basicRenderer(
+                PartialModels.SOLAR_PANEL_ONE_BLOCK,
+                bbOffset(2.0)
+            )
+        )
     }, Vec3(1.0, bbSize(2.0), 1.0)))
+
+    val VOLTAGE_METER_ITEM = ItemRegistry.registerBasicItem("voltage_meter") {
+        UniversalMeter(readVoltage = true)
+    }
+    val CURRENT_METER_ITEM = ItemRegistry.registerBasicItem("current_meter") {
+        UniversalMeter(readCurrent = true)
+    }
+    val TEMPERATURE_METER_ITEM = ItemRegistry.registerBasicItem("temperature_meter") {
+        UniversalMeter(readTemperature = true)
+    }
+
+    val UNIVERSAL_METER_ITEM = ItemRegistry.registerBasicItem("universal_meter") {
+        UniversalMeter(
+            readVoltage = true,
+            readCurrent = true,
+            readTemperature = true
+        )
+    }
 
     @Mod.EventBusSubscriber
     object ClientSetup {
