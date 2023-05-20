@@ -128,10 +128,6 @@ class GridVectorInterpolator(val interpolators: List<GridInterpolator>) {
     }
 }
 
-fun gridVectorInterpolatorOf(grids: List<KDGridD>): GridVectorInterpolator {
-    return GridVectorInterpolator(grids.map { GridInterpolator(it) })
-}
-
 /**
  * Represents a cubic hermite spline with parameter ranges assigned based on the number of samples, from 0-1.
  * */
@@ -377,8 +373,6 @@ class TreeSplineSegmentList(segments: List<SplineSegment>): SplineSegmentList(se
  * Represents a cubic hermite spline with arbitrary parameter ranges.
  * */
 class HermiteSplineMapped(val segments: ISplineSegmentList) {
-    var tension: Double = 1.0
-
     fun evaluate(key: Double): Double {
         if(key < segments.startKey) {
             return segments.startValue
@@ -397,10 +391,10 @@ class HermiteSplineMapped(val segments: ISplineSegmentList) {
         val progress = map(key, middle.keyStart, middle.keyEnd, 0.0, 1.0)
 
         return HermiteSpline.hermite(
-            left.valueStart * tension,
+            left.valueStart,
             middle.valueStart,
             middle.valueEnd,
-            right.valueEnd * tension,
+            right.valueEnd,
             progress
         )
     }

@@ -299,6 +299,34 @@ fun Double.requireNotNaN(): Double {
     return this
 }
 
+
+/**
+ * @return 0 if [this] is NaN. Otherwise, [this].
+ * */
+fun Double.nanZero(): Double {
+    if(this.isNaN()) {
+        return 0.0
+    }
+
+    return this
+}
+
+/**
+ * @return 0 if [this] is infinity. Otherwise, [this].
+ * */
+fun Double.infinityZero(): Double {
+    if(this.isInfinite()) {
+        return 0.0
+    }
+
+    return this
+}
+
+/**
+ * @return 0 if [this] is NaN or infinity. Otherwise, [this].
+ * */
+fun Double.definedOrZero(): Double = this.nanZero().infinityZero()
+
 /**
  * Returns the square of this number.
  * */
@@ -362,3 +390,226 @@ fun snz(a: Double): Double {
 
     return -1.0
 }
+
+
+private const val ADAPTLOB_ALPHA = 0.816496580927726
+private const val ADAPTLOB_BETA = 0.447213595499958
+
+private fun adaptlobStp(f: ((Double) -> Double), a: Double, b: Double, fa: Double, fb: Double, `is`: Double): Double {
+    val h = (b - a) / 2.0
+    val m = (a + b) / 2.0
+    val mll = m - ADAPTLOB_ALPHA * h
+    val ml = m - ADAPTLOB_BETA * h
+    val mr = m + ADAPTLOB_BETA * h
+    val mrr = m + ADAPTLOB_ALPHA * h
+    val fmll = f(mll)
+    val fml = f(ml)
+    val fm = f(m)
+    val fmr = f(mr)
+    val fmrr = f(mrr)
+
+    val i2 = h / 6.0 * (fa + fb + 5.0 * (fml + fmr))
+    val i1 = h / 1470.0 * (77.0 * (fa + fb) + 432.0 * (fmll + fmrr) + 625.0 * (fml + fmr) + 672.0 * fm)
+
+    return if (`is` + (i1 - i2) == `is` || mll <= a || b <= mrr)
+        i1
+    else
+        adaptlobStp(f, a, mll, fa, fmll, `is`) +
+        adaptlobStp(f, mll, ml, fmll, fml, `is`) +
+        adaptlobStp(f, ml, m, fml, fm, `is`) +
+        adaptlobStp(f, m, mr, fm, fmr, `is`) +
+        adaptlobStp(f, mr, mrr, fmr, fmrr, `is`) +
+        adaptlobStp(f, mrr, b, fmrr, fb, `is`)
+}
+
+fun integralScan(f: ((Double) -> Double), a: Double, b: Double, tolerance: Double = 1e-15): Double {
+    var tol = tolerance
+
+    val eps = 1e-15
+
+    val m = (a + b) / 2.0
+    val h = (b - a) / 2.0
+
+    val x1 = 0.942882415695480
+    val x2 = 0.641853342345781
+    val x3 = 0.236383199662150
+
+    val y1 = f(a)
+    val y2 = f(m - x1 * h)
+    val y3 = f(m - ADAPTLOB_ALPHA * h)
+    val y4 = f(m - x2 * h)
+    val y5 = f(m - ADAPTLOB_BETA * h)
+    val y6 = f(m - x3 * h)
+    val y7 = f(m)
+    val y8 = f(m + x3 * h)
+    val y9 = f(m + ADAPTLOB_BETA * h)
+    val y10 = f(m + x2 * h)
+    val y11 = f(m + ADAPTLOB_ALPHA * h)
+    val y12 = f(m + x1 * h)
+    val y13 = f(b)
+
+    val i2 = h / 6.0 * (y1 + y13 + 5.0 * (y5 + y9))
+    val i1 = h / 1470.0 * (77.0 * (y1 + y13) + 432.0 * (y3 + y11) + 625.0 * (y5 + y9) + 672.0 * y7)
+
+    var `is` = h * (
+        0.0158271919734802 * (y1 + y13) +
+            0.0942738402188500 * (y2 + y12) +
+            0.155071987336585 * (y3 + y11) +
+            0.188821573960182 * (y4 + y10) +
+            0.199773405226859 * (y5 + y9) +
+            0.224926465333340 * (y6 + y8) +
+            0.242611071901408 * y7
+        )
+
+    val s = snz(`is`)
+    val erri1 = abs(i1 - `is`)
+    val erri2 = abs(i2 - `is`)
+    var r = 1.0
+
+    if (erri2 != 0.0) {
+        r = erri1 / erri2
+    }
+
+    if (r > 0.0 && r < 1.0) {
+        tol /= r
+    }
+    `is` = s * abs(`is`) * tol / eps
+
+    if (`is` == 0.0) {
+        `is` = b - a
+    }
+
+    return adaptlobStp(f, a, b, y1, y13, `is`)
+}
+
+class Dual private constructor(private val values: DoubleArray) {
+    /**
+     * Constructs a [Dual] from the value [x] and the [tail].
+     * */
+    constructor(x: Double, tail: Dual): this(
+        DoubleArray(tail.values.size + 1).also {
+            it[0] = x
+
+            for (i in 0 until tail.values.size) {
+                it[i + 1] = tail.values[i]
+            }
+        }
+    )
+
+    operator fun get(index: Int) = values[index]
+
+    val size get() = values.size
+    val isReal get() = values.size == 1
+
+    /**
+     * Gets the first value in this [Dual].
+     * */
+    val value get() = values[0]
+
+    /**
+     * Gets the values at the start of the [Dual], ignoring the last [n] values.
+     * */
+    fun head(n: Int = 1) = Dual(DoubleArray(size - n) { values[it] })
+
+    /**
+     * Gets the values at the end of the [Dual], ignoring the first [n] values.
+     * */
+    fun tail(n: Int = 1) = Dual(DoubleArray(size - n) { values[it + n] })
+
+    operator fun unaryPlus(): Dual {
+        return this
+    }
+
+    operator fun unaryMinus() = Dual(
+        DoubleArray(size).also {
+            for (i in it.indices){
+                it[i] = -this[i]
+            }
+        }
+    )
+
+    operator fun plus(other: Dual): Dual =
+        if (this.isReal || other.isReal) const(this[0] + other[0])
+        else Dual(this.value + other.value, this.tail() + other.tail())
+
+    operator fun minus(other: Dual): Dual =
+        if (this.isReal || other.isReal) const(this[0] - other[0])
+        else Dual(this.value - other.value, this.tail() - other.tail())
+
+    operator fun times(other: Dual): Dual =
+        if (this.isReal || other.isReal) const(this[0] * other[0])
+        else Dual(this.value * other.value, this.tail() * other.head() + this.head() * other.tail())
+
+    operator fun div(other: Dual): Dual =
+        if (this.isReal || other.isReal) const(this[0] / other[0])
+        else Dual(this.value / other.value, (this.tail() * other - this * other.tail()) / (other * other))
+
+    inline fun function(x: ((Double) -> Double), dxFront: ((Dual) -> Dual)): Dual =
+        if (this.isReal) const(x(this.value))
+        else Dual(x(this.value), dxFront(this.head()) * this.tail())
+
+    operator fun plus(const: Double) = Dual(values.clone().also { it[0] += const })
+    operator fun minus(const: Double) = Dual(values.clone().also { it[0] -= const })
+
+    private inline fun mapValues(transform: ((Double) -> Double)) = Dual(DoubleArray(values.size) { i -> transform(values[i])})
+    operator fun times(constant: Double) = mapValues { v -> v * constant }
+    operator fun div(constant: Double) = mapValues { v -> v / constant }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other){
+            return true
+        }
+
+        if (javaClass != other?.javaClass) {
+            return false
+        }
+
+        other as Dual
+
+        if (!values.contentEquals(other.values)){
+            return false
+        }
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        return values.contentHashCode()
+    }
+
+    override fun toString(): String {
+        if(values.isEmpty()) {
+            return "empty"
+        }
+
+        return values
+            .mapIndexed { i, v -> "x$i=$v" }
+            .joinToString(", ")
+    }
+
+    companion object {
+        fun const(x: Double, n: Int = 1) = Dual(DoubleArray(n).also { it[0] = x })
+
+        fun variable(v: Double, n: Int = 1) = Dual(
+            DoubleArray(n).also {
+                it[0] = v;
+                if(n > 1){
+                    it[1] = 1.0
+                }
+            }
+        )
+
+        fun of(vararg values: Double) = Dual(values.asList().toDoubleArray())
+    }
+}
+
+operator fun Double.plus(dual: Dual) = Dual.const(this, dual.size) + dual
+operator fun Double.minus(dual: Dual) = Dual.const(this, dual.size) - dual
+operator fun Double.times(dual: Dual) = Dual.const(this, dual.size) * dual
+operator fun Double.div(dual: Dual) = Dual.const(this, dual.size) / dual
+
+fun sin(d: Dual): Dual = d.function({ sin(it) }) { cos(it) }
+fun cos(d: Dual): Dual = d.function({ cos(it) }) { -sin(it) }
+fun pow(d: Dual, n: Double): Dual = d.function({ it.pow(n) }) { n * pow(it, n - 1) }
+fun sqrt(d: Dual): Dual = d.function({ sqrt(it) }) { (Dual.const(1.0, d.size) / (Dual.const(2.0, d.size) * sqrt(it))) }
+fun Dual.sqr() = this * this
