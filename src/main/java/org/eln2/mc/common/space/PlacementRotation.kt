@@ -2,7 +2,7 @@ package org.eln2.mc.common.space
 
 import com.mojang.math.Matrix4f
 import net.minecraft.core.Direction
-import org.eln2.mc.extensions.DirectionExtensions.isVertical
+import org.eln2.mc.extensions.isVertical
 
 /**
  * The Relative Rotation Direction represents a direction relative to an object's frame.

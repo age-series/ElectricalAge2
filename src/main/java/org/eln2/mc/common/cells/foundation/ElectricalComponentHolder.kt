@@ -4,7 +4,7 @@ import org.ageseries.libage.sim.electrical.mna.component.Component
 import org.eln2.mc.common.cells.foundation.objects.ElectricalComponentInfo
 import org.eln2.mc.common.cells.foundation.objects.ElectricalConnectionInfo
 import org.eln2.mc.common.cells.foundation.objects.ElectricalObject
-import org.eln2.mc.extensions.LibAgeExtensions.connect
+import org.eln2.mc.extensions.connect
 
 fun interface IComponentFactory<T> {
     fun create(): T

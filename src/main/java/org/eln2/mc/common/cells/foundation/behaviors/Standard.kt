@@ -4,7 +4,7 @@ import net.minecraft.server.level.ServerLevel
 import org.eln2.mc.common.blocks.foundation.MultipartBlockEntity
 import org.eln2.mc.common.cells.foundation.CellBase
 import org.eln2.mc.common.cells.foundation.CellBehaviorContainer
-import org.eln2.mc.extensions.LevelExtensions.destroyPart
+import org.eln2.mc.extensions.destroyPart
 
 fun CellBehaviorContainer.withStandardExplosionBehavior(cell: CellBase, threshold: Double, temperatureAccessor: ITemperatureAccessor): CellBehaviorContainer {
     return withExplosionBehavior(temperatureAccessor, TemperatureExplosionBehaviorOptions(threshold, 0.1, 0.25)) {

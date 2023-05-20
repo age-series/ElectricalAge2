@@ -11,7 +11,7 @@ import org.eln2.mc.common.cells.foundation.CellGraphManager
 import org.eln2.mc.common.cells.foundation.CellPos
 import org.eln2.mc.common.cells.foundation.CellProvider
 import org.eln2.mc.common.space.RelativeRotationDirection
-import org.eln2.mc.extensions.NbtExtensions.useSubTagIfPreset
+import org.eln2.mc.extensions.useSubTagIfPreset
 import org.eln2.mc.integration.waila.IWailaProvider
 import org.eln2.mc.integration.waila.TooltipBuilder
 import java.util.*

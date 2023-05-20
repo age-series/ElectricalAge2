@@ -7,9 +7,9 @@ import org.eln2.mc.common.cells.foundation.objects.*
 import org.eln2.mc.common.space.RelativeRotationDirection
 import org.eln2.mc.data.DataAccessNode
 import org.eln2.mc.data.IDataEntity
-import org.eln2.mc.extensions.NbtExtensions.putSubTag
-import org.eln2.mc.extensions.NbtExtensions.useSubTagIfPreset
-import org.eln2.mc.extensions.NbtExtensions.withSubTagOptional
+import org.eln2.mc.extensions.putSubTag
+import org.eln2.mc.extensions.useSubTagIfPreset
+import org.eln2.mc.extensions.withSubTagOptional
 import org.eln2.mc.integration.waila.IWailaProvider
 import org.eln2.mc.integration.waila.TooltipBuilder
 

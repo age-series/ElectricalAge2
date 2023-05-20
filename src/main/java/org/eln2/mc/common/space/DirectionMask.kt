@@ -1,9 +1,9 @@
 package org.eln2.mc.common.space
 
 import net.minecraft.core.Direction
-import org.eln2.mc.extensions.DirectionExtensions.directionAlias
-import org.eln2.mc.extensions.DirectionExtensions.index
-import org.eln2.mc.extensions.DirectionExtensions.isHorizontal
+import org.eln2.mc.extensions.directionAlias
+import org.eln2.mc.extensions.index
+import org.eln2.mc.extensions.isHorizontal
 
 /**
  * The Direction Mask is used to manipulate up to 6 directions at the same time.

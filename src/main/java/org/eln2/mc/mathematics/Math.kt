@@ -12,27 +12,6 @@ object Geometry {
     fun cylinderSurfaceArea(length: Double, radius: Double): Double {
         return 2 * PI * radius * length + 2 * PI * radius * radius
     }
-
-    /**
-     * Computes the surface area of a circle.
-     * */
-    fun circleSurfaceArea(radius: Double): Double {
-        return PI * radius * radius
-    }
-
-    fun angleNorm(angle: Double, range: Double): Double {
-        return angle % range
-    }
-
-    /**
-     * Normalizes an [angle] to range from 0-360 degrees.
-     * */
-    fun angleNormDeg(angle: Double): Double = angleNorm(angle, 360.0)
-
-    /**
-     * Normalizes an [angle] to range from 0-2π
-     * */
-    fun angleNorm(angle: Double): Double = angleNorm(angle, PI * 2.0)
 }
 
 //#region Interpolations

@@ -20,7 +20,7 @@ import org.eln2.mc.common.parts.foundation.ConnectionMode
 import org.eln2.mc.common.space.RelativeRotationDirection
 import org.eln2.mc.data.DataAccessNode
 import org.eln2.mc.data.IDataEntity
-import org.eln2.mc.extensions.DirectionExtensions.isVertical
+import org.eln2.mc.extensions.isVertical
 import org.eln2.mc.integration.waila.IWailaProvider
 import org.eln2.mc.integration.waila.TooltipBuilder
 import java.util.*

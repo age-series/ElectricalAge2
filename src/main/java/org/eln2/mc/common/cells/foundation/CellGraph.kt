@@ -15,10 +15,10 @@ import org.eln2.mc.common.cells.CellRegistry
 import org.eln2.mc.common.cells.foundation.objects.SimulationObjectType
 import org.eln2.mc.common.configs.Configuration
 import org.eln2.mc.common.space.RelativeRotationDirection
-import org.eln2.mc.extensions.NbtExtensions.getCellPos
-import org.eln2.mc.extensions.NbtExtensions.getRelativeDirection
-import org.eln2.mc.extensions.NbtExtensions.putCellPos
-import org.eln2.mc.extensions.NbtExtensions.putRelativeDirection
+import org.eln2.mc.extensions.getCellPos
+import org.eln2.mc.extensions.getRelativeDirection
+import org.eln2.mc.extensions.putCellPos
+import org.eln2.mc.extensions.putRelativeDirection
 import org.eln2.mc.utility.Time
 import java.util.*
 import java.util.concurrent.Executors

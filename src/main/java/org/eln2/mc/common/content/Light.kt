@@ -36,8 +36,8 @@ import org.eln2.mc.common.events.*
 import org.eln2.mc.common.parts.foundation.CellPart
 import org.eln2.mc.common.parts.foundation.IPartRenderer
 import org.eln2.mc.common.parts.foundation.PartPlacementContext
-import org.eln2.mc.extensions.NbtExtensions.useSubTag
-import org.eln2.mc.extensions.NbtExtensions.withSubTag
+import org.eln2.mc.extensions.useSubTag
+import org.eln2.mc.extensions.withSubTag
 import org.eln2.mc.integration.waila.TooltipBuilder
 
 interface IGhostLightHandle {
