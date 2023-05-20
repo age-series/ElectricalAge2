@@ -23,11 +23,7 @@ abstract class CellPart(
     id: ResourceLocation,
     placementContext: PartPlacementContext,
     final override val provider: CellProvider
-) :
-
-    Part(id, placementContext),
-    IPartCellContainer,
-    IWailaProvider {
+) : Part(id, placementContext), IPartCellContainer, IWailaProvider {
 
     companion object {
         private const val GRAPH_ID = "GraphID"
@@ -65,7 +61,7 @@ abstract class CellPart(
         cell = provider.create(cellPos)
         cell.container = placementContext.multipart
         isAlive = true
-        onCellAcquired()
+        acquireCell()
     }
 
     /**
@@ -153,7 +149,7 @@ abstract class CellPart(
         }
 
         isAlive = true
-        onCellAcquired()
+        acquireCell()
     }
 
     open fun saveCustomSimData(): CompoundTag?{
@@ -171,6 +167,12 @@ abstract class CellPart(
     override fun recordConnection(direction: RelativeRotationDirection, mode: ConnectionMode) {}
 
     override fun recordDeletedConnection(direction: RelativeRotationDirection) {}
+
+    private fun acquireCell() {
+        require(!dataAccessNode.children.any { it == cell.dataAccessNode }) { "Duplicate cell set" }
+        dataAccessNode.withChild(cell.dataAccessNode)
+        onCellAcquired()
+    }
 
     open fun onCellAcquired() {}
     open fun onCellReleased() { }

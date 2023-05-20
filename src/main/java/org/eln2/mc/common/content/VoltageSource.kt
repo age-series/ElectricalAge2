@@ -81,10 +81,11 @@ class VoltageSourceCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) 
     override fun createObjectSet(): SimulationObjectSet {
         return SimulationObjectSet(VoltageSourceObject())
     }
+
+    val voltageSourceObject get() = electricalObject as VoltageSourceObject
 }
 
-class VoltageSourcePart(id: ResourceLocation, placementContext: PartPlacementContext) :
-    CellPart(id, placementContext, Content.VOLTAGE_SOURCE_CELL.get()) {
+class VoltageSourcePart(id: ResourceLocation, placementContext: PartPlacementContext) : CellPart(id, placementContext, Content.VOLTAGE_SOURCE_CELL.get()) {
 
     override val baseSize = bbVec(6.0, 2.5, 6.0)
 

@@ -35,6 +35,8 @@ import org.eln2.mc.common.events.EventScheduler
 import org.eln2.mc.common.parts.foundation.*
 import org.eln2.mc.common.space.DirectionMask
 import org.eln2.mc.common.space.RelativeRotationDirection
+import org.eln2.mc.data.DataAccessNode
+import org.eln2.mc.data.IDataEntity
 import org.eln2.mc.extensions.LibAgeExtensions.add
 import org.eln2.mc.extensions.LibAgeExtensions.connect
 import org.eln2.mc.extensions.ModelDataExtensions.blockCenter
@@ -133,10 +135,7 @@ object ElectricalWireModels {
     }
 }
 
-class ThermalWireObject(
-    val cell: CellBase) :
-    ThermalObject(), IWailaProvider, IPersistentObject {
-
+class ThermalWireObject(val cell: CellBase) : ThermalObject(), IWailaProvider, IPersistentObject, IDataEntity {
     private val environmentInformation
         get() = BiomeEnvironments.get(cell.graph.level, cell.pos)
 
@@ -177,6 +176,12 @@ class ThermalWireObject(
             tag.getThermalMass(THERMAL_MASS),
             tag.getDouble(SURFACE_AREA))
     }
+
+    override val dataAccessNode = DataAccessNode().also {
+        it.data.withField {
+            TemperatureField { body.temperature }
+        }
+    }
 }
 
 enum class WireType(val temperatureThreshold: Temperature, val isRadiant: Boolean) {
@@ -196,7 +201,6 @@ open class WireCell(
                 withElectricalPowerConverter { electricalWire.power }
                 withElectricalHeatTransfer { thermalWire.body }
             }
-
         }
 
         behaviors.withStandardExplosionBehavior(this, type.temperatureThreshold.kelvin) {
