@@ -41,7 +41,6 @@ import org.ageseries.libage.sim.Material
 import org.ageseries.libage.sim.thermal.*
 import org.eln2.mc.Eln2
 import org.eln2.mc.Eln2.LOGGER
-import org.eln2.mc.annotations.ActuallyValidUsage
 import org.eln2.mc.client.render.renderColored
 import org.eln2.mc.client.render.renderTextured
 import org.eln2.mc.common.blocks.foundation.CellBlock
@@ -142,7 +141,7 @@ class FurnaceCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) {
     fun serializeNbt(): CompoundTag{
         return CompoundTag().also {
             it.put(OPTIONS, options.serializeNbt())
-            it.putThermalMassMapped(RESISTOR_THERMAL_MASS, resistorHeatBody.mass)
+            it.putThermalMassMapped(RESISTOR_THERMAL_MASS, resistorHeatBody.thermalMass)
         }
     }
 
@@ -857,7 +856,6 @@ class FurnaceBlock : CellBlock() {
         }
     }
 
-    @ActuallyValidUsage
     @Deprecated("Deprecated in Java")
     override fun use(
         pState: BlockState,

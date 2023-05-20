@@ -89,8 +89,8 @@ abstract class ThermalObject : ISimulationObject {
             assert(remote.simulation == simulation)
 
             simulation!!.connect(
-                this.offerComponent(remote).body.mass,
-                remote.offerComponent(this).body.mass,
+                this.offerComponent(remote).body.thermalMass,
+                remote.offerComponent(this).body.thermalMass,
                 ConnectionParameters.DEFAULT
             )
         }
