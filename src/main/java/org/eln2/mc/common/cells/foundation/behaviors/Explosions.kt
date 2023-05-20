@@ -3,8 +3,7 @@ package org.eln2.mc.common.cells.foundation.behaviors
 import mcp.mobius.waila.api.IPluginConfig
 import org.eln2.mc.common.cells.foundation.*
 import org.eln2.mc.common.events.EventScheduler
-import org.eln2.mc.common.parts.foundation.Part
-import org.eln2.mc.extensions.NumberExtensions.formattedPercentN
+import org.eln2.mc.extensions.formattedPercentN
 import org.eln2.mc.integration.waila.IWailaProvider
 import org.eln2.mc.integration.waila.TooltipBuilder
 

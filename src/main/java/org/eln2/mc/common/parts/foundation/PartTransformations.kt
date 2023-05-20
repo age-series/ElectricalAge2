@@ -7,8 +7,8 @@ import net.minecraft.core.Direction
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
 import org.eln2.mc.common.space.RelativeRotationDirection
-import org.eln2.mc.extensions.AABBExtensions.transformed
-import org.eln2.mc.extensions.Vec3Extensions.div
+import org.eln2.mc.extensions.transformed
+import org.eln2.mc.extensions.div
 import org.eln2.mc.utility.BoundingBox
 
 /**

@@ -56,8 +56,6 @@ object Datasets {
             }
         }
 
-        LOGGER.info("Copied")
-
         return MappedGridInterpolator(grid.interpolator(), listOf(xMapping, yMapping))
     }
 }

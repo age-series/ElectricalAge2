@@ -3,10 +3,10 @@ package org.eln2.mc.utility
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
-import org.eln2.mc.extensions.AABBExtensions.viewClip
-import org.eln2.mc.extensions.Vec3Extensions.div
-import org.eln2.mc.extensions.Vec3Extensions.minus
-import org.eln2.mc.extensions.Vec3Extensions.plus
+import org.eln2.mc.extensions.viewClip
+import org.eln2.mc.extensions.div
+import org.eln2.mc.extensions.minus
+import org.eln2.mc.extensions.plus
 
 object BoundingBox {
     fun fromCenterSize(center: Vec3, size: Vec3): AABB {

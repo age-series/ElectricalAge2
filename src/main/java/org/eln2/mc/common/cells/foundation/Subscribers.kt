@@ -1,7 +1,7 @@
 package org.eln2.mc.common.cells.foundation
 
 import org.ageseries.libage.data.mutableMultiMapOf
-import org.eln2.mc.extensions.CollectionExtensions.removeAll
+import org.eln2.mc.extensions.removeAll
 
 fun interface ISubscriber{
     fun update(dt: Double, phase: SubscriberPhase)

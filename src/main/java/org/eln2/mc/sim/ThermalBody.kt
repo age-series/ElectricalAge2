@@ -4,7 +4,7 @@ import mcp.mobius.waila.api.IPluginConfig
 import org.ageseries.libage.sim.Material
 import org.ageseries.libage.sim.thermal.Temperature
 import org.ageseries.libage.sim.thermal.ThermalMass
-import org.eln2.mc.extensions.ThermalExtensions.appendBody
+import org.eln2.mc.extensions.appendBody
 import org.eln2.mc.integration.waila.IWailaProvider
 import org.eln2.mc.integration.waila.TooltipBuilder
 

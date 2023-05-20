@@ -10,7 +10,7 @@ import net.minecraft.world.item.context.UseOnContext
 import org.ageseries.libage.sim.thermal.Temperature
 import org.eln2.mc.common.items.eln2Tab
 import org.eln2.mc.data.INameField
-import org.eln2.mc.extensions.LevelExtensions.getDataAccess
+import org.eln2.mc.extensions.getDataAccess
 import org.eln2.mc.utility.UnitType
 import org.eln2.mc.utility.valueText
 
