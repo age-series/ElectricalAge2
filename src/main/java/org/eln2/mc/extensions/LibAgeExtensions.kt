@@ -45,15 +45,15 @@ object LibAgeExtensions {
     }
 
     fun Simulator.add(body: ThermalBody) {
-        this.add(body.mass)
+        this.add(body.thermalMass)
     }
 
     fun Simulator.remove(body: ThermalBody) {
-        this.remove(body.mass)
+        this.remove(body.thermalMass)
     }
 
     fun Simulator.connect(a: ThermalBody, b: ThermalBody, parameters: ConnectionParameters){
-        this.connect(a.mass, b.mass, parameters)
+        this.connect(a.thermalMass, b.thermalMass, parameters)
     }
 
     fun Simulator.connect(a: ThermalMass, environmentInformation: EnvironmentInformation) {
@@ -64,6 +64,6 @@ object LibAgeExtensions {
     }
 
     fun Simulator.connect(a: ThermalBody, environmentInformation: EnvironmentInformation) {
-        this.connect(a.mass, environmentInformation)
+        this.connect(a.thermalMass, environmentInformation)
     }
 }

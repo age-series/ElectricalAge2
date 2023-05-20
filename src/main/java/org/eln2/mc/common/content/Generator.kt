@@ -39,7 +39,6 @@ import org.ageseries.libage.sim.thermal.ThermalMass
 import org.apache.commons.math3.geometry.euclidean.threed.Vector3D
 import org.eln2.mc.Eln2
 import org.eln2.mc.Eln2.LOGGER
-import org.eln2.mc.annotations.ActuallyValidUsage
 import org.eln2.mc.annotations.CrossThreadAccess
 import org.eln2.mc.annotations.RaceCondition
 import org.eln2.mc.client.render.PartialModels
@@ -319,10 +318,7 @@ data class BatteryModel(
 
 data class BatteryState(val energy: Double, val life: Double, val energyIo: Double)
 
-class BatteryCell(pos: CellPos, id: ResourceLocation, override val model: BatteryModel) :
-    GeneratorCell(pos, id),
-    IBatteryView {
-
+class BatteryCell(pos: CellPos, id: ResourceLocation, override val model: BatteryModel) : GeneratorCell(pos, id), IBatteryView {
     companion object {
         private const val ENERGY = "energy"
         private const val LIFE = "life"
@@ -367,7 +363,8 @@ class BatteryCell(pos: CellPos, id: ResourceLocation, override val model: Batter
         model.damageChargeThreshold,
         1.0,
         0.0,
-        1.0)
+        1.0
+    )
 
     override val temperature: Temperature
         get() = thermalWireObject.body.temperature
@@ -438,18 +435,13 @@ class BatteryCell(pos: CellPos, id: ResourceLocation, override val model: Batter
 
         if(generatorObject.powerFlowDirection == GeneratorPowerDirection.Incoming){
             // Add energy into the system.
-
             energy += transferredEnergy
         } else {
             // Remove energy from the system.
-
             energy -= transferredEnergy
         }
 
         val capacity = adjustedEnergyCapacity
-
-        // Clamp energy
-        energy = energy.coerceIn(0.0, capacity)
 
         if(energy < 0){
             LOGGER.error("Negative battery energy $pos")
@@ -478,6 +470,7 @@ class BatteryCell(pos: CellPos, id: ResourceLocation, override val model: Batter
         life -= model.damageFunction.computeDamage(this, elapsed)
         life = life.coerceIn(0.0, 1.0)
 
+        // FIXME: Find condition
         graph.setChanged()
     }
 
@@ -527,7 +520,7 @@ class BatteryPart(id: ResourceLocation, placementContext: PartPlacementContext, 
 /**
  * Thermal body with two connection sides.
  * */
-class ThermalBiPoleObject: ThermalObject(), IWailaProvider {
+class ThermalBipoleObject: ThermalObject(), IWailaProvider {
     var b1 = ThermalBody.createDefault()
     var b2 = ThermalBody.createDefault()
 
@@ -645,10 +638,10 @@ class ThermocoupleBehavior(
         energyTransfer =
             (bodies.hot.temperatureK - bodies.cold.temperatureK) * // DeltaT
 
-                // P.S. I expect the dipoles to have the same material. What to do here?
-                avg(bodies.hot.mass.material.specificHeat, bodies.cold.mass.material.specificHeat) * // Specific Heat
+            // P.S. I expect the dipoles to have the same material. What to do here?
+            avg(bodies.hot.thermalMass.material.specificHeat, bodies.cold.thermalMass.material.specificHeat) * // Specific Heat
 
-                systemMass // Mass
+            systemMass // Mass
 
         // Maximum energy that can be converted into electrical energy.
 
@@ -715,7 +708,7 @@ class ThermocoupleBehavior(
     /**
      * Gets the total mass of the system (hot body + cold body)
      * */
-    private val systemMass get() = coldAccessor.get().mass.mass + hotAccessor.get().mass.mass
+    private val systemMass get() = coldAccessor.get().thermalMass.mass + hotAccessor.get().thermalMass.mass
 }
 
 class ThermocoupleCell(pos: CellPos, id: ResourceLocation) : GeneratorCell(pos, id) {
@@ -736,13 +729,13 @@ class ThermocoupleCell(pos: CellPos, id: ResourceLocation) : GeneratorCell(pos, 
             GeneratorObject().also {
                 it.potential = 100.0
             },
-            ThermalBiPoleObject().also {
+            ThermalBipoleObject().also {
                 it.b1Dir = RelativeRotationDirection.Left
                 it.b2Dir = RelativeRotationDirection.Right
             })
     }
 
-    private val thermalBiPole get() = thermalObject as ThermalBiPoleObject
+    private val thermalBiPole get() = thermalObject as ThermalBipoleObject
 
     val b1Temperature get() = thermalBiPole.b1.temperature
     val b2Temperature get() = thermalBiPole.b2.temperature
@@ -828,7 +821,7 @@ data class HeatGeneratorFuelMass(
     /**
      * Gets the maximum energy that can be produced in the specified time [dt], using the specified mass [burnRate].
      * */
-    fun getTheoreticalTransfer(dt: Double, burnRate: Double): Double {
+    private fun getMaxTransfer(dt: Double, burnRate: Double): Double {
         return burnRate * fuelEnergyCapacity * dt
     }
 
@@ -837,7 +830,7 @@ data class HeatGeneratorFuelMass(
      * amount of fuel remaining.
      * */
     fun getTransfer(dt: Double, burnRate: Double): Double {
-        return min(getTheoreticalTransfer(dt, burnRate), availableEnergy)
+        return min(getMaxTransfer(dt, burnRate), availableEnergy)
     }
 
     /**
@@ -929,6 +922,7 @@ private class FuelBurnerBehavior(val cell: CellBase, val bodyGetter: IThermalBod
 
         body.thermalEnergy += energyTransfer
 
+        // FIXME: Implement condition here
         cell.setChanged()
     }
 
@@ -1167,7 +1161,6 @@ class HeatGeneratorBlock : CellBlock() {
         return BlockEntityTicker(HeatGeneratorBlockEntity::tick)
     }
 
-    @ActuallyValidUsage
     @Deprecated("Deprecated in Java")
     override fun use(
         pState: BlockState,
@@ -1249,7 +1242,7 @@ data class PhotovoltaicModel(
 
 object PhotovoltaicModels {
     // We map angle difference to a voltage coefficient. 0 - directly overhead, 1 - under horizon
-    private val TEST_SPLINE = mappedHermite().apply {
+    private val TEST_SPLINE = hermiteMappedCubic().apply {
         point(0.0, 1.0)
         point(0.95, 0.8)
         point(1.0, 0.0)
@@ -1261,7 +1254,7 @@ object PhotovoltaicModels {
                 return@IPhotovoltaicVoltageFunction 0.0
             }
 
-            val passProgress = when (val sunAngle = Math.toDegrees(view.sunAngle)) {
+            val passDirectionWorld = Rotation2d.exp(Math.PI * when (val sunAngle = Math.toDegrees(view.sunAngle)) {
                 in 270.0..360.0 -> {
                     map(sunAngle, 270.0, 360.0, 0.0, 0.5)
                 }
@@ -1273,23 +1266,22 @@ object PhotovoltaicModels {
 
                     return@IPhotovoltaicVoltageFunction 0.0
                 }
-            }
+            }).direction
 
             // Sun moves around Z
 
-            val passAngle = passProgress * Math.PI
-            val sunDirection3 = Vector3D(cos(passAngle), sin(passAngle), 0.0)
-            val panelDirection3 = view.normal.toVector3D()
-            val rayAngle = Math.toDegrees(Vector3D.angle(sunDirection3, panelDirection3))
+            val actualSunWorld = Vector3D(passDirectionWorld.x, passDirectionWorld.y, 0.0)
+            val normalWorld = view.normal.toVector3D()
 
-            val value = TEST_SPLINE.evaluate(
-                map(
-                rayAngle,
+            val actualDifferenceActual = map(
+                Math.toDegrees(Vector3D.angle(actualSunWorld, normalWorld)),
                 0.0,
                 90.0,
                 0.0,
-                1.0)
+                1.0
             )
+
+            val value = TEST_SPLINE.evaluate(actualDifferenceActual)
 
             return@IPhotovoltaicVoltageFunction value * maximumVoltage
         }
@@ -1310,9 +1302,6 @@ class PhotovoltaicBehavior(cell: GeneratorCell, val model: PhotovoltaicModel) : 
         get() = generatorCell.pos.face
 }
 
-
 class PhotovoltaicGeneratorCell(pos: CellPos, id: ResourceLocation, model: PhotovoltaicModel) : GeneratorCell(pos, id) {
-    init {
-        behaviors.add(PhotovoltaicBehavior(this, model))
-    }
+    init { behaviors.add(PhotovoltaicBehavior(this, model)) }
 }

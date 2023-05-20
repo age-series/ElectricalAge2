@@ -129,7 +129,7 @@ class RadiantBipoleRenderer(
         rightSideUpdate.consume { rightInstance?.setColor(rightColor.evaluate(it)) }
     }
 
-    override fun relightModels(): List<FlatLit<*>>? {
+    override fun relightModels(): List<FlatLit<*>> {
         return ArrayList<FlatLit<*>>().also {
             bodyInstance?.apply { it.add(this) }
             leftInstance?.apply { it.add(this) }

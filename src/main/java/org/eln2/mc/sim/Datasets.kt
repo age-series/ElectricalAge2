@@ -16,8 +16,8 @@ object Datasets {
         return CsvLoader.loadNumericData(ResourceReader.getResourceString(Eln2.resource("datasets/$name")))
     }
 
-    private fun loadCsvSpline(name: String, keyIndex: Int, valueIndex: Int): HermiteSplineMapped {
-        val builder = mappedHermite()
+    private fun loadCsvSpline(name: String, keyIndex: Int, valueIndex: Int): HermiteSplineCubicMapped {
+        val builder = hermiteMappedCubic()
 
         getCsv(name).also { csv ->
             csv.entries.forEach {
@@ -34,13 +34,13 @@ object Datasets {
         var xSize = 0
         var ySize = 0
 
-        val xMapping = mappedHermite().apply {
+        val xMapping = hermiteMappedCubic().apply {
             csv.headers.drop(1).forEach { header ->
                 point(header.toDouble(), (xSize++).toDouble())
             }
         }.buildHermite()
 
-        val yMapping = mappedHermite().apply {
+        val yMapping = hermiteMappedCubic().apply {
             csv.entries.forEach {
                 point(it[0], (ySize++).toDouble())
             }

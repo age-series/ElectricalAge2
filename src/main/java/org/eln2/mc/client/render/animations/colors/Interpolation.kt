@@ -19,26 +19,6 @@ object ColorInterpolators {
             )
         }
     }
-
-    fun hsvLinear() : IColorInterpolator {
-        return IColorInterpolator { from, to, blend ->
-            val fromHsb = from.rgbToHsb()
-            val toHsb = to.rgbToHsb()
-
-            val h = lerp(fromHsb[0], toHsb[0], blend)
-            val s = lerp(fromHsb[1], toHsb[1], blend)
-            val v = lerp(fromHsb[2], toHsb[2], blend)
-
-            val rgb = java.awt.Color(java.awt.Color.HSBtoRGB(h, s, v))
-
-            return@IColorInterpolator Color(
-                rgb.red,
-                rgb.green,
-                rgb.blue,
-                (lerp(from.alphaAsFloat, to.alphaAsFloat, blend) * 255).toInt()
-            )
-        }
-    }
 }
 
 private object Extensions {

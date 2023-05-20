@@ -166,7 +166,7 @@ class ThermalWireObject(
 
     override fun save(): CompoundTag {
         return CompoundTag().also {
-            it.putThermalMass(THERMAL_MASS, body.mass
+            it.putThermalMass(THERMAL_MASS, body.thermalMass
             )
             it.putDouble(SURFACE_AREA, body.surfaceArea)
         }
