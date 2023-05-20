@@ -962,7 +962,7 @@ class HeatGeneratorCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) 
     /**
      * If true, this burner needs more fuel to continue burning. Internally, this checks if the available energy is less than a threshold value.
      * */
-    val needsFuel get() = behaviors.getBehavior<FuelBurnerBehavior>().availableEnergy epsilonEquals 0.0
+    val needsFuel get() = behaviors.getBehavior<FuelBurnerBehavior>().availableEnergy approxEq 0.0
 
     fun replaceFuel(mass: HeatGeneratorFuelMass) {
         behaviors.getBehavior<FuelBurnerBehavior>().replaceFuel(mass)

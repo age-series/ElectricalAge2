@@ -1,4 +1,4 @@
-import org.eln2.mc.mathematics.epsilonEquals
+import org.eln2.mc.mathematics.approxEq
 import org.eln2.mc.mathematics.mappedHermite
 import org.junit.jupiter.api.Test
 
@@ -19,7 +19,7 @@ class HermiteSplineTests {
         val spline2 = builder.buildHermite2()
 
         points.forEach { (k, v) ->
-            assert(spline1.evaluate(k) epsilonEquals v)
+            assert(spline1.evaluate(k) approxEq v)
             assert(spline1.evaluate(k) == spline2.evaluate(k))
         }
     }
