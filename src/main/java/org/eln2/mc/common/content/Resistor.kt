@@ -4,14 +4,12 @@ import mcp.mobius.waila.api.IPluginConfig
 import net.minecraft.resources.ResourceLocation
 import org.ageseries.libage.sim.electrical.mna.Circuit
 import org.ageseries.libage.sim.electrical.mna.component.Resistor
-import org.eln2.mc.mathematics.Functions.bbVec
+import org.eln2.mc.mathematics.bbVec
 import org.eln2.mc.client.render.PartialModels
 import org.eln2.mc.client.render.PartialModels.bbOffset
 import org.eln2.mc.client.render.foundation.BasicPartRenderer
 import org.eln2.mc.common.cells.foundation.CellBase
 import org.eln2.mc.common.cells.foundation.CellPos
-import org.eln2.mc.common.cells.foundation.behaviors.withElectricalHeatTransfer
-import org.eln2.mc.common.cells.foundation.behaviors.withElectricalPowerConverter
 import org.eln2.mc.common.cells.foundation.behaviors.withStandardBehavior
 import org.eln2.mc.common.cells.foundation.objects.ElectricalComponentInfo
 import org.eln2.mc.common.cells.foundation.objects.ElectricalObject

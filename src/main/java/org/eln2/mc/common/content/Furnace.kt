@@ -66,10 +66,10 @@ import org.eln2.mc.extensions.Vec3Extensions.plus
 import org.eln2.mc.extensions.Vec3Extensions.toVec3
 import org.eln2.mc.integration.waila.TooltipBuilder
 import org.eln2.mc.mathematics.*
-import org.eln2.mc.mathematics.Functions.map
-import org.eln2.mc.mathematics.Functions.mapNormalizedDoubleShort
-import org.eln2.mc.mathematics.Functions.unmapNormalizedDoubleShort
-import org.eln2.mc.mathematics.Functions.vec4fOne
+import org.eln2.mc.mathematics.map
+import org.eln2.mc.mathematics.mapNormalizedDoubleShort
+import org.eln2.mc.mathematics.unmapNormalizedDoubleShort
+import org.eln2.mc.mathematics.vec4fOne
 import org.eln2.mc.sim.ThermalBody
 import org.eln2.mc.utility.McColors
 import java.util.*

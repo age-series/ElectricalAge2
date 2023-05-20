@@ -1,6 +1,5 @@
 package org.eln2.mc.mathematics
 
-import org.eln2.mc.mathematics.Functions.frac
 import kotlin.math.floor
 
 /**

@@ -7,7 +7,7 @@ import org.ageseries.libage.sim.thermal.ThermalUnits
 import org.eln2.mc.client.render.animations.colors.ColorInterpolators
 import org.eln2.mc.client.render.animations.colors.IColorInterpolator
 import org.eln2.mc.client.render.animations.colors.Utilities
-import org.eln2.mc.mathematics.Functions.map
+import org.eln2.mc.mathematics.map
 
 class RadiantBodyColorBuilder {
     var coldTint = Utilities.colorF(1f, 1f, 1f, 1f)
