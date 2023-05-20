@@ -3,9 +3,10 @@ package org.eln2.mc.common.parts.foundation
 import com.jozufozu.flywheel.core.PartialModel
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.world.phys.Vec3
+import org.ageseries.libage.sim.thermal.Temperature
 import org.eln2.mc.client.render.foundation.BasicPartRenderer
+import org.eln2.mc.common.cells.foundation.CellBase
 import org.eln2.mc.common.cells.foundation.CellProvider
-
 
 fun interface IRendererFactory {
     fun create(part: Part): IPartRenderer
@@ -17,7 +18,7 @@ fun basicRenderer(model: PartialModel, downOffset: Double): IRendererFactory {
     }
 }
 
-class BasicCellPart(
+open class BasicCellPart(
     id: ResourceLocation,
     placementContext: PartPlacementContext,
     override val baseSize: Vec3,

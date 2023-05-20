@@ -5,9 +5,11 @@ import net.minecraft.nbt.CompoundTag
 import net.minecraft.resources.ResourceLocation
 import org.eln2.mc.common.cells.foundation.objects.*
 import org.eln2.mc.common.space.RelativeRotationDirection
-import org.eln2.mc.extensions.NbtExtensions.putSubTag
-import org.eln2.mc.extensions.NbtExtensions.useSubTagIfPreset
-import org.eln2.mc.extensions.NbtExtensions.withSubTagOptional
+import org.eln2.mc.data.DataAccessNode
+import org.eln2.mc.data.IDataEntity
+import org.eln2.mc.extensions.putSubTag
+import org.eln2.mc.extensions.useSubTagIfPreset
+import org.eln2.mc.extensions.withSubTagOptional
 import org.eln2.mc.integration.waila.IWailaProvider
 import org.eln2.mc.integration.waila.TooltipBuilder
 
@@ -18,7 +20,7 @@ data class CellConnectionInfo(val cell: CellBase, val sourceDirection: RelativeR
  * have a Simulation Object associated with it.
  * Cells create connections with other cells, and objects create connections with other objects of the same simulation type.
  * */
-abstract class CellBase(val pos: CellPos, val id: ResourceLocation) : IWailaProvider {
+abstract class CellBase(val pos: CellPos, val id: ResourceLocation) : IWailaProvider, IDataEntity {
     companion object {
         private const val CELL_DATA = "cellData"
         private const val OBJECT_DATA = "objectData"
@@ -26,6 +28,15 @@ abstract class CellBase(val pos: CellPos, val id: ResourceLocation) : IWailaProv
 
     lateinit var graph: CellGraph
     lateinit var connections: ArrayList<CellConnectionInfo>
+
+    /**
+     * If [hasGraph], [CellGraph.setChanged] is called to ensure the cell data will be saved.
+     * */
+    fun setChanged(){
+        if(hasGraph){
+            graph.setChanged()
+        }
+    }
 
     val hasGraph get() = this::graph.isInitialized
 
@@ -58,6 +69,12 @@ abstract class CellBase(val pos: CellPos, val id: ResourceLocation) : IWailaProv
         get() {
             if (createdSet == null) {
                 createdSet = createObjectSet()
+
+                createdSet!!.process {
+                    if(it is IDataEntity) {
+                        dataAccessNode.withChild(it.dataAccessNode)
+                    }
+                }
             }
 
             return createdSet!!
@@ -77,11 +94,15 @@ abstract class CellBase(val pos: CellPos, val id: ResourceLocation) : IWailaProv
         }
     }
 
+    /**
+     * Called when the graph is being loaded. Custom data saved by [saveCellData] will be passed here.
+     * */
     open fun loadCellData(tag: CompoundTag) { }
 
-    open fun saveCellData(): CompoundTag? {
-        return null
-    }
+    /**
+     * Called when the graph is being saved. Custom data should be saved here.
+     * */
+    open fun saveCellData(): CompoundTag? = null
 
     private fun saveObjectData(tag: CompoundTag) {
         objectSet.process { obj ->
@@ -277,4 +298,6 @@ abstract class CellBase(val pos: CellPos, val id: ResourceLocation) : IWailaProv
             }
         }
     }
+
+    override val dataAccessNode: DataAccessNode = DataAccessNode()
 }

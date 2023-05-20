@@ -9,7 +9,6 @@ import net.minecraft.world.InteractionResult
 import net.minecraft.world.entity.item.ItemEntity
 import net.minecraft.world.entity.player.Inventory
 import net.minecraft.world.entity.player.Player
-import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.phys.Vec3
@@ -23,120 +22,126 @@ import net.minecraftforge.network.NetworkHooks
 import org.eln2.mc.Eln2
 import org.eln2.mc.annotations.ServerOnly
 import org.eln2.mc.common.blocks.foundation.MultipartBlockEntity
-import org.eln2.mc.common.parts.PartRegistry
 import org.eln2.mc.common.parts.foundation.Part
+import org.eln2.mc.data.DataAccessNode
+import org.eln2.mc.data.IDataEntity
 
-object LevelExtensions {
-    fun Level.playLocalSound(
-        pos: Vec3,
-        pSound: SoundEvent,
-        pCategory: SoundSource,
-        pVolume: Float,
-        pPitch: Float,
-        pDistanceDelay: Boolean
-    ) {
-        this.playLocalSound(pos.x, pos.y, pos.z, pSound, pCategory, pVolume, pPitch, pDistanceDelay)
+fun interface IContainerFactory<T: BlockEntity> {
+    fun create(id: Int, inventory: Inventory, player: Player, entity: T): AbstractContainerMenu
+}
+
+fun Level.playLocalSound(
+    pos: Vec3,
+    pSound: SoundEvent,
+    pCategory: SoundSource,
+    pVolume: Float,
+    pPitch: Float,
+    pDistanceDelay: Boolean
+) {
+    this.playLocalSound(pos.x, pos.y, pos.z, pSound, pCategory, pVolume, pPitch, pDistanceDelay)
+}
+
+fun Level.addParticle(
+    pParticleData: ParticleOptions,
+    pos: Vec3,
+    pXSpeed: Double,
+    pYSpeed: Double,
+    pZSpeed: Double
+) {
+    this.addParticle(pParticleData, pos.x, pos.y, pos.z, pXSpeed, pYSpeed, pZSpeed)
+}
+
+fun Level.addParticle(
+    pParticleData: ParticleOptions,
+    pos: Vec3,
+    speed: Vec3
+) {
+    this.addParticle(pParticleData, pos.x, pos.y, pos.z, speed.x, speed.y, speed.z)
+}
+
+@ServerOnly
+fun ServerLevel.destroyPart(part: Part) {
+    val pos = part.placementContext.pos
+
+    val multipart = this.getBlockEntity(pos)
+        as? MultipartBlockEntity
+
+    if (multipart == null) {
+        Eln2.LOGGER.error("Multipart null at $pos")
+
+        return
     }
 
-    fun Level.addParticle(
-        pParticleData: ParticleOptions,
-        pos: Vec3,
-        pXSpeed: Double,
-        pYSpeed: Double,
-        pZSpeed: Double
-    ) {
-        this.addParticle(pParticleData, pos.x, pos.y, pos.z, pXSpeed, pYSpeed, pZSpeed)
+    val saveTag = CompoundTag()
+
+    multipart.breakPart(part, saveTag)
+
+    val itemEntity = ItemEntity(
+        this,
+        pos.x.toDouble(),
+        pos.y.toDouble(),
+        pos.z.toDouble(),
+        Part.createPartDropStack(part.id, saveTag)
+    )
+
+    this.addFreshEntity(itemEntity)
+
+    if (multipart.isEmpty) {
+        this.destroyBlock(pos, false)
     }
+}
 
-    fun Level.addParticle(
-        pParticleData: ParticleOptions,
-        pos: Vec3,
-        speed: Vec3
-    ) {
-        this.addParticle(pParticleData, pos.x, pos.y, pos.z, speed.x, speed.y, speed.z)
-    }
+inline fun<reified TEntity: BlockEntity> Level.constructMenu(
+    pos: BlockPos,
+    player: Player,
+    crossinline title: (() -> Component),
+    factory: IContainerFactory<TEntity>
+): InteractionResult {
 
-    @ServerOnly
-    fun ServerLevel.destroyPart(part: Part) {
-        val pos = part.placementContext.pos
+    if(!this.isClientSide) {
+        val entity = this.getBlockEntity(pos) as? TEntity
+            ?: return InteractionResult.FAIL
 
-        val multipart = this.getBlockEntity(pos)
-            as? MultipartBlockEntity
-
-        if (multipart == null) {
-            Eln2.LOGGER.error("Multipart null at $pos")
-
-            return
-        }
-
-        val saveTag = CompoundTag()
-
-        multipart.breakPart(part, saveTag)
-
-        val itemEntity = ItemEntity(
-            this,
-            pos.x.toDouble(),
-            pos.y.toDouble(),
-            pos.z.toDouble(),
-            Part.createPartDropStack(part.id, saveTag)
-        )
-
-        this.addFreshEntity(itemEntity)
-
-        if (multipart.isEmpty) {
-            this.destroyBlock(pos, false)
-        }
-    }
-
-    fun interface IContainerFactory<T: BlockEntity> {
-        fun create(id: Int, inventory: Inventory, player: Player, entity: T): AbstractContainerMenu
-    }
-
-    inline fun<reified TEntity: BlockEntity> Level.constructMenu(
-        pos: BlockPos,
-        player: Player,
-        crossinline title: (() -> Component),
-        factory: IContainerFactory<TEntity>): InteractionResult {
-
-        if(!this.isClientSide) {
-            val entity = this.getBlockEntity(pos) as? TEntity
-                ?: return InteractionResult.FAIL
-
-            val containerProvider = object : MenuProvider {
-                override fun getDisplayName(): Component {
-                    return title()
-                }
-
-                override fun createMenu(
-                    pContainerId: Int,
-                    pInventory: Inventory,
-                    pPlayer: Player
-                ): AbstractContainerMenu {
-                    return factory.create(
-                        pContainerId,
-                        pInventory,
-                        pPlayer,
-                        entity
-                    )
-                }
+        val containerProvider = object : MenuProvider {
+            override fun getDisplayName(): Component {
+                return title()
             }
 
-            NetworkHooks.openGui(player as ServerPlayer, containerProvider, entity.blockPos)
-            return InteractionResult.SUCCESS
+            override fun createMenu(
+                pContainerId: Int,
+                pInventory: Inventory,
+                pPlayer: Player
+            ): AbstractContainerMenu {
+                return factory.create(
+                    pContainerId,
+                    pInventory,
+                    pPlayer,
+                    entity
+                )
+            }
         }
 
+        NetworkHooks.openGui(player as ServerPlayer, containerProvider, entity.blockPos)
         return InteractionResult.SUCCESS
     }
 
-    inline fun<reified TEntity: BlockEntity> Level.constructMenu(
-        pos: BlockPos,
-        player: Player,
-        crossinline title: (() -> Component),
-        crossinline factory: ((Int, Inventory, ItemStackHandler) -> AbstractContainerMenu),
-        crossinline accessor: ((TEntity) -> ItemStackHandler)): InteractionResult {
+    return InteractionResult.SUCCESS
+}
 
-        return this.constructMenu<TEntity>(pos, player, title) {
-                id, inventory, _, entity -> factory(id, inventory, accessor(entity))
-        }
+inline fun<reified TEntity: BlockEntity> Level.constructMenu(
+    pos: BlockPos,
+    player: Player,
+    crossinline title: (() -> Component),
+    crossinline factory: ((Int, Inventory, ItemStackHandler) -> AbstractContainerMenu),
+    crossinline accessor: ((TEntity) -> ItemStackHandler)): InteractionResult {
+
+    return this.constructMenu<TEntity>(pos, player, title) {
+            id, inventory, _, entity -> factory(id, inventory, accessor(entity))
     }
+}
+
+fun Level.getDataAccess(pos: BlockPos): DataAccessNode? {
+    return ((this.getBlockEntity(pos) ?: return null)
+            as? IDataEntity ?: return null)
+        .dataAccessNode
 }

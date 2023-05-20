@@ -15,10 +15,10 @@ import org.eln2.mc.common.cells.CellRegistry
 import org.eln2.mc.common.cells.foundation.objects.SimulationObjectType
 import org.eln2.mc.common.configs.Configuration
 import org.eln2.mc.common.space.RelativeRotationDirection
-import org.eln2.mc.extensions.NbtExtensions.getCellPos
-import org.eln2.mc.extensions.NbtExtensions.getRelativeDirection
-import org.eln2.mc.extensions.NbtExtensions.putCellPos
-import org.eln2.mc.extensions.NbtExtensions.putRelativeDirection
+import org.eln2.mc.extensions.getCellPos
+import org.eln2.mc.extensions.getRelativeDirection
+import org.eln2.mc.extensions.putCellPos
+import org.eln2.mc.extensions.putRelativeDirection
 import org.eln2.mc.utility.Time
 import java.util.*
 import java.util.concurrent.Executors
@@ -28,10 +28,6 @@ import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.collections.ArrayDeque
 import kotlin.system.measureNanoTime
-
-fun interface ICellGraphSubscriber {
-    fun simulationTick(elapsed: Double)
-}
 
 /**
  * The cell graph represents a physical network of cells.
@@ -64,6 +60,10 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
     @CrossThreadAccess
     var lastTickTime = 0.0
         private set
+
+    fun setChanged(){
+        manager.setDirty()
+    }
 
     /**
      * Gets the number of updates that have occurred since the last call to this method.

@@ -11,18 +11,19 @@ import org.ageseries.libage.sim.Material
 import org.eln2.mc.Eln2.LOGGER
 import org.eln2.mc.client.render.PartialModels
 import org.eln2.mc.client.render.PartialModels.bbOffset
-import org.eln2.mc.mathematics.Functions.bbVec
-import org.eln2.mc.mathematics.Functions.lerp
-import org.eln2.mc.mathematics.Functions.vec3
+import org.eln2.mc.mathematics.bbVec
+import org.eln2.mc.mathematics.lerp
+import org.eln2.mc.mathematics.vec3
 import org.eln2.mc.common.blocks.BlockRegistry
 import org.eln2.mc.common.cells.CellRegistry
 import org.eln2.mc.common.cells.foundation.providers.BasicCellProvider
 import org.eln2.mc.common.containers.ContainerRegistry
+import org.eln2.mc.common.items.ItemRegistry
 import org.eln2.mc.common.parts.PartRegistry
 import org.eln2.mc.common.parts.foundation.BasicCellPart
 import org.eln2.mc.common.parts.foundation.basicRenderer
 import org.eln2.mc.common.parts.foundation.providers.BasicPartProvider
-import org.eln2.mc.mathematics.Functions.bbSize
+import org.eln2.mc.mathematics.bbSize
 import org.eln2.mc.utility.SelfDescriptiveUnitMultipliers.centimeters
 import org.eln2.mc.utility.SelfDescriptiveUnitMultipliers.milliOhms
 import org.eln2.mc.utility.UnitConversions.kwHoursInJ
@@ -142,14 +143,42 @@ object Content {
     }, vec3(1.0)))
     val HEAT_GENERATOR_BLOCK = BlockRegistry.registerBasicBlock("heat_generator", tab = null) { HeatGeneratorBlock() }
     val HEAT_GENERATOR_BLOCK_ENTITY = BlockRegistry.blockEntity("heat_generator", ::HeatGeneratorBlockEntity) { HEAT_GENERATOR_BLOCK.block.get() }
+    val HEAT_GENERATOR_MENU = ContainerRegistry.registerMenu("heat_generator_menu", ::HeatGeneratorMenu)
 
     val PHOTOVOLTAIC_GENERATOR_CELL = CellRegistry.register("photovoltaic_cell", BasicCellProvider.polarFB { pos, id ->
         PhotovoltaicGeneratorCell(pos, id, PhotovoltaicModels.test24Volts())
     })
 
     val PHOTOVOLTAIC_PANEL_PART = PartRegistry.part("photovoltaic_panel_part", BasicPartProvider({id, context ->
-        BasicCellPart(id, context, Vec3(1.0, bbSize(2.0), 1.0), PHOTOVOLTAIC_GENERATOR_CELL.get(), basicRenderer(PartialModels.SOLAR_PANEL_ONE_BLOCK, bbOffset(2.0)))
+        BasicCellPart(
+            id,
+            context,
+            Vec3(1.0, bbSize(2.0), 1.0),
+            PHOTOVOLTAIC_GENERATOR_CELL.get(),
+            basicRenderer(
+                PartialModels.SOLAR_PANEL_ONE_BLOCK,
+                bbOffset(2.0)
+            )
+        )
     }, Vec3(1.0, bbSize(2.0), 1.0)))
+
+    val VOLTAGE_METER_ITEM = ItemRegistry.registerBasicItem("voltage_meter") {
+        UniversalMeter(readVoltage = true)
+    }
+    val CURRENT_METER_ITEM = ItemRegistry.registerBasicItem("current_meter") {
+        UniversalMeter(readCurrent = true)
+    }
+    val TEMPERATURE_METER_ITEM = ItemRegistry.registerBasicItem("temperature_meter") {
+        UniversalMeter(readTemperature = true)
+    }
+
+    val UNIVERSAL_METER_ITEM = ItemRegistry.registerBasicItem("universal_meter") {
+        UniversalMeter(
+            readVoltage = true,
+            readCurrent = true,
+            readTemperature = true
+        )
+    }
 
     @Mod.EventBusSubscriber
     object ClientSetup {
@@ -164,6 +193,7 @@ object Content {
 
         private fun clientWork() {
             MenuScreens.register(FURNACE_MENU.get(), ::FurnaceScreen)
+            MenuScreens.register(HEAT_GENERATOR_MENU.get(), ::HeatGeneratorScreen)
         }
     }
 }

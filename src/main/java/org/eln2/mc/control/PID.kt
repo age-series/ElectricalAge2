@@ -74,3 +74,7 @@ class PIDController(private val coefficients: PIDCoefficients) {
         lastError = 0.0
     }
 }
+
+fun pid(kP: Double, kI: Double, kD: Double): PIDController {
+    return PIDController(PIDCoefficients(kP, kI, kD))
+}

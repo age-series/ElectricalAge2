@@ -10,7 +10,7 @@ import org.ageseries.libage.sim.electrical.mna.component.Pin
 import org.eln2.mc.integration.waila.TooltipEntryType.Companion.getTooltipEntryType
 import org.eln2.mc.integration.waila.TooltipEntryType.Companion.putTooltipEntryType
 import org.eln2.mc.utility.UnitType
-import org.eln2.mc.utility.ValueText
+import org.eln2.mc.utility.valueText
 
 enum class TooltipEntryType(val id: Int) {
     /**
@@ -172,63 +172,63 @@ class TooltipBuilder {
      * Adds an entry with translated "current" and formatted value.
      * */
     fun current(value: Double): TooltipBuilder {
-        return translateText("current", ValueText.valueText(value, UnitType.AMPERE))
+        return translateText("current", valueText(value, UnitType.AMPERE))
     }
 
     /**
      * Adds an entry with translated "energy" and formatted value.
      * */
     fun energy(value: Double): TooltipBuilder {
-        return translateText("energy", ValueText.valueText(value, UnitType.JOULE))
+        return translateText("energy", valueText(value, UnitType.JOULE))
     }
 
     /**
      * Adds an entry with translated "mass" and formatted value.
      * */
     fun mass(value: Double): TooltipBuilder {
-        return translateText("mass", ValueText.valueText(value * 1000.0, UnitType.GRAM))
+        return translateText("mass", valueText(value * 1000.0, UnitType.GRAM))
     }
 
     /**
      * Adds an entry with translated "voltage" and formatted value.
      * */
     fun voltage(value: Double): TooltipBuilder {
-        return translateText("voltage", ValueText.valueText(value, UnitType.VOLT))
+        return translateText("voltage", valueText(value, UnitType.VOLT))
     }
 
     /**
      * Adds an entry with translated "resistance" and formatted value.
      * */
     fun resistance(value: Double): TooltipBuilder {
-        return translateText("resistance", ValueText.valueText(value, UnitType.OHM))
+        return translateText("resistance", valueText(value, UnitType.OHM))
     }
 
     /**
      * Adds an entry with translated "inductance" and formatted value.
      * */
     fun inductance(value: Double): TooltipBuilder {
-        return translateText("inductance", ValueText.valueText(value, UnitType.HENRY))
+        return translateText("inductance", valueText(value, UnitType.HENRY))
     }
 
     /**
      * Adds an entry with translated "capacitance" and formatted value.
      * */
     fun capacitance(value: Double): TooltipBuilder {
-        return translateText("capacitance", ValueText.valueText(value, UnitType.FARAD))
+        return translateText("capacitance", valueText(value, UnitType.FARAD))
     }
 
     /**
      * Adds an entry with translated "power" and formatted value.
      * */
     fun power(value: Double): TooltipBuilder {
-        return translateText("power", ValueText.valueText(value, UnitType.WATT))
+        return translateText("power", valueText(value, UnitType.WATT))
     }
 
     /**
      * Adds an entry with translated "temperature" and formatted value.
      * */
     fun temperature(value: Double): TooltipBuilder {
-        return translateText("temperature", ValueText.valueText(value, UnitType.KELVIN))
+        return translateText("temperature", valueText(value, UnitType.KELVIN))
     }
 
     fun pinVoltages(pins: MutableList<Pin>) {

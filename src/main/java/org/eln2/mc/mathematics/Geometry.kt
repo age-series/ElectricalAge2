@@ -1,7 +1,6 @@
 package org.eln2.mc.mathematics
 
-import org.eln2.mc.mathematics.Functions.frac
-import kotlin.math.floor
+import kotlin.math.*
 
 /**
  * Represents a vector of [size] elements.
@@ -630,13 +629,6 @@ data class Vector2F(val x: Float, val y: Float) {
     }
 }
 
-data class Vector2D(val x: Double, val y: Double) {
-    companion object {
-        fun one(): Vector2D = Vector2D(1.0, 1.0)
-        fun zero(): Vector2D = Vector2D(0.0, 0.0)
-    }
-}
-
 data class Rectangle4I(val x: Int, val y: Int, val width: Int, val height: Int) {
     constructor(pos: Vector2I, width: Int, height: Int): this(pos.x, pos.y, width, height)
     constructor(pos: Vector2I, size: Vector2I): this(pos.x, pos.y, size.x, size.y)
@@ -657,4 +649,195 @@ data class Rectangle4F(val x: Float, val y: Float, val width: Float, val height:
     val right get() = x + width
     val top get() = y
     val bottom get() = y + height
+}
+
+data class Vector2d(val x: Double, val y: Double) {
+    constructor(value: Double): this(value, value)
+
+    val lengthSqr get() = x * x + y * y
+    val length get() = sqrt(lengthSqr)
+    fun normalized() = this / length
+    fun normalizedEps() = this / length.nonZero()
+
+    fun approxEqs(other: Vector2d, eps: Double = 10e-6) = x.approxEq(other.x, eps) && y.approxEq(other.y, eps)
+
+    override fun toString(): String {
+        return "x=${x.rounded()}, y=${y.rounded()}"
+    }
+
+    override fun equals(other: Any?): Boolean {
+        if(other !is Vector2d) {
+            return false
+        }
+
+        return equals(other)
+    }
+
+    fun equals(other: Vector2d) = (x == other.x && y == other.y)
+
+    override fun hashCode(): Int {
+        var result = x.hashCode()
+        result = 31 * result + y.hashCode()
+        return result
+    }
+
+    operator fun unaryPlus() = this
+    operator fun unaryMinus() = Vector2d(-x, -y)
+    operator fun plus(other: Vector2d) = Vector2d(x + other.x, y + other.y)
+    operator fun minus(other: Vector2d) = Vector2d(x - other.x, y - other.y)
+    operator fun times(other: Vector2d) = Vector2d(x * other.x, y * other.y)
+    operator fun div(other: Vector2d) = Vector2d(x / other.x, y / other.y)
+    operator fun times(scalar: Double) = Vector2d(x * scalar, y * scalar)
+    operator fun div(scalar: Double) = Vector2d(x / scalar, y / scalar)
+
+    operator fun compareTo(other: Vector2d) = this.lengthSqr.compareTo(other.lengthSqr)
+
+    companion object {
+        val zero = Vector2d(0.0, 0.0)
+        val one = Vector2d(1.0, 1.0)
+        val unitX = Vector2d(1.0, 0.0)
+        val unitY = Vector2d(0.0, 1.0)
+    }
+}
+
+fun lerp(a: Vector2d, b: Vector2d, t: Double) = Vector2d(
+    lerp(a.x, b.x, t),
+    lerp(a.y, b.y, t)
+)
+
+data class Vector2dDual(val x: Dual, val y: Dual) {
+    constructor(value: Dual): this(value, value)
+
+    init {
+        require(x.size == y.size) { "Dual X and Y must be of the same size" }
+        require(x.size > 0) { "X and Y must not be empty" }
+    }
+
+    val size get() = x.size
+    val isReal get() = size == 1
+    val lengthSqr get() = x * x + y * y
+    val length get() = sqrt(lengthSqr)
+    fun normalized() = this / length
+    val value get() = Vector2d(x.value, y.value)
+    fun head(n: Int = 1) = Vector2dDual(x.head(n), y.head(n))
+    fun tail(n: Int = 1) = Vector2dDual(x.tail(n), y.tail(n))
+
+    override fun toString(): String {
+        return "x=${x}, y=${y}"
+    }
+
+    override fun equals(other: Any?): Boolean {
+        if(other !is Vector2dDual) {
+            return false
+        }
+
+        return equals(other)
+    }
+
+    fun equals(other: Vector2dDual) = (x == other.x && y == other.y)
+
+    override fun hashCode(): Int {
+        var result = x.hashCode()
+        result = 31 * result + y.hashCode()
+        return result
+    }
+
+    operator fun unaryPlus() = this
+    operator fun unaryMinus() = Vector2dDual(-x, -y)
+    operator fun plus(other: Vector2dDual) = Vector2dDual(x + other.x, y + other.y)
+    operator fun minus(other: Vector2dDual) = Vector2dDual(x - other.x, y - other.y)
+    operator fun times(other: Vector2dDual) = Vector2dDual(x * other.x, y * other.y)
+    operator fun div(other: Vector2dDual) = Vector2dDual(x / other.x, y / other.y)
+    operator fun times(scalar: Dual) = Vector2dDual(x * scalar, y * scalar)
+    operator fun div(scalar: Dual) = Vector2dDual(x / scalar, y / scalar)
+    operator fun times(constant: Double) = Vector2dDual(x * constant, y * constant)
+    operator fun div(constant: Double) = Vector2dDual(x / constant, y / constant)
+
+    companion object {
+        fun const(x: Double, y: Double, n: Int = 1) = Vector2dDual(Dual.const(x, n), Dual.const(y, n))
+        fun const(value: Vector2d, n: Int = 1) = const(value.x, value.y, n)
+    }
+}
+
+data class Rotation2d(val re: Double, val im: Double) {
+    fun log() = atan2(im, re)
+    fun scaled(k: Double) = exp(log() * k)
+    val inverse get() = Rotation2d(re, -im)
+    val direction get() = Vector2d(re, im)
+
+    override fun equals(other: Any?): Boolean {
+        if(other !is Rotation2d) {
+            return false
+        }
+
+        return equals(other)
+    }
+
+    fun equals(other: Rotation2d) = re.equals(other.re) && im.equals(other.im)
+
+    fun approxEq(other: Rotation2d, eps: Double = 10e-10) = re.approxEq(other.re, eps) && im.approxEq(other.im, eps)
+
+    override fun hashCode(): Int {
+        var result = re.hashCode()
+        result = 31 * result + im.hashCode()
+        return result
+    }
+
+    override fun toString(): String {
+        return "${Math.toDegrees(log()).rounded()} deg"
+    }
+
+    operator fun times(b: Rotation2d) = Rotation2d(this.re * b.re - this.im * b.im, this.re * b.im + this.im * b.re)
+    operator fun times(r2: Vector2d) = Vector2d(this.re * r2.x - this.im * r2.y, this.im * r2.x + this.re * r2.y)
+    operator fun div(b: Rotation2d) = b.inverse * this
+    operator fun plus(incr: Double) = this * exp(incr)
+    operator fun minus(b: Rotation2d) = (this / b).log()
+
+    companion object {
+        val zero = exp(0.0)
+
+        fun exp(angleIncr: Double) = Rotation2d(cos(angleIncr), sin(angleIncr))
+
+        fun dir(direction: Vector2d): Rotation2d {
+            val dir = direction.normalized()
+
+            return Rotation2d(dir.x, dir.y)
+        }
+    }
+}
+
+fun interpolate(r0: Rotation2d, r1: Rotation2d, t: Double) = Rotation2d.exp(t * (r1 / r0).log()) * r0
+
+data class Rotation2dDual(val re: Dual, val im: Dual) {
+    companion object {
+        fun exp(angleIncr: Dual) = Rotation2dDual(cos(angleIncr), sin(angleIncr))
+        fun const(value: Rotation2d, n: Int = 1) = Rotation2dDual(Dual.const(value.re, n), Dual.const(value.im, n))
+        fun const(angleIncr: Double, n: Int = 1) = exp(Dual.const(angleIncr, n))
+    }
+
+    val value get() = Rotation2d(re.value, im.value)
+    val angularVelocity get() = re * im.tail() - im * re.tail()
+    val inverse get() = Rotation2dDual(re, -im)
+    val direction get() = Vector2dDual(re, im)
+
+    override fun equals(other: Any?): Boolean {
+        if(other !is Rotation2dDual) {
+            return false
+        }
+
+        return equals(other)
+    }
+
+    fun equals(other: Rotation2dDual) = re == other.re && im == other.im
+
+    override fun hashCode(): Int {
+        var result = re.hashCode()
+        result = 31 * result + im.hashCode()
+        return result
+    }
+
+    operator fun times(b: Rotation2dDual) = Rotation2dDual(this.re * b.re - this.im * b.im, this.re * b.im + this.im * b.re)
+    operator fun times(b: Rotation2d) = Rotation2dDual(this.re * b.re - this.im * b.im, this.re * b.im + this.im * b.re)
+    operator fun times(r2: Vector2dDual) = Vector2dDual(this.re * r2.x - this.im * r2.y, this.im * r2.x + this.re * r2.y)
+    operator fun times(r2: Vector2d) = Vector2dDual(this.re * r2.x - this.im * r2.y, this.im * r2.x + this.re * r2.y)
 }

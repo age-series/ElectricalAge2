@@ -18,7 +18,7 @@ import net.minecraft.world.level.block.state.StateDefinition
 import net.minecraft.world.level.block.state.properties.IntegerProperty
 import net.minecraft.world.level.material.Material
 import org.eln2.mc.Eln2.LOGGER
-import org.eln2.mc.mathematics.Functions.bbVec
+import org.eln2.mc.mathematics.bbVec
 import org.eln2.mc.annotations.ClientOnly
 import org.eln2.mc.annotations.ServerOnly
 import org.eln2.mc.client.render.MultipartBlockEntityInstance
@@ -36,8 +36,8 @@ import org.eln2.mc.common.events.*
 import org.eln2.mc.common.parts.foundation.CellPart
 import org.eln2.mc.common.parts.foundation.IPartRenderer
 import org.eln2.mc.common.parts.foundation.PartPlacementContext
-import org.eln2.mc.extensions.NbtExtensions.useSubTag
-import org.eln2.mc.extensions.NbtExtensions.withSubTag
+import org.eln2.mc.extensions.useSubTag
+import org.eln2.mc.extensions.withSubTag
 import org.eln2.mc.integration.waila.TooltipBuilder
 
 interface IGhostLightHandle {

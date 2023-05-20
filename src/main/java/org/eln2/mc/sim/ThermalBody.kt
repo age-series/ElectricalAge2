@@ -2,32 +2,29 @@ package org.eln2.mc.sim
 
 import mcp.mobius.waila.api.IPluginConfig
 import org.ageseries.libage.sim.Material
-import org.ageseries.libage.sim.thermal.STANDARD_TEMPERATURE
-import org.ageseries.libage.sim.thermal.Simulator
 import org.ageseries.libage.sim.thermal.Temperature
 import org.ageseries.libage.sim.thermal.ThermalMass
-import org.eln2.mc.extensions.ThermalExtensions.appendBody
+import org.eln2.mc.extensions.appendBody
 import org.eln2.mc.integration.waila.IWailaProvider
 import org.eln2.mc.integration.waila.TooltipBuilder
-import org.eln2.mc.utility.IntId
 
 class ThermalBody(
-    var mass: ThermalMass,
+    var thermalMass: ThermalMass,
     var surfaceArea: Double
 ) : IWailaProvider {
     var temperature: Temperature
-        get() = mass.temperature
-        set(value) { mass.temperature = value }
+        get() = thermalMass.temperature
+        set(value) { thermalMass.temperature = value }
     var temperatureK: Double
         get() = temperature.kelvin
-        set(value) { mass.temperature = Temperature(value) }
+        set(value) { thermalMass.temperature = Temperature(value) }
 
     var thermalEnergy: Double
-        get() = mass.energy
-        set(value) { mass.energy = value }
+        get() = thermalMass.energy
+        set(value) { thermalMass.energy = value }
 
     override fun appendBody(builder: TooltipBuilder, config: IPluginConfig?) {
-        mass.appendBody(builder, config)
+        thermalMass.appendBody(builder, config)
     }
 
     companion object {

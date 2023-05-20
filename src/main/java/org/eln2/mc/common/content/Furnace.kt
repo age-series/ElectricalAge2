@@ -41,7 +41,6 @@ import org.ageseries.libage.sim.Material
 import org.ageseries.libage.sim.thermal.*
 import org.eln2.mc.Eln2
 import org.eln2.mc.Eln2.LOGGER
-import org.eln2.mc.annotations.ActuallyValidUsage
 import org.eln2.mc.client.render.renderColored
 import org.eln2.mc.client.render.renderTextured
 import org.eln2.mc.common.blocks.foundation.CellBlock
@@ -52,35 +51,49 @@ import org.eln2.mc.common.cells.foundation.SubscriberPhase
 import org.eln2.mc.common.cells.foundation.objects.SimulationObjectSet
 import org.eln2.mc.common.events.AtomicUpdate
 import org.eln2.mc.common.events.EventScheduler
-import org.eln2.mc.extensions.GuiExtensions.addPlayerGrid
-import org.eln2.mc.extensions.LevelExtensions.addParticle
-import org.eln2.mc.extensions.LevelExtensions.constructMenu
-import org.eln2.mc.extensions.LevelExtensions.playLocalSound
-import org.eln2.mc.extensions.LibAgeExtensions.add
-import org.eln2.mc.extensions.LibAgeExtensions.connect
-import org.eln2.mc.extensions.LibAgeExtensions.remove
-import org.eln2.mc.extensions.NbtExtensions.getThermalMassMapped
-import org.eln2.mc.extensions.NbtExtensions.putThermalMassMapped
-import org.eln2.mc.extensions.ThermalExtensions.subStep
-import org.eln2.mc.extensions.Vec3Extensions.plus
-import org.eln2.mc.extensions.Vec3Extensions.toVec3
+import org.eln2.mc.extensions.*
+import org.eln2.mc.extensions.subStep
+import org.eln2.mc.extensions.plus
+import org.eln2.mc.extensions.toVec3
 import org.eln2.mc.integration.waila.TooltipBuilder
 import org.eln2.mc.mathematics.*
-import org.eln2.mc.mathematics.Functions.map
-import org.eln2.mc.mathematics.Functions.mapNormalizedDoubleShort
-import org.eln2.mc.mathematics.Functions.unmapNormalizedDoubleShort
-import org.eln2.mc.mathematics.Functions.vec4fOne
+import org.eln2.mc.mathematics.map
+import org.eln2.mc.mathematics.mapNormalizedDoubleShort
+import org.eln2.mc.mathematics.unmapNormalizedDoubleShort
+import org.eln2.mc.mathematics.vec4fOne
 import org.eln2.mc.sim.ThermalBody
 import org.eln2.mc.utility.McColors
 import java.util.*
 
 data class FurnaceOptions(
+    /**
+     * Resistance used when the furnace is inactive.
+     * */
     var idleResistance: Double,
+
+    /**
+     * Resistance used when the furnace is running.
+     * */
     var runningResistance: Double,
+
+    /**
+     * Temperature needed for smelting bodies to begin smelting.
+     * */
     var temperatureThreshold: Double,
+
+    /**
+     * This temperature will be held constantly by the furnace while in operation.
+     * */
     var targetTemperature: Double,
+
+    /**
+     * The surface area of the resistor. This will affect the heat transfer rate.
+     * */
     var surfaceArea: Double,
-    var temperatureLossRate: Double,
+
+    /**
+     * The connection parameters with the smelting body.
+     * */
     var connectionParameters: ConnectionParameters){
     fun serializeNbt(): CompoundTag {
         val tag = CompoundTag()
@@ -90,7 +103,6 @@ data class FurnaceOptions(
         tag.putDouble(TEMP_THRESH, temperatureThreshold)
         tag.putDouble(TARGET_TEMP, targetTemperature)
         tag.putDouble(SURFACE_AREA, surfaceArea)
-        tag.putDouble(TEMP_LOSS_RATE, temperatureLossRate)
 
         return tag
     }
@@ -101,7 +113,6 @@ data class FurnaceOptions(
         temperatureThreshold = tag.getDouble(TEMP_THRESH)
         targetTemperature = tag.getDouble(TARGET_TEMP)
         surfaceArea = tag.getDouble(SURFACE_AREA)
-        temperatureLossRate = tag.getDouble(TEMP_LOSS_RATE)
     }
 
     companion object{
@@ -110,7 +121,6 @@ data class FurnaceOptions(
         private const val TARGET_TEMP = "targetTemp"
         private const val TEMP_THRESH = "tempThresh"
         private const val SURFACE_AREA = "surfaceArea"
-        private const val TEMP_LOSS_RATE = "tempLossRate"
     }
 }
 
@@ -123,7 +133,7 @@ class FurnaceCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) {
     fun serializeNbt(): CompoundTag{
         return CompoundTag().also {
             it.put(OPTIONS, options.serializeNbt())
-            it.putThermalMassMapped(RESISTOR_THERMAL_MASS, resistorHeatBody.mass)
+            it.putThermalMassMapped(RESISTOR_THERMAL_MASS, resistorHeatBody.thermalMass)
         }
     }
 
@@ -138,7 +148,6 @@ class FurnaceCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) {
         600.0,
         800.0,
         1.0,
-        0.01,
         ConnectionParameters.DEFAULT)
 
     private var resistorHeatBody = ThermalBody(ThermalMass(Material.IRON), 0.5)
@@ -175,7 +184,15 @@ class FurnaceCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) {
     var isHot: Boolean = false
         private set
 
+    /**
+     * Gets the temperature of the latest smelting body. This body has been visited by the update thread;
+     * it may be different from the latest body loaded with [loadSmeltingBody]
+     * */
     val bodyTemperature: Temperature? get() = knownSmeltingBody?.temperature
+
+    /**
+     * Gets the temperature of the resistor's body.
+     * */
     val resistorTemperature: Temperature get() = resistorHeatBody.temperature
 
     override fun createObjectSet(): SimulationObjectSet {
@@ -190,11 +207,18 @@ class FurnaceCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) {
         graph.subscribers.removeSubscriber(this::simulationTick)
     }
 
+    /**
+     * Sets the resistance to the idle value as per [options] and sets [isHot] to **false**.
+     * */
     private fun idle() {
         resistorObject.resistance = options.idleResistance
         isHot = false
     }
 
+    /**
+     * Based on [options], applies an on-off signal by toggling between [FurnaceOptions.runningResistance] and [FurnaceOptions.idleResistance] to reach
+     * the specified [FurnaceOptions.targetTemperature].
+     * */
     private fun applyControlSignal(){
         resistorObject.resistance = if(resistorHeatBody.temperatureK < options.targetTemperature){
             options.runningResistance
@@ -203,26 +227,26 @@ class FurnaceCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) {
         }
     }
 
-    private fun simulateThermalTransfer(dt: Double){
+    private fun updateThermalSimulation(dt: Double){
         simulator.subStep(dt, 10) { _, elapsed ->
             // Add converted energy into the system
             resistorHeatBody.thermalEnergy += resistorObject.power * elapsed
         }
     }
 
+    /**
+     * Updates the burn state [isHot] based on the temperature of the [knownSmeltingBody] and the threshold,
+     * specified in [options].
+     * */
     private fun updateBurnState(){
-        // Known is not mutated outside
+        // P.S. Known is not mutated outside!
+        val knownSmeltingBody = this.knownSmeltingBody
 
         isHot = if(knownSmeltingBody == null) {
             false
         } else{
-            knownSmeltingBody!!.temperatureK > options.temperatureThreshold
+            knownSmeltingBody.temperatureK > options.temperatureThreshold
         }
-    }
-
-    private fun runThermalSimulation(dt: Double) {
-        simulateThermalTransfer(dt)
-        updateBurnState()
     }
 
     private fun applyExternalUpdates() {
@@ -285,14 +309,18 @@ class FurnaceCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) {
     private fun simulationTick(elapsed: Double, phase: SubscriberPhase){
         applyExternalUpdates()
 
-        runThermalSimulation(elapsed)
+        updateThermalSimulation(elapsed)
+        updateBurnState()
 
         if (!needsBurn) {
+            // No bodies are loaded in, we will idle here.
+
             idle()
 
             return
         }
 
+        // A body needs heating, so we start updating the resistor values.
         applyControlSignal()
     }
 
@@ -428,6 +456,9 @@ class FurnaceBlockEntity(pos: BlockPos, state: BlockState) :
 
     val data = FurnaceData()
 
+    /**
+     * This is the last tracked value on the client.
+     * */
     var clientBurning = false
         private set
 
@@ -473,14 +504,19 @@ class FurnaceBlockEntity(pos: BlockPos, state: BlockState) :
 
     fun serverTick() {
         if(furnaceCell.isHot != clientBurning) {
+            // A sync is needed here.
+
             clientBurning = furnaceCell.isHot
             level!!.sendBlockUpdated(blockPos, blockState, blockState, Block.UPDATE_CLIENTS)
         }
 
         if (!isBurning) {
+            // Nothing can be smelted.
+
             return
         }
 
+        // The saved data is always changing while we're smelting.
         setChanged()
 
         data.resistorTemperature = furnaceCell.resistorTemperature.kelvin.toInt()
@@ -812,7 +848,6 @@ class FurnaceBlock : CellBlock() {
         }
     }
 
-    @ActuallyValidUsage
     @Deprecated("Deprecated in Java")
     override fun use(
         pState: BlockState,

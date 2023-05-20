@@ -34,19 +34,20 @@ import org.eln2.mc.common.parts.PartRegistry
 import org.eln2.mc.common.parts.foundation.*
 import org.eln2.mc.common.space.DirectionMask
 import org.eln2.mc.common.space.RelativeRotationDirection
-import org.eln2.mc.extensions.BlockPosExtensions.directionTo
-import org.eln2.mc.extensions.BlockPosExtensions.minus
-import org.eln2.mc.extensions.BlockPosExtensions.plus
-import org.eln2.mc.extensions.DirectionExtensions.isVertical
-import org.eln2.mc.extensions.NbtExtensions.getBlockPos
-import org.eln2.mc.extensions.NbtExtensions.getDirection
-import org.eln2.mc.extensions.NbtExtensions.getPartUpdateType
-import org.eln2.mc.extensions.NbtExtensions.getResourceLocation
-import org.eln2.mc.extensions.NbtExtensions.putBlockPos
-import org.eln2.mc.extensions.NbtExtensions.putDirection
-import org.eln2.mc.extensions.NbtExtensions.putPartUpdateType
-import org.eln2.mc.extensions.NbtExtensions.putResourceLocation
-import org.eln2.mc.extensions.PartExtensions.allows
+import org.eln2.mc.data.DataAccessNode
+import org.eln2.mc.data.IDataEntity
+import org.eln2.mc.extensions.directionTo
+import org.eln2.mc.extensions.minus
+import org.eln2.mc.extensions.isVertical
+import org.eln2.mc.extensions.getBlockPos
+import org.eln2.mc.extensions.getDirection
+import org.eln2.mc.extensions.getPartUpdateType
+import org.eln2.mc.extensions.getResourceLocation
+import org.eln2.mc.extensions.putBlockPos
+import org.eln2.mc.extensions.putDirection
+import org.eln2.mc.extensions.putPartUpdateType
+import org.eln2.mc.extensions.putResourceLocation
+import org.eln2.mc.extensions.allows
 import org.eln2.mc.integration.waila.IWailaProvider
 import org.eln2.mc.integration.waila.TooltipBuilder
 import org.eln2.mc.utility.BoundingBox
@@ -63,7 +64,8 @@ import java.util.concurrent.ConcurrentLinkedQueue
 class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
     BlockEntity(BlockRegistry.MULTIPART_BLOCK_ENTITY.get(), pos, state),
     ICellContainer,
-    IWailaProvider {
+    IWailaProvider,
+    IDataEntity {
 
     // Interesting issue.
     // If we try to add tickers before the block receives the first tick,
@@ -106,6 +108,8 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
         val result = parts.remove(face)
             ?: return null
 
+        dataAccessNode.children.removeIf { it == result.dataAccessNode }
+
         tickingParts.removeIf { it == result }
 
         result.onRemoved()
@@ -123,6 +127,7 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
 
     private fun addPart(face: Direction, part: Part) {
         parts[face] = part
+        dataAccessNode.withChild(part.dataAccessNode)
         part.onAdded()
     }
 
@@ -179,7 +184,7 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
         val targetBlockState = level.getBlockState(neighborPos)
 
         if (!targetBlockState.isCollisionShapeFullBlock(level, neighborPos)) {
-            Eln2.LOGGER.info("Cannot place on non-full block")
+            LOGGER.info("Cannot place on non-full block")
             return false
         }
 
@@ -299,7 +304,7 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
             Eln2.LOGGER.error("Failed to get direction")
             return false
         } else {
-            Eln2.LOGGER.info("Face: $direction")
+            LOGGER.info("Face: $direction")
         }
 
         if (parts.containsKey(direction)) {
@@ -356,7 +361,7 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
         }
 
         if (!level!!.isClientSide) {
-            Eln2.LOGGER.info("handleUpdateTag called on the server!")
+            LOGGER.info("handleUpdateTag called on the server!")
             return
         }
 
@@ -614,7 +619,7 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
                 // GC reference tracking
                 savedTag = null
             } else {
-                Eln2.LOGGER.info("Multipart save tag null")
+                LOGGER.info("Multipart save tag null")
             }
         } catch (ex: Exception) {
             Eln2.LOGGER.error("Unhandled exception in setLevel: $ex")
@@ -747,27 +752,27 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
         val part = parts[query.surface]
 
         if (part == null) {
-            Eln2.LOGGER.info("No part on face ${query.surface}")
+            LOGGER.info("No part on face ${query.surface}")
             return null
         }
 
         val cellContainer = part as? IPartCellContainer
 
         if (cellContainer == null) {
-            Eln2.LOGGER.info("Part on face ${query.surface} is not a cell container")
+            LOGGER.info("Part on face ${query.surface} is not a cell container")
             return null
         }
 
         val relativeRotation = part.getRelativeDirection(query.connectionFace)
 
-        Eln2.LOGGER.info("${query.connectionFace} mapped to $relativeRotation")
+        LOGGER.info("${query.connectionFace} mapped to $relativeRotation")
 
         if (cellContainer.provider.canConnectFrom(relativeRotation)) {
-            Eln2.LOGGER.info("Connection accepted!")
+            LOGGER.info("Connection accepted!")
             return CellInfo(cellContainer.cell, query.surface)
         }
 
-        Eln2.LOGGER.info("Connection rejected")
+        LOGGER.info("Connection rejected")
 
         return null
     }
@@ -791,7 +796,7 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
             }
 
             if (!part.provider.canConnectFrom(partRelative)) {
-                Eln2.LOGGER.info("Part rejected connection on $partRelative - ${part.provider}")
+                LOGGER.info("Part rejected connection on $partRelative - ${part.provider}")
                 return@process
             }
 
@@ -1040,4 +1045,6 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
             part.appendBody(builder, config)
         }
     }
+
+    override val dataAccessNode: DataAccessNode = DataAccessNode()
 }

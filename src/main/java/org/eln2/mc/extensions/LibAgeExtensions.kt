@@ -13,57 +13,56 @@ import org.eln2.mc.sim.EnvironmentInformation
 import org.eln2.mc.sim.ThermalBody
 import kotlin.math.abs
 
-object LibAgeExtensions {
-    private const val EPSILON = 0.001
+private const val EPSILON = 0.001
 
-    fun Component.connect(pin: Int, info: ElectricalComponentInfo){
-        this.connect(pin, info.component, info.index)
+fun Component.connect(pin: Int, info: ElectricalComponentInfo){
+    this.connect(pin, info.component, info.index)
+}
+
+fun Circuit.add(holder: ElectricalComponentHolder<*>){
+    this.add(holder.instance)
+}
+
+fun Resistor.setResistanceEpsilon(resistance: Double, epsilon: Double = EPSILON): Boolean {
+    if(abs(this.resistance - resistance) < epsilon){
+        return false
     }
 
-    fun Circuit.add(holder: ElectricalComponentHolder<*>){
-        this.add(holder.instance)
+    this.resistance = resistance
+
+    return true
+}
+
+fun VoltageSource.setPotentialEpsilon(potential: Double, epsilon: Double = EPSILON): Boolean {
+    if(abs(this.potential - potential) < epsilon){
+        return false
     }
 
-    fun Resistor.setResistanceEpsilon(resistance: Double, epsilon: Double = EPSILON): Boolean {
-        if(abs(this.resistance - resistance) < epsilon){
-            return false
-        }
+    this.potential = potential
 
-        this.resistance = resistance
+    return true
+}
 
-        return true
-    }
+fun Simulator.add(body: ThermalBody) {
+    this.add(body.thermalMass)
+}
 
-    fun VoltageSource.setPotentialEpsilon(potential: Double, epsilon: Double = EPSILON): Boolean {
-        if(abs(this.potential - potential) < epsilon){
-            return false
-        }
+fun Simulator.remove(body: ThermalBody) {
+    this.remove(body.thermalMass)
+}
 
-        this.potential = potential
+fun Simulator.connect(a: ThermalBody, b: ThermalBody, parameters: ConnectionParameters){
+    this.connect(a.thermalMass, b.thermalMass, parameters)
+}
 
-        return true
-    }
+fun Simulator.connect(a: ThermalMass, environmentInformation: EnvironmentInformation) {
+    val connectionInfo = ConnectionParameters(
+        conductance = environmentInformation.airThermalConductivity
+    )
 
-    fun Simulator.add(body: ThermalBody) {
-        this.add(body.mass)
-    }
+    this.connect(a, environmentInformation.temperature, connectionInfo)
+}
 
-    fun Simulator.remove(body: ThermalBody) {
-        this.remove(body.mass)
-    }
-
-    fun Simulator.connect(a: ThermalBody, b: ThermalBody, parameters: ConnectionParameters){
-        this.connect(a.mass, b.mass, parameters)
-    }
-
-    fun Simulator.connect(a: ThermalMass, environmentInformation: EnvironmentInformation) {
-        val connectionInfo = ConnectionParameters(
-            conductance = environmentInformation.airThermalConductivity)
-
-        this.connect(a, environmentInformation.temperature, connectionInfo)
-    }
-
-    fun Simulator.connect(a: ThermalBody, environmentInformation: EnvironmentInformation) {
-        this.connect(a.mass, environmentInformation)
-    }
+fun Simulator.connect(a: ThermalBody, environmentInformation: EnvironmentInformation) {
+    this.connect(a.thermalMass, environmentInformation)
 }

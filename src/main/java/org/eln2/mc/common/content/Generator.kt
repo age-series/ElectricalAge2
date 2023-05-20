@@ -1,10 +1,20 @@
 package org.eln2.mc.common.content
 
+import com.mojang.blaze3d.vertex.PoseStack
 import mcp.mobius.waila.api.IPluginConfig
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
 import net.minecraft.nbt.CompoundTag
+import net.minecraft.network.chat.Component
+import net.minecraft.network.chat.TextComponent
 import net.minecraft.resources.ResourceLocation
+import net.minecraft.server.level.ServerLevel
+import net.minecraft.world.InteractionHand
+import net.minecraft.world.InteractionResult
+import net.minecraft.world.entity.player.Inventory
+import net.minecraft.world.entity.player.Player
+import net.minecraft.world.inventory.AbstractContainerMenu
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
 import net.minecraft.world.level.Level
@@ -12,11 +22,13 @@ import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.entity.BlockEntityTicker
 import net.minecraft.world.level.block.entity.BlockEntityType
 import net.minecraft.world.level.block.state.BlockState
+import net.minecraft.world.phys.BlockHitResult
 import net.minecraft.world.phys.Vec3
 import net.minecraftforge.common.capabilities.Capability
 import net.minecraftforge.common.util.LazyOptional
 import net.minecraftforge.items.CapabilityItemHandler
 import net.minecraftforge.items.ItemStackHandler
+import net.minecraftforge.items.SlotItemHandler
 import org.ageseries.libage.sim.Material
 import org.ageseries.libage.sim.electrical.mna.Circuit
 import org.ageseries.libage.sim.electrical.mna.component.Resistor
@@ -26,11 +38,13 @@ import org.ageseries.libage.sim.thermal.Temperature
 import org.ageseries.libage.sim.thermal.ThermalMass
 import org.apache.commons.math3.geometry.euclidean.threed.Vector3D
 import org.eln2.mc.Eln2
+import org.eln2.mc.Eln2.LOGGER
 import org.eln2.mc.annotations.CrossThreadAccess
 import org.eln2.mc.annotations.RaceCondition
 import org.eln2.mc.client.render.PartialModels
 import org.eln2.mc.client.render.PartialModels.bbOffset
 import org.eln2.mc.client.render.foundation.BasicPartRenderer
+import org.eln2.mc.client.render.renderTextured
 import org.eln2.mc.common.blocks.foundation.CellBlock
 import org.eln2.mc.common.blocks.foundation.CellBlockEntity
 import org.eln2.mc.common.cells.foundation.*
@@ -43,27 +57,30 @@ import org.eln2.mc.common.events.EventScheduler
 import org.eln2.mc.common.parts.foundation.*
 import org.eln2.mc.common.space.DirectionMask
 import org.eln2.mc.common.space.RelativeRotationDirection
-import org.eln2.mc.control.PIDCoefficients
-import org.eln2.mc.control.PIDController
-import org.eln2.mc.extensions.DirectionExtensions.toVector3D
-import org.eln2.mc.extensions.LibAgeExtensions.add
-import org.eln2.mc.extensions.LibAgeExtensions.setPotentialEpsilon
-import org.eln2.mc.extensions.LibAgeExtensions.setResistanceEpsilon
-import org.eln2.mc.extensions.NbtExtensions.getTemperature
-import org.eln2.mc.extensions.NbtExtensions.putTemperature
-import org.eln2.mc.extensions.NbtExtensions.useSubTag
-import org.eln2.mc.extensions.NbtExtensions.useSubTagIfPreset
-import org.eln2.mc.extensions.NumberExtensions.formatted
-import org.eln2.mc.extensions.NumberExtensions.formattedPercentN
+import org.eln2.mc.control.pid
+import org.eln2.mc.data.DataAccessNode
+import org.eln2.mc.data.IDataEntity
+import org.eln2.mc.extensions.toVector3D
+import org.eln2.mc.extensions.addPlayerGrid
+import org.eln2.mc.extensions.constructMenu
+import org.eln2.mc.extensions.add
+import org.eln2.mc.extensions.setPotentialEpsilon
+import org.eln2.mc.extensions.setResistanceEpsilon
+import org.eln2.mc.extensions.getTemperature
+import org.eln2.mc.extensions.putTemperature
+import org.eln2.mc.extensions.useSubTagIfPreset
+import org.eln2.mc.extensions.withSubTag
+import org.eln2.mc.extensions.withSubTagOptional
+import org.eln2.mc.extensions.formatted
+import org.eln2.mc.extensions.formattedPercentN
 import org.eln2.mc.integration.waila.IWailaProvider
 import org.eln2.mc.integration.waila.TooltipBuilder
-import org.eln2.mc.mathematics.Functions.avg
-import org.eln2.mc.mathematics.Functions.bbVec
-import org.eln2.mc.mathematics.Functions.lerp
-import org.eln2.mc.mathematics.Functions.map
-import org.eln2.mc.mathematics.epsilonEquals
-import org.eln2.mc.mathematics.evaluate
-import org.eln2.mc.mathematics.mappedHermite
+import org.eln2.mc.mathematics.*
+import org.eln2.mc.mathematics.avg
+import org.eln2.mc.mathematics.bbVec
+import org.eln2.mc.mathematics.lerp
+import org.eln2.mc.mathematics.map
+import org.eln2.mc.mathematics.vec4fOne
 import org.eln2.mc.sim.Datasets
 import org.eln2.mc.sim.ThermalBody
 import org.eln2.mc.utility.SelfDescriptiveUnitMultipliers.megaJoules
@@ -77,7 +94,7 @@ enum class GeneratorPowerDirection {
 /**
  * Represents an Electrical Generator. It is characterised by a voltage and internal resistance.
  * */
-class GeneratorObject : ElectricalObject(), IWailaProvider {
+class GeneratorObject : ElectricalObject(), IWailaProvider, IDataEntity {
     var plusDirection = RelativeRotationDirection.Front
     var minusDirection = RelativeRotationDirection.Back
 
@@ -151,6 +168,16 @@ class GeneratorObject : ElectricalObject(), IWailaProvider {
         builder.text("Flow", powerFlowDirection)
         builder.power(abs(resistorPower))
     }
+
+    override val dataAccessNode = DataAccessNode().also {
+        it.data.withField {
+            VoltageField { potential }
+        }
+
+        it.data.withField {
+            CurrentField { resistorCurrent }
+        }
+    }
 }
 
 abstract class GeneratorCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) {
@@ -163,33 +190,84 @@ abstract class GeneratorCell(pos: CellPos, id: ResourceLocation) : CellBase(pos,
 
 interface IBatteryView {
     val model: BatteryModel
+    /**
+     * Gets the total energy stored in the battery/
+     * */
     val energy: Double
+
+    /**
+     * Gets the total energy exchanged by this battery.
+     * */
     val energyIo: Double
+
+    /**
+     * Gets the battery current. This value's sign depends on the direction of flow.
+     * If the current is incoming, it should be positive. If it is outgoing, it should be negative.
+     * */
     val current: Double
+
+    /**
+     * Gets the life parameter of the battery.
+     * */
     val life: Double
+
+    /**
+     * Gets the number of charge-discharge cycles this battery has been trough.
+     * */
     val cycles: Double
+
+    /**
+     * Gets the charge percentage.
+     * */
     val charge: Double
+
+    /**
+     * Gets the charge percentage, mapped using the battery's threshold parameter, as per [BatteryModel.damageChargeThreshold].
+     * This value may be negative if the charge is under threshold.
+     * */
     val thresholdCharge: Double
+
+    /**
+     * Gets the temperature of the battery.
+     * */
     val temperature: Temperature
 }
 
+/**
+ * The [IBatteryVoltageFunction] is used to compute the voltage of the battery based on the battery's state.
+ * */
 fun interface IBatteryVoltageFunction {
     fun computeVoltage(battery: IBatteryView, dt: Double): Double
 }
 
+/**
+ * The [IBatteryResistanceFunction] is used to compute the internal resistance of the battery based on the battery's state.
+ * It should never be zero, though this is not enforced and will likely result in a simulation error.
+ * */
 fun interface IBatteryResistanceFunction {
     fun computeResistance(battery: IBatteryView, dt: Double): Double
 }
 
+/**
+ * The [IBatteryDamageFunction] computes a damage value in time, based on the battery's current state.
+ * These values are deducted from the battery's life parameter. The final parameter is clamped.
+ * */
 fun interface IBatteryDamageFunction {
     fun computeDamage(battery: IBatteryView, dt: Double): Double
 }
 
+/**
+ * The [IBatteryEnergyCapacityFunction] computes the capacity of the battery based on the battery's state.
+ * This must be a value ranging from 0-1. The result is clamped to that range.
+ * */
 fun interface IBatteryEnergyCapacityFunction {
     fun computeCapacity(battery: IBatteryView): Double
 }
 
 object VoltageModels {
+    /**
+     * Gets a 12V Wet Cell Lead Acid Battery voltage function.
+     * */
     val WET_CELL_12V = IBatteryVoltageFunction { view, _ ->
         val dataset = Datasets.LEAD_ACID_12V_WET
         val temperature = view.temperature.kelvin
@@ -235,18 +313,24 @@ data class BatteryModel(
     val resistanceFunction: IBatteryResistanceFunction,
     val damageFunction: IBatteryDamageFunction,
     val capacityFunction: IBatteryEnergyCapacityFunction,
+
+    /**
+     * The energy capacity of the battery. This is the total energy that can be stored.
+     * */
     val energyCapacity: Double,
+
+    /**
+     * The charge percentage where, if the battery continues to discharge, it should start receiving damage.
+     * */
     val damageChargeThreshold: Double,
+
     val material: Material,
     val mass: Double,
     val surfaceArea: Double)
 
 data class BatteryState(val energy: Double, val life: Double, val energyIo: Double)
 
-class BatteryCell(pos: CellPos, id: ResourceLocation, override val model: BatteryModel) :
-    GeneratorCell(pos, id),
-    IBatteryView {
-
+class BatteryCell(pos: CellPos, id: ResourceLocation, override val model: BatteryModel) : GeneratorCell(pos, id), IBatteryView {
     companion object {
         private const val ENERGY = "energy"
         private const val LIFE = "life"
@@ -291,13 +375,21 @@ class BatteryCell(pos: CellPos, id: ResourceLocation, override val model: Batter
         model.damageChargeThreshold,
         1.0,
         0.0,
-        1.0)
+        1.0
+    )
+
     override val temperature: Temperature
         get() = thermalWireObject.body.temperature
 
+    /**
+     * Gets the capacity coefficient of this battery. It is computed using the [BatteryModel.capacityFunction].
+     * */
     val capacityCoefficient
         get() = model.capacityFunction.computeCapacity(this).coerceIn(0.0, 1.0)
 
+    /**
+     * Gets the adjusted energy capacity of this battery. It is equal to the base energy capacity [BatteryModel.energyCapacity], scaled by [capacityCoefficient].
+     * */
     val adjustedEnergyCapacity
         get() = model.energyCapacity * capacityCoefficient
 
@@ -320,6 +412,14 @@ class BatteryCell(pos: CellPos, id: ResourceLocation, override val model: Batter
         return tag
     }
 
+    override fun saveCellData(): CompoundTag {
+        return serializeNbt()
+    }
+
+    override fun loadCellData(tag: CompoundTag) {
+        deserializeNbt(tag)
+    }
+
     override fun onGraphChanged() {
         graph.subscribers.addPreInstantaneous(this::simulationTick)
     }
@@ -333,32 +433,39 @@ class BatteryCell(pos: CellPos, id: ResourceLocation, override val model: Batter
             energy = it.energy
             life = it.life
             energyIo = it.energyIo
+
+            graph.setChanged()
         }
     }
 
     private fun simulateEnergyFlow(elapsed: Double) {
-        // Get energy transfer
-
+        // Get energy transfer:
         val transferredEnergy = abs(generatorObject.resistorPower * elapsed)
 
-        // Update total IO
-
+        // Update total IO:
         energyIo += transferredEnergy
 
         if(generatorObject.powerFlowDirection == GeneratorPowerDirection.Incoming){
             // Add energy into the system.
-
             energy += transferredEnergy
         } else {
             // Remove energy from the system.
-
             energy -= transferredEnergy
         }
 
         val capacity = adjustedEnergyCapacity
 
-        // Clamp energy
-        energy = energy.coerceIn(0.0, capacity)
+        if(energy < 0){
+            LOGGER.error("Negative battery energy $pos")
+            energy = 0.0
+        }
+        else if(energy > capacity) {
+            val extraEnergy = energy - capacity
+            energy -= extraEnergy
+
+            // Conserve energy by increasing temperature:
+            thermalWireObject.body.thermalEnergy += extraEnergy
+        }
     }
 
     private fun simulationTick(elapsed: Double, phase: SubscriberPhase){
@@ -374,6 +481,9 @@ class BatteryCell(pos: CellPos, id: ResourceLocation, override val model: Batter
         generatorObject.internalResistance = model.resistanceFunction.computeResistance(this, elapsed)
         life -= model.damageFunction.computeDamage(this, elapsed)
         life = life.coerceIn(0.0, 1.0)
+
+        // FIXME: Find condition
+        graph.setChanged()
     }
 
     override fun appendBody(builder: TooltipBuilder, config: IPluginConfig?) {
@@ -387,14 +497,10 @@ class BatteryCell(pos: CellPos, id: ResourceLocation, override val model: Batter
         builder.current(current)
     }
 
-    val thermalWireObject get() = thermalObject as ThermalWireObject
+    private val thermalWireObject get() = thermalObject as ThermalWireObject
 }
 
-class BatteryPart(id: ResourceLocation, placementContext: PartPlacementContext, provider: CellProvider):
-    CellPart(id, placementContext, provider),
-    ITickablePart,
-    IItemPersistentPart {
-
+class BatteryPart(id: ResourceLocation, placementContext: PartPlacementContext, provider: CellProvider): CellPart(id, placementContext, provider), IItemPersistentPart {
     companion object {
         private const val BATTERY = "battery"
     }
@@ -407,29 +513,7 @@ class BatteryPart(id: ResourceLocation, placementContext: PartPlacementContext, 
         }
     }
 
-    override fun saveCustomSimData(): CompoundTag {
-        return CompoundTag().also {
-            it.put(BATTERY, batteryCell.serializeNbt())
-        }
-    }
-
-    override fun loadCustomSimData(tag: CompoundTag) {
-        tag.useSubTag(BATTERY) { batteryCell.deserializeNbt(it) }
-    }
-
-    override fun onAdded() {
-        super.onAdded()
-
-        if(!placementContext.level.isClientSide){
-            placementContext.multipart.addTicker(this)
-        }
-    }
-
     private val batteryCell get() = cell as BatteryCell
-
-    override fun tick() {
-        invalidateSave()
-    }
 
     override fun saveItemTag(tag: CompoundTag) {
         tag.put(BATTERY, batteryCell.serializeNbt())
@@ -442,11 +526,21 @@ class BatteryPart(id: ResourceLocation, placementContext: PartPlacementContext, 
     override val order: ItemPersistentPartLoadOrder = ItemPersistentPartLoadOrder.AfterSim
 }
 
+/**
+ * Thermal body with two connection sides.
+ * */
 class ThermalBipoleObject: ThermalObject(), IWailaProvider {
     var b1 = ThermalBody.createDefault()
     var b2 = ThermalBody.createDefault()
 
+    /**
+     * The connection side of the first body.
+     * */
     var b1Dir = RelativeRotationDirection.Front
+
+    /**
+     * The connection side of the second body.
+     * */
     var b2Dir = RelativeRotationDirection.Back
 
     override val connectionMask: DirectionMask
@@ -456,7 +550,7 @@ class ThermalBipoleObject: ThermalObject(), IWailaProvider {
         return ThermalComponentInfo(when(val dir = directionOf(neighbour)){
             b1Dir -> b1
             b2Dir -> b2
-            else -> error("Unhandled bipole direction $dir")
+            else -> error("Unhandled bi-pole direction $dir")
         })
     }
 
@@ -471,31 +565,22 @@ class ThermalBipoleObject: ThermalObject(), IWailaProvider {
     }
 }
 
-fun interface IResistanceGetAccessor {
-    fun get(): Double
-}
-
-fun interface IVoltageSetAccessor {
-    fun set(voltage: Double)
-}
-
-fun interface IPowerGetAccessor {
-    fun get(): Double
-}
-
 fun interface IThermalBodyProvider {
     fun get(): ThermalBody
 }
 
-fun interface ITransferRateAccessor {
-    fun get(): Double
-}
-
 interface IThermocoupleView {
     val model: ThermocoupleModel
+
+    /**
+     * Gets the absolute temperature difference between the hot and cold sides.
+     * */
     val deltaTemperature: Temperature
 }
 
+/**
+ * The [IThermocoupleVoltageFunction] computes a voltage based on the state of the thermocouple.
+ * */
 fun interface IThermocoupleVoltageFunction {
     fun compute(view: IThermocoupleView): Double
 }
@@ -513,8 +598,11 @@ class ThermocoupleBehavior(
     private val generatorAccessor: IGeneratorGetAccessor,
     private val coldAccessor: IThermalBodyProvider,
     private val hotAccessor: IThermalBodyProvider,
+    override val model: ThermocoupleModel):
+    ICellBehavior,
+    IThermocoupleView,
+    IWailaProvider {
 
-    override val model: ThermocoupleModel): ICellBehavior, IThermocoupleView, IWailaProvider {
     private data class BodyPair(val hot: ThermalBody, val cold: ThermalBody, val inverted: Boolean)
 
     override fun onAdded(container: CellBehaviorContainer) {}
@@ -561,10 +649,10 @@ class ThermocoupleBehavior(
         energyTransfer =
             (bodies.hot.temperatureK - bodies.cold.temperatureK) * // DeltaT
 
-                // P.S. I expect the dipoles to have the same material. What to do here?
-                avg(bodies.hot.mass.material.specificHeat, bodies.cold.mass.material.specificHeat) * // Specific Heat
+            // P.S. I expect the dipoles to have the same material. What to do here?
+            avg(bodies.hot.thermalMass.material.specificHeat, bodies.cold.thermalMass.material.specificHeat) * // Specific Heat
 
-                systemMass // Mass
+            systemMass // Mass
 
         // Maximum energy that can be converted into electrical energy.
 
@@ -628,15 +716,18 @@ class ThermocoupleBehavior(
             return bodies.hot.temperature - bodies.cold.temperature
         }
 
-    val systemMass get() = coldAccessor.get().mass.mass + hotAccessor.get().mass.mass
+    /**
+     * Gets the total mass of the system (hot body + cold body)
+     * */
+    private val systemMass get() = coldAccessor.get().thermalMass.mass + hotAccessor.get().thermalMass.mass
 }
 
 class ThermocoupleCell(pos: CellPos, id: ResourceLocation) : GeneratorCell(pos, id) {
     init {
         behaviors.add(ThermocoupleBehavior(
             { generatorObject },
-            { thermalBipole.b1 },
-            { thermalBipole.b2 },
+            { thermalBiPole.b1 },
+            { thermalBiPole.b2 },
             ThermocoupleModel(0.5) { view ->
                 val temperature = view.deltaTemperature.kelvin.coerceIn(0.0, 20.0)
 
@@ -655,10 +746,10 @@ class ThermocoupleCell(pos: CellPos, id: ResourceLocation) : GeneratorCell(pos, 
             })
     }
 
-    private val thermalBipole get() = thermalObject as ThermalBipoleObject
+    private val thermalBiPole get() = thermalObject as ThermalBipoleObject
 
-    val b1Temperature get() = thermalBipole.b1.temperature
-    val b2Temperature get() = thermalBipole.b2.temperature
+    val b1Temperature get() = thermalBiPole.b1.temperature
+    val b2Temperature get() = thermalBiPole.b2.temperature
 }
 
 class ThermocouplePart(id: ResourceLocation, placementContext: PartPlacementContext) : CellPart(id, placementContext, Content.THERMOCOUPLE_CELL.get()) {
@@ -711,6 +802,8 @@ class ThermocouplePart(id: ResourceLocation, placementContext: PartPlacementCont
 
         EventScheduler.scheduleWorkPre(20, this::sendTemperatureUpdates)
     }
+
+    val thermocoupleCell get() = cell as ThermocoupleCell
 }
 
 data class HeatGeneratorFuelMass(
@@ -720,22 +813,60 @@ data class HeatGeneratorFuelMass(
     val suggestedBurnRate: Double,  // Unit/Second
     val fuelTemperature: Double
 ) {
+    companion object {
+        private const val AMOUNT = "amount"
+        private const val ENERGY_CAPACITY = "energyCapacity"
+        private const val SUGGESTED_BURN_RATE = "suggestedBurnRate"
+        private const val FUEL_TEMPERATURE = "fuelTemperature"
+
+        fun fromNbt(tag: CompoundTag): HeatGeneratorFuelMass {
+            return HeatGeneratorFuelMass(
+                tag.getDouble(AMOUNT),
+                tag.getDouble(ENERGY_CAPACITY),
+                tag.getDouble(SUGGESTED_BURN_RATE),
+                tag.getDouble(FUEL_TEMPERATURE)
+            )
+        }
+    }
+
     val availableEnergy get() = fuelAmount * fuelEnergyCapacity
 
-    fun getTheoreticalTransfer(dt: Double, burnRate: Double): Double {
+    /**
+     * Gets the maximum energy that can be produced in the specified time [dt], using the specified mass [burnRate].
+     * */
+    private fun getMaxTransfer(dt: Double, burnRate: Double): Double {
         return burnRate * fuelEnergyCapacity * dt
     }
 
+    /**
+     * Gets the energy produced in the specified time [dt], using the specified mass [burnRate], taking into account the
+     * amount of fuel remaining.
+     * */
     fun getTransfer(dt: Double, burnRate: Double): Double {
-        return min(getTheoreticalTransfer(dt, burnRate), availableEnergy)
+        return min(getMaxTransfer(dt, burnRate), availableEnergy)
     }
 
+    /**
+     * Removes the amount of mass corresponding to [energy] from the system.
+     * */
     fun removeEnergy(energy: Double) {
         fuelAmount -= energy / fuelEnergyCapacity
+    }
+
+    fun toNbt(): CompoundTag {
+        return CompoundTag().also {
+            it.putDouble(AMOUNT, fuelAmount)
+            it.putDouble(ENERGY_CAPACITY, fuelEnergyCapacity)
+            it.putDouble(SUGGESTED_BURN_RATE, suggestedBurnRate)
+            it.putDouble(FUEL_TEMPERATURE, fuelTemperature)
+        }
     }
 }
 
 object Fuels {
+    /**
+     * Gets a coal fuel mass.
+     * */
     fun coal(mass: Double): HeatGeneratorFuelMass {
         return HeatGeneratorFuelMass(
             fuelAmount = mass,
@@ -746,15 +877,22 @@ object Fuels {
     }
 }
 
-private class FuelBurnerBehavior(val bodyGetter: IThermalBodyAccessor): ICellBehavior, IWailaProvider {
+private class FuelBurnerBehavior(val cell: CellBase, val bodyGetter: IThermalBodyAccessor): ICellBehavior, IWailaProvider {
+    companion object {
+        private const val FUEL = "fuel"
+    }
+
     private var fuel: HeatGeneratorFuelMass? = null
 
-    private val pid = PIDController(PIDCoefficients(
+    private val pid = pid(
         kP = 10.0,
         kI = 0.01,
         kD = 0.1
-    ))
+    )
 
+    /**
+     * Replaces the fuel in this burner and resets the control system.
+     * */
     fun replaceFuel(fuel: HeatGeneratorFuelMass) {
         this.fuel = fuel
         pid.unwind()
@@ -762,8 +900,13 @@ private class FuelBurnerBehavior(val bodyGetter: IThermalBodyAccessor): ICellBeh
         pid.minControl = 0.0
         pid.maxControl = fuel.suggestedBurnRate
         pid.setPoint = fuel.fuelTemperature
+
+        cell.setChanged()
     }
 
+    /**
+     * Gets the available energy in this burner.
+     * */
     val availableEnergy get() = fuel?.availableEnergy ?: 0.0
 
     private var burnRateSignal = 0.0
@@ -791,24 +934,42 @@ private class FuelBurnerBehavior(val bodyGetter: IThermalBodyAccessor): ICellBeh
         fuel.removeEnergy(energyTransfer)
 
         body.thermalEnergy += energyTransfer
+
+        // FIXME: Implement condition here
+        cell.setChanged()
     }
 
     override fun appendBody(builder: TooltipBuilder, config: IPluginConfig?) {
-        builder.text("Control Signal", burnRateSignal.formatted(4))
+        builder.text("Control Signal x1000", (burnRateSignal * 1000).formatted(2))
         builder.text("Fuel", (fuel?.fuelAmount ?: 0.0).formatted())
+    }
+
+    fun saveNbt(): CompoundTag {
+        return CompoundTag().withSubTagOptional(FUEL, fuel?.toNbt())
+    }
+
+    fun loadNbt(tag: CompoundTag) {
+        tag.useSubTagIfPreset(FUEL) {
+            replaceFuel(HeatGeneratorFuelMass.fromNbt(it))
+        }
     }
 }
 
 class HeatGeneratorCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) {
+    companion object {
+        const val BURNER_BEHAVIOR = "burner"
+    }
+
     init {
         behaviors.add(
-            FuelBurnerBehavior { thermalWireObject.body }.also {
-                it.replaceFuel(Fuels.coal(10.0))
-            }
+            FuelBurnerBehavior(this) { thermalWireObject.body }
         )
     }
 
-    val needsFuel get() = behaviors.getBehavior<FuelBurnerBehavior>().availableEnergy epsilonEquals 0.0
+    /**
+     * If true, this burner needs more fuel to continue burning. Internally, this checks if the available energy is less than a threshold value.
+     * */
+    val needsFuel get() = behaviors.getBehavior<FuelBurnerBehavior>().availableEnergy approxEq 0.0
 
     fun replaceFuel(mass: HeatGeneratorFuelMass) {
         behaviors.getBehavior<FuelBurnerBehavior>().replaceFuel(mass)
@@ -818,12 +979,22 @@ class HeatGeneratorCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) 
         return SimulationObjectSet(ThermalWireObject(this))
     }
 
-    private val thermalWireObject get() = thermalObject as ThermalWireObject
+    override fun loadCellData(tag: CompoundTag) {
+        tag.useSubTagIfPreset(BURNER_BEHAVIOR, behaviors.getBehavior<FuelBurnerBehavior>()::loadNbt)
+    }
+
+    override fun saveCellData(): CompoundTag {
+        return CompoundTag().withSubTag(BURNER_BEHAVIOR, behaviors.getBehavior<FuelBurnerBehavior>().saveNbt())
+    }
+
+    val thermalWireObject get() = thermalObject as ThermalWireObject
 }
 
 class HeatGeneratorBlockEntity(pos: BlockPos, state: BlockState): CellBlockEntity(pos, state, Content.HEAT_GENERATOR_BLOCK_ENTITY.get()) {
     companion object {
         const val FUEL_SLOT = 0
+
+        private const val INVENTORY = "inventory"
 
         fun tick(pLevel: Level?, pPos: BlockPos?, pState: BlockState?, pBlockEntity: BlockEntity?) {
             if (pLevel == null || pBlockEntity == null) {
@@ -831,7 +1002,7 @@ class HeatGeneratorBlockEntity(pos: BlockPos, state: BlockState): CellBlockEntit
             }
 
             if (pBlockEntity !is HeatGeneratorBlockEntity) {
-                Eln2.LOGGER.error("Got $pBlockEntity instead of furnace")
+                LOGGER.error("Got $pBlockEntity instead of heat generator")
                 return
             }
 
@@ -841,17 +1012,19 @@ class HeatGeneratorBlockEntity(pos: BlockPos, state: BlockState): CellBlockEntit
         }
     }
 
-    class InventoryHandler(private val heatGeneratorBlockEntity: HeatGeneratorBlockEntity): ItemStackHandler(1) {
+    class InventoryHandler(val entity: HeatGeneratorBlockEntity) : ItemStackHandler(1) {
         override fun insertItem(slot: Int, stack: ItemStack, simulate: Boolean): ItemStack {
             if(stack.item != Items.COAL) {
                 return ItemStack.EMPTY
             }
 
-            return super.insertItem(slot, stack, simulate)
+            return super.insertItem(slot, stack, simulate).also {
+                entity.inputChanged()
+            }
         }
     }
 
-    private val inventoryHandler = InventoryHandler(this)
+    val inventoryHandler = InventoryHandler(this)
     private val inventoryHandlerLazy = LazyOptional.of { inventoryHandler }
 
     override fun <T : Any?> getCapability(cap: Capability<T>, side: Direction?): LazyOptional<T> {
@@ -862,8 +1035,20 @@ class HeatGeneratorBlockEntity(pos: BlockPos, state: BlockState): CellBlockEntit
         return super.getCapability(cap, side)
     }
 
+    override fun saveAdditional(pTag: CompoundTag) {
+        super.saveAdditional(pTag)
+
+        pTag.put(INVENTORY, inventoryHandler.serializeNBT())
+    }
+
+    override fun load(pTag: CompoundTag) {
+        super.load(pTag)
+
+        pTag.useSubTagIfPreset(INVENTORY, inventoryHandler::deserializeNBT)
+    }
+
     fun serverTick() {
-        val cell = furnaceCell
+        val cell = heatGeneratorCell
             ?: return
 
         if(!cell.needsFuel) {
@@ -877,9 +1062,99 @@ class HeatGeneratorBlockEntity(pos: BlockPos, state: BlockState): CellBlockEntit
         }
 
         cell.replaceFuel(Fuels.coal(1.0))
+
+        // Inventory changed:
+        setChanged()
     }
 
-    private val furnaceCell = cell as? HeatGeneratorCell
+    fun inputChanged(){
+        setChanged()
+    }
+
+    private val heatGeneratorCell get() = cell as? HeatGeneratorCell
+}
+
+class HeatGeneratorMenu(pContainerId: Int, playerInventory: Inventory, handler: ItemStackHandler) :
+    AbstractContainerMenu(Content.HEAT_GENERATOR_MENU.get(), pContainerId){
+
+    companion object {
+        fun create(id: Int, inventory: Inventory, player: Player, entity: HeatGeneratorBlockEntity): HeatGeneratorMenu {
+            return HeatGeneratorMenu(
+                id,
+                inventory,
+                entity.inventoryHandler)
+        }
+    }
+
+    constructor(pContainerId: Int, playerInventory: Inventory): this(
+        pContainerId,
+        playerInventory,
+        ItemStackHandler(1),
+    )
+
+    private val playerGridStart: Int
+    private val playerGridEnd: Int
+
+    init {
+        addSlot(SlotItemHandler(handler, HeatGeneratorBlockEntity.FUEL_SLOT, 56, 35))
+
+        playerGridStart = 1
+        playerGridEnd = playerGridStart + this.addPlayerGrid(playerInventory, this::addSlot)
+    }
+
+    override fun quickMoveStack(pPlayer: Player, pIndex: Int): ItemStack {
+        val slot = slots[pIndex]
+
+        if(!slot.hasItem()) {
+            return ItemStack.EMPTY
+        }
+
+        val stack = slot.item
+
+        if(pIndex == HeatGeneratorBlockEntity.FUEL_SLOT) {
+            // Quick move from input to player
+
+            if (!moveItemStackTo(stack, playerGridStart, playerGridEnd, true)) {
+                return ItemStack.EMPTY
+            }
+        }
+        else {
+            // Only move into input slot
+
+            if(!moveItemStackTo(stack, HeatGeneratorBlockEntity.FUEL_SLOT, HeatGeneratorBlockEntity.FUEL_SLOT + 1, true)){
+                return ItemStack.EMPTY
+            }
+        }
+
+        slot.setChanged()
+
+        return stack
+    }
+
+    override fun stillValid(pPlayer: Player): Boolean {
+        return true
+    }
+}
+
+class HeatGeneratorScreen(menu: HeatGeneratorMenu, playerInventory: Inventory, title: Component) : AbstractContainerScreen<HeatGeneratorMenu>(menu, playerInventory, title) {
+    companion object {
+        private val TEXTURE = Eln2.resource("textures/gui/container/furnace_test.png")
+        private val TEX_SIZE = Vector2I(256, 256)
+        private val BACKGROUND_UV_SIZE = Vector2I(176, 166)
+    }
+
+    override fun renderBg(pPoseStack: PoseStack, pPartialTick: Float, pMouseX: Int, pMouseY: Int) {
+        renderTextured(
+            texture = TEXTURE,
+            poseStack = pPoseStack,
+            blitOffset = 0,
+            color = vec4fOne(),
+            position = Vector2I(leftPos, topPos),
+            uvSize = BACKGROUND_UV_SIZE,
+            uvPosition = Vector2F.zero(),
+            textureSize = TEX_SIZE
+        )
+    }
 }
 
 class HeatGeneratorBlock : CellBlock() {
@@ -898,11 +1173,39 @@ class HeatGeneratorBlock : CellBlock() {
     ): BlockEntityTicker<T> {
         return BlockEntityTicker(HeatGeneratorBlockEntity::tick)
     }
+
+    @Deprecated("Deprecated in Java")
+    override fun use(
+        pState: BlockState,
+        pLevel: Level,
+        pPos: BlockPos,
+        pPlayer: Player,
+        pHand: InteractionHand,
+        pHit: BlockHitResult
+    ): InteractionResult {
+        return pLevel.constructMenu(pPos, pPlayer, { TextComponent("Test") }, HeatGeneratorMenu::create)
+    }
 }
 
+/**
+ * Represents a view over a solar illuminated body.
+ * */
 interface IIlluminatedBodyView {
+    /**
+     * Gets the current angle of the sun.
+     * @see ServerLevel.getSunAngle
+     * */
     val sunAngle: Double
+
+    /**
+     * Gets whether this body's view to the sun is obstructed.
+     * @see ServerLevel.canSeeSky
+     * */
     val isObstructed: Boolean
+
+    /**
+     * Gets the normal direction of the surface.
+     * */
     val normal: Direction
 }
 
@@ -938,6 +1241,9 @@ abstract class SolarGeneratorBehavior(val generatorCell: GeneratorCell): SolarIl
     abstract fun update()
 }
 
+/**
+ * The [IPhotovoltaicVoltageFunction] computes a voltage based on the photovoltaic panel's state.
+ * */
 fun interface IPhotovoltaicVoltageFunction {
     fun compute(view: IIlluminatedBodyView): Double
 }
@@ -949,7 +1255,7 @@ data class PhotovoltaicModel(
 
 object PhotovoltaicModels {
     // We map angle difference to a voltage coefficient. 0 - directly overhead, 1 - under horizon
-    private val TEST_SPLINE = mappedHermite().apply {
+    private val TEST_SPLINE = hermiteMappedCubic().apply {
         point(0.0, 1.0)
         point(0.95, 0.8)
         point(1.0, 0.0)
@@ -961,7 +1267,7 @@ object PhotovoltaicModels {
                 return@IPhotovoltaicVoltageFunction 0.0
             }
 
-            val passProgress = when (val sunAngle = Math.toDegrees(view.sunAngle)) {
+            val passDirectionWorld = Rotation2d.exp(Math.PI * when (val sunAngle = Math.toDegrees(view.sunAngle)) {
                 in 270.0..360.0 -> {
                     map(sunAngle, 270.0, 360.0, 0.0, 0.5)
                 }
@@ -973,21 +1279,22 @@ object PhotovoltaicModels {
 
                     return@IPhotovoltaicVoltageFunction 0.0
                 }
-            }
+            }).direction
 
             // Sun moves around Z
 
-            val passAngle = passProgress * Math.PI
-            val sunDirection3 = Vector3D(cos(passAngle), sin(passAngle), 0.0)
-            val panelDirection3 = view.normal.toVector3D()
-            val rayAngle = Math.toDegrees(Vector3D.angle(sunDirection3, panelDirection3))
+            val actualSunWorld = Vector3D(passDirectionWorld.x, passDirectionWorld.y, 0.0)
+            val normalWorld = view.normal.toVector3D()
 
-            val value = TEST_SPLINE.evaluate(map(
-                rayAngle,
+            val actualDifferenceActual = map(
+                Math.toDegrees(Vector3D.angle(actualSunWorld, normalWorld)),
                 0.0,
                 90.0,
                 0.0,
-                1.0))
+                1.0
+            )
+
+            val value = TEST_SPLINE.evaluate(actualDifferenceActual)
 
             return@IPhotovoltaicVoltageFunction value * maximumVoltage
         }
@@ -1007,7 +1314,6 @@ class PhotovoltaicBehavior(cell: GeneratorCell, val model: PhotovoltaicModel) : 
     override val normal: Direction
         get() = generatorCell.pos.face
 }
-
 
 class PhotovoltaicGeneratorCell(pos: CellPos, id: ResourceLocation, model: PhotovoltaicModel) : GeneratorCell(pos, id) {
     init {

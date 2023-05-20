@@ -18,12 +18,9 @@ import org.ageseries.libage.sim.electrical.mna.Circuit
 import org.ageseries.libage.sim.electrical.mna.component.Resistor
 import org.ageseries.libage.sim.thermal.*
 import org.eln2.mc.Eln2.LOGGER
-import org.eln2.mc.mathematics.Functions.bbVec
+import org.eln2.mc.mathematics.bbVec
 import org.eln2.mc.client.render.MultipartBlockEntityInstance
 import org.eln2.mc.client.render.PartialModels
-import org.eln2.mc.client.render.animations.colors.ColorInterpolators
-import org.eln2.mc.client.render.animations.colors.Utilities.colorF
-import org.eln2.mc.client.render.foundation.RadiantBodyColorBuilder
 import org.eln2.mc.client.render.foundation.defaultRadiantBodyColor
 import org.eln2.mc.common.cells.foundation.CellBase
 import org.eln2.mc.common.cells.foundation.CellPos
@@ -38,21 +35,15 @@ import org.eln2.mc.common.events.EventScheduler
 import org.eln2.mc.common.parts.foundation.*
 import org.eln2.mc.common.space.DirectionMask
 import org.eln2.mc.common.space.RelativeRotationDirection
-import org.eln2.mc.extensions.LibAgeExtensions.add
-import org.eln2.mc.extensions.LibAgeExtensions.connect
-import org.eln2.mc.extensions.ModelDataExtensions.blockCenter
-import org.eln2.mc.extensions.ModelDataExtensions.zeroCenter
-import org.eln2.mc.extensions.NbtExtensions.getRelativeDirection
-import org.eln2.mc.extensions.NbtExtensions.getThermalMass
-import org.eln2.mc.extensions.NbtExtensions.putRelativeDirection
-import org.eln2.mc.extensions.NbtExtensions.putThermalMass
-import org.eln2.mc.extensions.QuaternionExtensions.times
-import org.eln2.mc.extensions.Vec3Extensions.times
-import org.eln2.mc.extensions.Vec3Extensions.toVec3
+import org.eln2.mc.data.DataAccessNode
+import org.eln2.mc.data.IDataEntity
+import org.eln2.mc.extensions.*
+import org.eln2.mc.extensions.times
+import org.eln2.mc.extensions.toVec3
 import org.eln2.mc.integration.waila.IWailaProvider
 import org.eln2.mc.integration.waila.TooltipBuilder
-import org.eln2.mc.mathematics.Functions.lerp
-import org.eln2.mc.mathematics.Functions.map
+import org.eln2.mc.mathematics.lerp
+import org.eln2.mc.mathematics.map
 import org.eln2.mc.mathematics.Geometry.cylinderSurfaceArea
 import org.eln2.mc.sim.BiomeEnvironments
 import org.eln2.mc.sim.ThermalBody
@@ -136,10 +127,7 @@ object ElectricalWireModels {
     }
 }
 
-class ThermalWireObject(
-    val cell: CellBase) :
-    ThermalObject(), IWailaProvider, IPersistentObject {
-
+class ThermalWireObject(val cell: CellBase) : ThermalObject(), IWailaProvider, IPersistentObject, IDataEntity {
     private val environmentInformation
         get() = BiomeEnvironments.get(cell.graph.level, cell.pos)
 
@@ -169,7 +157,7 @@ class ThermalWireObject(
 
     override fun save(): CompoundTag {
         return CompoundTag().also {
-            it.putThermalMass(THERMAL_MASS, body.mass
+            it.putThermalMass(THERMAL_MASS, body.thermalMass
             )
             it.putDouble(SURFACE_AREA, body.surfaceArea)
         }
@@ -179,6 +167,12 @@ class ThermalWireObject(
         body = ThermalBody(
             tag.getThermalMass(THERMAL_MASS),
             tag.getDouble(SURFACE_AREA))
+    }
+
+    override val dataAccessNode = DataAccessNode().also {
+        it.data.withField {
+            TemperatureField { body.temperature }
+        }
     }
 }
 
@@ -199,7 +193,6 @@ open class WireCell(
                 withElectricalPowerConverter { electricalWire.power }
                 withElectricalHeatTransfer { thermalWire.body }
             }
-
         }
 
         behaviors.withStandardExplosionBehavior(this, type.temperatureThreshold.kelvin) {
@@ -315,7 +308,8 @@ class WirePart(id: ResourceLocation, context: PartPlacementContext, cellProvider
                 COLD_LIGHT_TEMPERATURE,
                 HOT_LIGHT_TEMPERATURE,
                 0.0,
-                1.0)))
+                1.0)
+        ))
             .toInt()
             .coerceIn(0, 15)
 

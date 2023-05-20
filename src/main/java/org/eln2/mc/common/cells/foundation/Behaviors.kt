@@ -1,5 +1,8 @@
 package org.eln2.mc.common.cells.foundation
 
+import org.eln2.mc.data.DataAccessNode
+import org.eln2.mc.data.IDataEntity
+
 interface ICellBehavior {
     fun onAdded(container: CellBehaviorContainer)
 
@@ -8,7 +11,7 @@ interface ICellBehavior {
     fun destroy(subscribers: SubscriberCollection)
 }
 
-class CellBehaviorContainer(private val cell: CellBase) {
+class CellBehaviorContainer(private val cell: CellBase) : IDataEntity {
     val behaviors = ArrayList<ICellBehavior>()
 
     fun process(action: ((ICellBehavior) -> Unit)) {
@@ -30,6 +33,10 @@ class CellBehaviorContainer(private val cell: CellBase) {
 
         behaviors.add(behavior)
 
+        if(behavior is IDataEntity) {
+            dataAccessNode.withChild(behavior.dataAccessNode)
+        }
+
         behavior.onAdded(this)
 
         return this
@@ -40,6 +47,14 @@ class CellBehaviorContainer(private val cell: CellBase) {
     }
 
     fun destroy() {
-        behaviors.forEach { it.destroy(cell.graph.subscribers) }
+        behaviors.forEach {
+            if(it is IDataEntity) {
+                dataAccessNode.children.removeIf { access -> access == it.dataAccessNode }
+            }
+
+            it.destroy(cell.graph.subscribers)
+        }
     }
+
+    override val dataAccessNode: DataAccessNode = DataAccessNode()
 }

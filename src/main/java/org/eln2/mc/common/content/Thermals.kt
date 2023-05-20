@@ -50,8 +50,7 @@ class ThermalRadiatorCell(pos: CellPos, id: ResourceLocation, val model: Radiato
     val temperature get() = thermalWire.body.temperatureK
 }
 
-class RadiatorPart(id: ResourceLocation, placementContext: PartPlacementContext)
-    : CellPart(id, placementContext, Content.THERMAL_WIRE_CELL_COPPER.get()) {
+class RadiatorPart(id: ResourceLocation, placementContext: PartPlacementContext) : CellPart(id, placementContext, Content.THERMAL_WIRE_CELL_COPPER.get()) {
     override val baseSize: Vec3
         get() = Vec3(1.0, 3.0 / 16.0, 1.0)
 
@@ -129,7 +128,7 @@ class RadiantBipoleRenderer(
         rightSideUpdate.consume { rightInstance?.setColor(rightColor.evaluate(it)) }
     }
 
-    override fun relightModels(): List<FlatLit<*>>? {
+    override fun relightModels(): List<FlatLit<*>> {
         return ArrayList<FlatLit<*>>().also {
             bodyInstance?.apply { it.add(this) }
             leftInstance?.apply { it.add(this) }

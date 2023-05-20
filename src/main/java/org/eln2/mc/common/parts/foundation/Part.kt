@@ -14,13 +14,15 @@ import org.eln2.mc.annotations.ClientOnly
 import org.eln2.mc.annotations.ServerOnly
 import org.eln2.mc.common.parts.PartRegistry
 import org.eln2.mc.common.space.RelativeRotationDirection
+import org.eln2.mc.data.DataAccessNode
+import org.eln2.mc.data.IDataEntity
 
 /**
  * Parts are entity-like units that exist in a multipart entity. They are similar to normal block entities,
  * but up to 6 can exist in the same block space.
  * They are placed on the inner faces of a multipart container block space.
  * */
-abstract class Part(val id: ResourceLocation, val placementContext: PartPlacementContext) {
+abstract class Part(val id: ResourceLocation, val placementContext: PartPlacementContext): IDataEntity {
     companion object {
         fun createPartDropStack(id: ResourceLocation, saveTag: CompoundTag?, count: Int = 1): ItemStack {
             val item = PartRegistry.getPartItem(id)
@@ -271,4 +273,6 @@ abstract class Part(val id: ResourceLocation, val placementContext: PartPlacemen
 
         placementContext.multipart.updateBrightness()
     }
+
+    override val dataAccessNode: DataAccessNode = DataAccessNode()
 }

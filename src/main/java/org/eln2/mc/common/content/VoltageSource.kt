@@ -4,7 +4,7 @@ import mcp.mobius.waila.api.IPluginConfig
 import net.minecraft.resources.ResourceLocation
 import org.ageseries.libage.sim.electrical.mna.Circuit
 import org.ageseries.libage.sim.electrical.mna.component.VoltageSource
-import org.eln2.mc.mathematics.Functions.bbVec
+import org.eln2.mc.mathematics.bbVec
 import org.eln2.mc.client.render.PartialModels
 import org.eln2.mc.client.render.PartialModels.bbOffset
 import org.eln2.mc.client.render.foundation.BasicPartRenderer
@@ -15,7 +15,7 @@ import org.eln2.mc.common.cells.foundation.objects.*
 import org.eln2.mc.common.parts.foundation.CellPart
 import org.eln2.mc.common.parts.foundation.IPartRenderer
 import org.eln2.mc.common.parts.foundation.PartPlacementContext
-import org.eln2.mc.extensions.TooltipBuilderExtensions.voltageSource
+import org.eln2.mc.extensions.voltageSource
 import org.eln2.mc.integration.waila.IWailaProvider
 import org.eln2.mc.integration.waila.TooltipBuilder
 
@@ -81,10 +81,11 @@ class VoltageSourceCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) 
     override fun createObjectSet(): SimulationObjectSet {
         return SimulationObjectSet(VoltageSourceObject())
     }
+
+    val voltageSourceObject get() = electricalObject as VoltageSourceObject
 }
 
-class VoltageSourcePart(id: ResourceLocation, placementContext: PartPlacementContext) :
-    CellPart(id, placementContext, Content.VOLTAGE_SOURCE_CELL.get()) {
+class VoltageSourcePart(id: ResourceLocation, placementContext: PartPlacementContext) : CellPart(id, placementContext, Content.VOLTAGE_SOURCE_CELL.get()) {
 
     override val baseSize = bbVec(6.0, 2.5, 6.0)
 

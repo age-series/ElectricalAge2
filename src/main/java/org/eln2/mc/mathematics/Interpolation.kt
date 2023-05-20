@@ -4,8 +4,6 @@ import org.eln2.mc.Eln2
 import org.eln2.mc.data.SegmentRange
 import org.eln2.mc.data.SegmentTree
 import org.eln2.mc.data.SegmentTreeBuilder
-import org.eln2.mc.mathematics.Functions.map
-import org.eln2.mc.mathematics.Functions.pow2I
 import org.eln2.mc.utility.ResourceReader
 import kotlin.math.floor
 
@@ -130,14 +128,10 @@ class GridVectorInterpolator(val interpolators: List<GridInterpolator>) {
     }
 }
 
-fun gridVectorInterpolatorOf(grids: List<KDGridD>): GridVectorInterpolator {
-    return GridVectorInterpolator(grids.map { GridInterpolator(it) })
-}
-
 /**
  * Represents a cubic hermite spline with parameter ranges assigned based on the number of samples, from 0-1.
  * */
-class HermiteSpline {
+class HermiteSplineCubic {
     val points = ArrayList<Double>()
 
     fun evaluate(progress: Double): Double {
@@ -151,7 +145,7 @@ class HermiteSpline {
         val t = fuzzyIndex - floor(fuzzyIndex)
         val pointIndex = fuzzyIndex.toInt()
 
-        return hermite(
+        return hermiteCubic(
             getPoint(pointIndex - 1),
             getPoint(pointIndex + 0),
             getPoint(pointIndex + 1),
@@ -173,19 +167,9 @@ class HermiteSpline {
     }
 
     companion object {
-        fun hermite(a: Double, b: Double, c: Double, d: Double, t: Double): Double {
-            val t2 = t * t
-            val t3 = t2 * t
 
-            val h1 = -a / 2.0 + 3.0 * b / 2.0 - 3.0 * c / 2.0 + d / 2.0
-            val h2 = a - 5.0 * b / 2.0 + 2.0 * c - d / 2.0
-            val h3 = -a / 2.0 + c / 2.0
-
-            return h1 * t3 + h2 * t2 + h3 * t + b
-        }
-
-        fun loadSpline(path: String): HermiteSpline {
-            return HermiteSpline().also { spline ->
+        fun loadSpline(path: String): HermiteSplineCubic {
+            return HermiteSplineCubic().also { spline ->
                 ResourceReader.getResourceString(Eln2.resource(path))
                     .lines()
                     .filter { it.isNotBlank() && it.isNotEmpty() }
@@ -198,39 +182,38 @@ class HermiteSpline {
     }
 }
 
-/**
- * Segment of a piecewise spline.
- * @param keyStart Parameter range lower boundary.
- * @param keyEnd Parameter range upper boundary.
- * @param points Spline knots.
- * */
-data class SplineSegment(val keyStart: Double, val keyEnd: Double, val points: List<Double>) {
-    init {
-        if (points.size < 2) {
-            error("Cannot create spline segment with ${points.size} points")
-        }
+interface ISplineSegment {
+    /**
+     * Gets the parameter range's lower boundary.
+     * */
+    val keyStart: Double
 
-        if (keyEnd <= keyStart) {
-            error("Cannot create spline segment with keys $keyStart - $keyEnd")
-        }
-    }
+    /**
+     * Gets the parameter range's upper boundary.
+     * */
+    val keyEnd: Double
+
+    /**
+     * Gets the values stored in this segment.
+     * */
+    val points: List<Double>
 
     /**
      * Gets the leftmost value in this segment.
      * */
-    val valueStart get() = points.first()
+    val valueStart: Double
 
     /**
      * Gets the rightmost value in this segment.
      * */
-    val valueEnd get() = points.last()
+    val valueEnd: Double
 }
 
 /**
  * Represents a list of spline segments with search capabilities.
  * Implementors should document time complexities of the search functions.
  * */
-interface ISplineSegmentList {
+interface ISplineSegmentList<Segment : ISplineSegment> {
     /**
      * Finds the spline segment that matches the range of the key.
      * @return The index of the spline segment. If the segment is out of range,
@@ -241,17 +224,17 @@ interface ISplineSegmentList {
     /**
      * Gets the left neighbor of the segment at the specified index.
      * */
-    fun left(index: Int): SplineSegment
+    fun left(index: Int): Segment
 
     /**
      * Gets the right neighbor of the segment at the specified index.
      * */
-    fun right(index: Int): SplineSegment
+    fun right(index: Int): Segment
 
     /**
      * Gets the spline segment at the specified index.
      * */
-    operator fun get(index: Int): SplineSegment
+    operator fun get(index: Int): Segment
 
     /**
      * Gets the leftmost (smallest) key in this segment list.
@@ -282,8 +265,8 @@ interface ISplineSegmentList {
 /**
  * Base [SplineSegmentList] behavior. Search is not implemented here.
  * */
-abstract class SplineSegmentList(protected val segments: List<SplineSegment>): ISplineSegmentList {
-    override fun left(index: Int): SplineSegment {
+abstract class SplineSegmentList<Segment : ISplineSegment>(protected val segments: List<Segment>): ISplineSegmentList<Segment> {
+    override fun left(index: Int): Segment {
         if (index <= 0) {
             return segments.first()
         }
@@ -291,7 +274,7 @@ abstract class SplineSegmentList(protected val segments: List<SplineSegment>): I
         return segments[index - 1]
     }
 
-    override fun right(index: Int): SplineSegment {
+    override fun right(index: Int): Segment {
         if (index >= count - 1) {
             return segments.last()
         }
@@ -299,7 +282,7 @@ abstract class SplineSegmentList(protected val segments: List<SplineSegment>): I
         return segments[index + 1]
     }
 
-    override fun get(index: Int): SplineSegment {
+    override fun get(index: Int): Segment {
         return segments[index]
     }
 
@@ -322,7 +305,7 @@ abstract class SplineSegmentList(protected val segments: List<SplineSegment>): I
 /**
  * This is a [SplineSegmentList] with *O(n)* search time.
  * */
-class LinearSplineSegmentList(segments: List<SplineSegment>) : SplineSegmentList(segments) {
+class LinearSplineSegmentList<Segment : ISplineSegment>(segments: List<Segment>) : SplineSegmentList<Segment>(segments) {
     init {
         if(segments.isEmpty()){
             error("Tried to initialize segment list with 0 segments")
@@ -362,10 +345,10 @@ class LinearSplineSegmentList(segments: List<SplineSegment>) : SplineSegmentList
  * This is a spline segment list that uses a [SegmentTree] to search indices.
  * Time complexity is as specified by [SegmentTree.query]
  * */
-class TreeSplineSegmentList(segments: List<SplineSegment>): SplineSegmentList(segments) {
+class TreeSplineSegmentList<Segment : ISplineSegment>(segments: List<Segment>): SplineSegmentList<Segment>(segments) {
     private val segmentTree = SegmentTreeBuilder<Int>().also {
-        segments.forEachIndexed { index, (keyStart, keyEnd, _) ->
-            it.insert(index, SegmentRange(keyStart, keyEnd))
+        segments.forEachIndexed { index, s ->
+            it.insert(index, SegmentRange(s.keyStart, s.keyEnd))
         }
     }.build()
 
@@ -376,11 +359,36 @@ class TreeSplineSegmentList(segments: List<SplineSegment>): SplineSegmentList(se
 }
 
 /**
+ * @param keyStart Parameter range lower boundary.
+ * @param keyEnd Parameter range upper boundary.
+ * @param points Spline knots.
+ * */
+data class HermiteSplineCubicSegment(override val keyStart: Double, override val keyEnd: Double, override val points: List<Double>) : ISplineSegment {
+    init {
+        if (points.size < 2) {
+            error("Cannot create spline segment with ${points.size} points")
+        }
+
+        if (keyEnd <= keyStart) {
+            error("Cannot create spline segment with keys $keyStart - $keyEnd")
+        }
+    }
+
+    /**
+     * Gets the leftmost value in this segment.
+     * */
+    override val valueStart get() = points.first()
+
+    /**
+     * Gets the rightmost value in this segment.
+     * */
+    override val valueEnd get() = points.last()
+}
+
+/**
  * Represents a cubic hermite spline with arbitrary parameter ranges.
  * */
-class HermiteSplineMapped(val segments: ISplineSegmentList) {
-    var tension: Double = 1.0
-
+class HermiteSplineCubicMapped(val segments: ISplineSegmentList<HermiteSplineCubicSegment>) {
     fun evaluate(key: Double): Double {
         if(key < segments.startKey) {
             return segments.startValue
@@ -398,11 +406,11 @@ class HermiteSplineMapped(val segments: ISplineSegmentList) {
 
         val progress = map(key, middle.keyStart, middle.keyEnd, 0.0, 1.0)
 
-        return HermiteSpline.hermite(
-            left.valueStart * tension,
+        return hermiteCubic(
+            left.valueStart,
             middle.valueStart,
             middle.valueEnd,
-            right.valueEnd * tension,
+            right.valueEnd,
             progress
         )
     }
@@ -412,7 +420,7 @@ class HermiteSplineMapped(val segments: ISplineSegmentList) {
  * Utility class for building a spline from data points.
  * */
 class MappedSplineBuilder {
-    private val segments = ArrayList<SplineSegment>()
+    private val segments = ArrayList<HermiteSplineCubicSegment>()
 
     private var started = false
     private var lastKey = 0.0
@@ -424,7 +432,7 @@ class MappedSplineBuilder {
             lastKey = key
             lastValue = value
         } else {
-            segments.add(SplineSegment(lastKey, key, listOf(lastValue, value)))
+            segments.add(HermiteSplineCubicSegment(lastKey, key, listOf(lastValue, value)))
             lastKey = key
             lastValue = value
         }
@@ -432,24 +440,24 @@ class MappedSplineBuilder {
         return this
     }
 
-    fun buildHermite(listFactory: ((List<SplineSegment>) -> ISplineSegmentList)): HermiteSplineMapped {
+    fun buildHermite(listFactory: ((List<HermiteSplineCubicSegment>) -> ISplineSegmentList<HermiteSplineCubicSegment>)): HermiteSplineCubicMapped {
         if (segments.isEmpty()) {
             error("Tried to build spline with 0 segments")
         }
 
-        return HermiteSplineMapped(listFactory(segments.toList()))
+        return HermiteSplineCubicMapped(listFactory(segments.toList()))
     }
 
-    fun buildHermite(): HermiteSplineMapped {
+    fun buildHermite(): HermiteSplineCubicMapped {
         return buildHermite(::TreeSplineSegmentList)
     }
 
-    fun buildHermite2(): HermiteSplineMapped {
+    fun buildHermite2(): HermiteSplineCubicMapped {
         return buildHermite(::LinearSplineSegmentList)
     }
 }
 
-fun mappedHermite(): MappedSplineBuilder {
+fun hermiteMappedCubic(): MappedSplineBuilder {
     return MappedSplineBuilder()
 }
 
@@ -460,7 +468,7 @@ fun mappedHermite(): MappedSplineBuilder {
  * */
 class MappedGridInterpolator(
     val interpolator: GridInterpolator,
-    val mappings: List<HermiteSplineMapped>) {
+    val mappings: List<HermiteSplineCubicMapped>) {
     init {
         if(mappings.size != interpolator.grid.dimensions) {
             error("Mismatched mapping set")
@@ -476,10 +484,21 @@ class MappedGridInterpolator(
             gridCoordinates[dim] = mappings[dim].evaluate(coordinates[dim])
         }
 
-        return interpolator.evaluate(gridCoordinates, Functions::lerp)
+        return interpolator.evaluate(gridCoordinates, ::lerp)
     }
 }
 
 fun MappedGridInterpolator.evaluate(vararg coordinates: Double): Double {
     return this.evaluate(kdVectorDOf(coordinates.asList()))
+}
+
+fun hermiteCubic(a: Double, b: Double, c: Double, d: Double, t: Double): Double {
+    val t2 = t * t
+    val t3 = t2 * t
+
+    val h1 = -a / 2.0 + 3.0 * b / 2.0 - 3.0 * c / 2.0 + d / 2.0
+    val h2 = a - 5.0 * b / 2.0 + 2.0 * c - d / 2.0
+    val h3 = -a / 2.0 + c / 2.0
+
+    return h1 * t3 + h2 * t2 + h3 * t + b
 }

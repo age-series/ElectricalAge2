@@ -17,10 +17,10 @@ import org.eln2.mc.common.blocks.BlockRegistry
 import org.eln2.mc.common.cells.*
 import org.eln2.mc.common.cells.foundation.*
 import org.eln2.mc.common.parts.foundation.ConnectionMode
-import org.eln2.mc.common.space.PlacementRotation
 import org.eln2.mc.common.space.RelativeRotationDirection
-import org.eln2.mc.extensions.BlockPosExtensions.plus
-import org.eln2.mc.extensions.DirectionExtensions.isVertical
+import org.eln2.mc.data.DataAccessNode
+import org.eln2.mc.data.IDataEntity
+import org.eln2.mc.extensions.isVertical
 import org.eln2.mc.integration.waila.IWailaProvider
 import org.eln2.mc.integration.waila.TooltipBuilder
 import java.util.*
@@ -28,7 +28,8 @@ import java.util.*
 open class CellBlockEntity(pos: BlockPos, state: BlockState, targetType: BlockEntityType<*>) :
     BlockEntity(targetType, pos, state),
     ICellContainer,
-    IWailaProvider {
+    IWailaProvider,
+    IDataEntity {
     // Initialized when placed or loading
 
     constructor(pos: BlockPos, state: BlockState): this(pos, state, BlockRegistry.CELL_BLOCK_ENTITY.get())
@@ -42,14 +43,30 @@ open class CellBlockEntity(pos: BlockPos, state: BlockState, targetType: BlockEn
     private lateinit var savedGraphID: UUID
 
     // Cell is not available on the client.
+
     var cell: CellBase? = null
-        private set
+        private set(value) {
+            fun removeOld() {
+                if(field != null) {
+                    dataAccessNode.children.removeIf { it == field!!.dataAccessNode }
+                }
+            }
+
+            if(value == null) {
+                removeOld()
+            }
+            else {
+                removeOld()
+
+                if(!dataAccessNode.children.any { it == value.dataAccessNode }) {
+                    dataAccessNode.withChild(value.dataAccessNode)
+                }
+            }
+
+            field = value
+        }
 
     private val serverLevel get() = level as ServerLevel
-
-    private fun getPlacementRotation(): PlacementRotation {
-        return PlacementRotation(blockState.getValue(HorizontalDirectionalBlock.FACING))
-    }
 
     private fun getLocalDirection(globalDirection: Direction): RelativeRotationDirection {
         return RelativeRotationDirection.fromForwardUp(blockState.getValue(HorizontalDirectionalBlock.FACING), cellFace, globalDirection)
@@ -244,4 +261,6 @@ open class CellBlockEntity(pos: BlockPos, state: BlockState, targetType: BlockEn
             cell.appendBody(builder, config)
         }
     }
+
+    override val dataAccessNode: DataAccessNode = DataAccessNode()
 }
