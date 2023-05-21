@@ -5,10 +5,10 @@ package org.eln2.mc.common.cells.foundation.objects
  * All possible simulation objects are stored in fields, because there won't be many (probably only electrical, thermal and mechanical),
  * so there is no reason not to skip an allocation for a map/array.
  * */
-class SimulationObjectSet(objects: List<ISimulationObject>) {
-    constructor(vararg objects: ISimulationObject) : this(objects.asList())
+class SimulationObjectSet(objects: List<SimulationObject>) {
+    constructor(vararg objects: SimulationObject) : this(objects.asList())
 
-    private val objects = HashMap<SimulationObjectType, ISimulationObject>()
+    private val objects = HashMap<SimulationObjectType, SimulationObject>()
 
     private val mask: SimulationObjectMask
 
@@ -34,18 +34,18 @@ class SimulationObjectSet(objects: List<ISimulationObject>) {
         return mask.hasFlag(type)
     }
 
-    private fun getObject(type: SimulationObjectType): ISimulationObject {
+    private fun getObject(type: SimulationObjectType): SimulationObject {
         return objects[type] ?: error("Object set does not have $type")
     }
 
     val electricalObject get() = getObject(SimulationObjectType.Electrical) as ElectricalObject
     val thermalObject get() = getObject(SimulationObjectType.Thermal) as ThermalObject
 
-    fun process(function: ((ISimulationObject) -> Unit)) {
+    fun process(function: ((SimulationObject) -> Unit)) {
         objects.values.forEach(function)
     }
 
-    operator fun get(type: SimulationObjectType): ISimulationObject {
+    operator fun get(type: SimulationObjectType): SimulationObject {
         return objects[type] ?: error("Object set does not have $type")
     }
 }

@@ -2,37 +2,31 @@ package org.eln2.mc.common.cells.foundation.objects
 
 import org.ageseries.libage.sim.thermal.ConnectionParameters
 import org.ageseries.libage.sim.thermal.Simulator
+import org.eln2.mc.common.cells.foundation.CellBase
 import org.eln2.mc.common.space.DirectionMask
 import org.eln2.mc.common.space.RelativeRotationDirection
 import org.eln2.mc.sim.ThermalBody
 
 data class ThermalComponentInfo(val body: ThermalBody)
-data class ThermalConnectionInfo(val obj: ThermalObject, val direction: RelativeRotationDirection)
 
-abstract class ThermalObject : ISimulationObject {
-    override val connectionMask: DirectionMask = DirectionMask.HORIZONTALS
-
+abstract class ThermalObject(cell: CellBase) : SimulationObject(cell) {
     var simulation: Simulator? = null
         private set
 
-    protected val connections = ArrayList<ThermalConnectionInfo>()
+    protected val connections = ArrayList<ThermalObject>()
 
     final override val type = SimulationObjectType.Thermal
 
     open val maxConnections = Int.MAX_VALUE
 
     protected fun indexOf(obj: ThermalObject): Int {
-        val index = connections.indexOfFirst { it.obj == obj }
+        val index = connections.indexOf(obj)
 
         if (index == -1) {
             error("Connections did not have $obj")
         }
 
         return index
-    }
-
-    protected fun directionOf(obj: ThermalObject): RelativeRotationDirection {
-        return connections[indexOf(obj)].direction
     }
 
     /**
@@ -53,11 +47,8 @@ abstract class ThermalObject : ISimulationObject {
     /**
      * Called by the cell when a valid connection candidate is discovered.
      * */
-    open fun addConnection(connectionInfo: ThermalConnectionInfo) {
-        if (connections.contains(connectionInfo)) {
-            error("Duplicate connection")
-        }
-
+    open fun addConnection(connectionInfo: ThermalObject) {
+        require(!connections.contains(connectionInfo)) { "Duplicate connection" }
         connections.add(connectionInfo)
 
         if(connections.size > maxConnections){
@@ -69,7 +60,11 @@ abstract class ThermalObject : ISimulationObject {
      * Called when this object is destroyed. Connections are also cleaned up.
      * */
     override fun destroy() {
-        connections.forEach { it.obj.connections.removeAll { conn -> conn.obj == this } }
+        connections.forEach {
+            if(!it.connections.remove(this)) {
+                error("Failed to clean up connection")
+            }
+        }
     }
 
     override fun update(connectionsChanged: Boolean, graphChanged: Boolean) {}
@@ -83,9 +78,7 @@ abstract class ThermalObject : ISimulationObject {
             error("Tried to build thermal obj with null simulation")
         }
 
-        connections.forEach { connection ->
-            val remote = connection.obj
-
+        connections.forEach { remote ->
             assert(remote.simulation == simulation)
 
             simulation!!.connect(

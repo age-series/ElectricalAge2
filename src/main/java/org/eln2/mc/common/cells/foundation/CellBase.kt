@@ -13,8 +13,6 @@ import org.eln2.mc.extensions.withSubTagOptional
 import org.eln2.mc.integration.waila.IWailaProvider
 import org.eln2.mc.integration.waila.TooltipBuilder
 
-data class CellConnectionInfo(val cell: CellBase, val sourceDirection: RelativeRotationDirection)
-
 /**
  * The cell is a physical unit, that may participate in multiple simulations. Each simulation will
  * have a Simulation Object associated with it.
@@ -27,7 +25,7 @@ abstract class CellBase(val pos: CellPos, val id: ResourceLocation) : IWailaProv
     }
 
     lateinit var graph: CellGraph
-    lateinit var connections: ArrayList<CellConnectionInfo>
+    lateinit var connections: ArrayList<CellBase>
 
     /**
      * If [hasGraph], [CellGraph.setChanged] is called to ensure the cell data will be saved.
@@ -41,10 +39,9 @@ abstract class CellBase(val pos: CellPos, val id: ResourceLocation) : IWailaProv
     val hasGraph get() = this::graph.isInitialized
 
     fun removeConnection(cell: CellBase) {
-        val target: CellConnectionInfo = connections.firstOrNull { it.cell == cell }
-            ?: error("Tried to remove non-existent connection")
-
-        connections.remove(target)
+        if(!connections.remove(cell)) {
+            error("Tried to remove non-existent connection")
+        }
     }
 
     var container: ICellContainer? = null
@@ -157,6 +154,10 @@ abstract class CellBase(val pos: CellPos, val id: ResourceLocation) : IWailaProv
      * */
     protected open fun onRemoving() {}
 
+    fun destroy() {
+        onDestroyed()
+    }
+
     /**
      * Called after the cell was destroyed.
      */
@@ -202,49 +203,36 @@ abstract class CellBase(val pos: CellPos, val id: ResourceLocation) : IWailaProv
      * Called when the solver is being built, in order to record all object-object connections.
      * */
     fun recordObjectConnections() {
-        objectSet.process {
-            connections.forEach { (remoteCell, sourceDirection) ->
-                if(!it.connectionMask.has(sourceDirection)) {
+        objectSet.process { localObj ->
+            connections.forEach { remoteCell ->
+                if(!localObj.acceptsRemote(remoteCell.pos.descriptor)) {
                     return@forEach
                 }
 
-                if (!remoteCell.hasObject(it.type)) {
+                if (!remoteCell.hasObject(localObj.type)) {
                     return@forEach
                 }
 
-                val remoteObj = remoteCell.objectSet[it.type]
+                val remoteObj = remoteCell.objectSet[localObj.type]
 
-                val remoteConnection = remoteCell.connections.firstOrNull { it.cell == this }
-                    ?: error("Mismatched connection sets")
+                require(remoteCell.connections.contains(this)) { "Mismatched connection set" }
 
-                if(!remoteObj.connectionMask.has(remoteConnection.sourceDirection)) {
+                if(!remoteObj.acceptsRemote(pos.descriptor)) {
                     return@forEach
                 }
 
                 // We can form a connection here.
 
-                when (it.type) {
+                when (localObj.type) {
                     SimulationObjectType.Electrical -> {
-                        val localElectrical = it as ElectricalObject
-                        val remoteElectrical = remoteCell.objectSet.electricalObject
-
-                        localElectrical.addConnection(
-                            ElectricalConnectionInfo(
-                                remoteElectrical,
-                                sourceDirection
-                            )
+                        (localObj as ElectricalObject).addConnection(
+                            remoteCell.objectSet.electricalObject
                         )
                     }
 
                     SimulationObjectType.Thermal -> {
-                        val localThermal = it as ThermalObject
-                        val remoteThermal = remoteCell.objectSet.thermalObject
-
-                        localThermal.addConnection(
-                            ThermalConnectionInfo(
-                                remoteThermal,
-                                sourceDirection
-                            )
+                        (localObj as ThermalObject).addConnection(
+                            remoteCell.objectSet.thermalObject
                         )
                     }
                 }
@@ -278,13 +266,9 @@ abstract class CellBase(val pos: CellPos, val id: ResourceLocation) : IWailaProv
      * By default, the cell just passes down the call to objects that implement the WAILA provider.
      * */
     override fun appendBody(builder: TooltipBuilder, config: IPluginConfig?) {
-        // The following 2 calls are debug and will be removed in the future:
-
         if (hasGraph) {
             builder.text("Graph", graph.id)
         }
-
-        builder.text("Connections", connections.map { it.sourceDirection }.joinToString(" "))
 
         objectSet.process {
             if (it is IWailaProvider) {
