@@ -10,7 +10,6 @@ import org.eln2.mc.common.cells.foundation.CellBase
 import org.eln2.mc.common.cells.foundation.CellGraphManager
 import org.eln2.mc.common.cells.foundation.CellPos
 import org.eln2.mc.common.cells.foundation.CellProvider
-import org.eln2.mc.common.space.RelativeRotationDirection
 import org.eln2.mc.extensions.useSubTagIfPreset
 import org.eln2.mc.integration.waila.IWailaProvider
 import org.eln2.mc.integration.waila.TooltipBuilder
@@ -40,7 +39,7 @@ abstract class CellPart(
     final override val hasCell: Boolean
         get() = this::cell.isInitialized
 
-    private val cellPos = CellPos(placementContext.pos, placementContext.face)
+    val cellPos = CellPos(placementContext.createDescriptor())
 
     /**
      * Used by the loading procedures.
@@ -164,9 +163,9 @@ abstract class CellPart(
         }
     }
 
-    override fun recordConnection(direction: RelativeRotationDirection, mode: ConnectionMode) {}
+    override fun recordConnection(remote: CellBase) {}
 
-    override fun recordDeletedConnection(direction: RelativeRotationDirection) {}
+    override fun recordDeletedConnection(remote: CellBase) {}
 
     private fun acquireCell() {
         require(!dataAccessNode.children.any { it == cell.dataAccessNode }) { "Duplicate cell set" }

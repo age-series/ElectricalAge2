@@ -13,7 +13,7 @@ import org.eln2.mc.data.INameField
 import org.eln2.mc.extensions.getDataAccess
 import org.eln2.mc.utility.UnitType
 import org.eln2.mc.utility.valueText
-
+/*
 fun interface VoltageField { fun readVoltage(): Double }
 fun interface CurrentField { fun readCurrent(): Double }
 fun interface TemperatureField { fun readTemperature(): Temperature }
@@ -71,4 +71,4 @@ class UniversalMeter(
             else "${reading.label}: ${reading.printout}"
         })
     }
-}
+}*/

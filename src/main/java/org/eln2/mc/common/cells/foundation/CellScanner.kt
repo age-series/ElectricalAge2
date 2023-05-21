@@ -10,9 +10,9 @@ fun interface IScanConsumer {
 }
 
 fun planarScan(level: Level, actualCell: CellBase, searchDirection: Direction, consumer: IScanConsumer) {
-    val actualPosWorld = actualCell.pos.descriptor.requireLocator<R3, BlockPosLocator> { "Planar Scan requires a block position" }.pos
+    val actualPosWorld = actualCell.posDescr.requireLocator<R3, BlockPosLocator> { "Planar Scan requires a block position" }.pos
+    val actualFaceTarget = actualCell.posDescr.requireLocator<SO3, BlockFaceLocator> { "Planar Scan requires a face" }.faceWorld
     val remoteContainer = level.getBlockEntity(actualPosWorld + searchDirection) as? ICellContainer ?: return
-    val connectionFaceTarget = searchDirection.opposite
 
     remoteContainer
         .getCells()
@@ -23,9 +23,9 @@ fun planarScan(level: Level, actualCell: CellBase, searchDirection: Direction, c
             desc.hasLocator<R3, BlockPosLocator>() && desc.hasLocator<SO3, BlockFaceLocator>()
         }
         .forEach { targetCell ->
-            val targetFaceTarget = targetCell.pos.descriptor.requireLocator<SO3, BlockFaceLocator>().innerFace
+            val targetFaceTarget = targetCell.pos.descriptor.requireLocator<SO3, BlockFaceLocator>().faceWorld
 
-            if(targetFaceTarget == connectionFaceTarget) {
+            if(targetFaceTarget == actualFaceTarget) {
                 if(actualCell.acceptsConnection(targetCell) && targetCell.acceptsConnection(actualCell)){
                     consumer.consume(CellNeighborInfo(targetCell, remoteContainer))
                 }
@@ -33,12 +33,11 @@ fun planarScan(level: Level, actualCell: CellBase, searchDirection: Direction, c
         }
 }
 
-fun wrappedScan(level: Level, actualCell: CellBase, searchDirection: Direction, consumer: IScanConsumer){
+fun wrappedScan(level: Level, actualCell: CellBase, searchDirectionTarget: Direction, consumer: IScanConsumer){
     val actualPosWorld = actualCell.pos.descriptor.requireLocator<R3, BlockPosLocator> { "Wrapped Scan requires a block position" }.pos
-    val actualFaceActual = actualCell.pos.descriptor.requireLocator<SO3, BlockFaceLocator> { "Wrapped Scan requires a face" }.innerFace
+    val actualFaceActual = actualCell.pos.descriptor.requireLocator<SO3, BlockFaceLocator> { "Wrapped Scan requires a face" }.faceWorld
     val wrapDirection = actualFaceActual.opposite
-    val remoteContainer = level.getBlockEntity(actualPosWorld + searchDirection + wrapDirection) as? ICellContainer ?: return
-    val connectDirectionTarget = wrapDirection.opposite
+    val remoteContainer = level.getBlockEntity(actualPosWorld + searchDirectionTarget + wrapDirection) as? ICellContainer ?: return
 
     remoteContainer
         .getCells()
@@ -48,10 +47,10 @@ fun wrappedScan(level: Level, actualCell: CellBase, searchDirection: Direction, 
             desc.hasLocator<R3, BlockPosLocator>() && desc.hasLocator<SO3, BlockFaceLocator>()
         }
         .forEach { targetCell ->
-            val targetFaceTarget = targetCell.pos.descriptor.requireLocator<SO3, BlockFaceLocator>().innerFace
+            val targetFaceTarget = targetCell.pos.descriptor.requireLocator<SO3, BlockFaceLocator>().faceWorld
 
-            if(targetFaceTarget == connectDirectionTarget) {
-                if(actualCell.acceptsConnection(targetCell) && targetCell.acceptsConnection(actualCell)){
+            if (targetFaceTarget == searchDirectionTarget) {
+                if (actualCell.acceptsConnection(targetCell) && targetCell.acceptsConnection(actualCell)) {
                     consumer.consume(CellNeighborInfo(targetCell, remoteContainer))
                 }
             }

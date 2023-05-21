@@ -2,7 +2,6 @@ package org.eln2.mc.common.cells.foundation
 
 import org.ageseries.libage.sim.electrical.mna.component.Component
 import org.eln2.mc.common.cells.foundation.objects.ElectricalComponentInfo
-import org.eln2.mc.common.cells.foundation.objects.ElectricalConnectionInfo
 import org.eln2.mc.common.cells.foundation.objects.ElectricalObject
 import org.eln2.mc.extensions.connect
 
@@ -45,8 +44,8 @@ class ElectricalComponentHolder<T : Component>(private val factory: IComponentFa
         connectExternal(componentInfo.component, componentInfo.index)
     }
 
-    fun connectExternal(owner: ElectricalObject, connection: ElectricalConnectionInfo){
-        connectExternal(connection.obj.offerComponent(owner))
+    fun connectExternal(owner: ElectricalObject, connection: ElectricalObject){
+        connectExternal(connection.offerComponent(owner))
     }
 
     fun connectPositive(component: Component, remotePin: Int){
@@ -57,8 +56,8 @@ class ElectricalComponentHolder<T : Component>(private val factory: IComponentFa
         connectPositive(componentInfo.component, componentInfo.index)
     }
 
-    fun connectPositive(owner: ElectricalObject, connection: ElectricalConnectionInfo){
-        connectPositive(connection.obj.offerComponent(owner))
+    fun connectPositive(owner: ElectricalObject, connection: ElectricalObject){
+        connectPositive(connection.offerComponent(owner))
     }
 
     fun connectNegative(component: Component, remotePin: Int){
@@ -69,8 +68,8 @@ class ElectricalComponentHolder<T : Component>(private val factory: IComponentFa
         connectNegative(componentInfo.component, componentInfo.index)
     }
 
-    fun connectNegative(owner: ElectricalObject, connection: ElectricalConnectionInfo){
-        connectNegative(connection.obj.offerComponent(owner))
+    fun connectNegative(owner: ElectricalObject, connection: ElectricalObject){
+        connectNegative(connection.offerComponent(owner))
     }
 
     fun ground(pin: Int){

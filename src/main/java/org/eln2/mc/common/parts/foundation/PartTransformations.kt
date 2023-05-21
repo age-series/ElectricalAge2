@@ -6,7 +6,7 @@ import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
-import org.eln2.mc.common.space.RelativeRotationDirection
+import org.eln2.mc.common.space.RelativeDirection
 import org.eln2.mc.extensions.transformed
 import org.eln2.mc.extensions.div
 import org.eln2.mc.utility.BoundingBox
@@ -101,8 +101,8 @@ object PartTransformations {
         horizontalFacing: Direction,
         face: Direction,
         global: Direction
-    ): RelativeRotationDirection {
-        return RelativeRotationDirection.fromForwardUp(
+    ): RelativeDirection {
+        return RelativeDirection.fromForwardUp(
             horizontalFacing,
             face,
             global

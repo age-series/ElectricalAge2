@@ -14,11 +14,10 @@ import org.eln2.mc.annotations.CrossThreadAccess
 import org.eln2.mc.common.cells.CellRegistry
 import org.eln2.mc.common.cells.foundation.objects.SimulationObjectType
 import org.eln2.mc.common.configs.Configuration
-import org.eln2.mc.common.space.RelativeRotationDirection
+import org.eln2.mc.common.space.RelativeDirection
 import org.eln2.mc.extensions.getCellPos
 import org.eln2.mc.extensions.getRelativeDirection
 import org.eln2.mc.extensions.putCellPos
-import org.eln2.mc.extensions.putRelativeDirection
 import org.eln2.mc.utility.Time
 import java.util.*
 import java.util.concurrent.Executors
@@ -419,7 +418,7 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
         }
     }
 
-    private data class ConnectionInfoCell(val cellPos: CellPos, val direction: RelativeRotationDirection)
+    private data class ConnectionInfoCell(val cellPos: CellPos, val direction: RelativeDirection)
 
     companion object {
         private const val CELL_DATA = "data"

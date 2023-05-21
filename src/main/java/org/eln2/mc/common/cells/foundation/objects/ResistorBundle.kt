@@ -3,20 +3,22 @@ package org.eln2.mc.common.cells.foundation.objects
 import org.ageseries.libage.sim.electrical.mna.Circuit
 import org.ageseries.libage.sim.electrical.mna.component.Resistor
 import org.eln2.mc.common.cells.foundation.Conventions
+import org.eln2.mc.common.parts.foundation.PartConnectionMode
+import org.eln2.mc.common.parts.foundation.solvePartConnection
 import org.eln2.mc.common.space.*
 import kotlin.math.abs
 
 /**
  * Utility class that holds a collection of resistors to be used as contact points for external components.
  * */
-class ResistorBundle(var resistance: Double, val obj: ElectricalObject) {
+class ResistorBundle(var resistance: Double, obj: ElectricalObject) {
     init {
         obj.cell.pos.descriptor.requireLocator<R3, BlockPosLocator>()
         obj.cell.pos.descriptor.requireLocator<SO3, IdentityDirectionLocator>()
         obj.cell.pos.descriptor.requireLocator<SO3, BlockFaceLocator>()
     }
 
-    private val resistors = HashMap<RelativeRotationDirection, Resistor>()
+    private val resistors = HashMap<ElectricalObject, Resistor>()
 
     private var prepared = false
 
@@ -31,11 +33,7 @@ class ResistorBundle(var resistance: Double, val obj: ElectricalObject) {
         }
 
         connections.forEach {
-            val directionActual = obj.cell.pos.descriptor.findDirectionActual(it.cell.pos.descriptor)
-                ?: error("Failed to find direction actual to $it")
-
-            val resistor = getResistor(directionActual)
-
+            val resistor = getResistor(it)
             circuit.add(resistor)
         }
 
@@ -52,17 +50,14 @@ class ResistorBundle(var resistance: Double, val obj: ElectricalObject) {
         }
 
         connections.forEach { remoteObj ->
-            val resistor = getResistor(obj.cell.pos.descriptor.findDirectionActual(remoteObj.cell.pos.descriptor)
-                ?: error("Failed to find direction actual to $remoteObj")
-            )
-
+            val resistor = getResistor(remoteObj)
             val offered = remoteObj.offerComponent(sender)
             resistor.connect(Conventions.EXTERNAL_PIN, offered.component, offered.index)
         }
     }
 
-    private fun getResistor(direction: RelativeRotationDirection): Resistor {
-        return resistors.computeIfAbsent(direction) {
+    private fun getResistor(remote: ElectricalObject): Resistor {
+        return resistors.computeIfAbsent(remote) {
             if (prepared) {
                 error("Tried to create resistors after bundle was prepared")
             }
@@ -79,8 +74,8 @@ class ResistorBundle(var resistance: Double, val obj: ElectricalObject) {
      * unless *clear* is called.
      * If a resistor is not initialized for *direction*, and the bundle was prepared by *register*, an error will be produced.
      * */
-    fun getOfferedResistor(direction: RelativeRotationDirection): ElectricalComponentInfo {
-        return ElectricalComponentInfo(getResistor(direction), Conventions.EXTERNAL_PIN)
+    fun getOfferedResistor(remote: ElectricalObject): ElectricalComponentInfo {
+        return ElectricalComponentInfo(getResistor(remote), Conventions.EXTERNAL_PIN)
     }
 
     /**

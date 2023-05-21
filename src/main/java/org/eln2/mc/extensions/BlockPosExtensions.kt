@@ -31,5 +31,5 @@ fun BlockPos.toVec3(): Vec3 {
 }
 
 fun BlockPos.directionTo(other: BlockPos): Direction? {
-    return Direction.fromNormal(this - other)
+    return Direction.fromNormal(other - this)
 }

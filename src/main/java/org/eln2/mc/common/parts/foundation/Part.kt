@@ -13,7 +13,7 @@ import net.minecraft.world.phys.shapes.VoxelShape
 import org.eln2.mc.annotations.ClientOnly
 import org.eln2.mc.annotations.ServerOnly
 import org.eln2.mc.common.parts.PartRegistry
-import org.eln2.mc.common.space.RelativeRotationDirection
+import org.eln2.mc.common.space.RelativeDirection
 import org.eln2.mc.data.DataAccessNode
 import org.eln2.mc.data.IDataEntity
 
@@ -50,7 +50,7 @@ abstract class Part(val id: ResourceLocation, val placementContext: PartPlacemen
      * @param global A global direction.
      * @return The relative direction towards the global direction.
      * */
-    fun getRelativeDirection(global: Direction): RelativeRotationDirection {
+    fun getRelativeDirection(global: Direction): RelativeDirection {
         return PartTransformations.getRelativeDirection(placementContext.horizontalFacing, placementContext.face, global)
     }
 

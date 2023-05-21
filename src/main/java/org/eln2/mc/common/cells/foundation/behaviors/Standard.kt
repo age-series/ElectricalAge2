@@ -4,6 +4,9 @@ import net.minecraft.server.level.ServerLevel
 import org.eln2.mc.common.blocks.foundation.MultipartBlockEntity
 import org.eln2.mc.common.cells.foundation.CellBase
 import org.eln2.mc.common.cells.foundation.CellBehaviorContainer
+import org.eln2.mc.common.space.BlockFaceLocator
+import org.eln2.mc.common.space.SO3
+import org.eln2.mc.common.space.requireLocator
 import org.eln2.mc.extensions.destroyPart
 
 fun CellBehaviorContainer.withStandardExplosionBehavior(cell: CellBase, threshold: Double, temperatureAccessor: ITemperatureAccessor): CellBehaviorContainer {
@@ -15,7 +18,7 @@ fun CellBehaviorContainer.withStandardExplosionBehavior(cell: CellBase, threshol
                 return@withExplosionBehavior
             }
 
-            val part = container.getPart(cell.pos.face)
+            val part = container.getPart(cell.posDescr.requireLocator<SO3, BlockFaceLocator>().faceWorld)
                 ?: return@withExplosionBehavior
 
             val level = (part.placementContext.level as ServerLevel)

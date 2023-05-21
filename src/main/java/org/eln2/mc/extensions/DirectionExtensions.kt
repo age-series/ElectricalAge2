@@ -2,7 +2,7 @@ package org.eln2.mc.extensions
 
 import net.minecraft.core.Direction
 import org.apache.commons.math3.geometry.euclidean.threed.Vector3D
-import org.eln2.mc.common.space.RelativeRotationDirection
+import org.eln2.mc.common.space.RelativeDirection
 
 fun Direction.isVertical(): Boolean {
     return this == Direction.UP || this == Direction.DOWN
@@ -12,25 +12,25 @@ fun Direction.isHorizontal(): Boolean {
     return !isVertical()
 }
 
-fun Direction.relativeAlias(): RelativeRotationDirection {
+fun Direction.relativeAlias(): RelativeDirection {
     return when (this) {
-        Direction.DOWN -> RelativeRotationDirection.Down
-        Direction.UP -> RelativeRotationDirection.Up
-        Direction.NORTH -> RelativeRotationDirection.Front
-        Direction.SOUTH -> RelativeRotationDirection.Back
-        Direction.WEST -> RelativeRotationDirection.Left
-        Direction.EAST -> RelativeRotationDirection.Right
+        Direction.DOWN -> RelativeDirection.Down
+        Direction.UP -> RelativeDirection.Up
+        Direction.NORTH -> RelativeDirection.Front
+        Direction.SOUTH -> RelativeDirection.Back
+        Direction.WEST -> RelativeDirection.Left
+        Direction.EAST -> RelativeDirection.Right
     }
 }
 
-fun RelativeRotationDirection.directionAlias(): Direction {
+fun RelativeDirection.directionAlias(): Direction {
     return when (this) {
-        RelativeRotationDirection.Front -> Direction.NORTH
-        RelativeRotationDirection.Back -> Direction.SOUTH
-        RelativeRotationDirection.Left -> Direction.WEST
-        RelativeRotationDirection.Right -> Direction.EAST
-        RelativeRotationDirection.Up -> Direction.UP
-        RelativeRotationDirection.Down -> Direction.DOWN
+        RelativeDirection.Front -> Direction.NORTH
+        RelativeDirection.Back -> Direction.SOUTH
+        RelativeDirection.Left -> Direction.WEST
+        RelativeDirection.Right -> Direction.EAST
+        RelativeDirection.Up -> Direction.UP
+        RelativeDirection.Down -> Direction.DOWN
     }
 }
 

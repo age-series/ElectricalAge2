@@ -20,18 +20,23 @@ import org.eln2.mc.common.parts.foundation.PartPlacementContext
 import org.eln2.mc.extensions.resistor
 import org.eln2.mc.integration.waila.IWailaProvider
 import org.eln2.mc.integration.waila.TooltipBuilder
+/*
 
+*/
 /**
  * The resistor object has a single resistor. At most, two connections can be made by this object.
- * */
+ * *//*
+
 class ResistorObject(cell: CellBase) : ElectricalObject(cell), IWailaProvider {
     private lateinit var resistor: Resistor
 
     val hasResistor get() = this::resistor.isInitialized
 
-    /**
+    */
+/**
      * Gets or sets the resistance.
-     * */
+     * *//*
+
     var resistance: Double = 1.0
         set(value) {
             field = value
@@ -99,3 +104,4 @@ class ResistorPart(id: ResourceLocation, placementContext: PartPlacementContext)
         }
     }
 }
+*/

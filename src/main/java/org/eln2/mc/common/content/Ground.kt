@@ -16,18 +16,23 @@ import org.eln2.mc.common.cells.foundation.objects.SimulationObjectSet
 import org.eln2.mc.common.parts.foundation.CellPart
 import org.eln2.mc.common.parts.foundation.IPartRenderer
 import org.eln2.mc.common.parts.foundation.PartPlacementContext
+/*
 
+*/
 /**
  * The ground object is simply a bundle of resistors, with one grounded pin.
  * The ungrounded pin is exported to other Electrical Objects.
- * */
+ * *//*
+
 class GroundObject : ElectricalObject() {
     private val resistors = ResistorBundle(0.01)
 
-    /**
+    */
+/**
      * Gets or sets the resistance of the bundle.
      * Only applied when the circuit is re-built.
-     * */
+     * *//*
+
     var resistance: Double
         get() = resistors.resistance
         set(value) { resistors.resistance = value }
@@ -67,3 +72,4 @@ class GroundPart(id: ResourceLocation, placementContext: PartPlacementContext) :
         }
     }
 }
+*/

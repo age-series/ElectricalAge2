@@ -19,7 +19,7 @@ import org.eln2.mc.Eln2
 import org.eln2.mc.Eln2.LOGGER
 import org.eln2.mc.Metrics
 import org.eln2.mc.common.cells.foundation.CellGraphManager
-import org.eln2.mc.common.content.GhostLightBlock
+import org.eln2.mc.common.blocks.foundation.GhostLightBlock
 import org.eln2.mc.common.events.EventScheduler
 import org.eln2.mc.utility.AnalyticsAcknowledgementsData
 import org.eln2.mc.utility.AveragingList

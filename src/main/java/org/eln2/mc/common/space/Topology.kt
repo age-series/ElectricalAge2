@@ -1,15 +1,12 @@
 package org.eln2.mc.common.space
 
-import com.mojang.datafixers.types.templates.CompoundList
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.nbt.ListTag
 import org.ageseries.libage.data.ImmutableBiMapView
 import org.ageseries.libage.data.biMapOf
-import org.eln2.mc.extensions.directionTo
-import org.eln2.mc.extensions.getBlockPos
-import org.eln2.mc.extensions.putBlockPos
+import org.eln2.mc.extensions.*
 import java.util.function.Supplier
 
 interface Locator<Param>
@@ -17,8 +14,8 @@ interface R3
 interface SO3
 
 data class BlockPosLocator(val pos: BlockPos) : Locator<R3>
-data class IdentityDirectionLocator(val forward: Direction): Locator<SO3>
-data class BlockFaceLocator(val innerFace: Direction) : Locator<SO3>
+data class IdentityDirectionLocator(val forwardWorld: Direction): Locator<SO3>
+data class BlockFaceLocator(val faceWorld: Direction) : Locator<SO3>
 
 // Got lost in the type system, for now we are using Any:
 interface ILocatorSerializer {
@@ -47,6 +44,22 @@ val locatorSerializers: ImmutableBiMapView<Class<*>, ILocatorSerializer> = biMap
 
         override fun fromNbt(tag: CompoundTag): BlockPosLocator =
             BlockPosLocator(tag.getBlockPos("Pos"))
+    },
+
+    IdentityDirectionLocator::class.java to object: ILocatorSerializer {
+        override fun toNbt(obj: Any): CompoundTag =
+            CompoundTag().apply { putDirection("Forward", (obj as IdentityDirectionLocator).forwardWorld) }
+
+        override fun fromNbt(tag: CompoundTag): Any =
+            IdentityDirectionLocator(tag.getDirection("Forward"))
+    },
+
+    BlockFaceLocator::class.java to object: ILocatorSerializer {
+        override fun toNbt(obj: Any): CompoundTag =
+            CompoundTag().apply { putDirection("Face", (obj as BlockFaceLocator).faceWorld) }
+
+        override fun fromNbt(tag: CompoundTag): Any =
+            BlockFaceLocator(tag.getDirection("Face"))
     }
 )
 
@@ -62,6 +75,16 @@ fun getLocatorSerializer(locatorClass: Class<*>): ILocatorSerializer {
 
 class LocatorSet<Param> {
     private val locators = HashMap<Class<*>, Locator<Param>>()
+
+    fun copy(): LocatorSet<Param> {
+        val result = LocatorSet<Param>()
+
+        locators.forEach { (k, v) ->
+            result.add(k, v)
+        }
+
+        return result
+    }
 
     fun getLocators(): HashMap<Class<*>, Locator<Param>> = locators.clone() as HashMap<Class<*>, Locator<Param>>
 
@@ -119,6 +142,16 @@ class LocatorSet<Param> {
 
 class LocationDescriptor {
     private val locatorSets = HashMap<Class<*>, LocatorSet<*>>()
+
+    fun copy(): LocationDescriptor {
+        val result = LocationDescriptor()
+
+        locatorSets.forEach { (k, v) ->
+            result.withLocatorSet(k, v.copy())
+        }
+
+        return result
+    }
 
     fun withLocatorSet(c: Class<*>, l: LocatorSet<*>): LocationDescriptor {
         if(locatorSets.put(c, l) != null){
@@ -270,6 +303,19 @@ inline fun<reified Param, reified Loc: Locator<Param>> LocationDescriptor.requir
     return this.getLocator<Param, Loc>()!!
 }
 
+// Wrappers:
+
+fun LocationDescriptor.requireBlockPosLoc(message: (() -> Any)? = null): BlockPos =
+    this.requireLocator<R3, BlockPosLocator>(message).pos
+
+
+fun LocationDescriptor.requireBlockFaceLoc(message: (() -> Any)? = null): Direction =
+    this.requireLocator<SO3, BlockFaceLocator>(message).faceWorld
+
+
+fun LocationDescriptor.requireIdentityDirLoc(message: (() -> Any)? = null): Direction =
+    this.requireLocator<SO3, IdentityDirectionLocator>(message).forwardWorld
+
 fun interface ILocationRelationshipRule {
     fun acceptsRelationship(descriptor: LocationDescriptor, target: LocationDescriptor): Boolean
 }
@@ -289,25 +335,24 @@ class LocatorRelationRuleSet {
 
 fun LocatorRelationRuleSet.withDirectionActualRule(mask: DirectionMask): LocatorRelationRuleSet {
     return this.with { a, b ->
-        mask.has(a.findDirectionActual(b) ?: return@with false)
+        mask.has(a.findDirActualOrNull(b) ?: return@with false)
     }
 }
 
-annotation class Sp<Param>
-annotation class Location<Locator>
-
-@Sp<R3> @Sp<SO3>
-@Location<BlockPosLocator> @Location<IdentityDirectionLocator> @Location<BlockFaceLocator>
-fun LocationDescriptor.findDirectionActual(other: LocationDescriptor) : RelativeRotationDirection? {
+fun LocationDescriptor.findDirActualOrNull(other: LocationDescriptor) : RelativeDirection? {
     val actualPosWorld = this.getLocator<R3, BlockPosLocator>() ?: return null
     val actualIdWorld = this.getLocator<SO3, IdentityDirectionLocator>() ?: return null
     val actualFaceWorld = this.getLocator<SO3, BlockFaceLocator>() ?: return null
     val targetPosWorld = other.getLocator<R3, BlockPosLocator>() ?: return null
 
-    return RelativeRotationDirection.fromForwardUp(
-        actualIdWorld.forward,
-        actualFaceWorld.innerFace.opposite,
-        targetPosWorld.pos.directionTo(actualPosWorld.pos)
-            ?: error("Failed to get transform from $actualPosWorld to $targetPosWorld")
+    return RelativeDirection.fromForwardUp(
+        actualIdWorld.forwardWorld,
+        actualFaceWorld.faceWorld,
+        actualPosWorld.pos.directionTo(targetPosWorld.pos)
+            ?: return null
     )
+}
+
+fun LocationDescriptor.findDirActual(other: LocationDescriptor): RelativeDirection {
+    return this.findDirActualOrNull(other) ?: error("Failed to get relative rotation direction")
 }

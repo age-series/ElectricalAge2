@@ -7,7 +7,7 @@ import org.eln2.mc.extensions.isVertical
 /**
  * The Relative Rotation Direction represents a direction relative to an object's frame.
  * */
-enum class RelativeRotationDirection(val id: Int) {
+enum class RelativeDirection(val id: Int) {
     Front(1),
     Back(2),
     Left(3),
@@ -46,7 +46,7 @@ enum class RelativeRotationDirection(val id: Int) {
          * @param direction The global direction.
          * @return The global direction, mapped to the relative direction, in the object's frame.
          * */
-        fun fromForwardUp(facing: Direction, normal: Direction, direction: Direction): RelativeRotationDirection {
+        fun fromForwardUp(facing: Direction, normal: Direction, direction: Direction): RelativeDirection {
             if (facing.isVertical()) {
                 error("Facing cannot be vertical")
             }
@@ -78,7 +78,7 @@ enum class RelativeRotationDirection(val id: Int) {
             return result
         }
 
-        fun fromId(id: Int): RelativeRotationDirection {
+        fun fromId(id: Int): RelativeDirection {
             return when (id) {
                 Front.id -> Front
                 Back.id -> Back
@@ -94,25 +94,25 @@ enum class RelativeRotationDirection(val id: Int) {
 }
 
 class PlacementRotation(val placementDirection: Direction) {
-    fun getAbsoluteFromRelative(rotation: RelativeRotationDirection): Direction {
+    fun getAbsoluteFromRelative(rotation: RelativeDirection): Direction {
         return when (rotation) {
-            RelativeRotationDirection.Front -> placementDirection
-            RelativeRotationDirection.Back -> placementDirection.opposite
-            RelativeRotationDirection.Right -> placementDirection.clockWise
-            RelativeRotationDirection.Left -> placementDirection.counterClockWise
-            RelativeRotationDirection.Up -> Direction.UP
-            RelativeRotationDirection.Down -> Direction.DOWN
+            RelativeDirection.Front -> placementDirection
+            RelativeDirection.Back -> placementDirection.opposite
+            RelativeDirection.Right -> placementDirection.clockWise
+            RelativeDirection.Left -> placementDirection.counterClockWise
+            RelativeDirection.Up -> Direction.UP
+            RelativeDirection.Down -> Direction.DOWN
         }
     }
 
-    fun getRelativeFromAbsolute(direction: Direction): RelativeRotationDirection {
+    fun getRelativeFromAbsolute(direction: Direction): RelativeDirection {
         return when (direction) {
-            placementDirection -> RelativeRotationDirection.Front
-            placementDirection.opposite -> RelativeRotationDirection.Back
-            placementDirection.clockWise -> RelativeRotationDirection.Right
-            placementDirection.counterClockWise -> RelativeRotationDirection.Left
-            Direction.UP -> RelativeRotationDirection.Up
-            Direction.DOWN -> RelativeRotationDirection.Down
+            placementDirection -> RelativeDirection.Front
+            placementDirection.opposite -> RelativeDirection.Back
+            placementDirection.clockWise -> RelativeDirection.Right
+            placementDirection.counterClockWise -> RelativeDirection.Left
+            Direction.UP -> RelativeDirection.Up
+            Direction.DOWN -> RelativeDirection.Down
             else -> error("Direction not implemented: $direction")
         }
     }

@@ -15,8 +15,8 @@ import net.minecraft.resources.ResourceLocation
 import net.minecraft.world.phys.Vec3
 import org.ageseries.libage.sim.Material
 import org.ageseries.libage.sim.electrical.mna.Circuit
-import org.ageseries.libage.sim.electrical.mna.component.Resistor
 import org.ageseries.libage.sim.thermal.*
+import net.minecraft.core.BlockPos
 import org.eln2.mc.Eln2.LOGGER
 import org.eln2.mc.mathematics.bbVec
 import org.eln2.mc.client.render.MultipartBlockEntityInstance
@@ -33,8 +33,7 @@ import org.eln2.mc.common.cells.foundation.objects.*
 import org.eln2.mc.common.events.AtomicUpdate
 import org.eln2.mc.common.events.EventScheduler
 import org.eln2.mc.common.parts.foundation.*
-import org.eln2.mc.common.space.DirectionMask
-import org.eln2.mc.common.space.RelativeRotationDirection
+import org.eln2.mc.common.space.*
 import org.eln2.mc.data.DataAccessNode
 import org.eln2.mc.data.IDataEntity
 import org.eln2.mc.extensions.*
@@ -48,14 +47,13 @@ import org.eln2.mc.mathematics.Geometry.cylinderSurfaceArea
 import org.eln2.mc.sim.BiomeEnvironments
 import org.eln2.mc.sim.ThermalBody
 import java.util.concurrent.atomic.AtomicReference
-import kotlin.math.abs
 
 /**
  * The [ElectricalWireObject] has a single [ResistorBundle]. The Internal Pins of the bundle are connected to each other, and
  * the External Pins are exported to other Electrical Objects.
  * */
-class ElectricalWireObject : ElectricalObject(), IWailaProvider {
-    private val resistors = ResistorBundle(0.05)
+class ElectricalWireObject(cell: CellBase) : ElectricalObject(cell) {
+    private val resistors = ResistorBundle(0.05, this)
 
     /**
      * Gets or sets the resistance of the bundle.
@@ -70,7 +68,7 @@ class ElectricalWireObject : ElectricalObject(), IWailaProvider {
     val power get() = resistors.power
 
     override fun offerComponent(neighbour: ElectricalObject): ElectricalComponentInfo {
-        return resistors.getOfferedResistor(directionOf(neighbour))
+        return resistors.getOfferedResistor(neighbour)
     }
 
     override fun clearComponents() {
@@ -97,22 +95,6 @@ class ElectricalWireObject : ElectricalObject(), IWailaProvider {
             }
         }
     }
-
-    override fun appendBody(builder: TooltipBuilder, config: IPluginConfig?) {
-        if (connections.size == 2) {
-            // Straight through wire. Just give absolute value I guess since directionality is ~ meaningless for wires.
-
-            val sampleResistor = resistors.getOfferedResistor(connections[0].direction).component as Resistor
-
-            builder.current(abs(sampleResistor.current))
-        } else {
-            // Branch currents. Print them all.
-
-            connections
-                .map { (resistors.getOfferedResistor(it.direction).component as Resistor).current }
-                .forEach { builder.current(it) }
-        }
-    }
 }
 
 data class ElectricalWireModel(val resistanceMeter: Double)
@@ -127,7 +109,7 @@ object ElectricalWireModels {
     }
 }
 
-class ThermalWireObject(val cell: CellBase) : ThermalObject(), IWailaProvider, IPersistentObject, IDataEntity {
+class ThermalWireObject(cell: CellBase) : ThermalObject(cell), IWailaProvider, IPersistentObject, IDataEntity {
     private val environmentInformation
         get() = BiomeEnvironments.get(cell.graph.level, cell.pos)
 
@@ -170,9 +152,9 @@ class ThermalWireObject(val cell: CellBase) : ThermalObject(), IWailaProvider, I
     }
 
     override val dataAccessNode = DataAccessNode().also {
-        it.data.withField {
-            TemperatureField { body.temperature }
-        }
+        //it.data.withField {
+        //    TemperatureField { body.temperature }
+        //}
     }
 }
 
@@ -204,7 +186,7 @@ open class WireCell(
         val thermal = ThermalWireObject(this)
 
         return if(type == WireType.Electrical){
-            SimulationObjectSet(ElectricalWireObject().also {
+            SimulationObjectSet(ElectricalWireObject(this).also {
                 it.resistance = model.resistanceMeter / 2.0 // Divide by two because bundle creates 2 resistors
             }, thermal)
         } else {
@@ -233,7 +215,33 @@ class WirePart(id: ResourceLocation, context: PartPlacementContext, cellProvider
 
     override val baseSize = bbVec(8.0, 2.0, 8.0)
 
-    private val connectedDirections = HashSet<RelativeRotationDirection>()
+    private data class Connection(
+        val directionActual: RelativeDirection,
+        val mode: PartConnectionMode,
+        val remotePosWorld: BlockPos
+    ) {
+        fun toNbt(): CompoundTag {
+            val tag = CompoundTag()
+
+            tag.putRelativeDirection("Dir", directionActual)
+            tag.putString("Mode", mode.name)
+            tag.putBlockPos("Pos", remotePosWorld)
+
+            return tag
+        }
+
+        companion object {
+            fun fromNbt(tag: CompoundTag): Connection {
+                return Connection(
+                    tag.getRelativeDirection("Dir"),
+                    PartConnectionMode.valueOf(tag.getString("Mode")),
+                    tag.getBlockPos("Pos")
+                )
+            }
+        }
+    }
+
+    private val connectedDirections = HashSet<Connection>()
     private var wireRenderer: WirePartRenderer? = null
     private var temperature = 0.0
     private var connectionsChanged = true
@@ -301,15 +309,17 @@ class WirePart(id: ResourceLocation, context: PartPlacementContext, cellProvider
             return
         }
 
-        val level = (lerp(
-            COLD_LIGHT_LEVEL,
-            HOT_LIGHT_LEVEL,
-            map(temperature.coerceIn(COLD_LIGHT_TEMPERATURE, HOT_LIGHT_TEMPERATURE),
-                COLD_LIGHT_TEMPERATURE,
-                HOT_LIGHT_TEMPERATURE,
-                0.0,
-                1.0)
-        ))
+        val level = (
+            lerp(
+                COLD_LIGHT_LEVEL,
+                HOT_LIGHT_LEVEL,
+                map(temperature.coerceIn(COLD_LIGHT_TEMPERATURE, HOT_LIGHT_TEMPERATURE),
+                    COLD_LIGHT_TEMPERATURE,
+                    HOT_LIGHT_TEMPERATURE,
+                    0.0,
+                    1.0)
+                )
+            )
             .toInt()
             .coerceIn(0, 15)
 
@@ -319,13 +329,7 @@ class WirePart(id: ResourceLocation, context: PartPlacementContext, cellProvider
     private fun saveConnections(tag: CompoundTag) {
         val directionList = ListTag()
 
-        connectedDirections.forEach { direction ->
-            val directionTag = CompoundTag()
-
-            directionTag.putRelativeDirection(DIRECTION, direction)
-
-            directionList.add(directionTag)
-        }
+        connectedDirections.forEach { directionList.add(it.toNbt()) }
 
         tag.put(DIRECTIONS, directionList)
     }
@@ -335,11 +339,7 @@ class WirePart(id: ResourceLocation, context: PartPlacementContext, cellProvider
 
         val directionList = tag.get(DIRECTIONS) as ListTag
 
-        directionList.forEach { directionTag ->
-            val direction = (directionTag as CompoundTag).getRelativeDirection(DIRECTION)
-
-            connectedDirections.add(direction)
-        }
+        directionList.forEach { connectedDirections.add(Connection.fromNbt(it as CompoundTag)) }
 
         if (placementContext.level.isClientSide) {
             applyRendererState()
@@ -347,18 +347,32 @@ class WirePart(id: ResourceLocation, context: PartPlacementContext, cellProvider
     }
 
     private fun applyRendererState() {
-        wireRenderer?.applyDirections(connectedDirections.toList())
+        wireRenderer?.applyDirections(connectedDirections.map { it.directionActual }.toList())
     }
 
-    override fun recordConnection(direction: RelativeRotationDirection, mode: ConnectionMode) {
+    override fun recordConnection(remote: CellBase) {
         connectionsChanged = true
-        connectedDirections.add(direction)
+
+        val connectionInfo = solvePartConnection(cell, remote)
+
+        if(connectionInfo.mode == PartConnectionMode.Unknown) {
+            error("Unhandled connection mode")
+        }
+
+        connectedDirections.add(
+            Connection(
+                connectionInfo.actualDirActualPlr,
+                connectionInfo.mode,
+                remote.posDescr.requireLocator<R3, BlockPosLocator>().pos
+            )
+        )
+
         syncAndSave()
     }
 
-    override fun recordDeletedConnection(direction: RelativeRotationDirection) {
+    override fun recordDeletedConnection(remote: CellBase) {
         connectionsChanged = true
-        connectedDirections.remove(direction)
+        connectedDirections.removeIf { it.remotePosWorld == remote.posDescr.requireLocator<R3, BlockPosLocator>().pos }
         syncAndSave()
     }
 
@@ -413,7 +427,7 @@ class WirePartRenderer(val part: WirePart, val meshes: Map<DirectionMask, Partia
     private var modelInstance: ModelData? = null
 
     // Reset on every frame
-    private var latestDirections = AtomicReference<List<RelativeRotationDirection>>()
+    private var latestDirections = AtomicReference<List<RelativeDirection>>()
 
     private val temperatureUpdate = AtomicUpdate<Double>()
 
@@ -421,7 +435,7 @@ class WirePartRenderer(val part: WirePart, val meshes: Map<DirectionMask, Partia
         temperatureUpdate.setLatest(value)
     }
 
-    fun applyDirections(directions: List<RelativeRotationDirection>) {
+    fun applyDirections(directions: List<RelativeDirection>) {
         latestDirections.set(directions)
     }
 
@@ -480,8 +494,6 @@ class WirePartRenderer(val part: WirePart, val meshes: Map<DirectionMask, Partia
         // let S - world size, B - block bench size
         // S = B / 16
         val size = 1.5 / 16
-
-        // todo: it still looks a little bit off the ground, why?
 
         modelInstance = multipartInstance.materialManager
             .defaultSolid()
