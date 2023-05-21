@@ -32,8 +32,6 @@ object CellConnectionManager {
      * Removes a cell from the graph. It may cause topological changes to the graph, as outlined in the top document.
      * */
     fun destroy(cellInfo: CellBase, container: ICellContainer) {
-        TODO()
-
         disconnectCell(cellInfo, container)
         cellInfo.destroy()
     }
@@ -145,12 +143,9 @@ object CellConnectionManager {
         insertedCell.graph.startSimulation()
     }
 
-    private fun disconnectCell(cellSpace: CellBase, container: ICellContainer) {
-        TODO()
-
-       /* val cell = cellSpace.cell
+    private fun disconnectCell(cell: CellBase, container: ICellContainer) {
         val manager = container.manager
-        val neighborCells = container.queryNeighbors(cellSpace)
+        val neighborCells = container.queryNeighbors(cell)
 
         val graph = cell.graph
 
@@ -160,21 +155,19 @@ object CellConnectionManager {
         cell.remove()
 
         // This is common logic for all cases.
-        neighborCells.forEach { neighborInfo ->
-            neighborInfo.neighbor.cell.removeConnection(cell)
-            neighborInfo.neighborContainer.recordDeletedConnection(
-                neighborInfo.neighbor,
-                neighborInfo.neighborDirection
-            )
+        neighborCells.forEach { (neighbor, neighborContainer) ->
+            neighbor.removeConnection(cell)
+            neighborContainer.recordDeletedConnection(neighbor, cell)
         }
 
-        *//* Cases:
+        /*
+        *   Cases:
         *   1. We don't have any neighbors. We can destroy the circuit.
         *   2. We have a single neighbor. We can remove ourselves from the circuit.
         *   3. We have multiple neighbors, and we are not a cut vertex. We can remove ourselves from the circuit.
         *   4. We have multiple neighbors, and we are a cut vertex. We need to remove ourselves, find the new disjoint graphs,
         *        and rebuild the circuits.
-        *//*
+        */
 
         if (neighborCells.isEmpty()) {
             // Case 1. Destroy this circuit.
@@ -191,16 +184,15 @@ object CellConnectionManager {
 
             val neighbor = neighborCells[0].neighbor
 
-            neighbor.cell.update(connectionsChanged = true, graphChanged = false)
+            neighbor.update(connectionsChanged = true, graphChanged = false)
 
             graph.buildSolver()
             graph.startSimulation()
         } else {
             // Case 3 and 4. Implement a more sophisticated algorithm, if necessary.
-
             graph.destroy()
             rebuildTopologies(neighborCells, cell, manager)
-        }*/
+        }
     }
 
     /**
@@ -246,10 +238,7 @@ object CellConnectionManager {
         *   After a queue element has been processed, we build a new circuit with the cells we found.
         * */
 
-        TODO()
-
-/*
-        val neighbors = neighborInfoList.map { it.neighbor.cell }.toHashSet()
+        val neighbors = neighborInfoList.map { it.neighbor }.toHashSet()
         val neighborQueue = ArrayDeque<CellBase>()
         neighborQueue.addAll(neighbors)
 
@@ -282,11 +271,11 @@ object CellConnectionManager {
                 graph.addCell(cell)
 
                 // Enqueue neighbors (excluding the cell we are removing) for processing
-                cell.connections.forEach { connectedCellInfo ->
+                cell.connections.forEach { connCell ->
                     // This must be handled above.
-                    assert(connectedCellInfo.cell != removedCell)
+                    assert(connCell != removedCell)
 
-                    bfsQueue.add(connectedCellInfo.cell)
+                    bfsQueue.add(connCell)
                 }
             }
 
@@ -307,6 +296,6 @@ object CellConnectionManager {
 
             // We don't need to keep the cells, we have already traversed all the connected ones.
             bfsVisited.clear()
-        }*/
+        }
     }
 }

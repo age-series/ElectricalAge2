@@ -25,6 +25,7 @@ import org.eln2.mc.common.parts.foundation.IPartRenderer
 import org.eln2.mc.common.parts.foundation.Part
 import org.eln2.mc.common.parts.foundation.PartPlacementContext
 import org.eln2.mc.sim.ThermalBody
+/*
 
 data class RadiatorModel(
     val destructionTemperature: Double,
@@ -142,3 +143,4 @@ class RadiantBipoleRenderer(
         rightInstance?.delete()
     }
 }
+*/

@@ -7,6 +7,7 @@ interface ICellContainer {
     fun queryNeighbors(actualCell: CellBase): ArrayList<CellNeighborInfo>
 
     fun recordConnection(actualCell: CellBase, remoteCell: CellBase)
+    fun recordDeletedConnection(actualCell: CellBase, remoteCell: CellBase)
 
     fun topologyChanged()
 

@@ -2,7 +2,6 @@ package org.eln2.mc.common.cells.foundation
 
 import net.minecraft.resources.ResourceLocation
 import net.minecraftforge.registries.ForgeRegistryEntry
-import org.eln2.mc.common.space.RelativeRotationDirection
 
 /**
  * The Cell Provider is a factory of cells, and also has connection rules for cells.

@@ -70,11 +70,7 @@ abstract class ElectricalObject(cell: CellBase) : SimulationObject(cell) {
      * Called when this object is destroyed. Connections are also cleaned up.
      * */
     override fun destroy() {
-        connections.forEach {
-            if(!it.connections.remove(this)) {
-                error("Failed to clean up connection")
-            }
-        }
+        connections.forEach { it.connections.remove(this) }
     }
 
     override fun update(connectionsChanged: Boolean, graphChanged: Boolean) {}

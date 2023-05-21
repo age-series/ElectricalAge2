@@ -12,7 +12,7 @@ import net.minecraft.world.level.block.HorizontalDirectionalBlock
 import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.entity.BlockEntityType
 import net.minecraft.world.level.block.state.BlockState
-import org.eln2.mc.Eln2
+import org.eln2.mc.Eln2.LOGGER
 import org.eln2.mc.common.blocks.BlockRegistry
 import org.eln2.mc.common.cells.*
 import org.eln2.mc.common.cells.foundation.*
@@ -67,8 +67,8 @@ open class CellBlockEntity(pos: BlockPos, state: BlockState, targetType: BlockEn
 
     private val serverLevel get() = level as ServerLevel
 
-    private fun getLocalDirection(globalDirection: Direction): RelativeRotationDirection {
-        return RelativeRotationDirection.fromForwardUp(blockState.getValue(HorizontalDirectionalBlock.FACING), cellFace, globalDirection)
+    private fun getLocalDirection(globalDirection: Direction): RelativeDirection {
+        return RelativeDirection.fromForwardUp(blockState.getValue(HorizontalDirectionalBlock.FACING), cellFace, globalDirection)
     }
 
     @Suppress("UNUSED_PARAMETER") // Will very likely be needed later and helps to know the name of the args.
@@ -98,17 +98,18 @@ open class CellBlockEntity(pos: BlockPos, state: BlockState, targetType: BlockEn
     }
 
     fun setDestroyed() {
-        TODO()
+        val level = this.level ?: error("Level is null in setDestroyed")
+        val cell = this.cell
 
-       /* if (cell == null) {
+        if (cell == null) {
             // This means we are on the client.
             // Otherwise, something is going on here.
 
-            assert(level!!.isClientSide)
+            require(level.isClientSide) { "Cell is null in setDestroyed" }
             return
         }
 
-        CellConnectionManager.destroy(getCellSpace(), this)*/
+        CellConnectionManager.destroy(cell, this)
     }
 
     //#region Saving and Loading
@@ -123,7 +124,7 @@ open class CellBlockEntity(pos: BlockPos, state: BlockState, targetType: BlockEn
         if (cell!!.hasGraph) {
             pTag.putString("GraphID", cell!!.graph.id.toString())
         } else {
-            Eln2.LOGGER.info("Save additional: graph null")
+            LOGGER.info("Save additional: graph null")
         }
     }
 
@@ -132,9 +133,9 @@ open class CellBlockEntity(pos: BlockPos, state: BlockState, targetType: BlockEn
 
         if (pTag.contains("GraphID")) {
             savedGraphID = UUID.fromString(pTag.getString("GraphID"))!!
-            Eln2.LOGGER.info("Deserialized cell entity at $blockPos")
+            LOGGER.info("Deserialized cell entity at $blockPos")
         } else {
-            Eln2.LOGGER.warn("Cell entity at $blockPos does not have serialized data.")
+            LOGGER.warn("Cell entity at $blockPos does not have serialized data.")
         }
     }
 
@@ -206,7 +207,11 @@ open class CellBlockEntity(pos: BlockPos, state: BlockState, targetType: BlockEn
     }
 
     override fun recordConnection(actualCell: CellBase, remoteCell: CellBase) {
-        Eln2.LOGGER.info("Cell Block recorded connection from $actualCell to $remoteCell")
+        LOGGER.info("Cell Block recorded connection from $actualCell to $remoteCell")
+    }
+
+    override fun recordDeletedConnection(actualCell: CellBase, remoteCell: CellBase) {
+        LOGGER.info("Cell Block recorded deleted connection from $actualCell to $remoteCell")
     }
 
     override fun topologyChanged() {

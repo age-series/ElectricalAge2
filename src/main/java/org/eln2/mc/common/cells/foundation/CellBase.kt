@@ -5,7 +5,6 @@ import net.minecraft.nbt.CompoundTag
 import net.minecraft.resources.ResourceLocation
 import org.eln2.mc.common.cells.foundation.objects.*
 import org.eln2.mc.common.space.LocatorRelationRuleSet
-import org.eln2.mc.common.space.RelativeRotationDirection
 import org.eln2.mc.data.DataAccessNode
 import org.eln2.mc.data.IDataEntity
 import org.eln2.mc.extensions.putSubTag
@@ -20,6 +19,8 @@ import org.eln2.mc.integration.waila.TooltipBuilder
  * Cells create connections with other cells, and objects create connections with other objects of the same simulation type.
  * */
 abstract class CellBase(val pos: CellPos, val id: ResourceLocation) : IWailaProvider, IDataEntity {
+    val posDescr get() = pos.descriptor
+
     companion object {
         private const val CELL_DATA = "cellData"
         private const val OBJECT_DATA = "objectData"

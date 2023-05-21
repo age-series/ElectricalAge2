@@ -22,29 +22,18 @@ import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.shapes.BooleanOp
 import net.minecraft.world.phys.shapes.Shapes
 import net.minecraft.world.phys.shapes.VoxelShape
-import org.eln2.mc.Eln2
 import org.eln2.mc.Eln2.LOGGER
 import org.eln2.mc.annotations.ClientOnly
 import org.eln2.mc.annotations.ServerOnly
 import org.eln2.mc.client.render.MultipartBlockEntityInstance
 import org.eln2.mc.common.blocks.BlockRegistry
 import org.eln2.mc.common.cells.foundation.*
-import org.eln2.mc.common.content.GhostLightBlock
 import org.eln2.mc.common.parts.PartRegistry
 import org.eln2.mc.common.parts.foundation.*
 import org.eln2.mc.common.space.*
 import org.eln2.mc.data.DataAccessNode
 import org.eln2.mc.data.IDataEntity
-import org.eln2.mc.extensions.minus
-import org.eln2.mc.extensions.isVertical
-import org.eln2.mc.extensions.getBlockPos
-import org.eln2.mc.extensions.getDirection
-import org.eln2.mc.extensions.getPartUpdateType
-import org.eln2.mc.extensions.getResourceLocation
-import org.eln2.mc.extensions.putBlockPos
-import org.eln2.mc.extensions.putDirection
-import org.eln2.mc.extensions.putPartUpdateType
-import org.eln2.mc.extensions.putResourceLocation
+import org.eln2.mc.extensions.*
 import org.eln2.mc.integration.waila.IWailaProvider
 import org.eln2.mc.integration.waila.TooltipBuilder
 import org.eln2.mc.utility.BoundingBox
@@ -173,7 +162,7 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
 
         val level = entity.level as ServerLevel
 
-        if (parts.containsKey(face)) {
+         if (parts.containsKey(face)) {
             return false
         }
 
@@ -261,14 +250,9 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
      * */
     @ServerOnly
     fun breakPart(part: Part, saveTag: CompoundTag? = null) {
-        TODO()
-
-        /*if (part is IPartCellContainer) {
+        if (part is IPartCellContainer) {
             CellConnectionManager.destroy(
-                CellInfo(
-                    part.cell,
-                    part.placementContext.face
-                ),
+                part.cell,
                 this
             )
         }
@@ -283,7 +267,7 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
         part.onBroken()
 
         saveData()
-        syncData()*/
+        syncData()
     }
 
     /**
@@ -293,16 +277,14 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
      * */
     @ServerOnly
     fun onNeighborDestroyed(neighborPos: BlockPos): Boolean {
-        TODO()
-
-       /* if (level!!.isClientSide) {
+        if (level!!.isClientSide) {
             return false
         }
 
-        val direction = pos.directionTo(neighborPos)
+        val direction = neighborPos.directionTo(pos)
 
         if (direction == null) {
-            Eln2.LOGGER.error("Failed to get direction")
+            LOGGER.error("Failed to get direction")
             return false
         } else {
             LOGGER.info("Face: $direction")
@@ -312,7 +294,7 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
             breakPart(parts[direction]!!)
         }
 
-        return parts.size == 0*/
+        return parts.size == 0
     }
 
     /**
@@ -750,7 +732,7 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
     }
 
     override fun queryNeighbors(actualCell: CellBase): ArrayList<CellNeighborInfo> {
-        val partFace = actualCell.pos.descriptor.requireLocator<SO3, BlockFaceLocator>().innerFace
+        val partFace = actualCell.pos.descriptor.requireLocator<SO3, BlockFaceLocator>().faceWorld
 
         val part = parts[partFace]!!
 
@@ -818,32 +800,15 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
     }
 
     override fun recordConnection(actualCell: CellBase, remoteCell: CellBase) {
-        val innerFace = actualCell.pos.descriptor.requireLocator<SO3, BlockFaceLocator>().innerFace
-
+        val innerFace = actualCell.pos.descriptor.requireLocator<SO3, BlockFaceLocator>().faceWorld
         val part = parts[innerFace] as IPartCellContainer
-
-        val actualPos = actualCell.pos
-        val neighborPos = remoteCell.pos
-
-        val mode: ConnectionMode = if (actualPos.descriptor.requireLocator<R3, BlockPosLocator>().pos == neighborPos.descriptor.requireLocator<R3, BlockPosLocator>().pos) {
-            // They are in the same block space. This is certainly an inner connection.
-
-            ConnectionMode.Inner
-        } else if (innerFace == neighborPos.descriptor.requireLocator<SO3, BlockFaceLocator>().innerFace) {
-            // This is planar. If it were wrapped, the normals would be perpendicular (i.e. not equal)
-            ConnectionMode.Planar
-        } else {
-            ConnectionMode.Wrapped
-        }
-
-        part.recordConnection(remoteCell, mode)
+        part.recordConnection(remoteCell)
     }
 
-   /* override fun recordDeletedConnection(location: CellInfo, direction: RelativeRotationDirection) {
-        val part = parts[location.innerFace] as IPartCellContainer
-
-        part.recordDeletedConnection(direction)
-    }*/
+    override fun recordDeletedConnection(actualCell: CellBase, remoteCell: CellBase) {
+        val part = parts[actualCell.posDescr.requireLocator<SO3, BlockFaceLocator>().faceWorld] as IPartCellContainer
+        part.recordDeletedConnection(remoteCell)
+    }
 
     override fun topologyChanged() {
         saveData()

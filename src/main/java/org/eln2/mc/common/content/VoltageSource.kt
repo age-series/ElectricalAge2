@@ -18,20 +18,25 @@ import org.eln2.mc.common.parts.foundation.PartPlacementContext
 import org.eln2.mc.extensions.voltageSource
 import org.eln2.mc.integration.waila.IWailaProvider
 import org.eln2.mc.integration.waila.TooltipBuilder
+/*
 
+*/
 /**
  * The voltage source object has a bundle of resistors, whose External Pins are exported to other objects, and
  * a voltage source, connected to the Internal Pins of the bundle.
- * */
+ * *//*
+
 class VoltageSourceObject : ElectricalObject(), IWailaProvider {
     private lateinit var source: VoltageSource
     val hasSource get() = this::source.isInitialized
 
     private val resistors = ResistorBundle(0.01)
 
-    /**
+    */
+/**
      * Gets or sets the potential of the voltage source.
-     * */
+     * *//*
+
     var potential: Double = 1200.0
         set(value) {
             field = value
@@ -41,10 +46,12 @@ class VoltageSourceObject : ElectricalObject(), IWailaProvider {
             }
         }
 
-    /**
+    */
+/**
      * Gets or sets the resistance of the bundle.
      * Only applied when the circuit is re-built.
-     * */
+     * *//*
+
     var resistance: Double
         get() = resistors.resistance
         set(value) { resistors.resistance = value }
@@ -95,3 +102,4 @@ class VoltageSourcePart(id: ResourceLocation, placementContext: PartPlacementCon
         }
     }
 }
+*/

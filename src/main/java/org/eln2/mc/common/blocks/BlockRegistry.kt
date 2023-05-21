@@ -15,6 +15,7 @@ import org.eln2.mc.common.blocks.foundation.CellBlock
 import org.eln2.mc.common.blocks.foundation.CellBlockEntity
 import org.eln2.mc.common.blocks.foundation.MultipartBlock
 import org.eln2.mc.common.blocks.foundation.MultipartBlockEntity
+import org.eln2.mc.common.blocks.foundation.GhostLightBlock
 
 object BlockRegistry {
     val BLOCK_REGISTRY =
@@ -96,4 +97,6 @@ object BlockRegistry {
     }
 
     val MULTIPART_BLOCK = registerBasicBlock("multipart", tab = null) { MultipartBlock() }
+    val LIGHT_GHOST_BLOCK = registerBasicBlock("light_ghost"){ GhostLightBlock() }
+
 }

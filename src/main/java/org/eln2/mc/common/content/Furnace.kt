@@ -64,36 +64,49 @@ import org.eln2.mc.mathematics.vec4fOne
 import org.eln2.mc.sim.ThermalBody
 import org.eln2.mc.utility.McColors
 import java.util.*
+/*
 
 data class FurnaceOptions(
-    /**
+    */
+/**
      * Resistance used when the furnace is inactive.
-     * */
+     * *//*
+
     var idleResistance: Double,
 
-    /**
+    */
+/**
      * Resistance used when the furnace is running.
-     * */
+     * *//*
+
     var runningResistance: Double,
 
-    /**
+    */
+/**
      * Temperature needed for smelting bodies to begin smelting.
-     * */
+     * *//*
+
     var temperatureThreshold: Double,
 
-    /**
+    */
+/**
      * This temperature will be held constantly by the furnace while in operation.
-     * */
+     * *//*
+
     var targetTemperature: Double,
 
-    /**
+    */
+/**
      * The surface area of the resistor. This will affect the heat transfer rate.
-     * */
+     * *//*
+
     var surfaceArea: Double,
 
-    /**
+    */
+/**
      * The connection parameters with the smelting body.
-     * */
+     * *//*
+
     var connectionParameters: ConnectionParameters){
     fun serializeNbt(): CompoundTag {
         val tag = CompoundTag()
@@ -184,19 +197,23 @@ class FurnaceCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) {
     var isHot: Boolean = false
         private set
 
-    /**
+    */
+/**
      * Gets the temperature of the latest smelting body. This body has been visited by the update thread;
      * it may be different from the latest body loaded with [loadSmeltingBody]
-     * */
+     * *//*
+
     val bodyTemperature: Temperature? get() = knownSmeltingBody?.temperature
 
-    /**
+    */
+/**
      * Gets the temperature of the resistor's body.
-     * */
+     * *//*
+
     val resistorTemperature: Temperature get() = resistorHeatBody.temperature
 
     override fun createObjectSet(): SimulationObjectSet {
-        return SimulationObjectSet(ResistorObject())
+        return SimulationObjectSet(ResistorObject(this))
     }
 
     override fun onGraphChanged() {
@@ -207,18 +224,22 @@ class FurnaceCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) {
         graph.subscribers.removeSubscriber(this::simulationTick)
     }
 
-    /**
+    */
+/**
      * Sets the resistance to the idle value as per [options] and sets [isHot] to **false**.
-     * */
+     * *//*
+
     private fun idle() {
         resistorObject.resistance = options.idleResistance
         isHot = false
     }
 
-    /**
+    */
+/**
      * Based on [options], applies an on-off signal by toggling between [FurnaceOptions.runningResistance] and [FurnaceOptions.idleResistance] to reach
      * the specified [FurnaceOptions.targetTemperature].
-     * */
+     * *//*
+
     private fun applyControlSignal(){
         resistorObject.resistance = if(resistorHeatBody.temperatureK < options.targetTemperature){
             options.runningResistance
@@ -234,10 +255,12 @@ class FurnaceCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) {
         }
     }
 
-    /**
+    */
+/**
      * Updates the burn state [isHot] based on the temperature of the [knownSmeltingBody] and the threshold,
      * specified in [options].
-     * */
+     * *//*
+
     private fun updateBurnState(){
         // P.S. Known is not mutated outside!
         val knownSmeltingBody = this.knownSmeltingBody
@@ -392,9 +415,11 @@ class FurnaceBlockEntity(pos: BlockPos, state: BlockState) :
             return super.insertItem(OUTPUT_SLOT, stack, false) != stack
         }
 
-        /**
+        */
+/**
          * Checks if the specified item can be smelted.
-         * */
+         * *//*
+
         private fun canSmelt(stack: ItemStack): Boolean {
             val recipeManager = furnaceBlockEntity.level!!.recipeManager
             val recipe = recipeManager.getRecipeFor(RecipeType.SMELTING, SimpleContainer(stack), furnaceBlockEntity.level!!)
@@ -456,9 +481,11 @@ class FurnaceBlockEntity(pos: BlockPos, state: BlockState) :
 
     val data = FurnaceData()
 
-    /**
+    */
+/**
      * This is the last tracked value on the client.
-     * */
+     * *//*
+
     var clientBurning = false
         private set
 
@@ -860,3 +887,4 @@ class FurnaceBlock : CellBlock() {
         return pLevel.constructMenu(pPos, pPlayer, { TextComponent("Test") }, FurnaceMenu::create)
     }
 }
+*/

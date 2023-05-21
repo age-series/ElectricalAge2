@@ -3,8 +3,6 @@ package org.eln2.mc.common.cells.foundation.objects
 import org.ageseries.libage.sim.thermal.ConnectionParameters
 import org.ageseries.libage.sim.thermal.Simulator
 import org.eln2.mc.common.cells.foundation.CellBase
-import org.eln2.mc.common.space.DirectionMask
-import org.eln2.mc.common.space.RelativeRotationDirection
 import org.eln2.mc.sim.ThermalBody
 
 data class ThermalComponentInfo(val body: ThermalBody)
@@ -60,11 +58,8 @@ abstract class ThermalObject(cell: CellBase) : SimulationObject(cell) {
      * Called when this object is destroyed. Connections are also cleaned up.
      * */
     override fun destroy() {
-        connections.forEach {
-            if(!it.connections.remove(this)) {
-                error("Failed to clean up connection")
-            }
-        }
+        println()
+        connections.forEach { it.connections.remove(this) }
     }
 
     override fun update(connectionsChanged: Boolean, graphChanged: Boolean) {}

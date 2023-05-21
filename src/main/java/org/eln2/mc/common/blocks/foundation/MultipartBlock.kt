@@ -12,13 +12,16 @@ import net.minecraft.world.entity.player.Player
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.BlockGetter
 import net.minecraft.world.level.Level
+import net.minecraft.world.level.block.AirBlock
 import net.minecraft.world.level.block.BaseEntityBlock
 import net.minecraft.world.level.block.Block
+import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.entity.BlockEntityTicker
 import net.minecraft.world.level.block.entity.BlockEntityType
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.level.block.state.StateDefinition
+import net.minecraft.world.level.block.state.properties.IntegerProperty
 import net.minecraft.world.level.material.FluidState
 import net.minecraft.world.level.material.Material
 import net.minecraft.world.phys.BlockHitResult
@@ -28,7 +31,6 @@ import net.minecraft.world.phys.shapes.EntityCollisionContext
 import net.minecraft.world.phys.shapes.VoxelShape
 import org.eln2.mc.Eln2
 import org.eln2.mc.common.blocks.BlockRegistry
-import org.eln2.mc.common.content.GhostLightBlock
 import org.eln2.mc.common.parts.PartRegistry
 import org.eln2.mc.common.parts.foundation.Part
 import java.util.*
@@ -255,5 +257,138 @@ class MultipartBlock : BaseEntityBlock(Properties.of(Material.STONE)
             ?: return ItemStack.EMPTY
 
         return ItemStack(PartRegistry.getPartItem(picked.id))
+    }
+}
+
+interface IGhostLightHandle {
+    fun update(brightness: Int)
+    fun destroy()
+}
+
+class GhostLightBlock : AirBlock(Properties.of(Material.AIR).lightLevel { it.getValue(brightnessProperty) }) {
+    private class LightGrid(val level: Level) {
+        private class Cell(val level: Level, val pos: BlockPos, val grid: LightGrid) {
+            private fun handleBrightnessChanged(handle: Handle){
+                refreshGhost()
+            }
+
+            private fun handleDestroyed(handle: Handle) {
+                handles.remove(handle)
+
+                if(handles.size == 0) {
+                    clearFromLevel(level, pos)
+                    grid.onCellCleared(pos)
+                }
+            }
+
+            private val handles = ArrayList<Handle>()
+
+            fun createHandle(): IGhostLightHandle {
+                return Handle(this).also { handles.add(it) }
+            }
+
+            fun refreshGhost(){
+                Eln2.LOGGER.info("Refresh ghost")
+
+                val maximalBrightness = handles.maxOf { it.trackedBrightness }
+
+                setInLevel(level, pos, maximalBrightness)
+            }
+
+            private class Handle(val cell: Cell): IGhostLightHandle {
+                var trackedBrightness: Int = 0
+
+                var destroyed = false
+
+                override fun update(brightness: Int) {
+                    if(destroyed){
+                        error("Cannot set brightness, handle destroyed!")
+                    }
+
+                    if(brightness == trackedBrightness){
+                        return
+                    }
+
+                    trackedBrightness = brightness
+
+                    cell.handleBrightnessChanged(this)
+                }
+
+                override fun destroy() {
+                    if(!destroyed){
+                        cell.handleDestroyed(this)
+                    }
+                }
+            }
+        }
+
+        private val cells = HashMap<BlockPos, Cell>()
+
+        fun onCellCleared(pos: BlockPos) {
+            cells.remove(pos)
+        }
+
+        fun createHandle(pos: BlockPos): IGhostLightHandle {
+            return cells.computeIfAbsent(pos) { Cell(level, pos, this) }.createHandle()
+        }
+
+        fun refreshGhost(pos: BlockPos){
+            cells[pos]?.refreshGhost()
+        }
+    }
+
+    companion object {
+        private val block get() = BlockRegistry.LIGHT_GHOST_BLOCK.block.get()
+
+        val brightnessProperty: IntegerProperty = IntegerProperty.create("brightness", 0, 15)
+
+        private val grids = HashMap<Level, LightGrid>()
+
+        private fun setInLevel(level: Level, pos: BlockPos, brightness: Int): Boolean {
+            val previousBlockState = level.getBlockState(pos)
+
+            if(previousBlockState.block != Blocks.AIR && previousBlockState.block != block){
+                Eln2.LOGGER.info("Could not place, existing block there: $previousBlockState")
+                return false
+            }
+
+            if(previousBlockState.block != block || previousBlockState.getValue(brightnessProperty) != brightness){
+                level.setBlockAndUpdate(pos, block.defaultBlockState().setValue(brightnessProperty, brightness))
+                Eln2.LOGGER.info("Placed")
+                return true
+            }
+
+            return false
+        }
+
+        private fun clearFromLevel(level: Level, pos: BlockPos): Boolean {
+            val state = level.getBlockState(pos)
+
+            if(state.block != block) {
+                Eln2.LOGGER.error("Cannot remove: not ghost light")
+
+                return false
+            }
+
+            level.setBlockAndUpdate(pos, Blocks.AIR.defaultBlockState())
+
+            return true
+        }
+
+        private fun getGrid(level: Level): LightGrid {
+            return grids.computeIfAbsent(level){ LightGrid(level) }
+        }
+
+        fun createHandle(level: Level, pos: BlockPos): IGhostLightHandle {
+            return getGrid(level).createHandle(pos)
+        }
+
+        fun refreshGhost(level: Level, pos: BlockPos){
+            grids[level]?.refreshGhost(pos)
+        }
+    }
+
+    override fun createBlockStateDefinition(pBuilder: StateDefinition.Builder<Block, BlockState>) {
+        pBuilder.add(brightnessProperty)
     }
 }

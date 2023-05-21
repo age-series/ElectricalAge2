@@ -40,11 +40,11 @@ object Content {
 
     //#region Wires
 
-    val ELECTRICAL_WIRE_CELL_COPPER = CellRegistry.register("electrical_wire_cell_copper", BasicCellProvider.fourPin  { a, b ->
+    val ELECTRICAL_WIRE_CELL_COPPER = CellRegistry.register("electrical_wire_cell_copper", BasicCellProvider  { a, b ->
         WireCell(a, b, ElectricalWireModels.copper(centimeters(5.0)), WireType.Electrical)
     })
 
-    val THERMAL_WIRE_CELL_COPPER = CellRegistry.register("thermal_wire_cell_copper", BasicCellProvider.fourPin  { a, b ->
+    val THERMAL_WIRE_CELL_COPPER = CellRegistry.register("thermal_wire_cell_copper", BasicCellProvider  { a, b ->
         WireCell(a, b, ElectricalWireModels.copper(centimeters(5.0)), WireType.Thermal)
     })
 
@@ -58,7 +58,7 @@ object Content {
 
     //#endregion
 
-    val THERMAL_RADIATOR_CELL = CellRegistry.register("thermal_radiator_cell", BasicCellProvider.fourPin { a, b ->
+   /* val THERMAL_RADIATOR_CELL = CellRegistry.register("thermal_radiator_cell", BasicCellProvider.fourPin { a, b ->
         ThermalRadiatorCell(a, b, RadiatorModel(
             2000.0,
             100.0,
@@ -123,7 +123,6 @@ object Content {
 
     val BATTERY_PART_100V = PartRegistry.part("battery_part_100v", BasicPartProvider({a, b -> BatteryPart(a, b, BATTERY_CELL_100V.get())}, vec3(1.0)))
 
-    val LIGHT_GHOST_BLOCK = BlockRegistry.registerBasicBlock("light_ghost"){GhostLightBlock()}
     val LIGHT_CELL = CellRegistry.register("light_cell", BasicCellProvider.polarLR { pos, id ->
         LightCell(pos, id, LightModels.test())
     })
@@ -178,7 +177,7 @@ object Content {
             readCurrent = true,
             readTemperature = true
         )
-    }
+    }*/
 
     @Mod.EventBusSubscriber
     object ClientSetup {
@@ -192,8 +191,8 @@ object Content {
         }
 
         private fun clientWork() {
-            MenuScreens.register(FURNACE_MENU.get(), ::FurnaceScreen)
-            MenuScreens.register(HEAT_GENERATOR_MENU.get(), ::HeatGeneratorScreen)
+            //MenuScreens.register(FURNACE_MENU.get(), ::FurnaceScreen)
+            //MenuScreens.register(HEAT_GENERATOR_MENU.get(), ::HeatGeneratorScreen)
         }
     }
 }
