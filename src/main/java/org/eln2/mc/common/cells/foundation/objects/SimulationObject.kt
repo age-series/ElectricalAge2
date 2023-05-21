@@ -1,7 +1,7 @@
 package org.eln2.mc.common.cells.foundation.objects
 
 import org.eln2.mc.common.cells.foundation.CellBase
-import org.eln2.mc.common.cells.foundation.LocationDescriptor
+import org.eln2.mc.common.space.LocationDescriptor
 
 /**
  * Represents a discrete simulation unit that participates in one simulation type.
