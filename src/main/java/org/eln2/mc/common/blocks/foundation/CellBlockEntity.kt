@@ -16,11 +16,10 @@ import org.eln2.mc.Eln2
 import org.eln2.mc.common.blocks.BlockRegistry
 import org.eln2.mc.common.cells.*
 import org.eln2.mc.common.cells.foundation.*
-import org.eln2.mc.common.parts.foundation.ConnectionMode
-import org.eln2.mc.common.space.RelativeRotationDirection
+import org.eln2.mc.common.space.*
 import org.eln2.mc.data.DataAccessNode
 import org.eln2.mc.data.IDataEntity
-import org.eln2.mc.extensions.isVertical
+import org.eln2.mc.extensions.isHorizontal
 import org.eln2.mc.integration.waila.IWailaProvider
 import org.eln2.mc.integration.waila.TooltipBuilder
 import java.util.*
@@ -93,13 +92,15 @@ open class CellBlockEntity(pos: BlockPos, state: BlockState, targetType: BlockEn
 
         cell!!.container = this
 
-        CellConnectionManager.connect(this, getCellSpace())
+        CellConnectionManager.connect(this, cell ?: error("Unexpected"))
 
         setChanged()
     }
 
     fun setDestroyed() {
-        if (cell == null) {
+        TODO()
+
+       /* if (cell == null) {
             // This means we are on the client.
             // Otherwise, something is going on here.
 
@@ -107,13 +108,7 @@ open class CellBlockEntity(pos: BlockPos, state: BlockState, targetType: BlockEn
             return
         }
 
-        CellConnectionManager.destroy(getCellSpace(), this)
-    }
-
-    private fun canConnectFrom(dir: Direction): Boolean {
-        val localDirection = getLocalDirection(dir)
-
-        return cellProvider.canConnectFrom(localDirection)
+        CellConnectionManager.destroy(getCellSpace(), this)*/
     }
 
     //#region Saving and Loading
@@ -183,68 +178,35 @@ open class CellBlockEntity(pos: BlockPos, state: BlockState, targetType: BlockEn
 
     //#endregion
 
-    private fun getCellSpace(): CellInfo {
-        return CellInfo(cell!!, cellFace)
-    }
-
     private fun getCellPos(): CellPos {
-        return CellPos(blockPos, cellFace)
+        return CellPos(
+            LocationDescriptor()
+                .withLocator(BlockPosLocator(blockPos))
+                .withLocator(BlockFaceLocator(cellFace))
+        )
     }
 
-    override fun getCells(): ArrayList<CellInfo> {
-        return arrayListOf(getCellSpace())
+    override fun getCells(): ArrayList<CellBase> {
+        return arrayListOf(cell ?: error("Cell is null in getCells"))
     }
 
-    override fun query(query: CellQuery): CellInfo? {
-        return if (canConnectFrom(query.connectionFace)) {
-            getCellSpace()
-        } else {
-            null
-        }
-    }
+    override fun queryNeighbors(actualCell: CellBase): ArrayList<CellNeighborInfo> {
+        val cell = this.cell ?: error("Cell is null in queryNeighbors")
+        val level = this.level ?: error("Level is null in queryNeighbors")
 
-    override fun queryNeighbors(location: CellInfo): ArrayList<CellNeighborInfo> {
         val results = ArrayList<CellNeighborInfo>()
 
         Direction.values()
-            .filter { !it.isVertical() }
-            .forEach { direction ->
-                val local = getLocalDirection(direction)
-
-                if (cellProvider.canConnectFrom(local)) {
-                    CellScanner.planarScan(level!!, blockPos, direction, cellFace){ remoteInfo, remoteContainer, remoteRelative ->
-                        results.add(CellNeighborInfo(remoteInfo, remoteContainer, local, remoteRelative))
-                    }
-                }
+            .filter { it.isHorizontal() }
+            .forEach { searchDir ->
+                planarScan(level, cell, searchDir, results::add)
             }
 
         return results
     }
 
-    override fun probeConnectionCandidate(location: CellInfo, direction: Direction, mode: ConnectionMode): RelativeRotationDirection? {
-        assert(location.cell == cell!!)
-
-        Eln2.LOGGER.info("CELL PROBE $location $direction $mode")
-
-        if(mode != ConnectionMode.Planar){
-            return null
-        }
-
-        val local = getLocalDirection(direction)
-
-        return if (cellProvider.canConnectFrom(local)) {
-            local
-        } else {
-            null
-        }
-    }
-
-    override fun recordConnection(location: CellInfo, direction: RelativeRotationDirection, neighborSpace: CellInfo) {
-        Eln2.LOGGER.info("Cell Block recorded connection to the $direction")
-    }
-
-    override fun recordDeletedConnection(location: CellInfo, direction: RelativeRotationDirection) {
-        Eln2.LOGGER.info("Cell Block recorded deleted to the $direction")
+    override fun recordConnection(actualCell: CellBase, remoteCell: CellBase) {
+        Eln2.LOGGER.info("Cell Block recorded connection from $actualCell to $remoteCell")
     }
 
     override fun topologyChanged() {

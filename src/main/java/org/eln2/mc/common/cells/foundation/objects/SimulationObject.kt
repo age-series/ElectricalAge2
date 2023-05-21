@@ -2,12 +2,16 @@ package org.eln2.mc.common.cells.foundation.objects
 
 import org.eln2.mc.common.cells.foundation.CellBase
 import org.eln2.mc.common.space.LocationDescriptor
+import org.eln2.mc.common.space.LocatorRelationRuleSet
 
 /**
  * Represents a discrete simulation unit that participates in one simulation type.
  * */
 abstract class SimulationObject(val cell: CellBase) {
     abstract val type: SimulationObjectType
+
+    private val rsLazy = lazy { LocatorRelationRuleSet() }
+    protected val ruleSet get() = rsLazy.value
 
     /**
      * Called when the connections and/or graph changes.
@@ -31,5 +35,7 @@ abstract class SimulationObject(val cell: CellBase) {
      * */
     abstract fun destroy()
 
-    abstract fun acceptsRemote(remoteDesc: LocationDescriptor): Boolean
+    open fun acceptsRemote(remoteDesc: LocationDescriptor): Boolean {
+        return ruleSet.accepts(cell.pos.descriptor, remoteDesc)
+    }
 }

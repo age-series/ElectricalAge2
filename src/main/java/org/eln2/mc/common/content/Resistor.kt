@@ -24,7 +24,7 @@ import org.eln2.mc.integration.waila.TooltipBuilder
 /**
  * The resistor object has a single resistor. At most, two connections can be made by this object.
  * */
-class ResistorObject : ElectricalObject(), IWailaProvider {
+class ResistorObject(cell: CellBase) : ElectricalObject(cell), IWailaProvider {
     private lateinit var resistor: Resistor
 
     val hasResistor get() = this::resistor.isInitialized
@@ -62,8 +62,7 @@ class ResistorObject : ElectricalObject(), IWailaProvider {
     }
 
     override fun build() {
-        connections.forEach { connectionInfo ->
-            val remote = connectionInfo.obj
+        connections.forEach { remote ->
             val localInfo = offerComponent(remote)
             val remoteInfo = remote.offerComponent(this)
 
@@ -82,7 +81,7 @@ class ResistorCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) {
     }
 
     override fun createObjectSet(): SimulationObjectSet {
-        return SimulationObjectSet(ResistorObject(), ThermalWireObject(this))
+        return SimulationObjectSet(ResistorObject(this), ThermalWireObject(this))
     }
 
     private val resistor get() = electricalObject as ResistorObject

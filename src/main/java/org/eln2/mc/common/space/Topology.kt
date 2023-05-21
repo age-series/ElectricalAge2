@@ -1,18 +1,69 @@
 package org.eln2.mc.common.space
 
+import com.mojang.datafixers.types.templates.CompoundList
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
+import net.minecraft.nbt.CompoundTag
+import net.minecraft.nbt.ListTag
+import org.ageseries.libage.data.ImmutableBiMapView
+import org.ageseries.libage.data.biMapOf
 import org.eln2.mc.extensions.directionTo
+import org.eln2.mc.extensions.getBlockPos
+import org.eln2.mc.extensions.putBlockPos
+import java.util.function.Supplier
 
 interface Locator<Param>
 interface R3
 interface SO3
+
 data class BlockPosLocator(val pos: BlockPos) : Locator<R3>
 data class IdentityDirectionLocator(val forward: Direction): Locator<SO3>
 data class BlockFaceLocator(val innerFace: Direction) : Locator<SO3>
 
+// Got lost in the type system, for now we are using Any:
+interface ILocatorSerializer {
+    fun toNbt(obj: Any): CompoundTag
+    fun fromNbt(tag: CompoundTag): Any
+}
+
+fun classId(c: Class<*>): String = c.canonicalName
+fun locatorId(param: Class<*>, loc: Class<*>): String = "${classId(param)}: ${classId(loc)}"
+
+val paramClassNames: ImmutableBiMapView<String, Class<*>> = biMapOf(
+    classId(R3::class.java) to R3::class.java,
+    classId(SO3::class.java) to SO3::class.java
+)
+
+val locatorClassNames: ImmutableBiMapView<String, Class<*>> = biMapOf(
+    locatorId(R3::class.java, BlockPosLocator::class.java) to BlockPosLocator::class.java,
+    locatorId(SO3::class.java, IdentityDirectionLocator::class.java) to IdentityDirectionLocator::class.java,
+    locatorId(SO3::class.java, BlockFaceLocator::class.java) to BlockFaceLocator::class.java
+)
+
+val locatorSerializers: ImmutableBiMapView<Class<*>, ILocatorSerializer> = biMapOf(
+    BlockPosLocator::class.java to object: ILocatorSerializer {
+        override fun toNbt(obj: Any): CompoundTag =
+            CompoundTag().apply {  putBlockPos("Pos", (obj as BlockPosLocator).pos) }
+
+        override fun fromNbt(tag: CompoundTag): BlockPosLocator =
+            BlockPosLocator(tag.getBlockPos("Pos"))
+    }
+)
+
+val locatorSetFactories: ImmutableBiMapView<Class<*>, Supplier<LocatorSet<*>>> = biMapOf(
+    R3::class.java to Supplier { LocatorSet<R3>() },
+    SO3::class.java to Supplier { LocatorSet<SO3>() }
+)
+
+fun getLocatorSerializer(locatorClass: Class<*>): ILocatorSerializer {
+    return locatorSerializers.forward[locatorClass]
+        ?: error("Failed to find serializer definition for $locatorClass")
+}
+
 class LocatorSet<Param> {
     private val locators = HashMap<Class<*>, Locator<Param>>()
+
+    fun getLocators(): HashMap<Class<*>, Locator<Param>> = locators.clone() as HashMap<Class<*>, Locator<Param>>
 
     fun<T : Locator<Param>> withLocator(c: Class<T>, l : T): LocatorSet<Param> {
         if(locators.put(c, l) != null) {
@@ -20,6 +71,12 @@ class LocatorSet<Param> {
         }
 
         return this
+    }
+
+    fun add(c: Class<*>, instance: Locator<*>) {
+        if(locators.put(c, instance as Locator<Param>) != null) {
+            error("Duplicate locator $c")
+        }
     }
 
     inline fun<reified T : Locator<Param>> withLocator(l: T): LocatorSet<Param> = withLocator(T::class.java, l)
@@ -111,6 +168,94 @@ class LocationDescriptor {
         val set = getLocatorSet<Param>() ?: return false
         return set.has<Loc>()
     }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) {
+            return true
+        }
+
+        if (javaClass != other?.javaClass) {
+            return false
+        }
+
+        other as LocationDescriptor
+
+        if (locatorSets != other.locatorSets) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        return locatorSets.hashCode()
+    }
+
+    fun toNbt(): CompoundTag {
+        val result = CompoundTag()
+
+        val setList = ListTag()
+
+        locatorSets.forEach { (paramClass, locatorSet) ->
+            val setCompound = CompoundTag()
+
+            setCompound.putString(
+                "ParamClass",
+                paramClassNames.backward[paramClass]
+                    ?: error("Failed to get param name for $paramClass")
+            )
+
+            val locatorList = ListTag()
+
+            locatorSet.getLocators().forEach { (locatorClass, locatorInst) ->
+                val locatorCompound = CompoundTag()
+
+                locatorCompound.putString(
+                    "LocatorClass",
+                    locatorClassNames.backward[locatorClass]
+                        ?: error("Failed to get locator name for $locatorClass")
+                )
+
+                val serializer = getLocatorSerializer(locatorClass)
+                setCompound.put("Locator", serializer.toNbt(locatorInst))
+                locatorList.add(locatorCompound)
+            }
+
+            setCompound.put("Locators", locatorList)
+
+            setList.add(setCompound)
+        }
+
+        result.put("Sets", setList)
+
+        return result
+    }
+
+    companion object {
+        fun fromNbt(compoundTag: CompoundTag): LocationDescriptor {
+            val result = LocationDescriptor()
+
+            (compoundTag.get("Sets") as ListTag).map { it as CompoundTag }.forEach { setCompound ->
+                val paramClassName = setCompound.getString("ParamClass")
+                val paramClass = paramClassNames.forward[paramClassName]
+                    ?: error("Failed to solve param class $paramClassName")
+
+                val set = result.locatorSets.getOrPut(paramClass) {
+                    (locatorSetFactories.forward[paramClass] ?: error("Failed to get locator set factory $paramClass"))
+                        .get()
+                }
+
+                (setCompound.get("Locators") as ListTag).map { it as CompoundTag }.forEach { locatorCompound ->
+                    val locatorClassName = locatorCompound.getString("LocatorClass")
+                    val locatorClass = locatorClassNames.forward[locatorClassName]
+                        ?: error("Failed to solve locator class $locatorClassName")
+
+                    val serializer = getLocatorSerializer(locatorClass)
+                    set.add(locatorClass, serializer.fromNbt(locatorCompound.getCompound("Locator")) as Locator<*>)
+                }
+            }
+
+            return result
+        }
+    }
 }
 
 inline fun <reified Param> LocationDescriptor.requireSp(noinline message: (() -> Any)? = null) {
@@ -118,9 +263,11 @@ inline fun <reified Param> LocationDescriptor.requireSp(noinline message: (() ->
     else require(this.hasLocatorSet<Param>()) { "Requirement of ${Param::class.java} is not fulfilled"}
 }
 
-inline fun<reified Param, reified Loc: Locator<Param>> LocationDescriptor.requireLocator(noinline message: (() -> Any)? = null) {
+inline fun<reified Param, reified Loc: Locator<Param>> LocationDescriptor.requireLocator(noinline message: (() -> Any)? = null): Loc {
     if(message != null) require(this.hasLocator<Param, Loc>(), message)
     else require(this.hasLocator<Param, Loc>()) { "Requirement of ${Param::class.java}, ${Loc::class.java} is not fulfilled"}
+
+    return this.getLocator<Param, Loc>()!!
 }
 
 fun interface ILocationRelationshipRule {

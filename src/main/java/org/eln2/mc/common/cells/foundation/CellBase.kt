@@ -4,6 +4,7 @@ import mcp.mobius.waila.api.IPluginConfig
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.resources.ResourceLocation
 import org.eln2.mc.common.cells.foundation.objects.*
+import org.eln2.mc.common.space.LocatorRelationRuleSet
 import org.eln2.mc.common.space.RelativeRotationDirection
 import org.eln2.mc.data.DataAccessNode
 import org.eln2.mc.data.IDataEntity
@@ -26,6 +27,13 @@ abstract class CellBase(val pos: CellPos, val id: ResourceLocation) : IWailaProv
 
     lateinit var graph: CellGraph
     lateinit var connections: ArrayList<CellBase>
+
+    private val ruleSetLazy = lazy { LocatorRelationRuleSet() }
+    protected val ruleSet get() = ruleSetLazy.value
+
+    open fun acceptsConnection(remote: CellBase): Boolean {
+        return ruleSet.accepts(pos.descriptor, remote.pos.descriptor)
+    }
 
     /**
      * If [hasGraph], [CellGraph.setChanged] is called to ensure the cell data will be saved.

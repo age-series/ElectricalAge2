@@ -4,7 +4,6 @@ import net.minecraft.core.Direction
 
 interface ICellContainer {
     fun getCells(): ArrayList<CellBase>
-    fun query(query: CellQuery): CellBase?
     fun queryNeighbors(actualCell: CellBase): ArrayList<CellNeighborInfo>
 
     fun recordConnection(actualCell: CellBase, remoteCell: CellBase)
