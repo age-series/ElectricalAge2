@@ -6,13 +6,14 @@ import org.eln2.mc.common.parts.foundation.ConnectionMode
 import org.eln2.mc.common.space.RelativeRotationDirection
 
 interface ICellContainer {
-    fun getCells(): ArrayList<CellInfo>
-    fun query(query: CellQuery): CellInfo?
-    fun queryNeighbors(location: CellInfo): ArrayList<CellNeighborInfo>
-    fun probeConnectionCandidate(location: CellInfo, direction: Direction, mode: ConnectionMode): RelativeRotationDirection?
-    fun recordConnection(location: CellInfo, direction: RelativeRotationDirection, neighborSpace: CellInfo)
-    fun recordDeletedConnection(location: CellInfo, direction: RelativeRotationDirection)
+    fun getCells(): ArrayList<CellBase>
+    fun query(query: CellQuery): CellBase?
+    fun queryNeighbors(actualCell: CellBase): ArrayList<CellNeighborInfo>
+
+    fun recordConnection(actualCell: CellBase, remoteCell: CellBase)
+
     fun topologyChanged()
+
     val manager: CellGraphManager
 }
 
@@ -125,8 +126,6 @@ class LocationDescriptor {
     }
 }
 
-data class CellInfo(val cell: CellBase, val innerFace: Direction)
-
 /**
  * Represents a query into a Cell Container. Currently, queries are used to determine cell connection candidates.
  * @param connectionFace The face at the boundary between the two containers. It can be thought of as the common face. Implicitly, this is the contact face of the container that is being queried. It is not implied that a cell exists on this face, but rather that it may connect via this face.
@@ -134,25 +133,10 @@ data class CellInfo(val cell: CellBase, val innerFace: Direction)
  * */
 data class CellQuery(val connectionFace: Direction, val surface: Direction)
 
-fun interface ICellScanConsumer {
-    fun consume(remoteSpace: CellInfo, remoteContainer: ICellContainer, remoteRelative: RelativeRotationDirection)
-}
-
 /**
  * Encapsulates information about a neighbor cell.
  * */
 data class CellNeighborInfo(
-    val neighborInfo: CellInfo,
-    val neighborContainer: ICellContainer,
-
-    /**
-     * This is the direction from the source cell to the neighbor cell.
-     * */
-    val sourceDirection: RelativeRotationDirection,
-
-    /**
-     * This is the direction from the neighbor cell to the source cell.
-     * _This is not necessarily the opposite of the source direction._
-     * */
-    val neighborDirection: RelativeRotationDirection
+    val neighbor: CellBase,
+    val neighborContainer: ICellContainer
 )

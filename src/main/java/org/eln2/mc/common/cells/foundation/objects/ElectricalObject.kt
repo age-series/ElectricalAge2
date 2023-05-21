@@ -2,18 +2,14 @@ package org.eln2.mc.common.cells.foundation.objects
 
 import org.ageseries.libage.sim.electrical.mna.Circuit
 import org.ageseries.libage.sim.electrical.mna.component.Component
-import org.eln2.mc.common.space.DirectionMask
-import org.eln2.mc.common.space.RelativeRotationDirection
+import org.eln2.mc.common.cells.foundation.CellBase
 
 data class ElectricalComponentInfo(val component: Component, val index: Int)
-data class ElectricalConnectionInfo(val obj: ElectricalObject, val direction: RelativeRotationDirection)
 
 /**
  * Represents an object that is part of an electrical simulation.
  * */
-abstract class ElectricalObject : ISimulationObject {
-    override val connectionMask: DirectionMask = DirectionMask.HORIZONTALS
-
+abstract class ElectricalObject(cell: CellBase) : SimulationObject(cell) {
     /**
      * The circuit this object is part of.
      * It is initialized while the solver is being built.
@@ -22,7 +18,7 @@ abstract class ElectricalObject : ISimulationObject {
     var circuit: Circuit? = null
         private set
 
-    protected val connections = ArrayList<ElectricalConnectionInfo>()
+    protected val connections = ArrayList<ElectricalObject>()
 
     final override val type = SimulationObjectType.Electrical
 
@@ -33,17 +29,13 @@ abstract class ElectricalObject : ISimulationObject {
     open val maxConnections = Int.MAX_VALUE
 
     protected fun indexOf(obj: ElectricalObject): Int {
-        val index = connections.indexOfFirst { it.obj == obj }
+        val index = connections.indexOf(obj)
 
         if (index == -1) {
             error("Connections did not have $obj")
         }
 
         return index
-    }
-
-    protected fun directionOf(obj: ElectricalObject): RelativeRotationDirection {
-        return connections[indexOf(obj)].direction
     }
 
     /**
@@ -64,12 +56,10 @@ abstract class ElectricalObject : ISimulationObject {
     /**
      * Called by the cell when a valid connection candidate is discovered.
      * */
-    open fun addConnection(connectionInfo: ElectricalConnectionInfo) {
-        if (connections.contains(connectionInfo)) {
-            error("Duplicate connection")
-        }
+    open fun addConnection(remoteObj: ElectricalObject) {
+        require(!connections.contains(remoteObj)) { "Duplicate connection" }
 
-        connections.add(connectionInfo)
+        connections.add(remoteObj)
 
         if(connections.size > maxConnections){
             error("Electrical object received more connections than were allowed")
@@ -80,7 +70,11 @@ abstract class ElectricalObject : ISimulationObject {
      * Called when this object is destroyed. Connections are also cleaned up.
      * */
     override fun destroy() {
-        connections.forEach { it.obj.connections.removeAll { conn -> conn.obj == this } }
+        connections.forEach {
+            if(!it.connections.remove(this)) {
+                error("Failed to clean up connection")
+            }
+        }
     }
 
     override fun update(connectionsChanged: Boolean, graphChanged: Boolean) {}
