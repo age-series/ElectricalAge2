@@ -4,12 +4,7 @@ import net.minecraft.core.Direction
 import net.minecraft.world.level.Level
 import net.minecraft.core.BlockPos
 import org.eln2.mc.common.parts.foundation.ConnectionMode
-import org.eln2.mc.common.space.RelativeRotationDirection
 import org.eln2.mc.extensions.plus
-
-fun interface ICellScanConsumer {
-    fun consume(remoteSpace: CellInfo, remoteContainer: ICellContainer, remoteRelative: RelativeRotationDirection)
-}
 
 object CellScanner {
     fun planarScan(level: Level, pos: BlockPos, searchDirection: Direction, cellFace: Direction, consumer: ICellScanConsumer){
