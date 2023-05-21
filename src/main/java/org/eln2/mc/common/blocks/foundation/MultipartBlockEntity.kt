@@ -32,11 +32,9 @@ import org.eln2.mc.common.cells.foundation.*
 import org.eln2.mc.common.content.GhostLightBlock
 import org.eln2.mc.common.parts.PartRegistry
 import org.eln2.mc.common.parts.foundation.*
-import org.eln2.mc.common.space.DirectionMask
-import org.eln2.mc.common.space.RelativeRotationDirection
+import org.eln2.mc.common.space.*
 import org.eln2.mc.data.DataAccessNode
 import org.eln2.mc.data.IDataEntity
-import org.eln2.mc.extensions.directionTo
 import org.eln2.mc.extensions.minus
 import org.eln2.mc.extensions.isVertical
 import org.eln2.mc.extensions.getBlockPos
@@ -47,7 +45,6 @@ import org.eln2.mc.extensions.putBlockPos
 import org.eln2.mc.extensions.putDirection
 import org.eln2.mc.extensions.putPartUpdateType
 import org.eln2.mc.extensions.putResourceLocation
-import org.eln2.mc.extensions.allows
 import org.eln2.mc.integration.waila.IWailaProvider
 import org.eln2.mc.integration.waila.TooltipBuilder
 import org.eln2.mc.utility.BoundingBox
@@ -225,7 +222,7 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
         part.onPlaced()
 
         if (part is IPartCellContainer) {
-            CellConnectionManager.connect(this, CellInfo(part.cell, part.placementContext.face))
+            CellConnectionManager.connect(this, part.cell)
         }
 
         if(part is IItemPersistentPart && part.order == ItemPersistentPartLoadOrder.AfterSim) {
@@ -264,7 +261,9 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
      * */
     @ServerOnly
     fun breakPart(part: Part, saveTag: CompoundTag? = null) {
-        if (part is IPartCellContainer) {
+        TODO()
+
+        /*if (part is IPartCellContainer) {
             CellConnectionManager.destroy(
                 CellInfo(
                     part.cell,
@@ -284,7 +283,7 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
         part.onBroken()
 
         saveData()
-        syncData()
+        syncData()*/
     }
 
     /**
@@ -294,7 +293,9 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
      * */
     @ServerOnly
     fun onNeighborDestroyed(neighborPos: BlockPos): Boolean {
-        if (level!!.isClientSide) {
+        TODO()
+
+       /* if (level!!.isClientSide) {
             return false
         }
 
@@ -311,7 +312,7 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
             breakPart(parts[direction]!!)
         }
 
-        return parts.size == 0
+        return parts.size == 0*/
     }
 
     /**
@@ -351,12 +352,12 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
     @ClientOnly
     override fun handleUpdateTag(tag: CompoundTag?) {
         if (tag == null) {
-            Eln2.LOGGER.error("Part update tag was null at $pos")
+            LOGGER.error("Part update tag was null at $pos")
             return
         }
 
         if (level == null) {
-            Eln2.LOGGER.error("Level was null in handleUpdateTag at $pos")
+            LOGGER.error("Level was null in handleUpdateTag at $pos")
             return
         }
 
@@ -440,14 +441,14 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
             val part = parts[face]
 
             if (part == null) {
-                Eln2.LOGGER.error("Multipart at $pos part $face requested update, but was null")
+                LOGGER.error("Multipart at $pos part $face requested update, but was null")
                 return@forEach
             }
 
             val syncTag = part.getSyncTag()
 
             if (syncTag == null) {
-                Eln2.LOGGER.error("Part $part had an update enqueued, but returned a null sync tag")
+                LOGGER.error("Part $part had an update enqueued, but returned a null sync tag")
                 return@forEach
             }
 
@@ -466,24 +467,24 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
     @ClientOnly
     override fun onDataPacket(net: Connection?, packet: ClientboundBlockEntityDataPacket?) {
         if (packet == null) {
-            Eln2.LOGGER.error("onDataPacket null at $pos")
+            LOGGER.error("onDataPacket null at $pos")
             return
         }
 
         if (level == null) {
-            Eln2.LOGGER.error("onDataPacket level null at $pos")
+            LOGGER.error("onDataPacket level null at $pos")
             return
         }
 
         if (!level!!.isClientSide) {
-            Eln2.LOGGER.error("onDataPacket called on the client!")
+            LOGGER.error("onDataPacket called on the client!")
             return
         }
 
         val tag = packet.tag
 
         if(tag == null){
-            Eln2.LOGGER.error("Got null update tag")
+            LOGGER.error("Got null update tag")
             return
         }
 
@@ -504,7 +505,7 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
                     val part = unpackPart(newPartTag)
 
                     if (parts.put(part.placementContext.face, part) != null) {
-                        Eln2.LOGGER.error("Client received new part, but a part was already present on the ${part.placementContext.face} face!")
+                        LOGGER.error("Client received new part, but a part was already present on the ${part.placementContext.face} face!")
                     }
 
                     clientAddPart(part)
@@ -516,7 +517,7 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
                     val part = destroyPart(face)
 
                     if (part == null) {
-                        Eln2.LOGGER.error("Client received broken part on $face, but there was no part present on the face!")
+                        LOGGER.error("Client received broken part on $face, but there was no part present on the face!")
                     } else {
                         clientRemovePart(part)
                     }
@@ -539,7 +540,7 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
             val part = parts[face]
 
             if (part == null) {
-                Eln2.LOGGER.error("Multipart at $pos received update on $face, but part is null!")
+                LOGGER.error("Multipart at $pos received update on $face, but part is null!")
             } else {
                 val syncTag = compound.get("SyncTag") as CompoundTag
                 part.handleSyncTag(syncTag)
@@ -581,7 +582,7 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
             saveParts(pTag)
         }
         catch (t: Throwable){
-            Eln2.LOGGER.error("MULTIPART SAVE EX $t")
+            LOGGER.error("MULTIPART SAVE EX $t")
         }
     }
 
@@ -622,7 +623,7 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
                 LOGGER.info("Multipart save tag null")
             }
         } catch (ex: Exception) {
-            Eln2.LOGGER.error("Unhandled exception in setLevel: $ex")
+            LOGGER.error("Unhandled exception in setLevel: $ex")
         }
     }
 
@@ -706,7 +707,7 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
 
             rebuildCollider()
         } else {
-            Eln2.LOGGER.error("Multipart at $pos had no saved data")
+            LOGGER.error("Multipart at $pos had no saved data")
         }
     }
 
@@ -736,49 +737,20 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
      * Gets a list of all cells within this container's parts.
      * */
     @ServerOnly
-    override fun getCells(): ArrayList<CellInfo> {
-        val results = ArrayList<CellInfo>()
+    override fun getCells(): ArrayList<CellBase> {
+        val results = ArrayList<CellBase>()
 
         parts.values.forEach { part ->
             if (part is IPartCellContainer) {
-                results.add(CellInfo(part.cell, part.placementContext.face))
+                results.add(part.cell)
             }
         }
 
         return results
     }
 
-    override fun query(query: CellQuery): CellInfo? {
-        val part = parts[query.surface]
-
-        if (part == null) {
-            LOGGER.info("No part on face ${query.surface}")
-            return null
-        }
-
-        val cellContainer = part as? IPartCellContainer
-
-        if (cellContainer == null) {
-            LOGGER.info("Part on face ${query.surface} is not a cell container")
-            return null
-        }
-
-        val relativeRotation = part.getRelativeDirection(query.connectionFace)
-
-        LOGGER.info("${query.connectionFace} mapped to $relativeRotation")
-
-        if (cellContainer.provider.canConnectFrom(relativeRotation)) {
-            LOGGER.info("Connection accepted!")
-            return CellInfo(cellContainer.cell, query.surface)
-        }
-
-        LOGGER.info("Connection rejected")
-
-        return null
-    }
-
-    override fun queryNeighbors(location: CellInfo): ArrayList<CellNeighborInfo> {
-        val partFace = location.innerFace
+    override fun queryNeighbors(actualCell: CellBase): ArrayList<CellNeighborInfo> {
+        val partFace = actualCell.pos.descriptor.requireLocator<SO3, BlockFaceLocator>().innerFace
 
         val part = parts[partFace]!!
 
@@ -788,18 +760,9 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
 
         val results = LinkedHashSet<CellNeighborInfo>()
 
+        val level = this.level ?: error("Level null in queryNeighbors")
+
         DirectionMask.perpendicular(partFace).process { searchDirection ->
-            val partRelative = part.getRelativeDirection(searchDirection)
-
-            fun scanConsumer(remoteSpace: CellInfo, remoteContainer: ICellContainer, remoteRelative: RelativeRotationDirection){
-                results.add(CellNeighborInfo(remoteSpace, remoteContainer, partRelative, remoteRelative))
-            }
-
-            if (!part.provider.canConnectFrom(partRelative)) {
-                LOGGER.info("Part rejected connection on $partRelative - ${part.provider}")
-                return@process
-            }
-
             fun innerScan() {
                 // Inner scan does not make sense outside multiparts, so I did not move it to CellScanner
 
@@ -817,86 +780,70 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
                         return
                     }
 
-                    val innerRelativeRotation = innerPart.getRelativeDirection(partFace.opposite)
-
-                    if (!innerPart.provider.canConnectFrom(innerRelativeRotation)) {
+                    if (!innerPart.cell.acceptsConnection(innerPart.cell)) {
                         return
                     }
 
                     results.add(
                         CellNeighborInfo(
-                            CellInfo(innerPart.cell, innerPart.placementContext.face),
-                            this,
-                            partRelative,
-                            innerRelativeRotation
+                            innerPart.cell,
+                            this
                         )
                     )
                 }
             }
 
-            fun planarScan() {
-                if (part.allowPlanarConnections) {
-                    CellScanner.planarScan(level!!, pos, searchDirection, partFace, ::scanConsumer)
-                }
-            }
-
-            fun wrappedScan() {
-                if (part.allowWrappedConnections) {
-                    CellScanner.wrappedScan(level!!, pos, searchDirection, partFace, ::scanConsumer)
-                }
-            }
-
             innerScan()
-            planarScan()
-            wrappedScan()
+
+            if (part.allowPlanarConnections) {
+                planarScan(
+                    level,
+                    part.cell,
+                    searchDirection,
+                    results::add
+                )
+            }
+
+            if (part.allowWrappedConnections) {
+                wrappedScan(
+                    level,
+                    part.cell,
+                    searchDirection,
+                    results::add
+                )
+            }
         }
 
         return ArrayList(results)
     }
 
-    override fun probeConnectionCandidate(location: CellInfo, direction: Direction, mode: ConnectionMode): RelativeRotationDirection? {
-        val part = (parts[location.innerFace]!!)
-        val partCell = part as IPartCellContainer
+    override fun recordConnection(actualCell: CellBase, remoteCell: CellBase) {
+        val innerFace = actualCell.pos.descriptor.requireLocator<SO3, BlockFaceLocator>().innerFace
 
-        if(!partCell.allows(mode)){
-            return null
-        }
+        val part = parts[innerFace] as IPartCellContainer
 
-        val relative = part.getRelativeDirection(direction)
+        val actualPos = actualCell.pos
+        val neighborPos = remoteCell.pos
 
-        return if (partCell.provider.canConnectFrom(relative)) {
-            relative
-        } else {
-            null
-        }
-    }
-
-    override fun recordConnection(location: CellInfo, direction: RelativeRotationDirection, neighborSpace: CellInfo) {
-        val part = parts[location.innerFace] as IPartCellContainer
-
-        val cellPos = location.cell.pos
-        val neighborPos = neighborSpace.cell.pos
-
-        val mode: ConnectionMode = if (cellPos.blockPos == neighborPos.blockPos) {
+        val mode: ConnectionMode = if (actualPos.descriptor.requireLocator<R3, BlockPosLocator>().pos == neighborPos.descriptor.requireLocator<R3, BlockPosLocator>().pos) {
             // They are in the same block space. This is certainly an inner connection.
 
             ConnectionMode.Inner
-        } else if (location.innerFace == neighborSpace.innerFace) {
+        } else if (innerFace == neighborPos.descriptor.requireLocator<SO3, BlockFaceLocator>().innerFace) {
             // This is planar. If it were wrapped, the normals would be perpendicular (i.e. not equal)
-
             ConnectionMode.Planar
         } else {
             ConnectionMode.Wrapped
         }
 
-        part.recordConnection(direction, mode)
+        part.recordConnection(remoteCell, mode)
     }
 
-    override fun recordDeletedConnection(location: CellInfo, direction: RelativeRotationDirection) {
+   /* override fun recordDeletedConnection(location: CellInfo, direction: RelativeRotationDirection) {
         val part = parts[location.innerFace] as IPartCellContainer
 
         part.recordDeletedConnection(direction)
-    }
+    }*/
 
     override fun topologyChanged() {
         saveData()
@@ -989,22 +936,22 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
     companion object {
         fun <T : BlockEntity> blockTick(level: Level?, pos: BlockPos?, state: BlockState?, entity: T?) {
             if (entity !is MultipartBlockEntity) {
-                Eln2.LOGGER.error("Block tick entity is not a multipart!")
+                LOGGER.error("Block tick entity is not a multipart!")
                 return
             }
 
             if (level == null) {
-                Eln2.LOGGER.error("Block tick level was null")
+                LOGGER.error("Block tick level was null")
                 return
             }
 
             if (state == null) {
-                Eln2.LOGGER.error("Block tick BlockState was null")
+                LOGGER.error("Block tick BlockState was null")
                 return
             }
 
             if (pos == null) {
-                Eln2.LOGGER.error("Block tick pos was null")
+                LOGGER.error("Block tick pos was null")
                 return
             }
 

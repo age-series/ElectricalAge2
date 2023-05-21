@@ -9,7 +9,7 @@ import org.ageseries.libage.sim.thermal.Temperature
 import org.ageseries.libage.sim.thermal.ThermalMass
 import org.eln2.mc.common.cells.foundation.CellPos
 import org.eln2.mc.common.parts.foundation.PartUpdateType
-import org.eln2.mc.common.space.RelativeRotationDirection
+import org.eln2.mc.common.space.*
 import org.eln2.mc.sim.MaterialMapping
 
 private const val ELECTRICAL_RESISTIVITY = "electricalResistivity"
@@ -38,19 +38,24 @@ fun CompoundTag.getBlockPos(key: String): BlockPos {
     return BlockPos(x, y, z)
 }
 
+fun CompoundTag.putLocationDescriptor(id: String, descriptor: LocationDescriptor) {
+    this.put(id, descriptor.toNbt())
+}
+
+fun CompoundTag.getLocationDescriptor(id: String): LocationDescriptor {
+    return LocationDescriptor.fromNbt(this.getCompound(id))
+}
+
 fun CompoundTag.putCellPos(key: String, pos: CellPos) {
     val dataTag = CompoundTag()
-    dataTag.putBlockPos("Pos", pos.blockPos)
-    dataTag.putDirection("Face", pos.face)
+    dataTag.putLocationDescriptor("Descriptor", pos.descriptor)
     this.put(key, dataTag)
 }
 
 fun CompoundTag.getCellPos(key: String): CellPos {
     val dataTag = this.get(key) as CompoundTag
-    val blockPos = dataTag.getBlockPos("Pos")
-    val face = dataTag.getDirection("Face")
-
-    return CellPos(blockPos, face)
+    val descriptor = dataTag.getLocationDescriptor("Descriptor")
+    return CellPos(descriptor)
 }
 
 fun CompoundTag.getStringList(key: String): List<String> {

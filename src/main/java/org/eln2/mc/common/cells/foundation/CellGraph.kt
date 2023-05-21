@@ -201,11 +201,7 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
      * @param type The simulation type to search for.
      * @param factory A factory method to generate the subset from the discovered cells.
      * */
-    private fun <TComponent> realizeComponents(
-        type: SimulationObjectType,
-        factory: ((HashSet<CellBase>) -> TComponent)
-    ) {
-
+    private fun <TComponent> realizeComponents(type: SimulationObjectType, factory: ((HashSet<CellBase>) -> TComponent)) {
         val pending = HashSet(cells.filter { it.hasObject(type) })
         val queue = ArrayDeque<CellBase>()
 
@@ -230,9 +226,9 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
 
                 pending.remove(cell)
 
-                cell.connections.forEach { connectedCellInfo ->
-                    if (connectedCellInfo.cell.hasObject(type)) {
-                        queue.add(connectedCellInfo.cell)
+                cell.connections.forEach { connectedCell ->
+                    if (connectedCell.hasObject(type)) {
+                        queue.add(connectedCell)
                     }
                 }
             }
@@ -391,10 +387,9 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
                 val cellTag = CompoundTag()
                 val connectionsTag = ListTag()
 
-                cell.connections.forEach { connectionInfo ->
+                cell.connections.forEach { conn ->
                     val connectionCompound = CompoundTag()
-                    connectionCompound.putCellPos(POSITION, connectionInfo.cell.pos)
-                    connectionCompound.putRelativeDirection(DIRECTION, connectionInfo.sourceDirection)
+                    connectionCompound.putCellPos(POSITION, conn.pos)
                     connectionsTag.add(connectionCompound)
                 }
 
@@ -507,7 +502,7 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
                 val connectionPositions = connectionEntry.component2()
 
                 val connections = ArrayList(connectionPositions.map {
-                    CellConnectionInfo(result.getCell(it.cellPos), it.direction)
+                    result.getCell(it.cellPos)
                 })
 
                 // now set graph and connection
