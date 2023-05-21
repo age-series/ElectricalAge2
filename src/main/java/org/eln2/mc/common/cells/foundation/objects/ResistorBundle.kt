@@ -3,13 +3,19 @@ package org.eln2.mc.common.cells.foundation.objects
 import org.ageseries.libage.sim.electrical.mna.Circuit
 import org.ageseries.libage.sim.electrical.mna.component.Resistor
 import org.eln2.mc.common.cells.foundation.Conventions
-import org.eln2.mc.common.space.RelativeRotationDirection
+import org.eln2.mc.common.space.*
 import kotlin.math.abs
 
 /**
  * Utility class that holds a collection of resistors to be used as contact points for external components.
  * */
-class ResistorBundle(var resistance: Double) {
+class ResistorBundle(var resistance: Double, val obj: ElectricalObject) {
+    init {
+        obj.cell.pos.descriptor.requireLocator<R3, BlockPosLocator>()
+        obj.cell.pos.descriptor.requireLocator<SO3, IdentityDirectionLocator>()
+        obj.cell.pos.descriptor.requireLocator<SO3, BlockFaceLocator>()
+    }
+
     private val resistors = HashMap<RelativeRotationDirection, Resistor>()
 
     private var prepared = false
@@ -19,13 +25,17 @@ class ResistorBundle(var resistance: Double) {
      * This "prepares" the bundle, so future calls to *getOfferedResistor* that result in a new resistor being created will cause an error.
      * @see ElectricalObject.addComponents
      * */
-    fun register(connections: List<ElectricalConnectionInfo>, circuit: Circuit) {
+    fun register(connections: List<ElectricalObject>, circuit: Circuit) {
         if (prepared) {
             error("Already prepared")
         }
 
         connections.forEach {
-            val resistor = getResistor(it.direction)
+            val directionActual = obj.cell.pos.descriptor.findDirectionActual(it.cell.pos.descriptor)
+                ?: error("Failed to find direction actual to $it")
+
+            val resistor = getResistor(directionActual)
+
             circuit.add(resistor)
         }
 
@@ -36,14 +46,17 @@ class ResistorBundle(var resistance: Double) {
      * This must be called after "prepare", to finalize connections.
      * @see ElectricalObject.build
      * */
-    fun connect(connections: List<ElectricalConnectionInfo>, sender: ElectricalObject) {
+    fun connect(connections: List<ElectricalObject>, sender: ElectricalObject) {
         if (!prepared) {
             error("Not prepared")
         }
 
-        connections.forEach { connectionInfo ->
-            val resistor = getResistor(connectionInfo.direction)
-            val offered = connectionInfo.obj.offerComponent(sender)
+        connections.forEach { remoteObj ->
+            val resistor = getResistor(obj.cell.pos.descriptor.findDirectionActual(remoteObj.cell.pos.descriptor)
+                ?: error("Failed to find direction actual to $remoteObj")
+            )
+
+            val offered = remoteObj.offerComponent(sender)
             resistor.connect(Conventions.EXTERNAL_PIN, offered.component, offered.index)
         }
     }
