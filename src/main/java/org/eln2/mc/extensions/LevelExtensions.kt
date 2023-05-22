@@ -61,7 +61,7 @@ fun Level.addParticle(
 
 @ServerOnly
 fun ServerLevel.destroyPart(part: Part) {
-    val pos = part.placementContext.pos
+    val pos = part.placement.pos
 
     val multipart = this.getBlockEntity(pos)
         as? MultipartBlockEntity

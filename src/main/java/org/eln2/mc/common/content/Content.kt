@@ -16,13 +16,13 @@ import org.eln2.mc.mathematics.lerp
 import org.eln2.mc.mathematics.vec3
 import org.eln2.mc.common.blocks.BlockRegistry
 import org.eln2.mc.common.cells.CellRegistry
-import org.eln2.mc.common.cells.foundation.providers.BasicCellProvider
+import org.eln2.mc.common.cells.foundation.BasicCellProvider
 import org.eln2.mc.common.containers.ContainerRegistry
 import org.eln2.mc.common.items.ItemRegistry
 import org.eln2.mc.common.parts.PartRegistry
 import org.eln2.mc.common.parts.foundation.BasicCellPart
-import org.eln2.mc.common.parts.foundation.basicRenderer
-import org.eln2.mc.common.parts.foundation.providers.BasicPartProvider
+import org.eln2.mc.common.parts.foundation.basicPartRenderer
+import org.eln2.mc.common.parts.foundation.BasicPartProvider
 import org.eln2.mc.mathematics.bbSize
 import org.eln2.mc.utility.SelfDescriptiveUnitMultipliers.centimeters
 import org.eln2.mc.utility.SelfDescriptiveUnitMultipliers.milliOhms
@@ -131,7 +131,7 @@ object Content {
 
     val HEAT_GENERATOR_CELL = CellRegistry.register("heat_generator_cell", BasicCellProvider(::HeatGeneratorCell))
     val HEAT_GENERATOR_PART = PartRegistry.part("heat_generator_part", BasicPartProvider( { id, context ->
-        BasicCellPart(id, context, vec3(1.0), HEAT_GENERATOR_CELL.get(), basicRenderer(PartialModels.THERMAL_WIRE_CROSSING_FULL, 0.0))
+        BasicCellPart(id, context, vec3(1.0), HEAT_GENERATOR_CELL.get(), basicPartRenderer(PartialModels.THERMAL_WIRE_CROSSING_FULL, 0.0))
     }, vec3(1.0)))
     val HEAT_GENERATOR_BLOCK = BlockRegistry.registerBasicBlock("heat_generator", tab = null) { HeatGeneratorBlock() }
     val HEAT_GENERATOR_BLOCK_ENTITY = BlockRegistry.blockEntity("heat_generator", ::HeatGeneratorBlockEntity) { HEAT_GENERATOR_BLOCK.block.get() }
@@ -147,7 +147,7 @@ object Content {
             context,
             Vec3(1.0, bbSize(2.0), 1.0),
             PHOTOVOLTAIC_GENERATOR_CELL.get(),
-            basicRenderer(
+            basicPartRenderer(
                 PartialModels.SOLAR_PANEL_ONE_BLOCK,
                 bbOffset(2.0)
             )

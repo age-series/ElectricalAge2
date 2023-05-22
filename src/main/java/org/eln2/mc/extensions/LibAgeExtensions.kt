@@ -8,7 +8,7 @@ import org.ageseries.libage.sim.thermal.ConnectionParameters
 import org.ageseries.libage.sim.thermal.Simulator
 import org.ageseries.libage.sim.thermal.ThermalMass
 import org.eln2.mc.common.cells.foundation.ElectricalComponentHolder
-import org.eln2.mc.common.cells.foundation.objects.ElectricalComponentInfo
+import org.eln2.mc.common.cells.foundation.ElectricalComponentInfo
 import org.eln2.mc.sim.EnvironmentInformation
 import org.eln2.mc.sim.ThermalBody
 import kotlin.math.abs

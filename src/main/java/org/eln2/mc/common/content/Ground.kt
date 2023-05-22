@@ -6,25 +6,24 @@ import org.eln2.mc.mathematics.bbVec
 import org.eln2.mc.client.render.PartialModels
 import org.eln2.mc.client.render.PartialModels.bbOffset
 import org.eln2.mc.client.render.foundation.BasicPartRenderer
-import org.eln2.mc.common.cells.foundation.CellBase
+import org.eln2.mc.common.cells.foundation.Cell
 import org.eln2.mc.common.cells.foundation.CellPos
-import org.eln2.mc.common.cells.foundation.Conventions
-import org.eln2.mc.common.cells.foundation.objects.ElectricalComponentInfo
-import org.eln2.mc.common.cells.foundation.objects.ElectricalObject
-import org.eln2.mc.common.cells.foundation.objects.ResistorBundle
-import org.eln2.mc.common.cells.foundation.objects.SimulationObjectSet
+import org.eln2.mc.common.cells.foundation.CellConvention
+import org.eln2.mc.common.cells.foundation.ElectricalComponentInfo
+import org.eln2.mc.common.cells.foundation.ElectricalObject
+import org.eln2.mc.common.cells.foundation.ResistorBundle
+import org.eln2.mc.common.cells.foundation.SimulationObjectSet
 import org.eln2.mc.common.parts.foundation.CellPart
-import org.eln2.mc.common.parts.foundation.IPartRenderer
-import org.eln2.mc.common.parts.foundation.PartPlacementContext
+import org.eln2.mc.common.parts.foundation.PartRenderer
+import org.eln2.mc.common.parts.foundation.PartPlacementInfo
 import org.eln2.mc.common.space.DirectionMask
-import org.eln2.mc.common.space.RelativeDirection
 import org.eln2.mc.common.space.withDirectionActualRule
 
 /**
  * The ground object is simply a bundle of resistors, with one grounded pin.
  * The ungrounded pin is exported to other Electrical Objects.
  * */
-class GroundObject(cell: CellBase) : ElectricalObject(cell) {
+class GroundObject(cell: Cell) : ElectricalObject(cell) {
     private val resistors = ResistorBundle(0.01, this)
 
     /**
@@ -49,26 +48,26 @@ class GroundObject(cell: CellBase) : ElectricalObject(cell) {
 
     override fun build() {
         resistors.connect(connections, this)
-        resistors.process { it.ground(Conventions.INTERNAL_PIN) }
+        resistors.process { it.ground(CellConvention.INTERNAL_PIN) }
     }
 }
 
-class GroundCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) {
+class GroundCell(pos: CellPos, id: ResourceLocation) : Cell(pos, id) {
     init {
         ruleSet.withDirectionActualRule(DirectionMask.FRONT)
     }
 
-    override fun createObjectSet(): SimulationObjectSet {
+    override fun createObjSet(): SimulationObjectSet {
         return SimulationObjectSet(GroundObject(this))
     }
 }
 
-class GroundPart(id: ResourceLocation, placementContext: PartPlacementContext) :
+class GroundPart(id: ResourceLocation, placementContext: PartPlacementInfo) :
     CellPart(id, placementContext, Content.GROUND_CELL.get()) {
 
-    override val baseSize = bbVec(4.0, 4.0, 4.0)
+    override val sizeActual = bbVec(4.0, 4.0, 4.0)
 
-    override fun createRenderer(): IPartRenderer {
+    override fun createRenderer(): PartRenderer {
         return BasicPartRenderer(this, PartialModels.GROUND).also {
             it.downOffset = bbOffset(3 + 1)
         }

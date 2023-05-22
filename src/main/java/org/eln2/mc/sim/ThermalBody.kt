@@ -8,13 +8,11 @@ import org.eln2.mc.extensions.appendBody
 import org.eln2.mc.integration.waila.IWailaProvider
 import org.eln2.mc.integration.waila.TooltipBuilder
 
-class ThermalBody(
-    var thermalMass: ThermalMass,
-    var surfaceArea: Double
-) : IWailaProvider {
+class ThermalBody(var thermalMass: ThermalMass, var surfaceArea: Double) : IWailaProvider {
     var temperature: Temperature
         get() = thermalMass.temperature
         set(value) { thermalMass.temperature = value }
+
     var temperatureK: Double
         get() = temperature.kelvin
         set(value) { thermalMass.temperature = Temperature(value) }

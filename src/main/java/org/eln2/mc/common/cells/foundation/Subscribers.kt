@@ -3,7 +3,15 @@ package org.eln2.mc.common.cells.foundation
 import org.ageseries.libage.data.mutableMultiMapOf
 import org.eln2.mc.extensions.removeAll
 
-fun interface ISubscriber{
+/**
+ * Represents a function that is executed periodically from the simulation thread.
+ * */
+fun interface Subscriber {
+    /**
+     * Called when the simulation updates.
+     * @param dt The fixed time step. fixme CURRENTLY, NOT ADJUSTED BY FREQUENCY
+     * @param phase The update phase, as specified in [SubscriberOptions].
+     * */
     fun update(dt: Double, phase: SubscriberPhase)
 }
 
@@ -13,8 +21,8 @@ enum class SubscriberPhase {
 }
 
 /**
- * This describes the execution policy of a subscriber.
- * @param interval The interval, in ticks, when the subscriber shall be updated.
+ * Describes the execution policy of a subscriber.
+ * @param interval The interval, in ticks.
  * @param phase The update phase to listen for.
  * */
 data class SubscriberOptions(val interval: Int, val phase: SubscriberPhase)
@@ -25,11 +33,11 @@ data class SubscriberOptions(val interval: Int, val phase: SubscriberPhase)
  * */
 class SubscriberCollection {
     private val pools = HashMap<SubscriberOptions, SubscriberPool>()
-    private val subscribers = mutableMultiMapOf<ISubscriber, SubscriberPool>()
+    private val subscribers = mutableMultiMapOf<Subscriber, SubscriberPool>()
 
     private var iterating = false
 
-    private val updates = ArrayDeque<IUpdate>()
+    private val updates = ArrayDeque<Update>()
 
     val poolCount get() = pools.size
     val subscriberCount get() = subscribers.keyMappingSize
@@ -42,7 +50,7 @@ class SubscriberCollection {
         return pools.containsKey(parameters)
     }
 
-    private fun applyUpdate(update: IUpdate) {
+    private fun applyUpdate(update: Update) {
         when (update) {
             is AddUpdate -> {
                 val subscriber = update.subscriber
@@ -74,7 +82,7 @@ class SubscriberCollection {
         }
     }
 
-    private fun enqueueOrApply(update: IUpdate){
+    private fun enqueueOrApply(update: Update){
         if(iterating) {
             updates.add(update)
         }
@@ -83,19 +91,25 @@ class SubscriberCollection {
         }
     }
 
-    fun addSubscriber(parameters: SubscriberOptions, subscriber: ISubscriber)  {
+    fun addSubscriber(parameters: SubscriberOptions, subscriber: Subscriber)  {
         enqueueOrApply(AddUpdate(subscriber, parameters))
     }
 
-    fun addPreInstantaneous(subscriber: ISubscriber){
+    /**
+     * Adds a subscriber that runs on [SubscriberPhase.Pre] every tick (interval is 0).
+     * */
+    fun addPre(subscriber: Subscriber){
         addSubscriber(SubscriberOptions(0, SubscriberPhase.Pre), subscriber)
     }
 
-    fun addPostInstantaneous(subscriber: ISubscriber){
+    /**
+     * Adds a subscriber that runs on [SubscriberPhase.Post] every tick (interval is 0).
+     * */
+    fun addPost(subscriber: Subscriber){
         addSubscriber(SubscriberOptions(0, SubscriberPhase.Post), subscriber)
     }
 
-    fun removeSubscriber(subscriber: ISubscriber){
+    fun remove(subscriber: Subscriber){
         enqueueOrApply(RemoveAllUpdate(subscriber))
     }
 
@@ -111,12 +125,12 @@ class SubscriberCollection {
         updates.removeAll { applyUpdate(it) }
     }
 
-    private interface IUpdate
-    private class AddUpdate(val subscriber: ISubscriber, val parameters: SubscriberOptions) : IUpdate
-    private class RemoveAllUpdate(val subscriber: ISubscriber) : IUpdate
+    private interface Update
+    private class AddUpdate(val subscriber: Subscriber, val parameters: SubscriberOptions) : Update
+    private class RemoveAllUpdate(val subscriber: Subscriber) : Update
 
     class SubscriberPool(val parameters: SubscriberOptions) {
-        private val pool = ArrayList<ISubscriber>()
+        private val pool = ArrayList<Subscriber>()
 
         val isEmpty get() = pool.isEmpty()
         val size get() = pool.size
@@ -133,7 +147,7 @@ class SubscriberCollection {
             return false
         }
 
-        fun add(subscriber: ISubscriber) {
+        fun add(subscriber: Subscriber) {
             if(pool.contains(subscriber)){
                 error("Duplicate add $subscriber in $parameters")
             }
@@ -141,7 +155,7 @@ class SubscriberCollection {
             pool.add(subscriber)
         }
 
-        fun remove(subscriber: ISubscriber) {
+        fun remove(subscriber: Subscriber) {
             if(!pool.remove(subscriber)){
                 error("Failed to remove $subscriber from $parameters")
             }

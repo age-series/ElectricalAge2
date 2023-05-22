@@ -8,15 +8,11 @@ import org.eln2.mc.mathematics.bbVec
 import org.eln2.mc.client.render.PartialModels
 import org.eln2.mc.client.render.PartialModels.bbOffset
 import org.eln2.mc.client.render.foundation.BasicPartRenderer
-import org.eln2.mc.common.cells.foundation.CellBase
-import org.eln2.mc.common.cells.foundation.CellPos
-import org.eln2.mc.common.cells.foundation.Conventions
-import org.eln2.mc.common.cells.foundation.objects.*
+import org.eln2.mc.common.cells.foundation.*
 import org.eln2.mc.common.parts.foundation.CellPart
-import org.eln2.mc.common.parts.foundation.IPartRenderer
-import org.eln2.mc.common.parts.foundation.PartPlacementContext
+import org.eln2.mc.common.parts.foundation.PartRenderer
+import org.eln2.mc.common.parts.foundation.PartPlacementInfo
 import org.eln2.mc.common.space.DirectionMask
-import org.eln2.mc.common.space.RelativeDirection
 import org.eln2.mc.common.space.withDirectionActualRule
 import org.eln2.mc.data.DataAccessNode
 import org.eln2.mc.data.IDataEntity
@@ -28,7 +24,7 @@ import org.eln2.mc.integration.waila.TooltipBuilder
  * The voltage source object has a bundle of resistors, whose External Pins are exported to other objects, and
  * a voltage source, connected to the Internal Pins of the bundle.
  * */
-class VoltageSourceObject(cell: CellBase) : ElectricalObject(cell), IWailaProvider, IDataEntity {
+class VoltageSourceObject(cell: Cell) : ElectricalObject(cell), IWailaProvider, IDataEntity {
     private lateinit var source: VoltageSource
     val hasSource get() = this::source.isInitialized
 
@@ -71,10 +67,10 @@ class VoltageSourceObject(cell: CellBase) : ElectricalObject(cell), IWailaProvid
     }
 
     override fun build() {
-        source.ground(Conventions.INTERNAL_PIN)
+        source.ground(CellConvention.INTERNAL_PIN)
 
         resistors.connect(connections, this)
-        resistors.process { it.connect(Conventions.INTERNAL_PIN, source, Conventions.EXTERNAL_PIN) }
+        resistors.process { it.connect(CellConvention.INTERNAL_PIN, source, CellConvention.EXTERNAL_PIN) }
     }
 
     override fun appendBody(builder: TooltipBuilder, config: IPluginConfig?) {
@@ -88,23 +84,23 @@ class VoltageSourceObject(cell: CellBase) : ElectricalObject(cell), IWailaProvid
     }
 }
 
-class VoltageSourceCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) {
+class VoltageSourceCell(pos: CellPos, id: ResourceLocation) : Cell(pos, id) {
     init {
         ruleSet.withDirectionActualRule(DirectionMask.FRONT)
     }
 
-    override fun createObjectSet(): SimulationObjectSet {
+    override fun createObjSet(): SimulationObjectSet {
         return SimulationObjectSet(VoltageSourceObject(this))
     }
 
     val voltageSourceObject get() = electricalObject as VoltageSourceObject
 }
 
-class VoltageSourcePart(id: ResourceLocation, placementContext: PartPlacementContext) : CellPart(id, placementContext, Content.VOLTAGE_SOURCE_CELL.get()) {
+class VoltageSourcePart(id: ResourceLocation, placementContext: PartPlacementInfo) : CellPart(id, placementContext, Content.VOLTAGE_SOURCE_CELL.get()) {
 
-    override val baseSize = bbVec(6.0, 2.5, 6.0)
+    override val sizeActual = bbVec(6.0, 2.5, 6.0)
 
-    override fun createRenderer(): IPartRenderer {
+    override fun createRenderer(): PartRenderer {
         return BasicPartRenderer(this, PartialModels.VOLTAGE_SOURCE).also {
             it.downOffset = bbOffset(2.5)
         }

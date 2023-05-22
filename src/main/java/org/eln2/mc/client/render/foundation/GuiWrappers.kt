@@ -1,4 +1,4 @@
-package org.eln2.mc.client.render
+package org.eln2.mc.client.render.foundation
 
 import com.mojang.blaze3d.systems.RenderSystem
 import com.mojang.blaze3d.vertex.*

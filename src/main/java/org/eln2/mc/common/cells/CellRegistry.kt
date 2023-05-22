@@ -6,8 +6,6 @@ import net.minecraftforge.registries.*
 import org.eln2.mc.Eln2
 import org.eln2.mc.Eln2.LOGGER
 import org.eln2.mc.common.cells.foundation.CellProvider
-import org.eln2.mc.common.cells.foundation.providers.BasicCellProvider
-import org.eln2.mc.common.content.*
 import java.util.function.Supplier
 
 object CellRegistry {
