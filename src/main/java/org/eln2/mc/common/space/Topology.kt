@@ -248,7 +248,7 @@ class LocationDescriptor {
                 )
 
                 val serializer = getLocatorSerializer(locatorClass)
-                setCompound.put("Locator", serializer.toNbt(locatorInst))
+                locatorCompound.put("Locator", serializer.toNbt(locatorInst))
                 locatorList.add(locatorCompound)
             }
 

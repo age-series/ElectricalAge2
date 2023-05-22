@@ -16,29 +16,27 @@ import org.eln2.mc.common.cells.foundation.objects.SimulationObjectSet
 import org.eln2.mc.common.parts.foundation.CellPart
 import org.eln2.mc.common.parts.foundation.IPartRenderer
 import org.eln2.mc.common.parts.foundation.PartPlacementContext
-/*
+import org.eln2.mc.common.space.DirectionMask
+import org.eln2.mc.common.space.RelativeDirection
+import org.eln2.mc.common.space.withDirectionActualRule
 
-*/
 /**
  * The ground object is simply a bundle of resistors, with one grounded pin.
  * The ungrounded pin is exported to other Electrical Objects.
- * *//*
+ * */
+class GroundObject(cell: CellBase) : ElectricalObject(cell) {
+    private val resistors = ResistorBundle(0.01, this)
 
-class GroundObject : ElectricalObject() {
-    private val resistors = ResistorBundle(0.01)
-
-    */
-/**
+    /**
      * Gets or sets the resistance of the bundle.
      * Only applied when the circuit is re-built.
-     * *//*
-
+     * */
     var resistance: Double
         get() = resistors.resistance
         set(value) { resistors.resistance = value }
 
     override fun offerComponent(neighbour: ElectricalObject): ElectricalComponentInfo {
-        return resistors.getOfferedResistor(directionOf(neighbour))
+        return resistors.getOfferedResistor(neighbour)
     }
 
     override fun clearComponents() {
@@ -56,8 +54,12 @@ class GroundObject : ElectricalObject() {
 }
 
 class GroundCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) {
+    init {
+        ruleSet.withDirectionActualRule(DirectionMask.FRONT)
+    }
+
     override fun createObjectSet(): SimulationObjectSet {
-        return SimulationObjectSet(GroundObject())
+        return SimulationObjectSet(GroundObject(this))
     }
 }
 
@@ -72,4 +74,3 @@ class GroundPart(id: ResourceLocation, placementContext: PartPlacementContext) :
         }
     }
 }
-*/

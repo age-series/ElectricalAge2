@@ -15,28 +15,28 @@ import org.eln2.mc.common.cells.foundation.objects.*
 import org.eln2.mc.common.parts.foundation.CellPart
 import org.eln2.mc.common.parts.foundation.IPartRenderer
 import org.eln2.mc.common.parts.foundation.PartPlacementContext
+import org.eln2.mc.common.space.DirectionMask
+import org.eln2.mc.common.space.RelativeDirection
+import org.eln2.mc.common.space.withDirectionActualRule
+import org.eln2.mc.data.DataAccessNode
+import org.eln2.mc.data.IDataEntity
 import org.eln2.mc.extensions.voltageSource
 import org.eln2.mc.integration.waila.IWailaProvider
 import org.eln2.mc.integration.waila.TooltipBuilder
-/*
 
-*/
 /**
  * The voltage source object has a bundle of resistors, whose External Pins are exported to other objects, and
  * a voltage source, connected to the Internal Pins of the bundle.
- * *//*
-
-class VoltageSourceObject : ElectricalObject(), IWailaProvider {
+ * */
+class VoltageSourceObject(cell: CellBase) : ElectricalObject(cell), IWailaProvider, IDataEntity {
     private lateinit var source: VoltageSource
     val hasSource get() = this::source.isInitialized
 
-    private val resistors = ResistorBundle(0.01)
+    private val resistors = ResistorBundle(0.01, this)
 
-    */
-/**
+    /**
      * Gets or sets the potential of the voltage source.
-     * *//*
-
+     * */
     var potential: Double = 1200.0
         set(value) {
             field = value
@@ -46,18 +46,16 @@ class VoltageSourceObject : ElectricalObject(), IWailaProvider {
             }
         }
 
-    */
-/**
+    /**
      * Gets or sets the resistance of the bundle.
      * Only applied when the circuit is re-built.
-     * *//*
-
+     * */
     var resistance: Double
         get() = resistors.resistance
         set(value) { resistors.resistance = value }
 
     override fun offerComponent(neighbour: ElectricalObject): ElectricalComponentInfo {
-        return resistors.getOfferedResistor(directionOf(neighbour))
+        return resistors.getOfferedResistor(neighbour)
     }
 
     override fun clearComponents() {
@@ -82,11 +80,21 @@ class VoltageSourceObject : ElectricalObject(), IWailaProvider {
     override fun appendBody(builder: TooltipBuilder, config: IPluginConfig?) {
         builder.voltageSource(source)
     }
+
+    override val dataAccessNode = DataAccessNode().also {
+        it.data.withField {
+            VoltageField { potential }
+        }
+    }
 }
 
 class VoltageSourceCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) {
+    init {
+        ruleSet.withDirectionActualRule(DirectionMask.FRONT)
+    }
+
     override fun createObjectSet(): SimulationObjectSet {
-        return SimulationObjectSet(VoltageSourceObject())
+        return SimulationObjectSet(VoltageSourceObject(this))
     }
 
     val voltageSourceObject get() = electricalObject as VoltageSourceObject
@@ -102,4 +110,3 @@ class VoltageSourcePart(id: ResourceLocation, placementContext: PartPlacementCon
         }
     }
 }
-*/

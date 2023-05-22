@@ -418,8 +418,6 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
         }
     }
 
-    private data class ConnectionInfoCell(val cellPos: CellPos, val direction: RelativeDirection)
-
     companion object {
         private const val CELL_DATA = "data"
         private const val ID = "id"
@@ -459,14 +457,15 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
         fun fromNbt(graphCompound: CompoundTag, manager: CellGraphManager, level: ServerLevel): CellGraph {
             val id = graphCompound.getUUID(ID)
             val result = CellGraph(id, manager, level)
+
             val cellListTag = graphCompound.get(CELLS) as ListTag?
-                ?: // no cells are to be loaded
+                ?: // No cells are available
                 return result
 
-            // used to assign the connections after all cells have been loaded
-            val cellConnections = HashMap<CellBase, ArrayList<ConnectionInfoCell>>()
+            // Used to assign the connections after all cells have been loaded:
+            val cellConnections = HashMap<CellBase, ArrayList<CellPos>>()
 
-            // used to load cell custom data
+            // Used to load cell custom data:
             val cellData = HashMap<CellBase, CompoundTag>()
 
             cellListTag.forEach { cellNbt ->
@@ -474,14 +473,13 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
                 val pos = cellCompound.getCellPos(POSITION)
                 val cellId = ResourceLocation.tryParse(cellCompound.getString(ID))!!
 
-                val connectionPositions = ArrayList<ConnectionInfoCell>()
+                val connectionPositions = ArrayList<CellPos>()
                 val connectionsTag = cellCompound.get(CONNECTIONS) as ListTag
 
                 connectionsTag.forEach {
                     val connectionCompound = it as CompoundTag
                     val connectionPos = connectionCompound.getCellPos(POSITION)
-                    val connectionDirection = connectionCompound.getRelativeDirection(DIRECTION)
-                    connectionPositions.add(ConnectionInfoCell(connectionPos, connectionDirection))
+                    connectionPositions.add(connectionPos)
                 }
 
                 val cell = CellRegistry.getProvider(cellId).create(pos)
@@ -491,18 +489,13 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
                 result.addCell(cell)
 
                 cellData[cell] = cellCompound.getCompound(CELL_DATA)
-                LOGGER.info("Loaded tag")
             }
 
-            // now assign all connections and the graph
+            // Now assign all connections and the graph to the cells:
+            cellConnections.forEach { (cell, connectionPositions) ->
+                val connections = ArrayList<CellBase>(connectionPositions.size)
 
-            cellConnections.forEach { connectionEntry ->
-                val cell = connectionEntry.component1()
-                val connectionPositions = connectionEntry.component2()
-
-                val connections = ArrayList(connectionPositions.map {
-                    result.getCell(it.cellPos)
-                })
+                connectionPositions.forEach { connections.add(result.getCell(it)) }
 
                 // now set graph and connection
                 cell.graph = result

@@ -17,26 +17,28 @@ import org.eln2.mc.common.cells.foundation.objects.SimulationObjectSet
 import org.eln2.mc.common.parts.foundation.CellPart
 import org.eln2.mc.common.parts.foundation.IPartRenderer
 import org.eln2.mc.common.parts.foundation.PartPlacementContext
+import org.eln2.mc.common.space.DirectionMask
+import org.eln2.mc.common.space.RelativeDirection
+import org.eln2.mc.common.space.withDirectionActualRule
 import org.eln2.mc.extensions.resistor
 import org.eln2.mc.integration.waila.IWailaProvider
 import org.eln2.mc.integration.waila.TooltipBuilder
-/*
 
-*/
 /**
  * The resistor object has a single resistor. At most, two connections can be made by this object.
- * *//*
-
-class ResistorObject(cell: CellBase) : ElectricalObject(cell), IWailaProvider {
+ * */
+class ResistorObject(cell: CellBase, val dir1: RelativeDirection = RelativeDirection.Front, val dir2: RelativeDirection = RelativeDirection.Back) : ElectricalObject(cell), IWailaProvider {
     private lateinit var resistor: Resistor
+
+    init {
+        ruleSet.withDirectionActualRule(DirectionMask.ofRelatives(dir1, dir2))
+    }
 
     val hasResistor get() = this::resistor.isInitialized
 
-    */
-/**
+    /**
      * Gets or sets the resistance.
-     * *//*
-
+     * */
     var resistance: Double = 1.0
         set(value) {
             field = value
@@ -70,7 +72,6 @@ class ResistorObject(cell: CellBase) : ElectricalObject(cell), IWailaProvider {
         connections.forEach { remote ->
             val localInfo = offerComponent(remote)
             val remoteInfo = remote.offerComponent(this)
-
             localInfo.component.connect(localInfo.index, remoteInfo.component, remoteInfo.index)
         }
     }
@@ -83,6 +84,7 @@ class ResistorObject(cell: CellBase) : ElectricalObject(cell), IWailaProvider {
 class ResistorCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) {
     init {
         behaviors.withStandardBehavior(this, { resistor.power }, { thermal.body })
+        ruleSet.withDirectionActualRule(DirectionMask.FRONT + DirectionMask.BACK)
     }
 
     override fun createObjectSet(): SimulationObjectSet {
@@ -104,4 +106,3 @@ class ResistorPart(id: ResourceLocation, placementContext: PartPlacementContext)
         }
     }
 }
-*/

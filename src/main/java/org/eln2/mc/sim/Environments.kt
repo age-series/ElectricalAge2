@@ -17,8 +17,11 @@ data class EnvironmentInformation(
 object BiomeEnvironments {
     private val biomes = ConcurrentHashMap<Biome, EnvironmentInformation>()
 
-    fun get(level: Level, pos: CellPos): EnvironmentInformation{
-        val biome = level.getBiome(pos.descriptor.requireLocator<R3, BlockPosLocator>().pos).value()
+    fun get(level: Level, pos: CellPos): EnvironmentInformation {
+        val biome = level.getBiome(pos.descriptor.requireLocator<R3, BlockPosLocator> {
+            "Biome Environments need a block pos locator"
+        }.pos).value()
+
         val temperature = Datasets.MINECRAFT_TEMPERATURE_CELSIUS.evaluate(biome.baseTemperature.toDouble())
 
         return biomes.computeIfAbsent(biome) {

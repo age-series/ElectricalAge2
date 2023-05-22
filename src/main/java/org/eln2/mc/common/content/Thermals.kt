@@ -24,20 +24,24 @@ import org.eln2.mc.common.parts.foundation.CellPart
 import org.eln2.mc.common.parts.foundation.IPartRenderer
 import org.eln2.mc.common.parts.foundation.Part
 import org.eln2.mc.common.parts.foundation.PartPlacementContext
+import org.eln2.mc.common.space.DirectionMask
+import org.eln2.mc.common.space.withDirectionActualRule
 import org.eln2.mc.sim.ThermalBody
-/*
 
 data class RadiatorModel(
     val destructionTemperature: Double,
     val surfaceArea: Double,
     val material: Material,
-    val mass: Double)
+    val mass: Double
+)
 
 class ThermalRadiatorCell(pos: CellPos, id: ResourceLocation, val model: RadiatorModel): CellBase(pos, id) {
     init {
         behaviors.withStandardExplosionBehavior(this, model.destructionTemperature) {
             thermalWire.body.temperatureK
         }
+
+        ruleSet.withDirectionActualRule(DirectionMask.HORIZONTALS)
     }
 
     override fun createObjectSet(): SimulationObjectSet {
@@ -143,4 +147,3 @@ class RadiantBipoleRenderer(
         rightInstance?.delete()
     }
 }
-*/

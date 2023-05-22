@@ -67,10 +67,6 @@ open class CellBlockEntity(pos: BlockPos, state: BlockState, targetType: BlockEn
 
     private val serverLevel get() = level as ServerLevel
 
-    private fun getLocalDirection(globalDirection: Direction): RelativeDirection {
-        return RelativeDirection.fromForwardUp(blockState.getValue(HorizontalDirectionalBlock.FACING), cellFace, globalDirection)
-    }
-
     @Suppress("UNUSED_PARAMETER") // Will very likely be needed later and helps to know the name of the args.
     fun setPlacedBy(
         level: Level,
@@ -184,6 +180,7 @@ open class CellBlockEntity(pos: BlockPos, state: BlockState, targetType: BlockEn
             LocationDescriptor()
                 .withLocator(BlockPosLocator(blockPos))
                 .withLocator(BlockFaceLocator(cellFace))
+                .withLocator(IdentityDirectionLocator(blockState.getValue(HorizontalDirectionalBlock.FACING)))
         )
     }
 

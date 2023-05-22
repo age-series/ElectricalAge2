@@ -260,7 +260,7 @@ class MultipartBlock : BaseEntityBlock(Properties.of(Material.STONE)
     }
 }
 
-interface IGhostLightHandle {
+interface GhostLight {
     fun update(brightness: Int)
     fun destroy()
 }
@@ -283,7 +283,7 @@ class GhostLightBlock : AirBlock(Properties.of(Material.AIR).lightLevel { it.get
 
             private val handles = ArrayList<Handle>()
 
-            fun createHandle(): IGhostLightHandle {
+            fun createHandle(): GhostLight {
                 return Handle(this).also { handles.add(it) }
             }
 
@@ -295,7 +295,7 @@ class GhostLightBlock : AirBlock(Properties.of(Material.AIR).lightLevel { it.get
                 setInLevel(level, pos, maximalBrightness)
             }
 
-            private class Handle(val cell: Cell): IGhostLightHandle {
+            private class Handle(val cell: Cell): GhostLight {
                 var trackedBrightness: Int = 0
 
                 var destroyed = false
@@ -328,7 +328,7 @@ class GhostLightBlock : AirBlock(Properties.of(Material.AIR).lightLevel { it.get
             cells.remove(pos)
         }
 
-        fun createHandle(pos: BlockPos): IGhostLightHandle {
+        fun createHandle(pos: BlockPos): GhostLight {
             return cells.computeIfAbsent(pos) { Cell(level, pos, this) }.createHandle()
         }
 
@@ -379,7 +379,7 @@ class GhostLightBlock : AirBlock(Properties.of(Material.AIR).lightLevel { it.get
             return grids.computeIfAbsent(level){ LightGrid(level) }
         }
 
-        fun createHandle(level: Level, pos: BlockPos): IGhostLightHandle {
+        fun createHandle(level: Level, pos: BlockPos): GhostLight {
             return getGrid(level).createHandle(pos)
         }
 

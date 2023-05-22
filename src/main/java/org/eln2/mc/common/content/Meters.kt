@@ -13,10 +13,18 @@ import org.eln2.mc.data.INameField
 import org.eln2.mc.extensions.getDataAccess
 import org.eln2.mc.utility.UnitType
 import org.eln2.mc.utility.valueText
-/*
-fun interface VoltageField { fun readVoltage(): Double }
-fun interface CurrentField { fun readCurrent(): Double }
-fun interface TemperatureField { fun readTemperature(): Temperature }
+
+fun interface VoltageField {
+    fun readVoltage(): Double
+}
+
+fun interface CurrentField {
+    fun readCurrent(): Double
+}
+
+fun interface TemperatureField {
+    fun readTemperature(): Temperature
+}
 
 abstract class MeterItem : Item(Properties().tab(eln2Tab).stacksTo(1)) {
     override fun useOn(pContext: UseOnContext): InteractionResult {
@@ -71,4 +79,4 @@ class UniversalMeter(
             else "${reading.label}: ${reading.printout}"
         })
     }
-}*/
+}
