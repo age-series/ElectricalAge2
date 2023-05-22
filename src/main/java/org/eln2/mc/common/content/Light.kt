@@ -10,8 +10,8 @@ import net.minecraft.nbt.CompoundTag
 import net.minecraft.resources.ResourceLocation
 import org.eln2.mc.Eln2.LOGGER
 import org.eln2.mc.mathematics.bbVec
-import org.eln2.mc.annotations.ClientOnly
-import org.eln2.mc.annotations.ServerOnly
+import org.eln2.mc.ClientOnly
+import org.eln2.mc.ServerOnly
 import org.eln2.mc.client.render.foundation.MultipartBlockEntityInstance
 import org.eln2.mc.client.render.PartialModels
 import org.eln2.mc.client.render.foundation.colorF
@@ -33,7 +33,7 @@ import org.eln2.mc.common.space.RelativeDirection
 import org.eln2.mc.common.space.withDirectionActualRule
 import org.eln2.mc.extensions.useSubTag
 import org.eln2.mc.extensions.withSubTag
-import org.eln2.mc.integration.waila.TooltipBuilder
+import org.eln2.mc.integration.WailaTooltipBuilder
 
 fun interface ILightBrightnessFunction {
     fun calculateBrightness(power: Double): Double
@@ -118,7 +118,7 @@ class LightCell(
     private val resistorObject get() = electricalObject as ResistorObject
     private val thermal get() = thermalObject as ThermalWireObject
 
-    override fun appendBody(builder: TooltipBuilder, config: IPluginConfig?) {
+    override fun appendBody(builder: WailaTooltipBuilder, config: IPluginConfig?) {
         super.appendBody(builder, config)
         builder.text("Brightness", trackedBrightness)
     }

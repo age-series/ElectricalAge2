@@ -35,8 +35,8 @@ import net.minecraft.world.phys.BlockHitResult
 import net.minecraft.world.phys.HitResult
 import net.minecraft.world.phys.shapes.*
 import org.eln2.mc.Eln2
-import org.eln2.mc.annotations.ClientOnly
-import org.eln2.mc.annotations.ServerOnly
+import org.eln2.mc.ClientOnly
+import org.eln2.mc.ServerOnly
 import org.eln2.mc.client.render.foundation.MultipartBlockEntityInstance
 import org.eln2.mc.common.blocks.BlockRegistry
 import org.eln2.mc.common.cells.foundation.*
@@ -46,11 +46,11 @@ import org.eln2.mc.common.space.BlockFaceLocator
 import org.eln2.mc.common.space.DirectionMask
 import org.eln2.mc.common.space.SO3
 import org.eln2.mc.common.space.requireLocator
-import org.eln2.mc.data.DataAccessNode
-import org.eln2.mc.data.IDataEntity
+import org.eln2.mc.data.DataNode
+import org.eln2.mc.data.DataEntity
 import org.eln2.mc.extensions.*
-import org.eln2.mc.integration.waila.IWailaProvider
-import org.eln2.mc.integration.waila.TooltipBuilder
+import org.eln2.mc.integration.WailaEntity
+import org.eln2.mc.integration.WailaTooltipBuilder
 import org.eln2.mc.utility.BoundingBox
 import java.util.*
 import java.util.concurrent.ConcurrentLinkedQueue
@@ -425,8 +425,8 @@ class GhostLightBlock : AirBlock(Properties.of(Material.AIR).lightLevel { it.get
 class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
     BlockEntity(BlockRegistry.MULTIPART_BLOCK_ENTITY.get(), pos, state),
     CellContainer,
-    IWailaProvider,
-    IDataEntity {
+    WailaEntity,
+    DataEntity {
 
     // Interesting issue.
     // If we try to add tickers before the block receives the first tick,
@@ -469,7 +469,7 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
         val result = parts.remove(face)
             ?: return null
 
-        dataAccessNode.children.removeIf { it == result.dataAccessNode }
+        dataNode.children.removeIf { it == result.dataNode }
 
         tickingParts.removeIf { it == result }
 
@@ -488,7 +488,7 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
 
     private fun addPart(face: Direction, part: Part) {
         parts[face] = part
-        dataAccessNode.withChild(part.dataAccessNode)
+        dataNode.withChild(part.dataNode)
         part.onAdded()
     }
 
@@ -1323,9 +1323,9 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
         }
     }
 
-    override fun appendBody(builder: TooltipBuilder, config: IPluginConfig?) {
+    override fun appendBody(builder: WailaTooltipBuilder, config: IPluginConfig?) {
         parts.values.forEach { part ->
-            if (part !is IWailaProvider) {
+            if (part !is WailaEntity) {
                 return@forEach
             }
 
@@ -1333,5 +1333,5 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
         }
     }
 
-    override val dataAccessNode: DataAccessNode = DataAccessNode()
+    override val dataNode: DataNode = DataNode()
 }

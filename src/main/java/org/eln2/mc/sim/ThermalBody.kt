@@ -5,10 +5,10 @@ import org.ageseries.libage.sim.Material
 import org.ageseries.libage.sim.thermal.Temperature
 import org.ageseries.libage.sim.thermal.ThermalMass
 import org.eln2.mc.extensions.appendBody
-import org.eln2.mc.integration.waila.IWailaProvider
-import org.eln2.mc.integration.waila.TooltipBuilder
+import org.eln2.mc.integration.WailaEntity
+import org.eln2.mc.integration.WailaTooltipBuilder
 
-class ThermalBody(var thermalMass: ThermalMass, var surfaceArea: Double) : IWailaProvider {
+class ThermalBody(var thermalMass: ThermalMass, var surfaceArea: Double) : WailaEntity {
     var temperature: Temperature
         get() = thermalMass.temperature
         set(value) { thermalMass.temperature = value }
@@ -21,7 +21,7 @@ class ThermalBody(var thermalMass: ThermalMass, var surfaceArea: Double) : IWail
         get() = thermalMass.energy
         set(value) { thermalMass.energy = value }
 
-    override fun appendBody(builder: TooltipBuilder, config: IPluginConfig?) {
+    override fun appendBody(builder: WailaTooltipBuilder, config: IPluginConfig?) {
         thermalMass.appendBody(builder, config)
     }
 

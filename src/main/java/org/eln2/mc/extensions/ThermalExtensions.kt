@@ -3,9 +3,9 @@ package org.eln2.mc.extensions
 import mcp.mobius.waila.api.IPluginConfig
 import org.ageseries.libage.sim.thermal.Simulator
 import org.ageseries.libage.sim.thermal.ThermalMass
-import org.eln2.mc.integration.waila.TooltipBuilder
+import org.eln2.mc.integration.WailaTooltipBuilder
 
-fun ThermalMass.appendBody(builder: TooltipBuilder, config: IPluginConfig?) {
+fun ThermalMass.appendBody(builder: WailaTooltipBuilder, config: IPluginConfig?) {
     builder.energy(this.energy)
     builder.mass(this.mass)
     builder.temperature(this.temperature.kelvin)

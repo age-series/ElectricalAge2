@@ -21,9 +21,9 @@ import net.minecraft.world.phys.shapes.Shapes
 import net.minecraft.world.phys.shapes.VoxelShape
 import net.minecraftforge.registries.ForgeRegistryEntry
 import org.eln2.mc.Eln2
-import org.eln2.mc.annotations.ClientOnly
-import org.eln2.mc.annotations.CrossThreadAccess
-import org.eln2.mc.annotations.ServerOnly
+import org.eln2.mc.ClientOnly
+import org.eln2.mc.CrossThreadAccess
+import org.eln2.mc.ServerOnly
 import org.eln2.mc.client.render.foundation.BasicPartRenderer
 import org.eln2.mc.client.render.foundation.MultipartBlockEntityInstance
 import org.eln2.mc.common.blocks.foundation.MultipartBlockEntity
@@ -33,11 +33,11 @@ import org.eln2.mc.common.cells.foundation.CellPos
 import org.eln2.mc.common.cells.foundation.CellProvider
 import org.eln2.mc.common.parts.PartRegistry
 import org.eln2.mc.common.space.*
-import org.eln2.mc.data.DataAccessNode
-import org.eln2.mc.data.IDataEntity
+import org.eln2.mc.data.DataNode
+import org.eln2.mc.data.DataEntity
 import org.eln2.mc.extensions.*
-import org.eln2.mc.integration.waila.IWailaProvider
-import org.eln2.mc.integration.waila.TooltipBuilder
+import org.eln2.mc.integration.WailaEntity
+import org.eln2.mc.integration.WailaTooltipBuilder
 import org.eln2.mc.utility.BoundingBox
 import java.util.*
 import kotlin.math.PI
@@ -168,7 +168,7 @@ object PartGeometry {
  * but up to 6 can exist in the same block space.
  * They are placed on the inner faces of a multipart container block space.
  * */
-abstract class Part(val id: ResourceLocation, val placement: PartPlacementInfo): IDataEntity {
+abstract class Part(val id: ResourceLocation, val placement: PartPlacementInfo): DataEntity {
     companion object {
         fun createPartDropStack(id: ResourceLocation, saveTag: CompoundTag?, count: Int = 1): ItemStack {
             val item = PartRegistry.getPartItem(id)
@@ -414,7 +414,7 @@ abstract class Part(val id: ResourceLocation, val placement: PartPlacementInfo):
         placement.multipart.updateBrightness()
     }
 
-    override val dataAccessNode: DataAccessNode = DataAccessNode()
+    override val dataNode: DataNode = DataNode()
 }
 
 /**
@@ -492,7 +492,8 @@ interface PartCellContainer {
 /**
  * This part represents a simulation object. It can become part of a cell network.
  * */
-abstract class CellPart(id: ResourceLocation, placement: PartPlacementInfo, final override val provider: CellProvider) : Part(id, placement), PartCellContainer, IWailaProvider {
+abstract class CellPart(id: ResourceLocation, placement: PartPlacementInfo, final override val provider: CellProvider) : Part(id, placement), PartCellContainer,
+    WailaEntity {
     companion object {
         private const val GRAPH_ID = "GraphID"
         private const val CUSTOM_SIMULATION_DATA = "SimulationData"
@@ -625,7 +626,7 @@ abstract class CellPart(id: ResourceLocation, placement: PartPlacementInfo, fina
 
     open fun loadCustomSimData(tag: CompoundTag) {}
 
-    override fun appendBody(builder: TooltipBuilder, config: IPluginConfig?) {
+    override fun appendBody(builder: WailaTooltipBuilder, config: IPluginConfig?) {
         if (hasCell) {
             this.cell.appendBody(builder, config)
         }
@@ -636,8 +637,8 @@ abstract class CellPart(id: ResourceLocation, placement: PartPlacementInfo, fina
     override fun onDisconnected(remoteCell: Cell) {}
 
     private fun acquireCell() {
-        require(!dataAccessNode.children.any { it == cell.dataAccessNode }) { "Duplicate cell set" }
-        dataAccessNode.withChild(cell.dataAccessNode)
+        require(!dataNode.children.any { it == cell.dataNode }) { "Duplicate cell set" }
+        dataNode.withChild(cell.dataNode)
         onCellAcquired()
     }
 

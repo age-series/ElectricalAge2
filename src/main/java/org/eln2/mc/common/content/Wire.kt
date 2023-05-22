@@ -31,13 +31,13 @@ import org.eln2.mc.common.events.AtomicUpdate
 import org.eln2.mc.common.events.EventScheduler
 import org.eln2.mc.common.parts.foundation.*
 import org.eln2.mc.common.space.*
-import org.eln2.mc.data.DataAccessNode
-import org.eln2.mc.data.IDataEntity
+import org.eln2.mc.data.DataNode
+import org.eln2.mc.data.DataEntity
 import org.eln2.mc.extensions.*
 import org.eln2.mc.extensions.times
 import org.eln2.mc.extensions.toVec3
-import org.eln2.mc.integration.waila.IWailaProvider
-import org.eln2.mc.integration.waila.TooltipBuilder
+import org.eln2.mc.integration.WailaEntity
+import org.eln2.mc.integration.WailaTooltipBuilder
 import org.eln2.mc.mathematics.lerp
 import org.eln2.mc.mathematics.map
 import org.eln2.mc.mathematics.Geometry.cylinderSurfaceArea
@@ -106,7 +106,7 @@ object ElectricalWireModels {
     }
 }
 
-class ThermalWireObject(cell: Cell) : ThermalObject(cell), IWailaProvider, IPersistentObject, IDataEntity {
+class ThermalWireObject(cell: Cell) : ThermalObject(cell), WailaEntity, IPersistentObject, DataEntity {
     private val environmentInformation
         get() = BiomeEnvironments.get(cell.graph.level, cell.pos)
 
@@ -129,7 +129,7 @@ class ThermalWireObject(cell: Cell) : ThermalObject(cell), IWailaProvider, IPers
         simulator.connect(body, environmentInformation)
     }
 
-    override fun appendBody(builder: TooltipBuilder, config: IPluginConfig?) {
+    override fun appendBody(builder: WailaTooltipBuilder, config: IPluginConfig?) {
         builder.temperature(body.temperatureK)
         builder.energy(body.thermalEnergy)
     }
@@ -148,7 +148,7 @@ class ThermalWireObject(cell: Cell) : ThermalObject(cell), IWailaProvider, IPers
             tag.getDouble(SURFACE_AREA))
     }
 
-    override val dataAccessNode = DataAccessNode().also {
+    override val dataNode = DataNode().also {
         it.data.withField {
             TemperatureField { body.temperature }
         }
