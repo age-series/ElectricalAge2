@@ -92,29 +92,3 @@ enum class RelativeDirection(val id: Int) {
         }
     }
 }
-
-class PlacementRotation(val placementDirection: Direction) {
-    fun getAbsoluteFromRelative(rotation: RelativeDirection): Direction {
-        return when (rotation) {
-            RelativeDirection.Front -> placementDirection
-            RelativeDirection.Back -> placementDirection.opposite
-            RelativeDirection.Right -> placementDirection.clockWise
-            RelativeDirection.Left -> placementDirection.counterClockWise
-            RelativeDirection.Up -> Direction.UP
-            RelativeDirection.Down -> Direction.DOWN
-        }
-    }
-
-    fun getRelativeFromAbsolute(direction: Direction): RelativeDirection {
-        return when (direction) {
-            placementDirection -> RelativeDirection.Front
-            placementDirection.opposite -> RelativeDirection.Back
-            placementDirection.clockWise -> RelativeDirection.Right
-            placementDirection.counterClockWise -> RelativeDirection.Left
-            Direction.UP -> RelativeDirection.Up
-            Direction.DOWN -> RelativeDirection.Down
-            else -> error("Direction not implemented: $direction")
-        }
-    }
-}
-

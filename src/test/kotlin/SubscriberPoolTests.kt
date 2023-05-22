@@ -50,7 +50,7 @@ class SubscriberPoolTests {
             assert(slowHitsPost == count / 10)
         }
 
-        collection.removeSubscriber(::instant)
+        collection.remove(::instant)
 
         assert(collection.subscriberCount == 1)
 
@@ -61,7 +61,7 @@ class SubscriberPoolTests {
         assert(previousHit == instantHits)
 
         fun removeWhilstIterating(dt: Double, phase: SubscriberPhase){
-            collection.removeSubscriber(::removeWhilstIterating)
+            collection.remove(::removeWhilstIterating)
         }
 
         collection.addSubscriber(instantParams, ::removeWhilstIterating)
@@ -73,7 +73,7 @@ class SubscriberPoolTests {
         assert(collection.subscriberCount == 1)
 
         try {
-            collection.removeSubscriber(::removeWhilstIterating)
+            collection.remove(::removeWhilstIterating)
             fail("Non existent remove")
         }
         catch (t: Throwable){

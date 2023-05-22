@@ -119,7 +119,7 @@ fun CompoundTag.putRelativeDirection(key: String, direction: RelativeDirection) 
     this.putInt(key, data)
 }
 
-fun CompoundTag.getRelativeDirection(key: String): RelativeDirection {
+fun CompoundTag.getDirectionActual(key: String): RelativeDirection {
     val data = this.getInt(key)
 
     return RelativeDirection.fromId(data)

@@ -41,14 +41,14 @@ import org.ageseries.libage.sim.Material
 import org.ageseries.libage.sim.thermal.*
 import org.eln2.mc.Eln2
 import org.eln2.mc.Eln2.LOGGER
-import org.eln2.mc.client.render.renderColored
-import org.eln2.mc.client.render.renderTextured
+import org.eln2.mc.client.render.foundation.renderColored
+import org.eln2.mc.client.render.foundation.renderTextured
 import org.eln2.mc.common.blocks.foundation.CellBlock
 import org.eln2.mc.common.blocks.foundation.CellBlockEntity
-import org.eln2.mc.common.cells.foundation.CellBase
+import org.eln2.mc.common.cells.foundation.Cell
 import org.eln2.mc.common.cells.foundation.CellPos
 import org.eln2.mc.common.cells.foundation.SubscriberPhase
-import org.eln2.mc.common.cells.foundation.objects.SimulationObjectSet
+import org.eln2.mc.common.cells.foundation.SimulationObjectSet
 import org.eln2.mc.common.events.AtomicUpdate
 import org.eln2.mc.common.events.EventScheduler
 import org.eln2.mc.common.space.DirectionMask
@@ -127,7 +127,7 @@ data class FurnaceOptions(
     }
 }
 
-class FurnaceCell(pos: CellPos, id: ResourceLocation, val dir1: RelativeDirection = RelativeDirection.Left, val dir2: RelativeDirection = RelativeDirection.Right) : CellBase(pos, id) {
+class FurnaceCell(pos: CellPos, id: ResourceLocation, val dir1: RelativeDirection = RelativeDirection.Left, val dir2: RelativeDirection = RelativeDirection.Right) : Cell(pos, id) {
     companion object {
         private const val OPTIONS = "options"
         private const val RESISTOR_THERMAL_MASS = "resistorThermalMass"
@@ -202,16 +202,16 @@ class FurnaceCell(pos: CellPos, id: ResourceLocation, val dir1: RelativeDirectio
      * */
     val resistorTemperature: Temperature get() = resistorHeatBody.temperature
 
-    override fun createObjectSet(): SimulationObjectSet {
+    override fun createObjSet(): SimulationObjectSet {
         return SimulationObjectSet(ResistorObject(this, dir1, dir2))
     }
 
     override fun onGraphChanged() {
-        graph.subscribers.addPreInstantaneous(this::simulationTick)
+        graph.subscribers.addPre(this::simulationTick)
     }
 
     override fun onRemoving() {
-        graph.subscribers.removeSubscriber(this::simulationTick)
+        graph.subscribers.remove(this::simulationTick)
     }
 
     /**

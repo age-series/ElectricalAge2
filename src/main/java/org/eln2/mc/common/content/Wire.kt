@@ -19,17 +19,14 @@ import org.ageseries.libage.sim.thermal.*
 import net.minecraft.core.BlockPos
 import org.eln2.mc.Eln2.LOGGER
 import org.eln2.mc.mathematics.bbVec
-import org.eln2.mc.client.render.MultipartBlockEntityInstance
+import org.eln2.mc.client.render.foundation.MultipartBlockEntityInstance
 import org.eln2.mc.client.render.PartialModels
 import org.eln2.mc.client.render.foundation.defaultRadiantBodyColor
-import org.eln2.mc.common.cells.foundation.CellBase
-import org.eln2.mc.common.cells.foundation.CellPos
+import org.eln2.mc.common.cells.foundation.*
+import org.eln2.mc.common.cells.foundation.withElectricalHeatTransfer
+import org.eln2.mc.common.cells.foundation.withElectricalPowerConverter
+import org.eln2.mc.common.cells.foundation.withStandardExplosionBehavior
 import org.eln2.mc.common.cells.foundation.CellProvider
-import org.eln2.mc.common.cells.foundation.Conventions
-import org.eln2.mc.common.cells.foundation.behaviors.withElectricalHeatTransfer
-import org.eln2.mc.common.cells.foundation.behaviors.withElectricalPowerConverter
-import org.eln2.mc.common.cells.foundation.behaviors.withStandardExplosionBehavior
-import org.eln2.mc.common.cells.foundation.objects.*
 import org.eln2.mc.common.events.AtomicUpdate
 import org.eln2.mc.common.events.EventScheduler
 import org.eln2.mc.common.parts.foundation.*
@@ -52,7 +49,7 @@ import java.util.concurrent.atomic.AtomicReference
  * The [ElectricalWireObject] has a single [ResistorBundle]. The Internal Pins of the bundle are connected to each other, and
  * the External Pins are exported to other Electrical Objects.
  * */
-class ElectricalWireObject(cell: CellBase) : ElectricalObject(cell) {
+class ElectricalWireObject(cell: Cell) : ElectricalObject(cell) {
     private val resistors = ResistorBundle(0.05, this)
 
     /**
@@ -90,7 +87,7 @@ class ElectricalWireObject(cell: CellBase) : ElectricalObject(cell) {
         resistors.process { a ->
             resistors.process { b ->
                 if (a != b) {
-                    a.connect(Conventions.INTERNAL_PIN, b, Conventions.INTERNAL_PIN)
+                    a.connect(CellConvention.INTERNAL_PIN, b, CellConvention.INTERNAL_PIN)
                 }
             }
         }
@@ -109,7 +106,7 @@ object ElectricalWireModels {
     }
 }
 
-class ThermalWireObject(cell: CellBase) : ThermalObject(cell), IWailaProvider, IPersistentObject, IDataEntity {
+class ThermalWireObject(cell: Cell) : ThermalObject(cell), IWailaProvider, IPersistentObject, IDataEntity {
     private val environmentInformation
         get() = BiomeEnvironments.get(cell.graph.level, cell.pos)
 
@@ -167,7 +164,7 @@ open class WireCell(
     pos: CellPos,
     id: ResourceLocation,
     val model: ElectricalWireModel,
-    val type: WireType) : CellBase(pos, id) {
+    val type: WireType) : Cell(pos, id) {
 
     init {
         if(type == WireType.Electrical) {
@@ -182,7 +179,7 @@ open class WireCell(
         }
     }
 
-    override fun createObjectSet(): SimulationObjectSet {
+    override fun createObjSet(): SimulationObjectSet {
         val thermal = ThermalWireObject(this)
 
         return if(type == WireType.Electrical){
@@ -200,7 +197,7 @@ open class WireCell(
     val temperature get() = thermalWire.body.temperatureK
 }
 
-class WirePart(id: ResourceLocation, context: PartPlacementContext, cellProvider: CellProvider, val type: WireType) :
+class WirePart(id: ResourceLocation, context: PartPlacementInfo, cellProvider: CellProvider, val type: WireType) :
     CellPart(id, context, cellProvider) {
 
     companion object {
@@ -213,11 +210,11 @@ class WirePart(id: ResourceLocation, context: PartPlacementContext, cellProvider
         private const val HOT_LIGHT_TEMPERATURE = 1000.0
     }
 
-    override val baseSize = bbVec(8.0, 2.0, 8.0)
+    override val sizeActual = bbVec(8.0, 2.0, 8.0)
 
     private data class Connection(
         val directionActual: RelativeDirection,
-        val mode: PartConnectionMode,
+        val mode: CellPartConnectionMode,
         val remotePosWorld: BlockPos
     ) {
         fun toNbt(): CompoundTag {
@@ -233,8 +230,8 @@ class WirePart(id: ResourceLocation, context: PartPlacementContext, cellProvider
         companion object {
             fun fromNbt(tag: CompoundTag): Connection {
                 return Connection(
-                    tag.getRelativeDirection("Dir"),
-                    PartConnectionMode.valueOf(tag.getString("Mode")),
+                    tag.getDirectionActual("Dir"),
+                    CellPartConnectionMode.valueOf(tag.getString("Mode")),
                     tag.getBlockPos("Pos")
                 )
             }
@@ -246,7 +243,7 @@ class WirePart(id: ResourceLocation, context: PartPlacementContext, cellProvider
     private var temperature = 0.0
     private var connectionsChanged = true
 
-    override fun createRenderer(): IPartRenderer {
+    override fun createRenderer(): PartRenderer {
         wireRenderer = WirePartRenderer(this,
             if(type == WireType.Electrical) WireMeshSets.electricalWireMap
             else WireMeshSets.thermalWireMap,
@@ -265,7 +262,7 @@ class WirePart(id: ResourceLocation, context: PartPlacementContext, cellProvider
     override fun onPlaced() {
         super.onPlaced()
 
-        if (!placementContext.level.isClientSide) {
+        if (!placement.level.isClientSide) {
             syncChanges()
         }
     }
@@ -341,7 +338,7 @@ class WirePart(id: ResourceLocation, context: PartPlacementContext, cellProvider
 
         directionList.forEach { connectedDirections.add(Connection.fromNbt(it as CompoundTag)) }
 
-        if (placementContext.level.isClientSide) {
+        if (placement.level.isClientSide) {
             applyRendererState()
         }
     }
@@ -350,12 +347,12 @@ class WirePart(id: ResourceLocation, context: PartPlacementContext, cellProvider
         wireRenderer?.applyDirections(connectedDirections.map { it.directionActual }.toList())
     }
 
-    override fun recordConnection(remote: CellBase) {
+    override fun onConnected(remoteCell: Cell) {
         connectionsChanged = true
 
-        val connectionInfo = solvePartConnection(cell, remote)
+        val connectionInfo = solveCellPartConnection(cell, remoteCell)
 
-        if(connectionInfo.mode == PartConnectionMode.Unknown) {
+        if(connectionInfo.mode == CellPartConnectionMode.Unknown) {
             error("Unhandled connection mode")
         }
 
@@ -363,16 +360,16 @@ class WirePart(id: ResourceLocation, context: PartPlacementContext, cellProvider
             Connection(
                 connectionInfo.actualDirActualPlr,
                 connectionInfo.mode,
-                remote.posDescr.requireLocator<R3, BlockPosLocator>().pos
+                remoteCell.posDescr.requireLocator<R3, BlockPosLocator>().pos
             )
         )
 
         syncAndSave()
     }
 
-    override fun recordDeletedConnection(remote: CellBase) {
+    override fun onDisconnected(remoteCell: Cell) {
         connectionsChanged = true
-        connectedDirections.removeIf { it.remotePosWorld == remote.posDescr.requireLocator<R3, BlockPosLocator>().pos }
+        connectedDirections.removeIf { it.remotePosWorld == remoteCell.posDescr.requireLocator<R3, BlockPosLocator>().pos }
         syncAndSave()
     }
 
@@ -414,7 +411,7 @@ object WireMeshSets {
     )
 }
 
-class WirePartRenderer(val part: WirePart, val meshes: Map<DirectionMask, PartialModel>, val type: WireType) : IPartRenderer {
+class WirePartRenderer(val part: WirePart, val meshes: Map<DirectionMask, PartialModel>, val type: WireType) : PartRenderer {
     companion object {
         private val COLOR = defaultRadiantBodyColor()
     }
@@ -501,10 +498,10 @@ class WirePartRenderer(val part: WirePart, val meshes: Map<DirectionMask, Partia
             .getModel(model)
             .createInstance()
             .loadIdentity()
-            .translate(part.placementContext.face.opposite.normal.toVec3() * Vec3(size, size, size))
+            .translate(part.placement.face.opposite.normal.toVec3() * Vec3(size, size, size))
             .blockCenter()
             .translate(part.worldBoundingBox.center)
-            .multiply(part.placementContext.face.rotation * part.facingRotation * rotation)
+            .multiply(part.placement.face.rotation * part.txFacing * rotation)
             .zeroCenter()
 
         multipartInstance.relightPart(part)

@@ -44,14 +44,14 @@ import org.eln2.mc.annotations.RaceCondition
 import org.eln2.mc.client.render.PartialModels
 import org.eln2.mc.client.render.PartialModels.bbOffset
 import org.eln2.mc.client.render.foundation.BasicPartRenderer
-import org.eln2.mc.client.render.renderTextured
+import org.eln2.mc.client.render.foundation.renderTextured
 import org.eln2.mc.common.blocks.foundation.CellBlock
 import org.eln2.mc.common.blocks.foundation.CellBlockEntity
 import org.eln2.mc.common.cells.foundation.*
-import org.eln2.mc.common.cells.foundation.behaviors.IThermalBodyAccessor
-import org.eln2.mc.common.cells.foundation.behaviors.withElectricalHeatTransfer
-import org.eln2.mc.common.cells.foundation.behaviors.withElectricalPowerConverter
-import org.eln2.mc.common.cells.foundation.objects.*
+import org.eln2.mc.common.cells.foundation.IThermalBodyAccessor
+import org.eln2.mc.common.cells.foundation.withElectricalHeatTransfer
+import org.eln2.mc.common.cells.foundation.withElectricalPowerConverter
+import org.eln2.mc.common.cells.foundation.CellProvider
 import org.eln2.mc.common.events.AtomicUpdate
 import org.eln2.mc.common.events.EventScheduler
 import org.eln2.mc.common.parts.foundation.*
@@ -68,7 +68,6 @@ import org.eln2.mc.mathematics.bbVec
 import org.eln2.mc.mathematics.lerp
 import org.eln2.mc.mathematics.map
 import org.eln2.mc.mathematics.vec4fOne
-import org.eln2.mc.sim.BiomeEnvironments
 import org.eln2.mc.sim.Datasets
 import org.eln2.mc.sim.ThermalBody
 import org.eln2.mc.utility.SelfDescriptiveUnitMultipliers.megaJoules
@@ -82,7 +81,7 @@ enum class GeneratorPowerDirection {
 /**
  * Represents an Electrical Generator. It is characterised by a voltage and internal resistance.
  * */
-class GeneratorObject(cell: CellBase, val plusDir: RelativeDirection = RelativeDirection.Front, val minusDir: RelativeDirection = RelativeDirection.Back) : ElectricalObject(cell), IWailaProvider, IDataEntity {
+class GeneratorObject(cell: Cell, val plusDir: RelativeDirection = RelativeDirection.Front, val minusDir: RelativeDirection = RelativeDirection.Back) : ElectricalObject(cell), IWailaProvider, IDataEntity {
     init {
         ruleSet.withDirectionActualRule(DirectionMask.ofRelatives(plusDir, minusDir))
     }
@@ -169,8 +168,8 @@ class GeneratorObject(cell: CellBase, val plusDir: RelativeDirection = RelativeD
     }
 }
 
-abstract class GeneratorCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) {
-    override fun createObjectSet(): SimulationObjectSet {
+abstract class GeneratorCell(pos: CellPos, id: ResourceLocation) : Cell(pos, id) {
+    override fun createObjSet(): SimulationObjectSet {
         return SimulationObjectSet(GeneratorObject(this))
     }
 
@@ -330,7 +329,7 @@ class BatteryCell(pos: CellPos, id: ResourceLocation, override val model: Batter
         ruleSet.withDirectionActualRule(DirectionMask.FRONT + DirectionMask.BACK)
     }
 
-    override fun createObjectSet(): SimulationObjectSet {
+    override fun createObjSet(): SimulationObjectSet {
         return SimulationObjectSet(GeneratorObject(this), ThermalWireObject(this).also {
             it.body = ThermalBody(
                 ThermalMass(model.material, null, model.mass),
@@ -414,11 +413,11 @@ class BatteryCell(pos: CellPos, id: ResourceLocation, override val model: Batter
     }
 
     override fun onGraphChanged() {
-        graph.subscribers.addPreInstantaneous(this::simulationTick)
+        graph.subscribers.addPre(this::simulationTick)
     }
 
     override fun onRemoving() {
-        graph.subscribers.removeSubscriber(this::simulationTick)
+        graph.subscribers.remove(this::simulationTick)
     }
 
     private fun applyExternalUpdates(){
@@ -493,14 +492,14 @@ class BatteryCell(pos: CellPos, id: ResourceLocation, override val model: Batter
     private val thermalWireObject get() = thermalObject as ThermalWireObject
 }
 
-class BatteryPart(id: ResourceLocation, placementContext: PartPlacementContext, provider: CellProvider): CellPart(id, placementContext, provider), IItemPersistentPart {
+class BatteryPart(id: ResourceLocation, placementContext: PartPlacementInfo, provider: CellProvider): CellPart(id, placementContext, provider), ItemPersistentPart {
     companion object {
         private const val BATTERY = "battery"
     }
 
-    override val baseSize = bbVec(6.0, 8.0, 12.0)
+    override val sizeActual = bbVec(6.0, 8.0, 12.0)
 
-    override fun createRenderer(): IPartRenderer {
+    override fun createRenderer(): PartRenderer {
         return BasicPartRenderer(this, PartialModels.BATTERY).also {
             it.downOffset = bbOffset(8.0)
         }
@@ -516,13 +515,13 @@ class BatteryPart(id: ResourceLocation, placementContext: PartPlacementContext, 
         tag?.useSubTagIfPreset(BATTERY, batteryCell::deserializeNbt)
     }
 
-    override val order: ItemPersistentPartLoadOrder = ItemPersistentPartLoadOrder.AfterSim
+    override val order: PersistentPartLoadOrder = PersistentPartLoadOrder.AfterSim
 }
 
 /**
  * Thermal body with two connection sides.
  * */
-class ThermalBipoleObject(cell: CellBase, val b1Dir: RelativeDirection = RelativeDirection.Front, val b2Dir: RelativeDirection = RelativeDirection.Back) : ThermalObject(cell), IWailaProvider {
+class ThermalBipoleObject(cell: Cell, val b1Dir: RelativeDirection = RelativeDirection.Front, val b2Dir: RelativeDirection = RelativeDirection.Back) : ThermalObject(cell), IWailaProvider {
     var b1 = ThermalBody.createDefault().also { it.temperature = cell.getEnvironmentTemp() }
     var b2 = ThermalBody.createDefault().also { it.temperature = cell.getEnvironmentTemp() }
 
@@ -595,13 +594,13 @@ class ThermocoupleBehavior(
     override fun onAdded(container: CellBehaviorContainer) {}
 
     override fun subscribe(subscribers: SubscriberCollection) {
-        subscribers.addPreInstantaneous(this::preTick)
-        subscribers.addPostInstantaneous(this::postTick)
+        subscribers.addPre(this::preTick)
+        subscribers.addPost(this::postTick)
     }
 
     override fun destroy(subscribers: SubscriberCollection) {
-        subscribers.removeSubscriber(this::preTick)
-        subscribers.removeSubscriber(this::postTick)
+        subscribers.remove(this::preTick)
+        subscribers.remove(this::postTick)
     }
 
     private fun getSortedBodyPair(): BodyPair {
@@ -724,7 +723,7 @@ class ThermocoupleCell(pos: CellPos, id: ResourceLocation) : GeneratorCell(pos, 
         ruleSet.withDirectionActualRule(DirectionMask.HORIZONTALS)
     }
 
-    override fun createObjectSet(): SimulationObjectSet {
+    override fun createObjSet(): SimulationObjectSet {
         return SimulationObjectSet(
             GeneratorObject(this).also {
                 it.potential = 100.0
@@ -740,16 +739,16 @@ class ThermocoupleCell(pos: CellPos, id: ResourceLocation) : GeneratorCell(pos, 
     val b2Temperature get() = thermalBiPole.b2.temperature
 }
 
-class ThermocouplePart(id: ResourceLocation, placementContext: PartPlacementContext) : CellPart(id, placementContext, Content.THERMOCOUPLE_CELL.get()) {
+class ThermocouplePart(id: ResourceLocation, placementContext: PartPlacementInfo) : CellPart(id, placementContext, Content.THERMOCOUPLE_CELL.get()) {
     companion object {
         private const val LEFT_TEMP = "left"
         private const val RIGHT_TEMP = "right"
     }
 
-    override val baseSize: Vec3
+    override val sizeActual: Vec3
         get() = Vec3(1.0, 15.0 / 16.0, 1.0)
 
-    override fun createRenderer(): IPartRenderer {
+    override fun createRenderer(): PartRenderer {
         return RadiantBipoleRenderer(
             this,
             PartialModels.PELTIER_BODY,
@@ -865,7 +864,7 @@ object Fuels {
     }
 }
 
-private class FuelBurnerBehavior(val cell: CellBase, val bodyGetter: IThermalBodyAccessor): ICellBehavior, IWailaProvider {
+private class FuelBurnerBehavior(val cell: Cell, val bodyGetter: IThermalBodyAccessor): ICellBehavior, IWailaProvider {
     companion object {
         private const val FUEL = "fuel"
     }
@@ -902,11 +901,11 @@ private class FuelBurnerBehavior(val cell: CellBase, val bodyGetter: IThermalBod
     override fun onAdded(container: CellBehaviorContainer) { }
 
     override fun subscribe(subscribers: SubscriberCollection) {
-        subscribers.addPreInstantaneous(this::simulationTick)
+        subscribers.addPre(this::simulationTick)
     }
 
     override fun destroy(subscribers: SubscriberCollection) {
-        subscribers.removeSubscriber(this::simulationTick)
+        subscribers.remove(this::simulationTick)
     }
 
     private fun simulationTick(dt: Double, phase: SubscriberPhase) {
@@ -943,7 +942,7 @@ private class FuelBurnerBehavior(val cell: CellBase, val bodyGetter: IThermalBod
     }
 }
 
-class HeatGeneratorCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) {
+class HeatGeneratorCell(pos: CellPos, id: ResourceLocation) : Cell(pos, id) {
     companion object {
         const val BURNER_BEHAVIOR = "burner"
     }
@@ -965,7 +964,7 @@ class HeatGeneratorCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) 
         behaviors.getBehavior<FuelBurnerBehavior>().replaceFuel(mass)
     }
 
-    override fun createObjectSet(): SimulationObjectSet {
+    override fun createObjSet(): SimulationObjectSet {
         return SimulationObjectSet(ThermalWireObject(this))
     }
 
@@ -1199,7 +1198,7 @@ interface IIlluminatedBodyView {
     val normal: Direction
 }
 
-abstract class SolarIlluminationBehavior(private val cell: CellBase): ICellBehavior, IIlluminatedBodyView {
+abstract class SolarIlluminationBehavior(private val cell: Cell): ICellBehavior, IIlluminatedBodyView {
     // Is it fine to access these from our simulation threads?
     override val sunAngle: Double
         get() = cell.graph.level.getSunAngle(0f).toDouble()
@@ -1216,7 +1215,7 @@ abstract class SolarGeneratorBehavior(val generatorCell: GeneratorCell): SolarIl
     }
 
     override fun destroy(subscribers: SubscriberCollection) {
-        subscribers.removeSubscriber(this::simulationTick)
+        subscribers.remove(this::simulationTick)
     }
 
     private fun simulationTick(dt: Double, phase: SubscriberPhase) {

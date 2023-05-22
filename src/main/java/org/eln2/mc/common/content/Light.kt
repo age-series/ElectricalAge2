@@ -12,22 +12,22 @@ import org.eln2.mc.Eln2.LOGGER
 import org.eln2.mc.mathematics.bbVec
 import org.eln2.mc.annotations.ClientOnly
 import org.eln2.mc.annotations.ServerOnly
-import org.eln2.mc.client.render.MultipartBlockEntityInstance
+import org.eln2.mc.client.render.foundation.MultipartBlockEntityInstance
 import org.eln2.mc.client.render.PartialModels
-import org.eln2.mc.client.render.animations.colors.ColorInterpolators
-import org.eln2.mc.client.render.animations.colors.Utilities.colorF
-import org.eln2.mc.client.render.foundation.PartRendererTransforms.applyBlockBenchTransform
+import org.eln2.mc.client.render.foundation.colorF
+import org.eln2.mc.client.render.foundation.colorLerp
+import org.eln2.mc.client.render.foundation.applyBlockBenchTransform
 import org.eln2.mc.common.blocks.foundation.GhostLight
-import org.eln2.mc.common.cells.foundation.CellBase
+import org.eln2.mc.common.cells.foundation.Cell
 import org.eln2.mc.common.cells.foundation.CellPos
 import org.eln2.mc.common.cells.foundation.CellProvider
 import org.eln2.mc.common.cells.foundation.SubscriberPhase
-import org.eln2.mc.common.cells.foundation.behaviors.withStandardBehavior
-import org.eln2.mc.common.cells.foundation.objects.SimulationObjectSet
+import org.eln2.mc.common.cells.foundation.withStandardBehavior
+import org.eln2.mc.common.cells.foundation.SimulationObjectSet
 import org.eln2.mc.common.events.*
 import org.eln2.mc.common.parts.foundation.CellPart
-import org.eln2.mc.common.parts.foundation.IPartRenderer
-import org.eln2.mc.common.parts.foundation.PartPlacementContext
+import org.eln2.mc.common.parts.foundation.PartRenderer
+import org.eln2.mc.common.parts.foundation.PartPlacementInfo
 import org.eln2.mc.common.space.DirectionMask
 import org.eln2.mc.common.space.RelativeDirection
 import org.eln2.mc.common.space.withDirectionActualRule
@@ -58,15 +58,15 @@ class LightCell(
     val model: LightModel,
     val dir1: RelativeDirection = RelativeDirection.Left,
     val dir2: RelativeDirection = RelativeDirection.Right
-) : CellBase(pos, id) {
+) : Cell(pos, id) {
     private var trackedBrightness: Int = 0
 
-    private var receiver: IEventQueueAccess? = null
+    private var receiver: EventQueue? = null
 
     var rawBrightness: Double = 0.0
         private set
 
-    fun subscribeEvents(access: IEventQueueAccess) {
+    fun subscribeEvents(access: EventQueue) {
         receiver = access
     }
 
@@ -79,7 +79,7 @@ class LightCell(
         ruleSet.withDirectionActualRule(DirectionMask.ofRelatives(dir1, dir2))
     }
 
-    override fun createObjectSet(): SimulationObjectSet {
+    override fun createObjSet(): SimulationObjectSet {
         return SimulationObjectSet(
             ResistorObject(this, dir1, dir2).also { it.resistance = model.resistance },
             ThermalWireObject(this)
@@ -87,11 +87,11 @@ class LightCell(
     }
 
     override fun onGraphChanged() {
-        graph.subscribers.addPreInstantaneous(this::simulationTick)
+        graph.subscribers.addPre(this::simulationTick)
     }
 
     override fun onRemoving() {
-        graph.subscribers.removeSubscriber(this::simulationTick)
+        graph.subscribers.remove(this::simulationTick)
     }
 
     private fun simulationTick(elapsed: Double, phase: SubscriberPhase){
@@ -112,7 +112,7 @@ class LightCell(
 
         trackedBrightness = actualBrightness
 
-        receiver.enqueueEvent(LightChangeEvent(actualBrightness))
+        receiver.enqueue(LightChangeEvent(actualBrightness))
     }
 
     private val resistorObject get() = electricalObject as ResistorObject
@@ -127,10 +127,9 @@ class LightCell(
 class LightRenderer(
     private val part: LightPart,
     private val cage: PartialModel,
-    private val emitter: PartialModel) : IPartRenderer {
+    private val emitter: PartialModel) : PartRenderer {
 
     companion object {
-        val interpolator = ColorInterpolators.rgbLinear()
         val COLD_TINT = colorF(1f, 1f, 1f, 1f)
         val WARM_TINT = Color(254, 196, 127, 255)
     }
@@ -204,12 +203,12 @@ class LightRenderer(
         brightnessUpdate.consume {
             val brightness = it.coerceIn(0.0, 1.0).toFloat()
 
-            model.setColor(interpolator.interpolate(COLD_TINT, WARM_TINT, brightness))
+            model.setColor(colorLerp(COLD_TINT, WARM_TINT, brightness))
         }
     }
 }
 
-class LightPart(id: ResourceLocation, placementContext: PartPlacementContext, cellProvider: CellProvider):
+class LightPart(id: ResourceLocation, placementContext: PartPlacementInfo, cellProvider: CellProvider):
     CellPart(id, placementContext, cellProvider),
     IEventListener {
 
@@ -218,16 +217,16 @@ class LightPart(id: ResourceLocation, placementContext: PartPlacementContext, ce
         private const val CLIENT_DATA = "clientData"
     }
 
-    override val baseSize = bbVec(8.0, 1.0 + 2.302, 5.0)
+    override val sizeActual = bbVec(8.0, 1.0 + 2.302, 5.0)
 
     private var lights = ArrayList<GhostLight>()
 
-    override fun createRenderer(): IPartRenderer {
+    override fun createRenderer(): PartRenderer {
         return LightRenderer(
             this,
             PartialModels.SMALL_WALL_LAMP_CAGE,
             PartialModels.SMALL_WALL_LAMP_EMITTER)
-            .also { it.downOffset = baseSize.y / 2.0 }
+            .also { it.downOffset = sizeActual.y / 2.0 }
     }
 
     private fun cleanup() {
@@ -288,7 +287,7 @@ class LightPart(id: ResourceLocation, placementContext: PartPlacementContext, ce
     override fun loadFromTag(tag: CompoundTag) {
         super.loadFromTag(tag)
 
-        if(placementContext.level.isClientSide){
+        if(placement.level.isClientSide){
             tag.useSubTag(CLIENT_DATA, this::unpackClientData)
         }
     }
