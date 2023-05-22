@@ -83,7 +83,7 @@ object Content {
 
     val BATTERY_CELL_100V = CellRegistry.register("battery_cell_t", BasicCellProvider{ pos, id ->
         BatteryCell(pos, id, BatteryModel(
-            voltageFunction = VoltageModels.WET_CELL_12V,
+            voltageFunction = BatteryVoltageModels.WET_CELL_12V,
             resistanceFunction = { _, _ -> milliOhms(100.0) },
             damageFunction = { battery, dt ->
                 val currentThreshold = 100.0 //A

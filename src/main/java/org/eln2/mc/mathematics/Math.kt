@@ -190,8 +190,7 @@ fun mapNormalizedDoubleShort(value: Double): Int {
         1.0,
         Short.MIN_VALUE.toDouble(),
         Short.MAX_VALUE.toDouble()
-    )
-        .toInt()
+    ).toInt()
 }
 
 /**
