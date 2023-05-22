@@ -8,8 +8,6 @@ import net.minecraftforge.network.NetworkDirection
 import net.minecraftforge.network.NetworkRegistry
 import org.eln2.mc.Eln2
 
-enum class PacketType(val id: Int)
-
 object Networking {
     private const val protocolVersion = "1"
     private const val channelName = "main"

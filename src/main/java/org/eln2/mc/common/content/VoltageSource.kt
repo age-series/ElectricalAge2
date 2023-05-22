@@ -14,17 +14,17 @@ import org.eln2.mc.common.parts.foundation.PartRenderer
 import org.eln2.mc.common.parts.foundation.PartPlacementInfo
 import org.eln2.mc.common.space.DirectionMask
 import org.eln2.mc.common.space.withDirectionActualRule
-import org.eln2.mc.data.DataAccessNode
-import org.eln2.mc.data.IDataEntity
+import org.eln2.mc.data.DataNode
+import org.eln2.mc.data.DataEntity
 import org.eln2.mc.extensions.voltageSource
-import org.eln2.mc.integration.waila.IWailaProvider
-import org.eln2.mc.integration.waila.TooltipBuilder
+import org.eln2.mc.integration.WailaEntity
+import org.eln2.mc.integration.WailaTooltipBuilder
 
 /**
  * The voltage source object has a bundle of resistors, whose External Pins are exported to other objects, and
  * a voltage source, connected to the Internal Pins of the bundle.
  * */
-class VoltageSourceObject(cell: Cell) : ElectricalObject(cell), IWailaProvider, IDataEntity {
+class VoltageSourceObject(cell: Cell) : ElectricalObject(cell), WailaEntity, DataEntity {
     private lateinit var source: VoltageSource
     val hasSource get() = this::source.isInitialized
 
@@ -73,11 +73,11 @@ class VoltageSourceObject(cell: Cell) : ElectricalObject(cell), IWailaProvider, 
         resistors.process { it.connect(CellConvention.INTERNAL_PIN, source, CellConvention.EXTERNAL_PIN) }
     }
 
-    override fun appendBody(builder: TooltipBuilder, config: IPluginConfig?) {
+    override fun appendBody(builder: WailaTooltipBuilder, config: IPluginConfig?) {
         builder.voltageSource(source)
     }
 
-    override val dataAccessNode = DataAccessNode().also {
+    override val dataNode = DataNode().also {
         it.data.withField {
             VoltageField { potential }
         }

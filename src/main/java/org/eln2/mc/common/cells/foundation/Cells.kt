@@ -10,21 +10,19 @@ import net.minecraft.world.level.Level
 import net.minecraft.world.level.saveddata.SavedData
 import net.minecraftforge.registries.ForgeRegistryEntry
 import net.minecraftforge.server.ServerLifecycleHooks
-import org.ageseries.libage.debug.dprintln
 import org.ageseries.libage.sim.electrical.mna.Circuit
 import org.ageseries.libage.sim.electrical.mna.component.VoltageSource
 import org.ageseries.libage.sim.thermal.Simulator
-import org.eln2.mc.Eln2
 import org.eln2.mc.Eln2.LOGGER
-import org.eln2.mc.annotations.CrossThreadAccess
+import org.eln2.mc.CrossThreadAccess
 import org.eln2.mc.common.cells.CellRegistry
 import org.eln2.mc.common.configs.Configuration
 import org.eln2.mc.common.space.*
-import org.eln2.mc.data.DataAccessNode
-import org.eln2.mc.data.IDataEntity
+import org.eln2.mc.data.DataNode
+import org.eln2.mc.data.DataEntity
 import org.eln2.mc.extensions.*
-import org.eln2.mc.integration.waila.IWailaProvider
-import org.eln2.mc.integration.waila.TooltipBuilder
+import org.eln2.mc.integration.WailaEntity
+import org.eln2.mc.integration.WailaTooltipBuilder
 import org.eln2.mc.utility.Stopwatch
 import org.eln2.mc.utility.Time
 import java.util.*
@@ -45,7 +43,7 @@ data class CellPos(val descriptor: LocationDescriptor)
  * have a Simulation Object associated with it.
  * Cells create connections with other cells, and objects create connections with other objects of the same simulation type.
  * */
-abstract class Cell(val pos: CellPos, val id: ResourceLocation) : IWailaProvider, IDataEntity {
+abstract class Cell(val pos: CellPos, val id: ResourceLocation) : WailaEntity, DataEntity {
     val posDescr get() = pos.descriptor
 
     companion object {
@@ -104,8 +102,8 @@ abstract class Cell(val pos: CellPos, val id: ResourceLocation) : IWailaProvider
                 createdSet = createObjSet()
 
                 createdSet!!.process {
-                    if(it is IDataEntity) {
-                        dataAccessNode.withChild(it.dataAccessNode)
+                    if(it is DataEntity) {
+                        dataNode.withChild(it.dataNode)
                     }
                 }
             }
@@ -301,25 +299,25 @@ abstract class Cell(val pos: CellPos, val id: ResourceLocation) : IWailaProvider
     /**
      * By default, the cell just passes down the call to objects that implement the WAILA provider.
      * */
-    override fun appendBody(builder: TooltipBuilder, config: IPluginConfig?) {
+    override fun appendBody(builder: WailaTooltipBuilder, config: IPluginConfig?) {
         if (hasGraph) {
             builder.text("Graph", graph.id)
         }
 
         objSet.process {
-            if (it is IWailaProvider) {
+            if (it is WailaEntity) {
                 it.appendBody(builder, config)
             }
         }
 
-        behaviors.process {
-            if(it is IWailaProvider) {
+        behaviors.forEach {
+            if(it is WailaEntity) {
                 it.appendBody(builder, config)
             }
         }
     }
 
-    override val dataAccessNode: DataAccessNode = DataAccessNode()
+    override val dataNode: DataNode = DataNode()
 }
 
 // Don't like the name very much:

@@ -4,7 +4,7 @@ import net.minecraftforge.event.TickEvent
 import net.minecraftforge.eventbus.api.SubscribeEvent
 import net.minecraftforge.fml.common.Mod
 import org.eln2.mc.Eln2.LOGGER
-import org.eln2.mc.annotations.CrossThreadAccess
+import org.eln2.mc.CrossThreadAccess
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.PriorityBlockingQueue

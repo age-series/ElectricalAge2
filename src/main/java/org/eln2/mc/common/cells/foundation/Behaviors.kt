@@ -7,46 +7,44 @@ import org.eln2.mc.common.events.EventScheduler
 import org.eln2.mc.common.space.BlockFaceLocator
 import org.eln2.mc.common.space.SO3
 import org.eln2.mc.common.space.requireLocator
-import org.eln2.mc.data.DataAccessNode
-import org.eln2.mc.data.IDataEntity
+import org.eln2.mc.data.DataNode
+import org.eln2.mc.data.DataEntity
 import org.eln2.mc.extensions.destroyPart
 import org.eln2.mc.extensions.formattedPercentN
-import org.eln2.mc.integration.waila.IWailaProvider
-import org.eln2.mc.integration.waila.TooltipBuilder
+import org.eln2.mc.integration.WailaEntity
+import org.eln2.mc.integration.WailaTooltipBuilder
 import org.eln2.mc.sim.ThermalBody
 
-interface ICellBehavior {
+interface CellBehavior {
     fun onAdded(container: CellBehaviorContainer)
-
     fun subscribe(subscribers: SubscriberCollection)
-
     fun destroy(subscribers: SubscriberCollection)
 }
 
-class CellBehaviorContainer(private val cell: Cell) : IDataEntity {
-    val behaviors = ArrayList<ICellBehavior>()
+class CellBehaviorContainer(private val cell: Cell) : DataEntity {
+    val behaviors = ArrayList<CellBehavior>()
 
-    fun process(action: ((ICellBehavior) -> Unit)) {
+    fun forEach(action: ((CellBehavior) -> Unit)) {
         behaviors.forEach(action)
     }
 
-    inline fun <reified T : ICellBehavior> getBehaviorOrNull(): T? {
+    inline fun <reified T : CellBehavior> getOrNull(): T? {
         return behaviors.first { it is T } as? T
     }
 
-    inline fun <reified T : ICellBehavior> getBehavior(): T {
-        return getBehaviorOrNull() ?: error("Failed to get behavior")
+    inline fun <reified T : CellBehavior> get(): T {
+        return getOrNull() ?: error("Failed to get behavior")
     }
 
-    inline fun <reified T : ICellBehavior> add(behavior: T): CellBehaviorContainer {
+    inline fun <reified T : CellBehavior> add(behavior: T): CellBehaviorContainer {
         if(behaviors.any { it is T }){
             error("Duplicate add behavior $behavior")
         }
 
         behaviors.add(behavior)
 
-        if(behavior is IDataEntity) {
-            dataAccessNode.withChild(behavior.dataAccessNode)
+        if(behavior is DataEntity) {
+            dataNode.withChild(behavior.dataNode)
         }
 
         behavior.onAdded(this)
@@ -60,25 +58,25 @@ class CellBehaviorContainer(private val cell: Cell) : IDataEntity {
 
     fun destroy() {
         behaviors.forEach {
-            if(it is IDataEntity) {
-                dataAccessNode.children.removeIf { access -> access == it.dataAccessNode }
+            if(it is DataEntity) {
+                dataNode.children.removeIf { access -> access == it.dataNode }
             }
 
             it.destroy(cell.graph.subscribers)
         }
     }
 
-    override val dataAccessNode: DataAccessNode = DataAccessNode()
+    override val dataNode: DataNode = DataNode()
 }
 
-fun interface IElectricalPowerAccessor {
+fun interface ElectricalPowerAccessor {
     fun get(): Double
 }
 
 /**
  * Integrates electrical power into energy.
  * */
-class ElectricalPowerConverterBehavior(private val accessor: IElectricalPowerAccessor): ICellBehavior {
+class ElectricalPowerConverterBehavior(private val accessor: ElectricalPowerAccessor): CellBehavior {
     var energy: Double = 0.0
     var deltaEnergy: Double = 0.0
 
@@ -98,18 +96,18 @@ class ElectricalPowerConverterBehavior(private val accessor: IElectricalPowerAcc
     }
 }
 
-fun interface IThermalBodyAccessor {
+fun interface ThermalBodyAccessor {
     fun get(): ThermalBody
 }
 
 /**
  * Converts dissipated electrical energy to thermal energy.
  * */
-class ElectricalHeatTransferBehavior(private val thermalBodyAccessor: IThermalBodyAccessor) : ICellBehavior {
+class ElectricalHeatTransferBehavior(private val bodyAccessor: ThermalBodyAccessor) : CellBehavior {
     private lateinit var converterBehavior: ElectricalPowerConverterBehavior
 
     override fun onAdded(container: CellBehaviorContainer) {
-        converterBehavior = container.getBehavior()
+        converterBehavior = container.get()
     }
 
     override fun subscribe(subscribers: SubscriberCollection) {
@@ -121,28 +119,22 @@ class ElectricalHeatTransferBehavior(private val thermalBodyAccessor: IThermalBo
     }
 
     private fun simulationTick(dt: Double, p: SubscriberPhase){
-        // Add delta energy
-
-        thermalBodyAccessor.get().thermalEnergy += converterBehavior.deltaEnergy
-
-        // Drain moved energy
+        bodyAccessor.get().thermalEnergy += converterBehavior.deltaEnergy
         converterBehavior.energy -= converterBehavior.deltaEnergy
     }
 }
 
-fun CellBehaviorContainer.withElectricalPowerConverter(accessor: IElectricalPowerAccessor): CellBehaviorContainer {
-    return this.add(ElectricalPowerConverterBehavior(accessor))
-}
+fun CellBehaviorContainer.withElectricalPowerConverter(accessor: ElectricalPowerAccessor): CellBehaviorContainer =
+    this.add(ElectricalPowerConverterBehavior(accessor))
 
-fun CellBehaviorContainer.withElectricalHeatTransfer(getter: IThermalBodyAccessor): CellBehaviorContainer {
-    return this.add(ElectricalHeatTransferBehavior(getter))
-}
+fun CellBehaviorContainer.withElectricalHeatTransfer(getter: ThermalBodyAccessor): CellBehaviorContainer =
+    this.add(ElectricalHeatTransferBehavior(getter))
 
-fun interface ITemperatureAccessor {
+fun interface TemperatureAccessor {
     fun get(): Double
 }
 
-fun interface IExplosionNotifier {
+fun interface ExplosionConsumer {
     fun explode()
 }
 
@@ -173,13 +165,10 @@ data class TemperatureExplosionBehaviorOptions(
  * using the [EventScheduler]
  * */
 class TemperatureExplosionBehavior(
-    val temperatureAccessor: ITemperatureAccessor,
+    val temperatureAccessor: TemperatureAccessor,
     val options: TemperatureExplosionBehaviorOptions,
-    val notifier: IExplosionNotifier
-) :
-    ICellBehavior,
-    IWailaProvider {
-
+    val consumer: ExplosionConsumer
+) : CellBehavior, WailaEntity {
     private var score = 0.0
     private var enqueued = false
 
@@ -217,20 +206,20 @@ class TemperatureExplosionBehavior(
             enqueued = true
 
             EventScheduler.scheduleWorkPre(1) {
-                notifier.explode()
+                consumer.explode()
             }
         }
     }
 
-    override fun appendBody(builder: TooltipBuilder, config: IPluginConfig?) {
+    override fun appendBody(builder: WailaTooltipBuilder, config: IPluginConfig?) {
         builder.text("Explode", score.formattedPercentN())
     }
 }
 
 fun CellBehaviorContainer.withExplosionBehavior(
-    temperatureAccessor: ITemperatureAccessor,
+    temperatureAccessor: TemperatureAccessor,
     options: TemperatureExplosionBehaviorOptions,
-    explosionNotifier: IExplosionNotifier
+    explosionNotifier: ExplosionConsumer
 ): CellBehaviorContainer {
 
     this.add(TemperatureExplosionBehavior(temperatureAccessor, options, explosionNotifier))
@@ -238,7 +227,7 @@ fun CellBehaviorContainer.withExplosionBehavior(
     return this
 }
 
-fun CellBehaviorContainer.withStandardExplosionBehavior(cell: Cell, threshold: Double, temperatureAccessor: ITemperatureAccessor): CellBehaviorContainer {
+fun CellBehaviorContainer.withStandardExplosionBehavior(cell: Cell, threshold: Double, temperatureAccessor: TemperatureAccessor): CellBehaviorContainer {
     return withExplosionBehavior(temperatureAccessor, TemperatureExplosionBehaviorOptions(threshold, 0.1, 0.25)) {
         val container = cell.container ?: return@withExplosionBehavior
 
@@ -269,11 +258,7 @@ fun CellBehaviorContainer.withStandardExplosionBehavior(cell: Cell, threshold: D
  * - [TemperatureExplosionBehavior]
  *      - explodes part when a threshold temperature is held for a certain time period
  * */
-fun CellBehaviorContainer.withStandardBehavior(cell: Cell, power: IElectricalPowerAccessor, thermal: IThermalBodyAccessor): CellBehaviorContainer {
-    return this
-        .withElectricalPowerConverter(power)
-        .withElectricalHeatTransfer(thermal)
-        .withStandardExplosionBehavior(cell, 600.0) {
-            thermal.get().temperatureK
-        }
-}
+fun CellBehaviorContainer.withStandardBehavior(cell: Cell, power: ElectricalPowerAccessor, thermal: ThermalBodyAccessor): CellBehaviorContainer = this
+    .withElectricalPowerConverter(power)
+    .withElectricalHeatTransfer(thermal)
+    .withStandardExplosionBehavior(cell, 600.0) { thermal.get().temperatureK }

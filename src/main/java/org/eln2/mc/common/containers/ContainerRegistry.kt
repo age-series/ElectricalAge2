@@ -10,8 +10,6 @@ import net.minecraftforge.registries.RegistryObject
 import org.eln2.mc.Eln2
 
 object ContainerRegistry {
-    private val setups = ArrayList<Runnable>()
-
     @JvmStatic
     val CONTAINER_REGISTRY: DeferredRegister<MenuType<*>> = DeferredRegister.create(
         ForgeRegistries.CONTAINERS,
@@ -24,13 +22,9 @@ object ContainerRegistry {
      * This really only exists so that I don't have to specify the type on every GUI to
      * avoid unchecked nullability issues
      */
-    fun <T : AbstractContainerMenu> registerMenuType(
-        name: String,
-        supplier: () -> MenuType<T>
-    ): RegistryObject<MenuType<T>> = CONTAINER_REGISTRY.register(name) { supplier() }
+    fun <T : AbstractContainerMenu> registerMenuType(name: String, supplier: () -> MenuType<T>): RegistryObject<MenuType<T>> =
+        CONTAINER_REGISTRY.register(name) { supplier() }
 
-    fun <T : AbstractContainerMenu> registerMenu(
-        name: String,
-        supplier: (Int, Inventory) -> T
-    ): RegistryObject<MenuType<T>> = registerMenuType(name) {  MenuType(supplier) }
+    fun <T : AbstractContainerMenu> registerMenu(name: String, supplier: (Int, Inventory) -> T): RegistryObject<MenuType<T>> =
+        registerMenuType(name) {  MenuType(supplier) }
 }

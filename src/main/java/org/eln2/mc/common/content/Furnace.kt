@@ -58,7 +58,7 @@ import org.eln2.mc.extensions.*
 import org.eln2.mc.extensions.subStep
 import org.eln2.mc.extensions.plus
 import org.eln2.mc.extensions.toVec3
-import org.eln2.mc.integration.waila.TooltipBuilder
+import org.eln2.mc.integration.WailaTooltipBuilder
 import org.eln2.mc.mathematics.*
 import org.eln2.mc.mathematics.map
 import org.eln2.mc.mathematics.mapNormalizedDoubleShort
@@ -331,7 +331,7 @@ class FurnaceCell(pos: CellPos, id: ResourceLocation, val dir1: RelativeDirectio
         applyControlSignal()
     }
 
-    override fun appendBody(builder: TooltipBuilder, config: IPluginConfig?) {
+    override fun appendBody(builder: WailaTooltipBuilder, config: IPluginConfig?) {
         resistorHeatBody.appendBody(builder, config)
         knownSmeltingBody?.appendBody(builder, config)
 

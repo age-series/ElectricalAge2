@@ -12,7 +12,7 @@ import com.mojang.math.Vector3f
 import org.ageseries.libage.sim.thermal.STANDARD_TEMPERATURE
 import org.ageseries.libage.sim.thermal.Temperature
 import org.ageseries.libage.sim.thermal.ThermalUnits
-import org.eln2.mc.annotations.ClientOnly
+import org.eln2.mc.ClientOnly
 import org.eln2.mc.common.blocks.foundation.MultipartBlockEntity
 import org.eln2.mc.common.parts.foundation.PartRenderer
 import org.eln2.mc.common.parts.foundation.Part

@@ -22,7 +22,7 @@ import net.minecraft.world.level.block.state.StateDefinition
 import net.minecraft.world.level.material.FluidState
 import net.minecraft.world.level.material.Material
 import org.eln2.mc.Eln2
-import org.eln2.mc.annotations.ServerOnly
+import org.eln2.mc.ServerOnly
 import org.eln2.mc.common.blocks.BlockRegistry
 import org.eln2.mc.common.cells.CellRegistry
 import org.eln2.mc.common.cells.foundation.*
@@ -30,11 +30,11 @@ import org.eln2.mc.common.space.BlockFaceLocator
 import org.eln2.mc.common.space.BlockPosLocator
 import org.eln2.mc.common.space.IdentityDirectionLocator
 import org.eln2.mc.common.space.LocationDescriptor
-import org.eln2.mc.data.DataAccessNode
-import org.eln2.mc.data.IDataEntity
+import org.eln2.mc.data.DataNode
+import org.eln2.mc.data.DataEntity
 import org.eln2.mc.extensions.isHorizontal
-import org.eln2.mc.integration.waila.IWailaProvider
-import org.eln2.mc.integration.waila.TooltipBuilder
+import org.eln2.mc.integration.WailaEntity
+import org.eln2.mc.integration.WailaTooltipBuilder
 import java.util.*
 
 abstract class CellBlock : HorizontalDirectionalBlock(Properties.of(Material.STONE).noOcclusion()), EntityBlock {
@@ -106,8 +106,8 @@ abstract class CellBlock : HorizontalDirectionalBlock(Properties.of(Material.STO
 open class CellBlockEntity(pos: BlockPos, state: BlockState, targetType: BlockEntityType<*>) :
     BlockEntity(targetType, pos, state),
     CellContainer,
-    IWailaProvider,
-    IDataEntity
+    WailaEntity,
+    DataEntity
 {
     constructor(pos: BlockPos, state: BlockState): this(pos, state, BlockRegistry.CELL_BLOCK_ENTITY.get())
 
@@ -124,7 +124,7 @@ open class CellBlockEntity(pos: BlockPos, state: BlockState, targetType: BlockEn
         private set(value) {
             fun removeOld() {
                 if(field != null) {
-                    dataAccessNode.children.removeIf { it == field!!.dataAccessNode }
+                    dataNode.children.removeIf { it == field!!.dataNode }
                 }
             }
 
@@ -134,8 +134,8 @@ open class CellBlockEntity(pos: BlockPos, state: BlockState, targetType: BlockEn
             else {
                 removeOld()
 
-                if(!dataAccessNode.children.any { it == value.dataAccessNode }) {
-                    dataAccessNode.withChild(value.dataAccessNode)
+                if(!dataNode.children.any { it == value.dataNode }) {
+                    dataNode.withChild(value.dataNode)
                 }
             }
 
@@ -296,13 +296,13 @@ open class CellBlockEntity(pos: BlockPos, state: BlockState, targetType: BlockEn
     override val manager: CellGraphManager
         get() = CellGraphManager.getFor(serverLevel)
 
-    override fun appendBody(builder: TooltipBuilder, config: IPluginConfig?) {
+    override fun appendBody(builder: WailaTooltipBuilder, config: IPluginConfig?) {
         val cell = this.cell
 
-        if (cell is IWailaProvider) {
+        if (cell is WailaEntity) {
             cell.appendBody(builder, config)
         }
     }
 
-    override val dataAccessNode: DataAccessNode = DataAccessNode()
+    override val dataNode: DataNode = DataNode()
 }

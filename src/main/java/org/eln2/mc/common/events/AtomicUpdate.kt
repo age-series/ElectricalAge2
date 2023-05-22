@@ -5,7 +5,7 @@ import java.util.concurrent.atomic.AtomicReference
 class AtomicUpdate<T> {
     private val reference = AtomicReference<T>(null)
 
-    val pending get() = reference.get() != null
+    val isPending get() = reference.get() != null
 
     fun setLatest(value: T?): T? {
         return reference.getAndSet(value)

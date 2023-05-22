@@ -20,11 +20,11 @@ import net.minecraft.world.inventory.AbstractContainerMenu
 import net.minecraftforge.items.ItemStackHandler
 import net.minecraftforge.network.NetworkHooks
 import org.eln2.mc.Eln2
-import org.eln2.mc.annotations.ServerOnly
+import org.eln2.mc.ServerOnly
 import org.eln2.mc.common.blocks.foundation.MultipartBlockEntity
 import org.eln2.mc.common.parts.foundation.Part
-import org.eln2.mc.data.DataAccessNode
-import org.eln2.mc.data.IDataEntity
+import org.eln2.mc.data.DataNode
+import org.eln2.mc.data.DataEntity
 
 fun interface IContainerFactory<T: BlockEntity> {
     fun create(id: Int, inventory: Inventory, player: Player, entity: T): AbstractContainerMenu
@@ -140,8 +140,8 @@ inline fun<reified TEntity: BlockEntity> Level.constructMenu(
     }
 }
 
-fun Level.getDataAccess(pos: BlockPos): DataAccessNode? {
+fun Level.getDataAccess(pos: BlockPos): DataNode? {
     return ((this.getBlockEntity(pos) ?: return null)
-            as? IDataEntity ?: return null)
-        .dataAccessNode
+            as? DataEntity ?: return null)
+        .dataNode
 }

@@ -21,13 +21,14 @@ import org.eln2.mc.common.space.DirectionMask
 import org.eln2.mc.common.space.RelativeDirection
 import org.eln2.mc.common.space.withDirectionActualRule
 import org.eln2.mc.extensions.resistor
-import org.eln2.mc.integration.waila.IWailaProvider
-import org.eln2.mc.integration.waila.TooltipBuilder
+import org.eln2.mc.integration.WailaEntity
+import org.eln2.mc.integration.WailaTooltipBuilder
 
 /**
  * The resistor object has a single resistor. At most, two connections can be made by this object.
  * */
-class ResistorObject(cell: Cell, val dir1: RelativeDirection = RelativeDirection.Front, val dir2: RelativeDirection = RelativeDirection.Back) : ElectricalObject(cell), IWailaProvider {
+class ResistorObject(cell: Cell, val dir1: RelativeDirection = RelativeDirection.Front, val dir2: RelativeDirection = RelativeDirection.Back) : ElectricalObject(cell),
+    WailaEntity {
     private lateinit var resistor: Resistor
 
     init {
@@ -76,7 +77,7 @@ class ResistorObject(cell: Cell, val dir1: RelativeDirection = RelativeDirection
         }
     }
 
-    override fun appendBody(builder: TooltipBuilder, config: IPluginConfig?) {
+    override fun appendBody(builder: WailaTooltipBuilder, config: IPluginConfig?) {
         builder.resistor(resistor)
     }
 }
