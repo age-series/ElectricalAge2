@@ -56,9 +56,14 @@ object Content {
         WirePart(a, b, THERMAL_WIRE_CELL_COPPER.get(), WireType.Thermal)
     }, Vec3(0.1, 0.1, 0.1)))
 
-    //#endregion
 
-   /* val THERMAL_RADIATOR_CELL = CellRegistry.register("thermal_radiator_cell", BasicCellProvider.fourPin { a, b ->
+    val VOLTAGE_SOURCE_CELL = CellRegistry.register("voltage_source_cell", BasicCellProvider(::VoltageSourceCell))
+    val VOLTAGE_SOURCE_PART = PartRegistry.part("voltage_source_part", BasicPartProvider(::VoltageSourcePart, Vec3(0.3, 0.3, 0.3)))
+
+    val GROUND_CELL = CellRegistry.register("ground_cell", BasicCellProvider(::GroundCell))
+    val GROUND_PART = PartRegistry.part("ground_part", BasicPartProvider(::GroundPart, Vec3(0.3, 0.3, 0.3)))
+
+    val THERMAL_RADIATOR_CELL = CellRegistry.register("thermal_radiator_cell", BasicCellProvider { a, b ->
         ThermalRadiatorCell(a, b, RadiatorModel(
             2000.0,
             100.0,
@@ -68,21 +73,15 @@ object Content {
     })
     val THERMAL_RADIATOR = PartRegistry.part("thermal_radiator_part", BasicPartProvider(::RadiatorPart, Vec3(1.0, 3.0 / 16.0, 1.0)))
 
-    val RESISTOR_CELL = CellRegistry.register("resistor_cell", BasicCellProvider.polarFB(::ResistorCell))
+    val RESISTOR_CELL = CellRegistry.register("resistor_cell", BasicCellProvider(::ResistorCell))
     val RESISTOR_PART = PartRegistry.part("resistor_part", BasicPartProvider(::ResistorPart, Vec3(1.0, 0.4, 0.4)))
 
-    val VOLTAGE_SOURCE_CELL = CellRegistry.register("voltage_source_cell", BasicCellProvider.monoF(::VoltageSourceCell))
-    val VOLTAGE_SOURCE_PART = PartRegistry.part("voltage_source_part", BasicPartProvider(::VoltageSourcePart, Vec3(0.3, 0.3, 0.3)))
-
-    val GROUND_CELL = CellRegistry.register("ground_cell", BasicCellProvider.monoF(::GroundCell))
-    val GROUND_PART = PartRegistry.part("ground_part", BasicPartProvider(::GroundPart, Vec3(0.3, 0.3, 0.3)))
-
     val FURNACE_BLOCK_ENTITY = BlockRegistry.blockEntity("furnace", ::FurnaceBlockEntity) { FURNACE_BLOCK.block.get() }
-    val FURNACE_CELL = CellRegistry.register("furnace_cell", BasicCellProvider.polarLR(::FurnaceCell))
+    val FURNACE_CELL = CellRegistry.register("furnace_cell", BasicCellProvider(::FurnaceCell))
     val FURNACE_BLOCK = BlockRegistry.registerBasicBlock("furnace", tab = null) { FurnaceBlock() }
     val FURNACE_MENU = ContainerRegistry.registerMenu("furnace_menu", ::FurnaceMenu)
 
-    val BATTERY_CELL_100V = CellRegistry.register("battery_cell_t", BasicCellProvider.polarFB{ pos, id ->
+    val BATTERY_CELL_100V = CellRegistry.register("battery_cell_t", BasicCellProvider{ pos, id ->
         BatteryCell(pos, id, BatteryModel(
             voltageFunction = VoltageModels.WET_CELL_12V,
             resistanceFunction = { _, _ -> milliOhms(100.0) },
@@ -118,25 +117,19 @@ object Content {
             BatteryMaterials.PB_ACID_TEST,
             20.0,
             0.3))
-        .also { it.energy = it.model.energyCapacity * 0.9 }
+            .also { it.energy = it.model.energyCapacity * 0.9 }
     })
 
     val BATTERY_PART_100V = PartRegistry.part("battery_part_100v", BasicPartProvider({a, b -> BatteryPart(a, b, BATTERY_CELL_100V.get())}, vec3(1.0)))
 
-    val LIGHT_CELL = CellRegistry.register("light_cell", BasicCellProvider.polarLR { pos, id ->
-        LightCell(pos, id, LightModels.test())
-    })
-    val LIGHT_PART = PartRegistry.part("light_part", BasicPartProvider({a, b -> LightPart(a, b, LIGHT_CELL.get())}, bbVec(8.0, 4.0, 5.0)))
-
-    val THERMOCOUPLE_CELL = CellRegistry.register("thermocouple_cell", BasicCellProvider.fourPin { pos, id ->
+    val THERMOCOUPLE_CELL = CellRegistry.register("thermocouple_cell", BasicCellProvider{ pos, id ->
         ThermocoupleCell(pos, id)
     })
-
     val THERMOCOUPLE_PART = PartRegistry.part("thermocouple_part", BasicPartProvider({id, context ->
         ThermocouplePart(id, context)
     }, Vec3(0.5, 15.0 / 16.0, 0.5)))
 
-    val HEAT_GENERATOR_CELL = CellRegistry.register("heat_generator_cell", BasicCellProvider.fourPin(::HeatGeneratorCell))
+    val HEAT_GENERATOR_CELL = CellRegistry.register("heat_generator_cell", BasicCellProvider(::HeatGeneratorCell))
     val HEAT_GENERATOR_PART = PartRegistry.part("heat_generator_part", BasicPartProvider( { id, context ->
         BasicCellPart(id, context, vec3(1.0), HEAT_GENERATOR_CELL.get(), basicRenderer(PartialModels.THERMAL_WIRE_CROSSING_FULL, 0.0))
     }, vec3(1.0)))
@@ -144,7 +137,7 @@ object Content {
     val HEAT_GENERATOR_BLOCK_ENTITY = BlockRegistry.blockEntity("heat_generator", ::HeatGeneratorBlockEntity) { HEAT_GENERATOR_BLOCK.block.get() }
     val HEAT_GENERATOR_MENU = ContainerRegistry.registerMenu("heat_generator_menu", ::HeatGeneratorMenu)
 
-    val PHOTOVOLTAIC_GENERATOR_CELL = CellRegistry.register("photovoltaic_cell", BasicCellProvider.polarFB { pos, id ->
+    val PHOTOVOLTAIC_GENERATOR_CELL = CellRegistry.register("photovoltaic_cell", BasicCellProvider { pos, id ->
         PhotovoltaicGeneratorCell(pos, id, PhotovoltaicModels.test24Volts())
     })
 
@@ -161,23 +154,22 @@ object Content {
         )
     }, Vec3(1.0, bbSize(2.0), 1.0)))
 
-    val VOLTAGE_METER_ITEM = ItemRegistry.registerBasicItem("voltage_meter") {
-        UniversalMeter(readVoltage = true)
-    }
-    val CURRENT_METER_ITEM = ItemRegistry.registerBasicItem("current_meter") {
-        UniversalMeter(readCurrent = true)
-    }
-    val TEMPERATURE_METER_ITEM = ItemRegistry.registerBasicItem("temperature_meter") {
-        UniversalMeter(readTemperature = true)
-    }
+    val LIGHT_CELL = CellRegistry.register("light_cell", BasicCellProvider { pos, id ->
+        LightCell(pos, id, LightModels.test())
+    })
+    val LIGHT_PART = PartRegistry.part("light_part", BasicPartProvider({a, b -> LightPart(a, b, LIGHT_CELL.get())}, bbVec(8.0, 4.0, 5.0)))
 
+
+    val VOLTAGE_METER_ITEM = ItemRegistry.registerBasicItem("voltage_meter") { UniversalMeter(readVoltage = true) }
+    val CURRENT_METER_ITEM = ItemRegistry.registerBasicItem("current_meter") { UniversalMeter(readCurrent = true) }
+    val TEMPERATURE_METER_ITEM = ItemRegistry.registerBasicItem("temperature_meter") { UniversalMeter(readTemperature = true) }
     val UNIVERSAL_METER_ITEM = ItemRegistry.registerBasicItem("universal_meter") {
         UniversalMeter(
             readVoltage = true,
             readCurrent = true,
             readTemperature = true
         )
-    }*/
+    }
 
     @Mod.EventBusSubscriber
     object ClientSetup {
@@ -191,8 +183,8 @@ object Content {
         }
 
         private fun clientWork() {
-            //MenuScreens.register(FURNACE_MENU.get(), ::FurnaceScreen)
-            //MenuScreens.register(HEAT_GENERATOR_MENU.get(), ::HeatGeneratorScreen)
+            MenuScreens.register(FURNACE_MENU.get(), ::FurnaceScreen)
+            MenuScreens.register(HEAT_GENERATOR_MENU.get(), ::HeatGeneratorScreen)
         }
     }
 }

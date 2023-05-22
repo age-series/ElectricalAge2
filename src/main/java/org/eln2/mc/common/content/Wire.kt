@@ -152,9 +152,9 @@ class ThermalWireObject(cell: CellBase) : ThermalObject(cell), IWailaProvider, I
     }
 
     override val dataAccessNode = DataAccessNode().also {
-        //it.data.withField {
-        //    TemperatureField { body.temperature }
-        //}
+        it.data.withField {
+            TemperatureField { body.temperature }
+        }
     }
 }
 
