@@ -24,6 +24,7 @@ import net.minecraft.world.entity.player.Player
 import net.minecraft.world.inventory.*
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.crafting.RecipeType
+import net.minecraft.world.item.crafting.SmeltingRecipe
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.entity.BlockEntity
@@ -489,6 +490,11 @@ class FurnaceBlockEntity(pos: BlockPos, state: BlockState) :
         isBurning = if(!inputStack.isEmpty){
             furnaceCell.loadSmeltingBody(ThermalBody(ThermalMass(Material.IRON, mass = 0.1), 1.0))
 
+            recipe = level!!
+                .recipeManager
+                .getRecipeFor(RecipeType.SMELTING, SimpleContainer(inputStack), level!!)
+                .get()
+
             true
         } else{
             furnaceCell.unloadSmeltingBody()
@@ -496,6 +502,8 @@ class FurnaceBlockEntity(pos: BlockPos, state: BlockState) :
             false
         }
     }
+
+    private var recipe: SmeltingRecipe? = null
 
     fun inputChanged() {
         if(!isBurning){
@@ -506,8 +514,6 @@ class FurnaceBlockEntity(pos: BlockPos, state: BlockState) :
             }
         }
     }
-
-    // TODO: cache recipe
 
     fun serverTick() {
         if(furnaceCell.isHot != clientBurning) {
@@ -542,22 +548,16 @@ class FurnaceBlockEntity(pos: BlockPos, state: BlockState) :
             }
 
             if (burnTime >= BURN_TIME_TARGET) {
-                val recipeLazy = level!!
-                    .recipeManager
-                    .getRecipeFor(RecipeType.SMELTING, SimpleContainer(inputStack), level!!)
+                val recipe = this.recipe ?: error("Burning without recipe available")
 
-                recipeLazy.ifPresentOrElse({ recipe ->
-                    if(!inventory.insertOutput(ItemStack(recipe.resultItem.item, 1))){
-                        LOGGER.error("Failed to export item")
-                    } else {
-                        // Done, load next (also remove input item)
-                        inventory.setStackInSlot(INPUT_SLOT, ItemStack(inputStack.item, inputStack.count - 1))
+                if(!inventory.insertOutput(ItemStack(recipe.resultItem.item, 1))){
+                    LOGGER.error("Failed to export item")
+                } else {
+                    // Done, load next (also remove input item)
+                    inventory.setStackInSlot(INPUT_SLOT, ItemStack(inputStack.item, inputStack.count - 1))
 
-                        loadBurningItem()
-                    }
-                }, {
-                    error("Could not smelt")
-                })
+                    loadBurningItem()
+                }
             } else {
                 if(furnaceCell.isHot) {
                     burnTime++
