@@ -8,24 +8,32 @@ import org.eln2.mc.mathematics.bbVec
 import org.eln2.mc.client.render.PartialModels
 import org.eln2.mc.client.render.PartialModels.bbOffset
 import org.eln2.mc.client.render.foundation.BasicPartRenderer
-import org.eln2.mc.common.cells.foundation.CellBase
+import org.eln2.mc.common.cells.foundation.Cell
 import org.eln2.mc.common.cells.foundation.CellPos
-import org.eln2.mc.common.cells.foundation.behaviors.withStandardBehavior
-import org.eln2.mc.common.cells.foundation.objects.ElectricalComponentInfo
-import org.eln2.mc.common.cells.foundation.objects.ElectricalObject
-import org.eln2.mc.common.cells.foundation.objects.SimulationObjectSet
+import org.eln2.mc.common.cells.foundation.withStandardBehavior
+import org.eln2.mc.common.cells.foundation.ElectricalComponentInfo
+import org.eln2.mc.common.cells.foundation.ElectricalObject
+import org.eln2.mc.common.cells.foundation.SimulationObjectSet
 import org.eln2.mc.common.parts.foundation.CellPart
-import org.eln2.mc.common.parts.foundation.IPartRenderer
-import org.eln2.mc.common.parts.foundation.PartPlacementContext
+import org.eln2.mc.common.parts.foundation.PartRenderer
+import org.eln2.mc.common.parts.foundation.PartPlacementInfo
+import org.eln2.mc.common.space.DirectionMask
+import org.eln2.mc.common.space.RelativeDirection
+import org.eln2.mc.common.space.withDirectionActualRule
 import org.eln2.mc.extensions.resistor
-import org.eln2.mc.integration.waila.IWailaProvider
-import org.eln2.mc.integration.waila.TooltipBuilder
+import org.eln2.mc.integration.WailaEntity
+import org.eln2.mc.integration.WailaTooltipBuilder
 
 /**
  * The resistor object has a single resistor. At most, two connections can be made by this object.
  * */
-class ResistorObject : ElectricalObject(), IWailaProvider {
+class ResistorObject(cell: Cell, val dir1: RelativeDirection = RelativeDirection.Front, val dir2: RelativeDirection = RelativeDirection.Back) : ElectricalObject(cell),
+    WailaEntity {
     private lateinit var resistor: Resistor
+
+    init {
+        ruleSet.withDirectionActualRule(DirectionMask.ofRelatives(dir1, dir2))
+    }
 
     val hasResistor get() = this::resistor.isInitialized
 
@@ -62,39 +70,38 @@ class ResistorObject : ElectricalObject(), IWailaProvider {
     }
 
     override fun build() {
-        connections.forEach { connectionInfo ->
-            val remote = connectionInfo.obj
+        connections.forEach { remote ->
             val localInfo = offerComponent(remote)
             val remoteInfo = remote.offerComponent(this)
-
             localInfo.component.connect(localInfo.index, remoteInfo.component, remoteInfo.index)
         }
     }
 
-    override fun appendBody(builder: TooltipBuilder, config: IPluginConfig?) {
+    override fun appendBody(builder: WailaTooltipBuilder, config: IPluginConfig?) {
         builder.resistor(resistor)
     }
 }
 
-class ResistorCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) {
+class ResistorCell(pos: CellPos, id: ResourceLocation) : Cell(pos, id) {
     init {
         behaviors.withStandardBehavior(this, { resistor.power }, { thermal.body })
+        ruleSet.withDirectionActualRule(DirectionMask.FRONT + DirectionMask.BACK)
     }
 
-    override fun createObjectSet(): SimulationObjectSet {
-        return SimulationObjectSet(ResistorObject(), ThermalWireObject(this))
+    override fun createObjSet(): SimulationObjectSet {
+        return SimulationObjectSet(ResistorObject(this), ThermalWireObject(this))
     }
 
     private val resistor get() = electricalObject as ResistorObject
     private val thermal get() = thermalObject as ThermalWireObject
 }
 
-class ResistorPart(id: ResourceLocation, placementContext: PartPlacementContext) :
+class ResistorPart(id: ResourceLocation, placementContext: PartPlacementInfo) :
     CellPart(id, placementContext, Content.RESISTOR_CELL.get()) {
 
-    override val baseSize = bbVec(3.5, 2.25, 5.0)
+    override val sizeActual = bbVec(3.5, 2.25, 5.0)
 
-    override fun createRenderer(): IPartRenderer {
+    override fun createRenderer(): PartRenderer {
         return BasicPartRenderer(this, PartialModels.RESISTOR).also {
             it.downOffset = bbOffset(2.5)
         }

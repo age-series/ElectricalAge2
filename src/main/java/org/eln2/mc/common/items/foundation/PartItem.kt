@@ -65,11 +65,8 @@ class PartItem(private val provider: PartProvider, tab: CreativeModeTab) : Block
 
         // If the part was placed successfully, let us consume this item.
 
-        return if (placed) {
-            InteractionResult.SUCCESS
-        } else {
-            InteractionResult.FAIL
-        }
+        return if (placed) InteractionResult.SUCCESS
+        else InteractionResult.FAIL
     }
 
     override fun getDescriptionId(): String {

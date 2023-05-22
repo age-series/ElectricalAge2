@@ -39,42 +39,29 @@ import org.ageseries.libage.sim.thermal.ThermalMass
 import org.apache.commons.math3.geometry.euclidean.threed.Vector3D
 import org.eln2.mc.Eln2
 import org.eln2.mc.Eln2.LOGGER
-import org.eln2.mc.annotations.CrossThreadAccess
-import org.eln2.mc.annotations.RaceCondition
+import org.eln2.mc.CrossThreadAccess
+import org.eln2.mc.RaceCondition
 import org.eln2.mc.client.render.PartialModels
 import org.eln2.mc.client.render.PartialModels.bbOffset
 import org.eln2.mc.client.render.foundation.BasicPartRenderer
-import org.eln2.mc.client.render.renderTextured
+import org.eln2.mc.client.render.foundation.renderTextured
 import org.eln2.mc.common.blocks.foundation.CellBlock
 import org.eln2.mc.common.blocks.foundation.CellBlockEntity
 import org.eln2.mc.common.cells.foundation.*
-import org.eln2.mc.common.cells.foundation.behaviors.IThermalBodyAccessor
-import org.eln2.mc.common.cells.foundation.behaviors.withElectricalHeatTransfer
-import org.eln2.mc.common.cells.foundation.behaviors.withElectricalPowerConverter
-import org.eln2.mc.common.cells.foundation.objects.*
+import org.eln2.mc.common.cells.foundation.ThermalBodyAccessor
+import org.eln2.mc.common.cells.foundation.withElectricalHeatTransfer
+import org.eln2.mc.common.cells.foundation.withElectricalPowerConverter
+import org.eln2.mc.common.cells.foundation.CellProvider
 import org.eln2.mc.common.events.AtomicUpdate
 import org.eln2.mc.common.events.EventScheduler
 import org.eln2.mc.common.parts.foundation.*
-import org.eln2.mc.common.space.DirectionMask
-import org.eln2.mc.common.space.RelativeRotationDirection
+import org.eln2.mc.common.space.*
 import org.eln2.mc.control.pid
-import org.eln2.mc.data.DataAccessNode
-import org.eln2.mc.data.IDataEntity
-import org.eln2.mc.extensions.toVector3D
-import org.eln2.mc.extensions.addPlayerGrid
-import org.eln2.mc.extensions.constructMenu
-import org.eln2.mc.extensions.add
-import org.eln2.mc.extensions.setPotentialEpsilon
-import org.eln2.mc.extensions.setResistanceEpsilon
-import org.eln2.mc.extensions.getTemperature
-import org.eln2.mc.extensions.putTemperature
-import org.eln2.mc.extensions.useSubTagIfPreset
-import org.eln2.mc.extensions.withSubTag
-import org.eln2.mc.extensions.withSubTagOptional
-import org.eln2.mc.extensions.formatted
-import org.eln2.mc.extensions.formattedPercentN
-import org.eln2.mc.integration.waila.IWailaProvider
-import org.eln2.mc.integration.waila.TooltipBuilder
+import org.eln2.mc.data.DataNode
+import org.eln2.mc.data.DataEntity
+import org.eln2.mc.extensions.*
+import org.eln2.mc.integration.WailaEntity
+import org.eln2.mc.integration.WailaTooltipBuilder
 import org.eln2.mc.mathematics.*
 import org.eln2.mc.mathematics.avg
 import org.eln2.mc.mathematics.bbVec
@@ -94,12 +81,11 @@ enum class GeneratorPowerDirection {
 /**
  * Represents an Electrical Generator. It is characterised by a voltage and internal resistance.
  * */
-class GeneratorObject : ElectricalObject(), IWailaProvider, IDataEntity {
-    var plusDirection = RelativeRotationDirection.Front
-    var minusDirection = RelativeRotationDirection.Back
-
-    override val connectionMask: DirectionMask
-        get() = DirectionMask.ofRelatives(plusDirection, minusDirection)
+class GeneratorObject(cell: Cell, val plusDir: RelativeDirection = RelativeDirection.Front, val minusDir: RelativeDirection = RelativeDirection.Back) : ElectricalObject(cell),
+    WailaEntity, DataEntity {
+    init {
+        ruleSet.withDirectionActualRule(DirectionMask.ofRelatives(plusDir, minusDir))
+    }
 
     var internalResistance: Double = 1.0
         set(value){
@@ -134,10 +120,13 @@ class GeneratorObject : ElectricalObject(), IWailaProvider, IDataEntity {
     override val maxConnections = 2
 
     override fun offerComponent(neighbour: ElectricalObject): ElectricalComponentInfo {
-        return when(val dir = directionOf(neighbour)){
-            plusDirection -> resistor.offerExternal()
-            minusDirection -> source.offerNegative()
-            else -> error("Unhandled neighbor direction $dir")
+        val dirActual = cell.posDescr.findDirActualOrNull(neighbour.cell.posDescr)
+            ?: error("Furnace Cell requires a relative direction")
+
+        return when(dirActual){
+            plusDir -> resistor.offerExternal()
+            minusDir -> source.offerNegative()
+            else -> error("Unhandled neighbor direction $dirActual")
         }
     }
 
@@ -154,22 +143,22 @@ class GeneratorObject : ElectricalObject(), IWailaProvider, IDataEntity {
     override fun build() {
         resistor.connectInternal(source.offerPositive())
 
-        connections.forEach { connectionInfo ->
-            when(val direction = connectionInfo.direction){
-                plusDirection -> resistor.connectExternal(this, connectionInfo)
-                minusDirection -> source.connectNegative(this, connectionInfo)
+        connections.forEach { conn ->
+            when(val direction = cell.posDescr.findDirActual(conn.cell.posDescr)){
+                plusDir -> resistor.connectExternal(this, conn)
+                minusDir -> source.connectNegative(this, conn)
                 else -> error("Unhandled direction $direction")
             }
         }
     }
 
-    override fun appendBody(builder: TooltipBuilder, config: IPluginConfig?) {
+    override fun appendBody(builder: WailaTooltipBuilder, config: IPluginConfig?) {
         builder.voltage(source.instance.potential)
         builder.text("Flow", powerFlowDirection)
         builder.power(abs(resistorPower))
     }
 
-    override val dataAccessNode = DataAccessNode().also {
+    override val dataNode = DataNode().also {
         it.data.withField {
             VoltageField { potential }
         }
@@ -180,9 +169,9 @@ class GeneratorObject : ElectricalObject(), IWailaProvider, IDataEntity {
     }
 }
 
-abstract class GeneratorCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) {
-    override fun createObjectSet(): SimulationObjectSet {
-        return SimulationObjectSet(GeneratorObject())
+abstract class GeneratorCell(pos: CellPos, id: ResourceLocation) : Cell(pos, id) {
+    override fun createObjSet(): SimulationObjectSet {
+        return SimulationObjectSet(GeneratorObject(this))
     }
 
     val generatorObject get() = electricalObject as GeneratorObject
@@ -337,8 +326,12 @@ class BatteryCell(pos: CellPos, id: ResourceLocation, override val model: Batter
         private const val ENERGY_IO = "energyIo"
     }
 
-    override fun createObjectSet(): SimulationObjectSet {
-        return SimulationObjectSet(GeneratorObject(), ThermalWireObject(this).also {
+    init {
+        ruleSet.withDirectionActualRule(DirectionMask.FRONT + DirectionMask.BACK)
+    }
+
+    override fun createObjSet(): SimulationObjectSet {
+        return SimulationObjectSet(GeneratorObject(this), ThermalWireObject(this).also {
             it.body = ThermalBody(
                 ThermalMass(model.material, null, model.mass),
                 model.surfaceArea)
@@ -421,11 +414,11 @@ class BatteryCell(pos: CellPos, id: ResourceLocation, override val model: Batter
     }
 
     override fun onGraphChanged() {
-        graph.subscribers.addPreInstantaneous(this::simulationTick)
+        graph.subscribers.addPre(this::simulationTick)
     }
 
     override fun onRemoving() {
-        graph.subscribers.removeSubscriber(this::simulationTick)
+        graph.subscribers.remove(this::simulationTick)
     }
 
     private fun applyExternalUpdates(){
@@ -486,7 +479,7 @@ class BatteryCell(pos: CellPos, id: ResourceLocation, override val model: Batter
         graph.setChanged()
     }
 
-    override fun appendBody(builder: TooltipBuilder, config: IPluginConfig?) {
+    override fun appendBody(builder: WailaTooltipBuilder, config: IPluginConfig?) {
         super.appendBody(builder, config)
 
         builder.text("Charge", thresholdCharge.formattedPercentN())
@@ -500,14 +493,14 @@ class BatteryCell(pos: CellPos, id: ResourceLocation, override val model: Batter
     private val thermalWireObject get() = thermalObject as ThermalWireObject
 }
 
-class BatteryPart(id: ResourceLocation, placementContext: PartPlacementContext, provider: CellProvider): CellPart(id, placementContext, provider), IItemPersistentPart {
+class BatteryPart(id: ResourceLocation, placementContext: PartPlacementInfo, provider: CellProvider): CellPart(id, placementContext, provider), ItemPersistentPart {
     companion object {
         private const val BATTERY = "battery"
     }
 
-    override val baseSize = bbVec(6.0, 8.0, 12.0)
+    override val sizeActual = bbVec(6.0, 8.0, 12.0)
 
-    override fun createRenderer(): IPartRenderer {
+    override fun createRenderer(): PartRenderer {
         return BasicPartRenderer(this, PartialModels.BATTERY).also {
             it.downOffset = bbOffset(8.0)
         }
@@ -523,34 +516,29 @@ class BatteryPart(id: ResourceLocation, placementContext: PartPlacementContext, 
         tag?.useSubTagIfPreset(BATTERY, batteryCell::deserializeNbt)
     }
 
-    override val order: ItemPersistentPartLoadOrder = ItemPersistentPartLoadOrder.AfterSim
+    override val order: PersistentPartLoadOrder = PersistentPartLoadOrder.AfterSim
 }
 
 /**
  * Thermal body with two connection sides.
  * */
-class ThermalBipoleObject: ThermalObject(), IWailaProvider {
-    var b1 = ThermalBody.createDefault()
-    var b2 = ThermalBody.createDefault()
+class ThermalBipoleObject(cell: Cell, val b1Dir: RelativeDirection = RelativeDirection.Front, val b2Dir: RelativeDirection = RelativeDirection.Back) : ThermalObject(cell),
+    WailaEntity {
+    var b1 = ThermalBody.createDefault().also { it.temperature = cell.getEnvironmentTemp() }
+    var b2 = ThermalBody.createDefault().also { it.temperature = cell.getEnvironmentTemp() }
 
-    /**
-     * The connection side of the first body.
-     * */
-    var b1Dir = RelativeRotationDirection.Front
-
-    /**
-     * The connection side of the second body.
-     * */
-    var b2Dir = RelativeRotationDirection.Back
-
-    override val connectionMask: DirectionMask
-        get() = DirectionMask.ofRelatives(b1Dir, b2Dir)
+    init {
+        ruleSet.withDirectionActualRule(DirectionMask.ofRelatives(b1Dir, b2Dir))
+    }
 
     override fun offerComponent(neighbour: ThermalObject): ThermalComponentInfo {
-        return ThermalComponentInfo(when(val dir = directionOf(neighbour)){
+        val dirActual = cell.posDescr.findDirActualOrNull(neighbour.cell.posDescr)
+            ?: error("Thermal Bipole requires a direction")
+
+        return ThermalComponentInfo(when(dirActual){
             b1Dir -> b1
             b2Dir -> b2
-            else -> error("Unhandled bi-pole direction $dir")
+            else -> error("Unhandled bipole direction $dirActual")
         })
     }
 
@@ -559,7 +547,7 @@ class ThermalBipoleObject: ThermalObject(), IWailaProvider {
         simulator.add(b2)
     }
 
-    override fun appendBody(builder: TooltipBuilder, config: IPluginConfig?) {
+    override fun appendBody(builder: WailaTooltipBuilder, config: IPluginConfig?) {
         builder.temperature(b1.temperatureK)
         builder.temperature(b2.temperatureK)
     }
@@ -599,22 +587,22 @@ class ThermocoupleBehavior(
     private val coldAccessor: IThermalBodyProvider,
     private val hotAccessor: IThermalBodyProvider,
     override val model: ThermocoupleModel):
-    ICellBehavior,
+    CellBehavior,
     IThermocoupleView,
-    IWailaProvider {
+    WailaEntity {
 
     private data class BodyPair(val hot: ThermalBody, val cold: ThermalBody, val inverted: Boolean)
 
     override fun onAdded(container: CellBehaviorContainer) {}
 
     override fun subscribe(subscribers: SubscriberCollection) {
-        subscribers.addPreInstantaneous(this::preTick)
-        subscribers.addPostInstantaneous(this::postTick)
+        subscribers.addPre(this::preTick)
+        subscribers.addPost(this::postTick)
     }
 
     override fun destroy(subscribers: SubscriberCollection) {
-        subscribers.removeSubscriber(this::preTick)
-        subscribers.removeSubscriber(this::postTick)
+        subscribers.remove(this::preTick)
+        subscribers.remove(this::postTick)
     }
 
     private fun getSortedBodyPair(): BodyPair {
@@ -649,10 +637,10 @@ class ThermocoupleBehavior(
         energyTransfer =
             (bodies.hot.temperatureK - bodies.cold.temperatureK) * // DeltaT
 
-            // P.S. I expect the dipoles to have the same material. What to do here?
-            avg(bodies.hot.thermalMass.material.specificHeat, bodies.cold.thermalMass.material.specificHeat) * // Specific Heat
+                // P.S. I expect the dipoles to have the same material. What to do here?
+                avg(bodies.hot.thermalMass.material.specificHeat, bodies.cold.thermalMass.material.specificHeat) * // Specific Heat
 
-            systemMass // Mass
+                systemMass // Mass
 
         // Maximum energy that can be converted into electrical energy.
 
@@ -697,7 +685,7 @@ class ThermocoupleBehavior(
         bodies.cold.thermalEnergy += wastedEnergy
     }
 
-    override fun appendBody(builder: TooltipBuilder, config: IPluginConfig?) {
+    override fun appendBody(builder: WailaTooltipBuilder, config: IPluginConfig?) {
         val pair = getSortedBodyPair()
 
         builder.text("Hot E", pair.hot.thermalEnergy.formatted())
@@ -733,17 +721,18 @@ class ThermocoupleCell(pos: CellPos, id: ResourceLocation) : GeneratorCell(pos, 
 
                 map(temperature, 0.0, 20.0, 0.0, 100.0)
             }))
+
+        ruleSet.withDirectionActualRule(DirectionMask.HORIZONTALS)
     }
 
-    override fun createObjectSet(): SimulationObjectSet {
+    override fun createObjSet(): SimulationObjectSet {
         return SimulationObjectSet(
-            GeneratorObject().also {
+            GeneratorObject(this).also {
                 it.potential = 100.0
             },
-            ThermalBipoleObject().also {
-                it.b1Dir = RelativeRotationDirection.Left
-                it.b2Dir = RelativeRotationDirection.Right
-            })
+
+            ThermalBipoleObject(this, RelativeDirection.Left, RelativeDirection.Right)
+        )
     }
 
     private val thermalBiPole get() = thermalObject as ThermalBipoleObject
@@ -752,16 +741,16 @@ class ThermocoupleCell(pos: CellPos, id: ResourceLocation) : GeneratorCell(pos, 
     val b2Temperature get() = thermalBiPole.b2.temperature
 }
 
-class ThermocouplePart(id: ResourceLocation, placementContext: PartPlacementContext) : CellPart(id, placementContext, Content.THERMOCOUPLE_CELL.get()) {
+class ThermocouplePart(id: ResourceLocation, placementContext: PartPlacementInfo) : CellPart(id, placementContext, Content.THERMOCOUPLE_CELL.get()) {
     companion object {
         private const val LEFT_TEMP = "left"
         private const val RIGHT_TEMP = "right"
     }
 
-    override val baseSize: Vec3
+    override val sizeActual: Vec3
         get() = Vec3(1.0, 15.0 / 16.0, 1.0)
 
-    override fun createRenderer(): IPartRenderer {
+    override fun createRenderer(): PartRenderer {
         return RadiantBipoleRenderer(
             this,
             PartialModels.PELTIER_BODY,
@@ -877,7 +866,7 @@ object Fuels {
     }
 }
 
-private class FuelBurnerBehavior(val cell: CellBase, val bodyGetter: IThermalBodyAccessor): ICellBehavior, IWailaProvider {
+private class FuelBurnerBehavior(val cell: Cell, val bodyGetter: ThermalBodyAccessor): CellBehavior, WailaEntity {
     companion object {
         private const val FUEL = "fuel"
     }
@@ -914,11 +903,11 @@ private class FuelBurnerBehavior(val cell: CellBase, val bodyGetter: IThermalBod
     override fun onAdded(container: CellBehaviorContainer) { }
 
     override fun subscribe(subscribers: SubscriberCollection) {
-        subscribers.addPreInstantaneous(this::simulationTick)
+        subscribers.addPre(this::simulationTick)
     }
 
     override fun destroy(subscribers: SubscriberCollection) {
-        subscribers.removeSubscriber(this::simulationTick)
+        subscribers.remove(this::simulationTick)
     }
 
     private fun simulationTick(dt: Double, phase: SubscriberPhase) {
@@ -939,7 +928,7 @@ private class FuelBurnerBehavior(val cell: CellBase, val bodyGetter: IThermalBod
         cell.setChanged()
     }
 
-    override fun appendBody(builder: TooltipBuilder, config: IPluginConfig?) {
+    override fun appendBody(builder: WailaTooltipBuilder, config: IPluginConfig?) {
         builder.text("Control Signal x1000", (burnRateSignal * 1000).formatted(2))
         builder.text("Fuel", (fuel?.fuelAmount ?: 0.0).formatted())
     }
@@ -955,7 +944,7 @@ private class FuelBurnerBehavior(val cell: CellBase, val bodyGetter: IThermalBod
     }
 }
 
-class HeatGeneratorCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) {
+class HeatGeneratorCell(pos: CellPos, id: ResourceLocation) : Cell(pos, id) {
     companion object {
         const val BURNER_BEHAVIOR = "burner"
     }
@@ -964,27 +953,29 @@ class HeatGeneratorCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) 
         behaviors.add(
             FuelBurnerBehavior(this) { thermalWireObject.body }
         )
+
+        ruleSet.withDirectionActualRule(DirectionMask.HORIZONTALS)
     }
 
     /**
      * If true, this burner needs more fuel to continue burning. Internally, this checks if the available energy is less than a threshold value.
      * */
-    val needsFuel get() = behaviors.getBehavior<FuelBurnerBehavior>().availableEnergy approxEq 0.0
+    val needsFuel get() = behaviors.get<FuelBurnerBehavior>().availableEnergy approxEq 0.0
 
     fun replaceFuel(mass: HeatGeneratorFuelMass) {
-        behaviors.getBehavior<FuelBurnerBehavior>().replaceFuel(mass)
+        behaviors.get<FuelBurnerBehavior>().replaceFuel(mass)
     }
 
-    override fun createObjectSet(): SimulationObjectSet {
+    override fun createObjSet(): SimulationObjectSet {
         return SimulationObjectSet(ThermalWireObject(this))
     }
 
     override fun loadCellData(tag: CompoundTag) {
-        tag.useSubTagIfPreset(BURNER_BEHAVIOR, behaviors.getBehavior<FuelBurnerBehavior>()::loadNbt)
+        tag.useSubTagIfPreset(BURNER_BEHAVIOR, behaviors.get<FuelBurnerBehavior>()::loadNbt)
     }
 
     override fun saveCellData(): CompoundTag {
-        return CompoundTag().withSubTag(BURNER_BEHAVIOR, behaviors.getBehavior<FuelBurnerBehavior>().saveNbt())
+        return CompoundTag().withSubTag(BURNER_BEHAVIOR, behaviors.get<FuelBurnerBehavior>().saveNbt())
     }
 
     val thermalWireObject get() = thermalObject as ThermalWireObject
@@ -1209,13 +1200,13 @@ interface IIlluminatedBodyView {
     val normal: Direction
 }
 
-abstract class SolarIlluminationBehavior(private val cell: CellBase): ICellBehavior, IIlluminatedBodyView {
+abstract class SolarIlluminationBehavior(private val cell: Cell): CellBehavior, IIlluminatedBodyView {
     // Is it fine to access these from our simulation threads?
     override val sunAngle: Double
         get() = cell.graph.level.getSunAngle(0f).toDouble()
 
     override val isObstructed: Boolean
-        get() = !cell.graph.level.canSeeSky(cell.pos.blockPos)
+        get() = !cell.graph.level.canSeeSky(cell.posDescr.requireBlockPosLoc { "Solar Behaviors require block pos locator" })
 }
 
 abstract class SolarGeneratorBehavior(val generatorCell: GeneratorCell): SolarIlluminationBehavior(generatorCell) {
@@ -1226,7 +1217,7 @@ abstract class SolarGeneratorBehavior(val generatorCell: GeneratorCell): SolarIl
     }
 
     override fun destroy(subscribers: SubscriberCollection) {
-        subscribers.removeSubscriber(this::simulationTick)
+        subscribers.remove(this::simulationTick)
     }
 
     private fun simulationTick(dt: Double, phase: SubscriberPhase) {
@@ -1312,11 +1303,12 @@ class PhotovoltaicBehavior(cell: GeneratorCell, val model: PhotovoltaicModel) : 
     }
 
     override val normal: Direction
-        get() = generatorCell.pos.face
+        get() = generatorCell.posDescr.requireBlockFaceLoc { "Photovoltaic behavior requires a face locator" }
 }
 
 class PhotovoltaicGeneratorCell(pos: CellPos, id: ResourceLocation, model: PhotovoltaicModel) : GeneratorCell(pos, id) {
     init {
         behaviors.add(PhotovoltaicBehavior(this, model))
+        ruleSet.withDirectionActualRule(DirectionMask.FRONT + DirectionMask.BACK)
     }
 }

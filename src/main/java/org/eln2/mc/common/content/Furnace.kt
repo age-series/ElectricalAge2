@@ -41,21 +41,24 @@ import org.ageseries.libage.sim.Material
 import org.ageseries.libage.sim.thermal.*
 import org.eln2.mc.Eln2
 import org.eln2.mc.Eln2.LOGGER
-import org.eln2.mc.client.render.renderColored
-import org.eln2.mc.client.render.renderTextured
+import org.eln2.mc.client.render.foundation.renderColored
+import org.eln2.mc.client.render.foundation.renderTextured
 import org.eln2.mc.common.blocks.foundation.CellBlock
 import org.eln2.mc.common.blocks.foundation.CellBlockEntity
-import org.eln2.mc.common.cells.foundation.CellBase
+import org.eln2.mc.common.cells.foundation.Cell
 import org.eln2.mc.common.cells.foundation.CellPos
 import org.eln2.mc.common.cells.foundation.SubscriberPhase
-import org.eln2.mc.common.cells.foundation.objects.SimulationObjectSet
+import org.eln2.mc.common.cells.foundation.SimulationObjectSet
 import org.eln2.mc.common.events.AtomicUpdate
 import org.eln2.mc.common.events.EventScheduler
+import org.eln2.mc.common.space.DirectionMask
+import org.eln2.mc.common.space.RelativeDirection
+import org.eln2.mc.common.space.withDirectionActualRule
 import org.eln2.mc.extensions.*
 import org.eln2.mc.extensions.subStep
 import org.eln2.mc.extensions.plus
 import org.eln2.mc.extensions.toVec3
-import org.eln2.mc.integration.waila.TooltipBuilder
+import org.eln2.mc.integration.WailaTooltipBuilder
 import org.eln2.mc.mathematics.*
 import org.eln2.mc.mathematics.map
 import org.eln2.mc.mathematics.mapNormalizedDoubleShort
@@ -124,10 +127,14 @@ data class FurnaceOptions(
     }
 }
 
-class FurnaceCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) {
+class FurnaceCell(pos: CellPos, id: ResourceLocation, val dir1: RelativeDirection = RelativeDirection.Left, val dir2: RelativeDirection = RelativeDirection.Right) : Cell(pos, id) {
     companion object {
         private const val OPTIONS = "options"
         private const val RESISTOR_THERMAL_MASS = "resistorThermalMass"
+    }
+
+    init {
+        ruleSet.withDirectionActualRule(DirectionMask.ofRelatives(dir1, dir2))
     }
 
     fun serializeNbt(): CompoundTag{
@@ -195,16 +202,16 @@ class FurnaceCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) {
      * */
     val resistorTemperature: Temperature get() = resistorHeatBody.temperature
 
-    override fun createObjectSet(): SimulationObjectSet {
-        return SimulationObjectSet(ResistorObject())
+    override fun createObjSet(): SimulationObjectSet {
+        return SimulationObjectSet(ResistorObject(this, dir1, dir2))
     }
 
     override fun onGraphChanged() {
-        graph.subscribers.addPreInstantaneous(this::simulationTick)
+        graph.subscribers.addPre(this::simulationTick)
     }
 
     override fun onRemoving() {
-        graph.subscribers.removeSubscriber(this::simulationTick)
+        graph.subscribers.remove(this::simulationTick)
     }
 
     /**
@@ -324,7 +331,7 @@ class FurnaceCell(pos: CellPos, id: ResourceLocation) : CellBase(pos, id) {
         applyControlSignal()
     }
 
-    override fun appendBody(builder: TooltipBuilder, config: IPluginConfig?) {
+    override fun appendBody(builder: WailaTooltipBuilder, config: IPluginConfig?) {
         resistorHeatBody.appendBody(builder, config)
         knownSmeltingBody?.appendBody(builder, config)
 
@@ -429,7 +436,7 @@ class FurnaceBlockEntity(pos: BlockPos, state: BlockState) :
 
         val resistorTemperatureProgress: Double get() =
             (resistorTemperature.toDouble() / resistorTargetTemperature.toDouble())
-            .coerceIn(0.0, 1.0).definedOrZero()
+                .coerceIn(0.0, 1.0).definedOrZero()
 
         var bodyTemperature: Int
             get() = this.get(BODY_TEMPERATURE)
@@ -441,7 +448,7 @@ class FurnaceBlockEntity(pos: BlockPos, state: BlockState) :
 
         val bodyTemperatureProgress: Double get() =
             (bodyTemperature.toDouble() / bodyTargetTemperature.toDouble())
-            .coerceIn(0.0, 1.0).definedOrZero()
+                .coerceIn(0.0, 1.0).definedOrZero()
 
         var smeltProgress: Double
             get() = unmapNormalizedDoubleShort(this.get(SMELT_PROGRESS))

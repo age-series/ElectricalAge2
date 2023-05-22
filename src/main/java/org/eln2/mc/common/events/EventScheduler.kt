@@ -4,16 +4,16 @@ import net.minecraftforge.event.TickEvent
 import net.minecraftforge.eventbus.api.SubscribeEvent
 import net.minecraftforge.fml.common.Mod
 import org.eln2.mc.Eln2.LOGGER
-import org.eln2.mc.annotations.CrossThreadAccess
+import org.eln2.mc.CrossThreadAccess
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.PriorityBlockingQueue
 
-fun interface IEventQueueAccess {
-    fun enqueueEvent(event: IEvent): Boolean
+fun interface EventQueue {
+    fun enqueue(event: IEvent): Boolean
 }
 
-fun interface IWorkItem {
+fun interface WorkItem {
     fun execute()
 }
 
@@ -32,7 +32,7 @@ object EventScheduler {
 
     private var timeStamp: Int = 0
 
-    private data class SynchronousWork(val timeStamp: Int, val item: IWorkItem)
+    private data class SynchronousWork(val timeStamp: Int, val item: WorkItem)
 
     private val eventQueues = ConcurrentHashMap<IEventListener, EventQueue>()
 
@@ -57,12 +57,12 @@ object EventScheduler {
     }
 
     @CrossThreadAccess
-    fun scheduleWorkPre(countdown: Int, item: IWorkItem){
+    fun scheduleWorkPre(countdown: Int, item: WorkItem){
         scheduledWorkPre.add(SynchronousWork(timeStamp + countdown, item))
     }
 
     @CrossThreadAccess
-    fun scheduleWorkPost(countdown: Int, item: IWorkItem){
+    fun scheduleWorkPost(countdown: Int, item: WorkItem){
         scheduledWorkPost.add(SynchronousWork(timeStamp + countdown, item))
     }
 
@@ -83,28 +83,28 @@ object EventScheduler {
      * Events enqueued using this access will be sent to the listener on the next tick.
      * */
     @CrossThreadAccess
-    fun getEventAccess(listener: IEventListener): IEventQueueAccess {
+    fun getEventAccess(listener: IEventListener): org.eln2.mc.common.events.EventQueue {
         val eventQueue = getEventQueue(listener)
 
-        return IEventQueueAccess {
+        return EventQueue {
             if (!eventQueue.valid) {
                 // To be fair, this value could change just after checking.
                 // For fun, we log.
 
                 LOGGER.warn("Lingering event access")
 
-                return@IEventQueueAccess false
+                return@EventQueue false
             }
 
             eventQueue.queue.add(it)
 
-            return@IEventQueueAccess true
+            return@EventQueue true
         }
     }
 
     @CrossThreadAccess
     fun enqueueEvent(listener: IEventListener, event: IEvent) {
-        getEventAccess(listener).enqueueEvent(event)
+        getEventAccess(listener).enqueue(event)
     }
 
     /**

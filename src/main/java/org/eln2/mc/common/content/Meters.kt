@@ -9,14 +9,22 @@ import net.minecraft.world.item.Item
 import net.minecraft.world.item.context.UseOnContext
 import org.ageseries.libage.sim.thermal.Temperature
 import org.eln2.mc.common.items.eln2Tab
-import org.eln2.mc.data.INameField
+import org.eln2.mc.data.NamedField
 import org.eln2.mc.extensions.getDataAccess
 import org.eln2.mc.utility.UnitType
 import org.eln2.mc.utility.valueText
 
-fun interface VoltageField { fun readVoltage(): Double }
-fun interface CurrentField { fun readCurrent(): Double }
-fun interface TemperatureField { fun readTemperature(): Temperature }
+fun interface VoltageField {
+    fun readVoltage(): Double
+}
+
+fun interface CurrentField {
+    fun readCurrent(): Double
+}
+
+fun interface TemperatureField {
+    fun readTemperature(): Temperature
+}
 
 abstract class MeterItem : Item(Properties().tab(eln2Tab).stacksTo(1)) {
     override fun useOn(pContext: UseOnContext): InteractionResult {
@@ -67,7 +75,7 @@ class UniversalMeter(
 
         return if(readings.isEmpty()) null
         else TextComponent(readings.joinToString(", ") { reading ->
-            if (reading.field is INameField) "${reading.field.name}: ${reading.printout}"
+            if (reading.field is NamedField) "${reading.field.name}: ${reading.printout}"
             else "${reading.label}: ${reading.printout}"
         })
     }

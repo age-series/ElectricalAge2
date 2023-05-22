@@ -53,3 +53,22 @@ class EventManager {
         }
     }
 }
+
+/**
+ * Marker interface implemented by all events.
+ * @see EventManager
+ * */
+interface IEvent
+
+/**
+ * A handler for events of the specified type.
+ * */
+fun interface IEventHandler<T : IEvent> {
+    fun handle(event: T)
+}
+
+/**
+ * Event Listeners are implemented by game objects.
+ * @see EventScheduler.register
+ * */
+interface IEventListener

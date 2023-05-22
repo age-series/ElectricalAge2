@@ -15,16 +15,13 @@ import org.eln2.mc.common.blocks.foundation.CellBlock
 import org.eln2.mc.common.blocks.foundation.CellBlockEntity
 import org.eln2.mc.common.blocks.foundation.MultipartBlock
 import org.eln2.mc.common.blocks.foundation.MultipartBlockEntity
+import org.eln2.mc.common.blocks.foundation.GhostLightBlock
 
 object BlockRegistry {
-    val BLOCK_REGISTRY =
-        DeferredRegister.create(ForgeRegistries.BLOCKS, Eln2.MODID)!! // Yeah, if this fails blow up the game
-    val BLOCK_ITEM_REGISTRY =
-        DeferredRegister.create(ForgeRegistries.ITEMS, Eln2.MODID)!! // Yeah, if this fails blow up the game
-    val BLOCK_ENTITY_REGISTRY =
-        DeferredRegister.create(ForgeRegistries.BLOCK_ENTITIES, Eln2.MODID)!! // Yeah, if this fails blow up the game
+    private val BLOCK_REGISTRY = DeferredRegister.create(ForgeRegistries.BLOCKS, Eln2.MODID)!!
+    private val BLOCK_ITEM_REGISTRY = DeferredRegister.create(ForgeRegistries.ITEMS, Eln2.MODID)!!
+    private val BLOCK_ENTITY_REGISTRY = DeferredRegister.create(ForgeRegistries.BLOCK_ENTITIES, Eln2.MODID)!!
 
-    // Thanks, Minecraft!
     fun <T : BlockEntity> blockEntity(
         name: String,
         blockEntitySupplier: BlockEntityType.BlockEntitySupplier<T>,
@@ -46,6 +43,7 @@ object BlockRegistry {
     }
 
     val CELL_BLOCK_ENTITY: RegistryObject<BlockEntityType<CellBlockEntity>> = BLOCK_ENTITY_REGISTRY.register("cell") {
+        @Suppress("NULLABILITY_MISMATCH_BASED_ON_JAVA_ANNOTATIONS")
         BlockEntityType.Builder.of(::CellBlockEntity).build(null)
     }
 
@@ -55,7 +53,7 @@ object BlockRegistry {
             BlockEntityType.Builder.of(::MultipartBlockEntity, MULTIPART_BLOCK.block.get()).build(null)
         }
 
-    class CellBlockRegistryItem(
+    data class CellBlockRegistryItem(
         val name: String,
         val block: RegistryObject<CellBlock>,
         val item: RegistryObject<BlockItem>
@@ -78,6 +76,7 @@ object BlockRegistry {
                 block.get(),
                 Item.Properties().also { if (tab != null) it.tab(tab) })
         }
+
         return CellBlockRegistryItem(name, block, item)
     }
 
@@ -90,10 +89,13 @@ object BlockRegistry {
         val item = BLOCK_ITEM_REGISTRY.register(name) {
             BlockItem(
                 block.get(),
-                Item.Properties().also { if (tab != null) it.tab(tab) })
+                Item.Properties().also { if (tab != null) it.tab(tab) }
+            )
         }
+
         return BlockRegistryItem(name, block, item)
     }
 
     val MULTIPART_BLOCK = registerBasicBlock("multipart", tab = null) { MultipartBlock() }
+    val LIGHT_GHOST_BLOCK = registerBasicBlock("light_ghost") { GhostLightBlock() }
 }
