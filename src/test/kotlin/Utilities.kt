@@ -23,9 +23,7 @@ fun rangeScanRec(action: ((DoubleArray) -> Unit), layers: Int, start: Double = 0
                 action(vec);
             }
         }
-
-        val results = DoubleArray(layers)
-
-        helper(layers - 1, results)
     }
+
+    helper(layers - 1, DoubleArray(layers))
 }
