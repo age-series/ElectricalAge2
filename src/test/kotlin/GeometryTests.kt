@@ -48,9 +48,9 @@ class GeometryTests {
         areEqual(rpi * Rotation2d.exp(-PI), Rotation2d.zero)
         areEqual(rpi * rpi.inverse, Rotation2d.zero)
 
-        assert((rpi * Vector2d.unitX).approxEqs(-Vector2d.unitX, EPS))
-        assert((Rotation2d.exp(PI * 2.0) * Vector2d.unitX).approxEqs(Vector2d.unitX, EPS))
-        assert((Rotation2d.exp(PI * 8.0) * Vector2d.unitX).approxEqs(Vector2d.unitX, EPS))
+        assert((rpi * Vector2d.unitX).approxEq(-Vector2d.unitX, EPS))
+        assert((Rotation2d.exp(PI * 2.0) * Vector2d.unitX).approxEq(Vector2d.unitX, EPS))
+        assert((Rotation2d.exp(PI * 8.0) * Vector2d.unitX).approxEq(Vector2d.unitX, EPS))
 
         areEqual(interpolate(Rotation2d.zero, rpi, 0.0), Rotation2d.zero)
         areEqual(interpolate(Rotation2d.zero, rpi, 1.0), rpi)
