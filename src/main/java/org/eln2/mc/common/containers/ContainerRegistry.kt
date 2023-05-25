@@ -25,6 +25,6 @@ object ContainerRegistry {
     fun <T : AbstractContainerMenu> registerMenuType(name: String, supplier: () -> MenuType<T>): RegistryObject<MenuType<T>> =
         CONTAINER_REGISTRY.register(name) { supplier() }
 
-    fun <T : AbstractContainerMenu> registerMenu(name: String, supplier: (Int, Inventory) -> T): RegistryObject<MenuType<T>> =
+    fun <T : AbstractContainerMenu> menu(name: String, supplier: (Int, Inventory) -> T): RegistryObject<MenuType<T>> =
         registerMenuType(name) {  MenuType(supplier) }
 }

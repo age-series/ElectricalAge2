@@ -21,6 +21,7 @@ import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.level.block.state.StateDefinition
 import net.minecraft.world.level.material.FluidState
 import net.minecraft.world.level.material.Material
+import net.minecraftforge.registries.RegistryObject
 import org.eln2.mc.Eln2
 import org.eln2.mc.ServerOnly
 import org.eln2.mc.common.blocks.BlockRegistry
@@ -37,7 +38,7 @@ import org.eln2.mc.integration.WailaEntity
 import org.eln2.mc.integration.WailaTooltipBuilder
 import java.util.*
 
-abstract class CellBlock : HorizontalDirectionalBlock(Properties.of(Material.STONE).noOcclusion()), EntityBlock {
+abstract class CellBlock(props: Properties? = null) : HorizontalDirectionalBlock(props ?: Properties.of(Material.STONE).noOcclusion()), EntityBlock {
     init {
         @Suppress("LeakingThis")
         registerDefaultState(getStateDefinition().any().setValue(FACING, Direction.NORTH))
@@ -101,6 +102,11 @@ abstract class CellBlock : HorizontalDirectionalBlock(Properties.of(Material.STO
 
     // override this:
     abstract fun getCellProvider(): ResourceLocation
+}
+
+class BasicCellBlock(val supplier: () -> ResourceLocation) : CellBlock() {
+    constructor(p: RegistryObject<CellProvider>) : this({ p.id!! })
+    override fun getCellProvider(): ResourceLocation = supplier()
 }
 
 open class CellBlockEntity(pos: BlockPos, state: BlockState, targetType: BlockEntityType<*>) :

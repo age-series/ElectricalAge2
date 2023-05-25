@@ -148,7 +148,7 @@ object CommonEvents {
     }
 
     @SubscribeEvent
-    fun onBlockBroken(event: BlockEvent){
+    fun onBlockEvent(event: BlockEvent){
         if(event.world.isClientSide){
             return
         }

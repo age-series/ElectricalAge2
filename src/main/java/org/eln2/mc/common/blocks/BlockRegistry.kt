@@ -11,11 +11,7 @@ import net.minecraftforge.registries.DeferredRegister
 import net.minecraftforge.registries.ForgeRegistries
 import net.minecraftforge.registries.RegistryObject
 import org.eln2.mc.Eln2
-import org.eln2.mc.common.blocks.foundation.CellBlock
-import org.eln2.mc.common.blocks.foundation.CellBlockEntity
-import org.eln2.mc.common.blocks.foundation.MultipartBlock
-import org.eln2.mc.common.blocks.foundation.MultipartBlockEntity
-import org.eln2.mc.common.blocks.foundation.GhostLightBlock
+import org.eln2.mc.common.blocks.foundation.*
 
 object BlockRegistry {
     private val BLOCK_REGISTRY = DeferredRegister.create(ForgeRegistries.BLOCKS, Eln2.MODID)!!
@@ -63,7 +59,9 @@ object BlockRegistry {
         val name: String,
         val block: RegistryObject<Block>,
         val item: RegistryObject<BlockItem>
-    )
+    ) {
+        val registryName get() = block.get().registryName ?: error("Invalid registry name")
+    }
 
     private fun registerCellBlock(
         name: String,
@@ -80,7 +78,7 @@ object BlockRegistry {
         return CellBlockRegistryItem(name, block, item)
     }
 
-    fun registerBasicBlock(
+    fun block(
         name: String,
         tab: CreativeModeTab? = null,
         supplier: () -> Block
@@ -96,6 +94,6 @@ object BlockRegistry {
         return BlockRegistryItem(name, block, item)
     }
 
-    val MULTIPART_BLOCK = registerBasicBlock("multipart", tab = null) { MultipartBlock() }
-    val LIGHT_GHOST_BLOCK = registerBasicBlock("light_ghost") { GhostLightBlock() }
+    val MULTIPART_BLOCK = block("multipart", tab = null) { MultipartBlock() }
+    val LIGHT_GHOST_BLOCK = block("light_ghost") { GhostLightBlock() }
 }

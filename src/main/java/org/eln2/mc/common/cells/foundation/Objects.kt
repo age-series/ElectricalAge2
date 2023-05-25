@@ -212,6 +212,15 @@ abstract class ElectricalObject(cell: Cell) : SimulationObject(cell) {
      * Called when the circuit must be updated with the components owned by this object.
      * */
     protected abstract fun addComponents(circuit: Circuit)
+
+    override fun build() {
+        // Suggested by Grissess (and should have crossed my mind too, shame on me):
+        connections.forEach { remote ->
+            val localInfo = offerComponent(remote)
+            val remoteInfo = remote.offerComponent(this)
+            localInfo.component.connect(localInfo.index, remoteInfo.component, remoteInfo.index)
+        }
+    }
 }
 
 /**

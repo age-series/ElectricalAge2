@@ -21,7 +21,10 @@ import net.minecraftforge.items.ItemStackHandler
 import net.minecraftforge.network.NetworkHooks
 import org.eln2.mc.Eln2
 import org.eln2.mc.ServerOnly
+import org.eln2.mc.common.blocks.foundation.CellBlockEntity
+import org.eln2.mc.common.blocks.foundation.MultiblockManager
 import org.eln2.mc.common.blocks.foundation.MultipartBlockEntity
+import org.eln2.mc.common.cells.foundation.Cell
 import org.eln2.mc.common.parts.foundation.Part
 import org.eln2.mc.data.DataNode
 import org.eln2.mc.data.DataEntity
@@ -145,3 +148,13 @@ fun Level.getDataAccess(pos: BlockPos): DataNode? {
             as? DataEntity ?: return null)
         .dataNode
 }
+
+inline fun<reified T : Cell> Level.getCellOrNull(mb: MultiblockManager, cellPosId: BlockPos): T? {
+    val entity = this.getBlockEntity(mb.txIdWorld(cellPosId)) as? CellBlockEntity
+        ?: return null
+
+    return entity.cell as? T
+}
+
+inline fun<reified T : Cell> Level.getCell(mb: MultiblockManager, cellPosId: BlockPos): T =
+    getCellOrNull(mb, cellPosId) ?: error("Cell was not present")
