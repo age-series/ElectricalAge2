@@ -116,6 +116,25 @@ abstract class Cell(val pos: CellPos, val id: ResourceLocation) : WailaEntity, D
         tag.useSubTagIfPreset(OBJECT_DATA, this::loadObjectData)
     }
 
+    /**
+     * Called after all graphs in the level have been loaded, before the solver is built.
+     * */
+    open fun onWorldLoadedPreSolver() { }
+    /**
+     * Called after all graphs in the level have been loaded, after the solver is built.
+     */
+    open fun onWorldLoadedPostSolver() { }
+
+    /**
+     * Called after all graphs in the level have been loaded, before the simulations start.
+     * */
+    open fun onWorldLoadedPreSim() { }
+
+    /**
+     * Called after all graphs in the level have been loaded, after the simulations have started.
+     * */
+    open fun onWorldLoadedPostSim() { }
+
     fun createTag(): CompoundTag {
         return CompoundTag().also { tag ->
             tag.apply {
@@ -690,7 +709,7 @@ data class CellNeighborInfo(val neighbor: Cell, val neighborContainer: CellConta
  * The cell graph manages the solver and simulation.
  * It also has serialization/deserialization logic for saving to the disk using NBT.
  * */
-class CellGraph(val id: UUID, private val manager: CellGraphManager, val level: ServerLevel) {
+class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLevel) {
     val cells = ArrayList<Cell>()
 
     private val posCells = HashMap<CellPos, Cell>()
@@ -1009,7 +1028,7 @@ class CellGraph(val id: UUID, private val manager: CellGraphManager, val level: 
      * The previous running state is preserved; if the simulation was paused, it will not be started after the [action] is completed.
      * If it was running, then the simulation will resume.
      * */
-    private fun runSuspended(action: (() -> Unit)) {
+    fun runSuspended(action: (() -> Unit)) {
         val running = isSimRunning
 
         if (running){
@@ -1168,6 +1187,26 @@ class CellGraph(val id: UUID, private val manager: CellGraphManager, val level: 
     }
 }
 
+fun runSuspended(graphs: List<CellGraph>, action: () -> Unit) {
+    if(graphs.isEmpty()) {
+        action()
+
+        return
+    }
+
+    graphs.first().runSuspended {
+        runSuspended(graphs.drop(1), action)
+    }
+}
+
+fun runSuspended(vararg graphs: CellGraph, action: () -> Unit) {
+    runSuspended(graphs.asList(), action)
+}
+
+fun runSuspended(vararg cells: Cell, action: () -> Unit) {
+    runSuspended(cells.asList().map { it.graph }, action)
+}
+
 /**
  * The Cell Graph Manager tracks the cell graphs for a single dimension.
  * This is a **server-only** construct. Simulations never have to occur on the client.
@@ -1264,10 +1303,28 @@ class CellGraphManager(val level: ServerLevel) : SavedData() {
                 }
 
                 manager.addGraph(graph)
-                LOGGER.info("Loaded ${graph.cells.count()} cells for ${graph.id}!")
 
-                graph.buildSolver()
-                graph.startSimulation()
+                LOGGER.info("Loaded ${graph.cells.size} cells for ${graph.id}!")
+            }
+
+            manager.graphs.values.forEach {
+                it.cells.forEach { cell -> cell.onWorldLoadedPreSolver() }
+            }
+
+            manager.graphs.values.forEach { it.buildSolver() }
+
+            manager.graphs.values.forEach {
+                it.cells.forEach { cell -> cell.onWorldLoadedPostSolver() }
+            }
+
+            manager.graphs.values.forEach {
+                it.cells.forEach { cell -> cell.onWorldLoadedPreSim() }
+            }
+
+            manager.graphs.values.forEach { it.startSimulation() }
+
+            manager.graphs.values.forEach {
+                it.cells.forEach { cell -> cell.onWorldLoadedPostSim() }
             }
 
             return manager

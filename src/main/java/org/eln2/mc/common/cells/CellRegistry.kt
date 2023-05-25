@@ -23,7 +23,7 @@ object CellRegistry {
     /**
      * Registers a cell using the specified ID and Provider.
      * */
-    fun register(id: String, provider: CellProvider): RegistryObject<CellProvider> {
+    fun cell(id: String, provider: CellProvider): RegistryObject<CellProvider> {
         return CELLS.register(id) { provider }
     }
 

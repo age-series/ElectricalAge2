@@ -12,6 +12,7 @@ import net.minecraftforge.registries.ForgeRegistries
 import net.minecraftforge.registries.RegistryObject
 import org.eln2.mc.Eln2
 import org.eln2.mc.Eln2.LOGGER
+import org.eln2.mc.common.blocks.foundation.MultiblockScanTool
 
 object ItemRegistry {
     @Suppress("MemberVisibilityCanBePrivate") // Used for item registration and fetching
@@ -27,10 +28,12 @@ object ItemRegistry {
         val item: RegistryObject<Item>
     )
 
-    fun registerBasicItem(name: String, supplier: () -> Item): ItemRegistryItem {
+    fun item(name: String, supplier: () -> Item): ItemRegistryItem {
         val item = REGISTRY.register(name) { supplier() }
         return ItemRegistryItem(name, item)
     }
+
+    val MULTIBLOCK_SCAN_TOOL = item("multiblock_scan_tool", ::MultiblockScanTool)
 }
 
 val eln2Tab: CreativeModeTab = object : CreativeModeTab("Electrical_Age") {
