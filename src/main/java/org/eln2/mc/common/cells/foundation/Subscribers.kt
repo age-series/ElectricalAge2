@@ -2,6 +2,7 @@ package org.eln2.mc.common.cells.foundation
 
 import org.ageseries.libage.data.mutableMultiMapOf
 import org.eln2.mc.extensions.removeAll
+import kotlin.math.max
 
 /**
  * Represents a function that is executed periodically from the simulation thread.
@@ -9,7 +10,7 @@ import org.eln2.mc.extensions.removeAll
 fun interface Subscriber {
     /**
      * Called when the simulation updates.
-     * @param dt The fixed time step. fixme CURRENTLY, NOT ADJUSTED BY FREQUENCY
+     * @param dt The fixed time step.
      * @param phase The update phase, as specified in [SubscriberOptions].
      * */
     fun update(dt: Double, phase: SubscriberPhase)
@@ -137,7 +138,9 @@ class SubscriberCollection {
 
         private var countdown = parameters.interval
 
-        fun update(dt: Double): Boolean {
+        fun update(dtId: Double): Boolean {
+            val dt = dtId * max(parameters.interval, 1)
+
             if(--countdown <= 0){
                 countdown = parameters.interval
                 pool.forEach { it.update(dt, parameters.phase) }
