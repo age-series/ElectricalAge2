@@ -80,7 +80,7 @@ class HeaterHeatPortCell(ci: CellCI) : Cell(ci) {
     }
 
     class HeatOutputObject(cell: Cell) : ThermalObject(cell) {
-        val body = ThermalBody.createDefault(cell.envFm)
+        val body = ThermalBody.createDefault(cell.envFldMap)
         override fun offerComponent(neighbour: ThermalObject) = ThermalComponentInfo(body)
         override fun addComponents(simulator: Simulator) = simulator.add(body)
     }

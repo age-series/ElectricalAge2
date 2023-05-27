@@ -8,7 +8,6 @@ import org.ageseries.libage.sim.thermal.Temperature
 import org.ageseries.libage.sim.thermal.ThermalMass
 import org.eln2.mc.CrossThreadAccess
 import org.eln2.mc.Eln2
-import org.eln2.mc.Eln2.LOGGER
 import org.eln2.mc.client.render.PartialModels
 import org.eln2.mc.client.render.foundation.BasicPartRenderer
 import org.eln2.mc.common.cells.foundation.*
@@ -337,13 +336,11 @@ class BatteryCell(ci: CellCI, override val model: BatteryModel) : Cell(ci), Batt
 
     override fun appendBody(builder: WailaTooltipBuilder, config: IPluginConfig?) {
         super.appendBody(builder, config)
-
         builder.text("Charge", thresholdCharge.formattedPercentN())
         builder.text("Life", life.formattedPercentN())
         builder.text("Cycles", cycles.formatted())
         builder.text("Capacity", capacityCoefficient.formattedPercentN())
         builder.energy(energy)
-        builder.current(current)
     }
 }
 

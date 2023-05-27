@@ -49,8 +49,7 @@ import org.eln2.mc.common.events.EventScheduler
 import org.eln2.mc.common.parts.foundation.*
 import org.eln2.mc.common.space.*
 import org.eln2.mc.control.pid
-import org.eln2.mc.data.DataNode
-import org.eln2.mc.data.DataEntity
+import org.eln2.mc.data.*
 import org.eln2.mc.extensions.*
 import org.eln2.mc.integration.WailaEntity
 import org.eln2.mc.integration.WailaTooltipBuilder
@@ -59,22 +58,21 @@ import org.eln2.mc.mathematics.map
 import org.eln2.mc.mathematics.vec4fOne
 import org.eln2.mc.sim.EnvTemperatureField
 import org.eln2.mc.sim.ThermalBody
-import org.eln2.mc.utility.SelfDescriptiveUnitMultipliers.megaJoules
 import kotlin.math.*
 
-enum class GeneratorPole {
+enum class Pole {
     Plus, Minus
 }
 
 fun interface PoleMap {
-    fun eval(actualDescr: LocationDescriptor, targetDescr: LocationDescriptor): GeneratorPole
+    fun eval(actualDescr: LocationDescriptor, targetDescr: LocationDescriptor): Pole
 }
 
 fun dirActualMap(plusDir: RelativeDirection = RelativeDirection.Front, minusDir: RelativeDirection = RelativeDirection.Back) : PoleMap {
     return PoleMap { actualDescr, targetDescr ->
         when(val dirActual = actualDescr.findDirActual(targetDescr)){
-            plusDir -> GeneratorPole.Plus
-            minusDir -> GeneratorPole.Minus
+            plusDir -> Pole.Plus
+            minusDir -> Pole.Minus
             else -> error("Unhandled neighbor direction $dirActual")
         }
     }
@@ -114,8 +112,8 @@ class VRGeneratorObject(cell: Cell, val map: PoleMap) : ElectricalObject(cell), 
 
     override fun offerComponent(neighbour: ElectricalObject): ElectricalComponentInfo =
         when(map.eval(this.cell.posDescr, neighbour.cell.posDescr)){
-            GeneratorPole.Plus -> resistor.offerExternal()
-            GeneratorPole.Minus -> source.offerNegative()
+            Pole.Plus -> resistor.offerExternal()
+            Pole.Minus -> source.offerNegative()
         }
 
     override fun clearComponents() {
@@ -130,24 +128,16 @@ class VRGeneratorObject(cell: Cell, val map: PoleMap) : ElectricalObject(cell), 
 
     override fun build() {
         resistor.connectInternal(source.offerPositive())
-
-        connections.forEach { conn ->
-            when(map.eval(this.cell.posDescr, conn.cell.posDescr)){
-                GeneratorPole.Plus -> resistor.connectExternal(this, conn)
-                GeneratorPole.Minus -> source.connectNegative(this, conn)
-            }
-        }
-    }
-
-    override fun appendBody(builder: WailaTooltipBuilder, config: IPluginConfig?) {
-        builder.voltage(source.instance.potential)
-        builder.current(generatorCurrent)
-        builder.power(generatorPower)
+        super.build()
     }
 
     override val dataNode = DataNode().also {
-        it.data.withField { VoltageField { potential } }
-        it.data.withField { CurrentField { generatorCurrent } }
+        it.data.withFields(
+            VoltageField { potential },
+            CurrentField { generatorCurrent },
+            PowerField(it.data),
+            ResistanceField { resistance }
+        )
     }
 }
 
@@ -159,12 +149,12 @@ interface ThermalBipole {
 /**
  * Thermal body with two connection sides.
  * */
-class ThermalBipoleObject(cell: Cell, val map: PoleMap) : ThermalObject(cell), WailaEntity, ThermalBipole {
+class ThermalBipoleObject(cell: Cell, val map: PoleMap) : ThermalObject(cell), DataEntity, WailaEntity, ThermalBipole {
     override var b1 = ThermalBody.createDefault()
     override var b2 = ThermalBody.createDefault()
 
     init {
-        cell.envFm.read<EnvTemperatureField>()?.readTemperature()?.also {
+        cell.envFldMap.read<EnvTemperatureField>()?.readTemperature()?.also {
             b1.temp = it
             b2.temp = it
         }
@@ -172,8 +162,8 @@ class ThermalBipoleObject(cell: Cell, val map: PoleMap) : ThermalObject(cell), W
 
     override fun offerComponent(neighbour: ThermalObject): ThermalComponentInfo {
         return ThermalComponentInfo(when(map.eval(cell.posDescr, neighbour.cell.posDescr)){
-            GeneratorPole.Plus -> b1
-            GeneratorPole.Minus -> b2
+            Pole.Plus -> b1
+            Pole.Minus -> b2
         })
     }
 
@@ -185,6 +175,16 @@ class ThermalBipoleObject(cell: Cell, val map: PoleMap) : ThermalObject(cell), W
     override fun appendBody(builder: WailaTooltipBuilder, config: IPluginConfig?) {
         builder.temperature(b1.tempK)
         builder.temperature(b2.tempK)
+    }
+
+    override val dataNode = DataNode().also { root ->
+        root.withChild {
+            it.data.withField(TooltipField { b -> b.text("B1", b1.tempK.formatted()) })
+        }
+
+        root.withChild {
+            it.data.withField(TooltipField { b -> b.text("B2", b2.tempK.formatted()) })
+        }
     }
 }
 
@@ -201,7 +201,8 @@ class ThermocoupleBehavior(
     val model: ThermocoupleModel
 ):
     CellBehavior,
-    WailaEntity
+    WailaEntity,
+    DataEntity
 {
     override fun subscribe(subscribers: SubscriberCollection) {
         subscribers.addPre(this::preTick)
@@ -251,9 +252,14 @@ class ThermocoupleBehavior(
         }
     }
 
-    override fun appendBody(builder: WailaTooltipBuilder, config: IPluginConfig?) {
-        builder.text("Hot T", hot.tempK.formatted())
-        builder.text("Cold T", cold.tempK.formatted())
+    override val dataNode = DataNode().also { root ->
+        root.withChild {
+            it.data.withField(TooltipField { b -> b.text("Hot", hot.tempK.formatted()) })
+        }
+
+        root.withChild {
+            it.data.withField(TooltipField { b -> b.text("Cold", cold.tempK.formatted())})
+        }
     }
 }
 
@@ -264,19 +270,18 @@ class ThermocoupleCell(ci: CellCI, electricalMap: PoleMap, thermalMap: PoleMap):
     @SimObject
     val thermalBipoleObj = ThermalBipoleObject(this, thermalMap)
 
-    init {
-        behaviors.add(
-            ThermocoupleBehavior(
-                generatorObj,
-                thermalBipoleObj.b1,
-                thermalBipoleObj.b2,
-                ThermocoupleModel(
-                    genEfficiency = 1.0,
-                    moveEfficiency = 1.0
-                )
-            )
+    @Behavior
+    val thermocoupleBehavior = ThermocoupleBehavior(
+        generatorObj,
+        thermalBipoleObj.b1,
+        thermalBipoleObj.b2,
+        ThermocoupleModel(
+            genEfficiency = 1.0,
+            moveEfficiency = 1.0
         )
+    )
 
+    init {
         ruleSet.withDirectionActualRule(DirectionMask.HORIZONTALS)
     }
 
@@ -402,14 +407,14 @@ object Fuels {
     fun coal(mass: Double): HeatGeneratorFuelMass {
         return HeatGeneratorFuelMass(
             fuelAmount = mass,
-            fuelEnergyCapacity = megaJoules(24.0),
+            fuelEnergyCapacity = 24.0 * 1e6,
             suggestedBurnRate = 0.005,
             fuelTemperature = 2000.0
         )
     }
 }
 
-private class FuelBurnerBehavior(val cell: Cell, val bodyGetter: ThermalBodyAccessor): CellBehavior, WailaEntity {
+class FuelBurnerBehavior(val cell: Cell, val bodyGetter: ThermalBodyAccessor): CellBehavior, WailaEntity {
     companion object {
         private const val FUEL = "fuel"
     }
@@ -491,11 +496,10 @@ class HeatGeneratorCell(ci: CellCI) : Cell(ci) {
     @SimObject
     val thermalWireObj = ThermalWireObject(this)
 
-    init {
-        behaviors.add(
-            FuelBurnerBehavior(this) { thermalWireObj.body }
-        )
+    @Behavior
+    val burnerBehavior = FuelBurnerBehavior(this) { thermalWireObj.body }
 
+    init {
         ruleSet.withDirectionActualRule(DirectionMask.HORIZONTALS)
     }
 
@@ -824,12 +828,14 @@ class PhotovoltaicBehavior(val cell: Cell, val generator: VRGeneratorObject, val
 
 class PhotovoltaicGeneratorCell(ci: CellCI, model: PhotovoltaicModel) : Cell(ci) {
     @SimObject
-    val generator = VRGeneratorObject(this, dirActualMap()).also {
+    val generatorObj = VRGeneratorObject(this, dirActualMap()).also {
         it.ruleSet.withDirectionActualRule(DirectionMask.FRONT + DirectionMask.BACK)
     }
 
+    @Behavior
+    val pvBehavior = PhotovoltaicBehavior(this, generatorObj, model)
+
     init {
-        behaviors.add(PhotovoltaicBehavior(this, generator, model))
         ruleSet.withDirectionActualRule(DirectionMask.FRONT + DirectionMask.BACK)
     }
 }

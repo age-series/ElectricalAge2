@@ -1,6 +1,5 @@
 package org.eln2.mc.common.cells.foundation
 
-import mcp.mobius.waila.api.IPluginConfig
 import net.minecraft.core.Direction
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.nbt.ListTag
@@ -21,12 +20,14 @@ import org.eln2.mc.common.space.*
 import org.eln2.mc.data.DataNode
 import org.eln2.mc.data.DataEntity
 import org.eln2.mc.data.DataFieldMap
+import org.eln2.mc.data.ObjectField
 import org.eln2.mc.extensions.*
 import org.eln2.mc.integration.WailaEntity
-import org.eln2.mc.integration.WailaTooltipBuilder
 import org.eln2.mc.sim.BiomeEnvironments
+import org.eln2.mc.utility.FieldReader
 import org.eln2.mc.utility.Stopwatch
 import org.eln2.mc.utility.Time
+import org.eln2.mc.utility.fieldScan
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
@@ -37,10 +38,8 @@ import java.util.concurrent.locks.ReentrantLock
 import kotlin.collections.ArrayDeque
 import kotlin.collections.ArrayList
 import kotlin.collections.HashSet
-import kotlin.reflect.KClass
-import kotlin.reflect.full.isSubclassOf
-import kotlin.reflect.full.memberProperties
-import kotlin.reflect.jvm.javaField
+import kotlin.reflect.full.functions
+import kotlin.reflect.full.hasAnnotation
 import kotlin.system.measureNanoTime
 
 data class CellPos(val descriptor: LocationDescriptor)
@@ -75,41 +74,25 @@ data class CellCI(
 @Retention(AnnotationRetention.RUNTIME)
 @Target(AnnotationTarget.FIELD)
 annotation class SimObject
+@Retention(AnnotationRetention.RUNTIME)
+@Target(AnnotationTarget.FIELD)
+annotation class Behavior
 
 /**
  * The cell is a physical unit, that may participate in multiple simulations. Each simulation will
  * have a Simulation Object associated with it.
  * Cells create connections with other cells, and objects create connections with other objects of the same simulation type.
  * */
-abstract class Cell(val pos: CellPos, val id: ResourceLocation, val envFm: DataFieldMap) : WailaEntity, DataEntity {
+abstract class Cell(val pos: CellPos, val id: ResourceLocation, val envFldMap: DataFieldMap) : WailaEntity, DataEntity {
     constructor(ci: CellCI) : this(ci.pos, ci.id, ci.envFm)
 
-    private fun interface ObjAccessor {
-        fun get(inst: Cell): Any?
-    }
-
     companion object {
-        private val OBJ_SET_LOADERS = ConcurrentHashMap<Class<*>, List<ObjAccessor>>()
+        private val OBJECT_READERS = ConcurrentHashMap<Class<*>, List<FieldReader<Cell>>>()
+        private val BEHAVIOR_READERS = ConcurrentHashMap<Class<*>, List<FieldReader<Cell>>>()
+
         private const val CELL_DATA = "cellData"
         private const val OBJECT_DATA = "objectData"
 
-        private fun streamObjectLoaders(k: Class<Cell>) =
-            OBJ_SET_LOADERS.getOrPut(k) {
-                val accessors = mutableListOf<ObjAccessor>()
-
-                k.kotlin
-                    .memberProperties
-                    .filter { it.javaField?.isAnnotationPresent(SimObject::class.java) ?: false }
-                    .forEach {
-                        if(!(it.returnType.classifier as KClass<*>).isSubclassOf(SimulationObject::class)) {
-                            error("Invalid simulation field $it")
-                        }
-
-                        accessors.add(it::get)
-                    }
-
-                accessors
-            }
     }
 
     val posDescr get() = pos.descriptor
@@ -148,7 +131,7 @@ abstract class Cell(val pos: CellPos, val id: ResourceLocation, val envFm: DataF
     var container: CellContainer? = null
 
     private val objSetLazy = lazy {
-        createObjSet().also { set ->
+        createObjectSet().also { set ->
             set.process { obj ->
                 if(obj is DataEntity) {
                     dataNode.withChild(obj.dataNode)
@@ -157,9 +140,13 @@ abstract class Cell(val pos: CellPos, val id: ResourceLocation, val envFm: DataF
         }
     }
 
-    private val behaviorsLazy = lazy { CellBehaviorContainer(this) }
+    val objSet get() = objSetLazy.value
 
-    protected val behaviorsInitialized get() = behaviorsLazy.isInitialized()
+    private val behaviorsLazy = lazy {
+        createBehaviorContainer().also { container ->
+            dataNode.withChild(container.dataNode)
+        }
+    }
 
     protected val behaviors get() = behaviorsLazy.value
 
@@ -167,13 +154,15 @@ abstract class Cell(val pos: CellPos, val id: ResourceLocation, val envFm: DataF
      * Called once when the object set is requested. The result is then cached.
      * @return A new object set, with all the desired objects.
      * */
-    open fun createObjSet() = SimulationObjectSet(
-        streamObjectLoaders(this.javaClass).mapNotNull {
-            it.get(this) as? SimulationObject
-        }
+    open fun createObjectSet() = SimulationObjectSet(
+        fieldScan(this.javaClass, SimulationObject::class, SimObject::class.java, OBJECT_READERS)
+            .mapNotNull { it.get(this) as? SimulationObject }
     )
 
-    val objSet: SimulationObjectSet get() = objSetLazy.value
+    open fun createBehaviorContainer() = CellBehaviorContainer(this).also { container ->
+        fieldScan(this.javaClass, CellBehavior::class, Behavior::class.java, BEHAVIOR_READERS)
+            .mapNotNull { it.get(this) as? CellBehavior }.forEach(container::add)
+    }
 
     fun loadTag(tag: CompoundTag) {
         tag.useSubTagIfPreset(CELL_DATA, this::loadCellData)
@@ -312,7 +301,7 @@ abstract class Cell(val pos: CellPos, val id: ResourceLocation, val envFm: DataF
      * */
     protected open fun onGraphChanged() {}
 
-    protected open fun subscribe(subs: SubscriberCollection) { }
+    protected open fun subscribe(subs: SubscriberCollection) {}
 
     /**
      * Called when the solver is being built, in order to clear and prepare the objects.
@@ -378,28 +367,17 @@ abstract class Cell(val pos: CellPos, val id: ResourceLocation, val envFm: DataF
         return objSet.hasObject(type)
     }
 
-    /**
-     * By default, the cell just passes down the call to objects that implement the WAILA provider.
-     * */
-    override fun appendBody(builder: WailaTooltipBuilder, config: IPluginConfig?) {
-        if (hasGraph) {
-            builder.text("Graph", graph.id)
-        }
 
-        objSet.process {
-            if (it is WailaEntity) {
-                it.appendBody(builder, config)
-            }
-        }
-
-        behaviors.forEach {
-            if(it is WailaEntity) {
-                it.appendBody(builder, config)
-            }
+    override val dataNode = DataNode().also { root ->
+        root.withChild {
+            it.data.withField(
+                ObjectField("ID") {
+                    if(hasGraph) graph.id
+                    else null
+                }
+            )
         }
     }
-
-    override val dataNode: DataNode = DataNode()
 }
 
 /**
@@ -1467,3 +1445,4 @@ object CellConvention {
     const val INTERNAL_PIN = 0
     const val NEGATIVE_PIN = INTERNAL_PIN
 }
+

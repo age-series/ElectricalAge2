@@ -31,8 +31,6 @@ import org.eln2.mc.common.space.DirectionMask
 import org.eln2.mc.common.space.RelativeDirection
 import org.eln2.mc.common.space.withDirectionActualRule
 import org.eln2.mc.mathematics.bbSize
-import org.eln2.mc.utility.SelfDescriptiveUnitMultipliers.centimeters
-import org.eln2.mc.utility.SelfDescriptiveUnitMultipliers.milliOhms
 import org.eln2.mc.utility.UnitConversions.kwHoursInJ
 import kotlin.math.abs
 
@@ -48,11 +46,11 @@ object Content {
     //#region Wires
 
     val ELECTRICAL_WIRE_CELL_COPPER = cell("electrical_wire_cell_copper", BasicCellProvider  {
-        WireCell(it, ElectricalWireModels.copper(centimeters(5.0)), WireType.Electrical)
+        WireCell(it, ElectricalWireModels.copper(0.1), WireType.Electrical)
     })
 
     val THERMAL_WIRE_CELL_COPPER = cell("thermal_wire_cell_copper", BasicCellProvider  {
-        WireCell(it, ElectricalWireModels.copper(centimeters(5.0)), WireType.Thermal)
+        WireCell(it, ElectricalWireModels.copper(0.1), WireType.Thermal)
     })
 
     val ELECTRICAL_WIRE_PART_COPPER: PartRegistry.PartRegistryItem = part("electrical_wire_part_copper", BasicPartProvider({ a, b ->
@@ -93,7 +91,7 @@ object Content {
     val BATTERY_CELL_100V = cell("battery_cell_t", BasicCellProvider{ createInfo ->
         BatteryCell(createInfo, BatteryModel(
             voltageFunction = BatteryVoltageModels.WET_CELL_12V,
-            resistanceFunction = { _, _ -> milliOhms(100.0) },
+            resistanceFunction = { _, _ -> 100 * 1e-3 },
             damageFunction = { battery, dt ->
                 val currentThreshold = 100.0 //A
 
