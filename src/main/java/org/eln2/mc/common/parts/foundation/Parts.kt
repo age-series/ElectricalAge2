@@ -38,6 +38,7 @@ import org.eln2.mc.data.DataEntity
 import org.eln2.mc.extensions.*
 import org.eln2.mc.integration.WailaEntity
 import org.eln2.mc.integration.WailaTooltipBuilder
+import org.eln2.mc.sim.BiomeEnvironments
 import org.eln2.mc.utility.BoundingBox
 import java.util.*
 import kotlin.math.PI
@@ -492,8 +493,7 @@ interface PartCellContainer {
 /**
  * This part represents a simulation object. It can become part of a cell network.
  * */
-abstract class CellPart(id: ResourceLocation, placement: PartPlacementInfo, final override val provider: CellProvider) : Part(id, placement), PartCellContainer,
-    WailaEntity {
+abstract class CellPart(id: ResourceLocation, placement: PartPlacementInfo, final override val provider: CellProvider) : Part(id, placement), PartCellContainer, WailaEntity {
     companion object {
         private const val GRAPH_ID = "GraphID"
         private const val CUSTOM_SIMULATION_DATA = "SimulationData"
@@ -527,7 +527,7 @@ abstract class CellPart(id: ResourceLocation, placement: PartPlacementInfo, fina
      * Notifies the cell of the new container.
      * */
     override fun onPlaced() {
-        cell = provider.create(cellPos)
+        cell = provider.create(cellPos, BiomeEnvironments.cellEnv(placement.level, cellPos).fieldMap())
         cell.container = placement.multipart
         isAlive = true
         acquireCell()
@@ -600,7 +600,7 @@ abstract class CellPart(id: ResourceLocation, placement: PartPlacementInfo, fina
         cell = if (!this::loadGraphId.isInitialized) {
             Eln2.LOGGER.error("Part cell not initialized!")
             // Should we blow up the game?
-            provider.create(cellPos)
+            provider.create(cellPos, BiomeEnvironments.cellEnv(placement.level, cellPos).fieldMap())
         } else {
             CellGraphManager.getFor(placement.level as ServerLevel)
                 .getGraph(loadGraphId)

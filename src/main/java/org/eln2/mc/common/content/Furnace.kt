@@ -125,11 +125,14 @@ data class FurnaceOptions(
     }
 }
 
-class FurnaceCell(pos: CellPos, id: ResourceLocation, val dir1: RelativeDirection = RelativeDirection.Left, val dir2: RelativeDirection = RelativeDirection.Right) : Cell(pos, id) {
+class FurnaceCell(ci: CellCI, val dir1: RelativeDirection = RelativeDirection.Left, val dir2: RelativeDirection = RelativeDirection.Right) : Cell(ci) {
     companion object {
         private const val OPTIONS = "options"
         private const val RESISTOR_THERMAL_MASS = "resistorThermalMass"
     }
+
+    @SimObject
+    val resistorObj = ResistorObject(this, dir1, dir2)
 
     init {
         ruleSet.withDirectionActualRule(DirectionMask.ofRelatives(dir1, dir2))
@@ -200,10 +203,6 @@ class FurnaceCell(pos: CellPos, id: ResourceLocation, val dir1: RelativeDirectio
      * */
     val resistorTemperature: Temperature get() = resistorHeatBody.temp
 
-    override fun createObjSet(): SimulationObjectSet {
-        return SimulationObjectSet(ResistorObject(this, dir1, dir2))
-    }
-
     override fun onGraphChanged() {
         graph.subscribers.addPre(this::simulationTick)
     }
@@ -216,7 +215,7 @@ class FurnaceCell(pos: CellPos, id: ResourceLocation, val dir1: RelativeDirectio
      * Sets the resistance to the idle value as per [options] and sets [isHot] to **false**.
      * */
     private fun idle() {
-        resistorObject.resistance = options.idleResistance
+        resistorObj.resistance = options.idleResistance
         isHot = false
     }
 
@@ -225,7 +224,7 @@ class FurnaceCell(pos: CellPos, id: ResourceLocation, val dir1: RelativeDirectio
      * the specified [FurnaceOptions.targetTemperature].
      * */
     private fun applyControlSignal(){
-        resistorObject.resistance = if(resistorHeatBody.tempK < options.targetTemperature){
+        resistorObj.resistance = if(resistorHeatBody.tempK < options.targetTemperature){
             options.runningResistance
         } else{
             options.idleResistance
@@ -235,7 +234,7 @@ class FurnaceCell(pos: CellPos, id: ResourceLocation, val dir1: RelativeDirectio
     private fun updateThermalSimulation(dt: Double){
         simulator.subStep(dt, 10) { _, elapsed ->
             // Add converted energy into the system
-            resistorHeatBody.energy += resistorObject.power * elapsed
+            resistorHeatBody.energy += resistorObj.power * elapsed
         }
     }
 
@@ -335,8 +334,6 @@ class FurnaceCell(pos: CellPos, id: ResourceLocation, val dir1: RelativeDirectio
 
         super.appendBody(builder, config)
     }
-
-    private val resistorObject = electricalObject as ResistorObject
 }
 
 class FurnaceBlockEntity(pos: BlockPos, state: BlockState) :

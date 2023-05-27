@@ -33,6 +33,7 @@ import org.eln2.mc.common.parts.foundation.*
 import org.eln2.mc.common.space.*
 import org.eln2.mc.data.DataNode
 import org.eln2.mc.data.DataEntity
+import org.eln2.mc.data.readAll2
 import org.eln2.mc.extensions.*
 import org.eln2.mc.extensions.times
 import org.eln2.mc.extensions.toVec3
@@ -41,8 +42,7 @@ import org.eln2.mc.integration.WailaTooltipBuilder
 import org.eln2.mc.mathematics.lerp
 import org.eln2.mc.mathematics.map
 import org.eln2.mc.mathematics.Geometry.cylinderSurfaceArea
-import org.eln2.mc.sim.BiomeEnvironments
-import org.eln2.mc.sim.ThermalBody
+import org.eln2.mc.sim.*
 import java.util.concurrent.atomic.AtomicReference
 
 /**
@@ -107,9 +107,6 @@ object ElectricalWireModels {
 }
 
 class ThermalWireObject(cell: Cell) : ThermalObject(cell), WailaEntity, PersistentObject, DataEntity {
-    private val environmentInformation
-        get() = BiomeEnvironments.get(cell.graph.level, cell.pos)
-
     companion object {
         private const val THERMAL_MASS = "thermalMass"
         private const val SURFACE_AREA = "area"
@@ -118,7 +115,11 @@ class ThermalWireObject(cell: Cell) : ThermalObject(cell), WailaEntity, Persiste
     var body = ThermalBody(
         ThermalMass(Material.COPPER),
         cylinderSurfaceArea(1.0, 0.05)
-    ).also { it.temp = environmentInformation.temperature }
+    ).also { b ->
+        cell.envFm.read<EnvTemperatureField>()?.readTemperature()?.also {
+            b.temp = it
+        }
+    }
 
     override fun offerComponent(neighbour: ThermalObject): ThermalComponentInfo {
         return ThermalComponentInfo(body)
@@ -126,7 +127,16 @@ class ThermalWireObject(cell: Cell) : ThermalObject(cell), WailaEntity, Persiste
 
     override fun addComponents(simulator: Simulator) {
         simulator.add(body)
-        simulator.connect(body, environmentInformation)
+
+        cell.envFm.readAll2<EnvTemperatureField, EnvThermalConductivityField>()?.also { (tempField, condField) ->
+            simulator.connect(
+                body,
+                EnvironmentInformation(
+                    tempField.readTemperature(),
+                    condField.readConductivity()
+                )
+            )
+        }
     }
 
     override fun appendBody(builder: WailaTooltipBuilder, config: IPluginConfig?) {
@@ -160,16 +170,23 @@ enum class WireType(val temperatureThreshold: Temperature, val isRadiant: Boolea
     Thermal(Temperature.from(2000.0, ThermalUnits.CELSIUS), true)
 }
 
-open class WireCell(
-    pos: CellPos,
-    id: ResourceLocation,
-    val model: ElectricalWireModel,
-    val type: WireType) : Cell(pos, id) {
+class WireCell(ci: CellCI, val model: ElectricalWireModel, val type: WireType) : Cell(ci) {
+    @SimObject
+    val thermalWire = ThermalWireObject(this)
+
+    @SimObject
+    val electricalWire =
+        if(type == WireType.Electrical){
+            ElectricalWireObject(this).also {
+                it.resistance = model.resistanceMeter / 2.0 // Divide by two because bundle creates 2 resistors
+            }
+        }
+        else null
 
     init {
         if(type == WireType.Electrical) {
             behaviors.apply {
-                withElectricalPowerConverter { electricalWire.power }
+                withElectricalPowerConverter { electricalWire!!.power }
                 withElectricalHeatTransfer { thermalWire.body }
             }
         }
@@ -178,21 +195,6 @@ open class WireCell(
             thermalWire.body.tempK
         }
     }
-
-    override fun createObjSet(): SimulationObjectSet {
-        val thermal = ThermalWireObject(this)
-
-        return if(type == WireType.Electrical){
-            SimulationObjectSet(ElectricalWireObject(this).also {
-                it.resistance = model.resistanceMeter / 2.0 // Divide by two because bundle creates 2 resistors
-            }, thermal)
-        } else {
-            SimulationObjectSet(thermal)
-        }
-    }
-
-    private val electricalWire get() = electricalObject as ElectricalWireObject
-    private val thermalWire get() = thermalObject as ThermalWireObject
 
     val temperature get() = thermalWire.body.tempK
 }

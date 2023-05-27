@@ -84,16 +84,13 @@ class VoltageSourceObject(cell: Cell) : ElectricalObject(cell), WailaEntity, Dat
     }
 }
 
-class VoltageSourceCell(pos: CellPos, id: ResourceLocation) : Cell(pos, id) {
+class VoltageSourceCell(ci: CellCI) : Cell(ci) {
+    @SimObject
+    val voltageSourceObj = VoltageSourceObject(this)
+
     init {
         ruleSet.withDirectionActualRule(DirectionMask.FRONT)
     }
-
-    override fun createObjSet(): SimulationObjectSet {
-        return SimulationObjectSet(VoltageSourceObject(this))
-    }
-
-    val voltageSourceObject get() = electricalObject as VoltageSourceObject
 }
 
 class VoltageSourcePart(id: ResourceLocation, placementContext: PartPlacementInfo) : CellPart(id, placementContext, Content.VOLTAGE_SOURCE_CELL.get()) {

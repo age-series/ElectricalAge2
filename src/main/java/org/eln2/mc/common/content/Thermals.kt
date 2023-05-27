@@ -15,10 +15,7 @@ import org.eln2.mc.client.render.foundation.BasicPartRenderer
 import org.eln2.mc.client.render.foundation.RadiantBodyColor
 import org.eln2.mc.client.render.foundation.createPartInstance
 import org.eln2.mc.client.render.foundation.defaultRadiantBodyColor
-import org.eln2.mc.common.cells.foundation.Cell
-import org.eln2.mc.common.cells.foundation.CellPos
-import org.eln2.mc.common.cells.foundation.withStandardExplosionBehavior
-import org.eln2.mc.common.cells.foundation.SimulationObjectSet
+import org.eln2.mc.common.cells.foundation.*
 import org.eln2.mc.common.events.AtomicUpdate
 import org.eln2.mc.common.parts.foundation.CellPart
 import org.eln2.mc.common.parts.foundation.PartRenderer
@@ -35,24 +32,18 @@ data class RadiatorModel(
     val mass: Double
 )
 
-class ThermalRadiatorCell(pos: CellPos, id: ResourceLocation, val model: RadiatorModel): Cell(pos, id) {
-    init {
-        behaviors.withStandardExplosionBehavior(this, model.destructionTemperature) {
-            thermalWire.body.tempK
-        }
+class ThermalRadiatorCell(ci: CellCI, val model: RadiatorModel): Cell(ci) {
+    @SimObject
+    val thermalWireObj = ThermalWireObject(this).also {
+        it.body = ThermalBody(ThermalMass(model.material, it.body.energy, model.mass), model.surfaceArea)
+    }
 
+    init {
+        behaviors.withStandardExplosionBehavior(this, model.destructionTemperature) { thermalWireObj.body.tempK }
         ruleSet.withDirectionActualRule(DirectionMask.HORIZONTALS)
     }
 
-    override fun createObjSet(): SimulationObjectSet {
-        return SimulationObjectSet(ThermalWireObject(this).also {
-            it.body = ThermalBody(ThermalMass(model.material, it.body.energy, model.mass), model.surfaceArea)
-        })
-    }
-
-    private val thermalWire get() = thermalObject as ThermalWireObject
-
-    val temperature get() = thermalWire.body.tempK
+    val temperature get() = thermalWireObj.body.tempK
 }
 
 class RadiatorPart(id: ResourceLocation, placementContext: PartPlacementInfo) : CellPart(id, placementContext, Content.THERMAL_WIRE_CELL_COPPER.get()) {

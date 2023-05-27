@@ -237,10 +237,6 @@ class SimulationObjectSet(objects: List<SimulationObject>) {
     private val objects = HashMap<SimulationObjectType, SimulationObject>()
 
     init {
-        if (objects.isEmpty()) {
-            error("Tried to create empty simulation object set.")
-        }
-
         objects.forEach {
             if(this.objects.put(it.type, it) != null) {
                 error("Duplicate object of type ${it.type}")

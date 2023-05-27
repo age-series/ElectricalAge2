@@ -8,16 +8,30 @@ import org.eln2.mc.common.cells.foundation.CellPos
 import org.eln2.mc.common.space.BlockPosLocator
 import org.eln2.mc.common.space.R3
 import org.eln2.mc.common.space.requireLocator
+import org.eln2.mc.data.DataFieldMap
 import java.util.concurrent.ConcurrentHashMap
+
+fun interface EnvTemperatureField {
+    fun readTemperature(): Temperature
+}
+
+fun interface EnvThermalConductivityField {
+    fun readConductivity(): Double
+}
 
 data class EnvironmentInformation(
     val temperature: Temperature,
-    val airThermalConductivity: Double)
+    val airThermalConductivity: Double
+) {
+    fun fieldMap() = DataFieldMap()
+        .withField { EnvTemperatureField { temperature } }
+        .withField { EnvThermalConductivityField { airThermalConductivity } }
+}
 
 object BiomeEnvironments {
     private val biomes = ConcurrentHashMap<Biome, EnvironmentInformation>()
 
-    fun get(level: Level, pos: CellPos): EnvironmentInformation {
+    fun cellEnv(level: Level, pos: CellPos): EnvironmentInformation {
         val biome = level.getBiome(pos.descriptor.requireLocator<R3, BlockPosLocator> {
             "Biome Environments need a block pos locator"
         }.pos).value()

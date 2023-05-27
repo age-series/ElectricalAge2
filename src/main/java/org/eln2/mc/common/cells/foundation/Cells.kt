@@ -20,12 +20,15 @@ import org.eln2.mc.common.configs.Configuration
 import org.eln2.mc.common.space.*
 import org.eln2.mc.data.DataNode
 import org.eln2.mc.data.DataEntity
+import org.eln2.mc.data.DataFieldMap
 import org.eln2.mc.extensions.*
 import org.eln2.mc.integration.WailaEntity
 import org.eln2.mc.integration.WailaTooltipBuilder
+import org.eln2.mc.sim.BiomeEnvironments
 import org.eln2.mc.utility.Stopwatch
 import org.eln2.mc.utility.Time
 import java.util.*
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
@@ -34,6 +37,10 @@ import java.util.concurrent.locks.ReentrantLock
 import kotlin.collections.ArrayDeque
 import kotlin.collections.ArrayList
 import kotlin.collections.HashSet
+import kotlin.reflect.KClass
+import kotlin.reflect.full.isSubclassOf
+import kotlin.reflect.full.memberProperties
+import kotlin.reflect.jvm.javaField
 import kotlin.system.measureNanoTime
 
 data class CellPos(val descriptor: LocationDescriptor)
@@ -59,22 +66,57 @@ class TrackedSubscriberCollection(val underlying: SubscriberCollection) : Subscr
     private data class Sub(val parameters: SubscriberOptions, val subscriber: Subscriber)
 }
 
+data class CellCI(
+    val pos: CellPos,
+    val id: ResourceLocation,
+    val envFm: DataFieldMap
+)
+
+@Retention(AnnotationRetention.RUNTIME)
+@Target(AnnotationTarget.FIELD)
+annotation class SimObject
+
 /**
  * The cell is a physical unit, that may participate in multiple simulations. Each simulation will
  * have a Simulation Object associated with it.
  * Cells create connections with other cells, and objects create connections with other objects of the same simulation type.
  * */
-abstract class Cell(val pos: CellPos, val id: ResourceLocation) : WailaEntity, DataEntity {
+abstract class Cell(val pos: CellPos, val id: ResourceLocation, val envFm: DataFieldMap) : WailaEntity, DataEntity {
+    constructor(ci: CellCI) : this(ci.pos, ci.id, ci.envFm)
+
+    private fun interface ObjAccessor {
+        fun get(inst: Cell): Any?
+    }
+
+    companion object {
+        private val OBJ_SET_LOADERS = ConcurrentHashMap<Class<*>, List<ObjAccessor>>()
+        private const val CELL_DATA = "cellData"
+        private const val OBJECT_DATA = "objectData"
+
+        private fun streamObjectLoaders(k: Class<Cell>) =
+            OBJ_SET_LOADERS.getOrPut(k) {
+                val accessors = mutableListOf<ObjAccessor>()
+
+                k.kotlin
+                    .memberProperties
+                    .filter { it.javaField?.isAnnotationPresent(SimObject::class.java) ?: false }
+                    .forEach {
+                        if(!(it.returnType.classifier as KClass<*>).isSubclassOf(SimulationObject::class)) {
+                            error("Invalid simulation field $it")
+                        }
+
+                        accessors.add(it::get)
+                    }
+
+                accessors
+            }
+    }
+
     val posDescr get() = pos.descriptor
 
     private var trackedPool: TrackedSubscriberCollection? = null
     val subscribers: SubscriberCollection get() = trackedPool
         ?: error("Failed to fetch subscriber collection")
-
-    companion object {
-        private const val CELL_DATA = "cellData"
-        private const val OBJECT_DATA = "objectData"
-    }
 
     lateinit var graph: CellGraph
     lateinit var connections: ArrayList<Cell>
@@ -105,11 +147,17 @@ abstract class Cell(val pos: CellPos, val id: ResourceLocation) : WailaEntity, D
 
     var container: CellContainer? = null
 
-    private var createdSet: SimulationObjectSet? = null
-
-    private val behaviorsLazy = lazy {
-        CellBehaviorContainer(this)
+    private val objSetLazy = lazy {
+        createObjSet().also { set ->
+            set.process { obj ->
+                if(obj is DataEntity) {
+                    dataNode.withChild(obj.dataNode)
+                }
+            }
+        }
     }
+
+    private val behaviorsLazy = lazy { CellBehaviorContainer(this) }
 
     protected val behaviorsInitialized get() = behaviorsLazy.isInitialized()
 
@@ -119,22 +167,13 @@ abstract class Cell(val pos: CellPos, val id: ResourceLocation) : WailaEntity, D
      * Called once when the object set is requested. The result is then cached.
      * @return A new object set, with all the desired objects.
      * */
-    abstract fun createObjSet(): SimulationObjectSet
-
-    private val objSet: SimulationObjectSet
-        get() {
-            if (createdSet == null) {
-                createdSet = createObjSet()
-
-                createdSet!!.process {
-                    if(it is DataEntity) {
-                        dataNode.withChild(it.dataNode)
-                    }
-                }
-            }
-
-            return createdSet!!
+    open fun createObjSet() = SimulationObjectSet(
+        streamObjectLoaders(this.javaClass).mapNotNull {
+            it.get(this) as? SimulationObject
         }
+    )
+
+    val objSet: SimulationObjectSet get() = objSetLazy.value
 
     fun loadTag(tag: CompoundTag) {
         tag.useSubTagIfPreset(CELL_DATA, this::loadCellData)
@@ -340,12 +379,6 @@ abstract class Cell(val pos: CellPos, val id: ResourceLocation) : WailaEntity, D
     }
 
     /**
-     * Gets the electrical object. Only call if it has been ensured that this cell has an electrical object.
-     * */
-    val electricalObject get() = objSet.electricalObject
-    val thermalObject get() = objSet.thermalObject
-
-    /**
      * By default, the cell just passes down the call to objects that implement the WAILA provider.
      * */
     override fun appendBody(builder: WailaTooltipBuilder, config: IPluginConfig?) {
@@ -368,8 +401,6 @@ abstract class Cell(val pos: CellPos, val id: ResourceLocation) : WailaEntity, D
 
     override val dataNode: DataNode = DataNode()
 }
-
-// Don't like the name very much:
 
 /**
  * [CellConnections] has all Cell-Cell connection logic and is responsible for building *physical* networks.
@@ -869,7 +900,7 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
 
         realizeComponents(SimulationObjectType.Electrical) { set ->
             val circuit = Circuit()
-            set.forEach { it.electricalObject.setNewCircuit(circuit) }
+            set.forEach { it.objSet.electricalObject.setNewCircuit(circuit) }
             electricalSims.add(circuit)
         }
     }
@@ -879,7 +910,7 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
 
         realizeComponents(SimulationObjectType.Thermal) { set ->
             val simulation = Simulator()
-            set.forEach { it.thermalObject.setNewSimulation(simulation) }
+            set.forEach { it.objSet.thermalObject.setNewSimulation(simulation) }
             thermalSims.add(simulation)
         }
     }
@@ -1188,7 +1219,10 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
                     connectionPositions.add(connectionPos)
                 }
 
-                val cell = CellRegistry.getProvider(cellId).create(pos)
+                val cell = CellRegistry.getProvider(cellId).create(
+                    pos,
+                    BiomeEnvironments.cellEnv(level, pos).fieldMap()
+                )
 
                 cellConnections[cell] = connectionPositions
 
@@ -1387,13 +1421,19 @@ class CellGraphManager(val level: ServerLevel) : SavedData() {
 abstract class CellProvider : ForgeRegistryEntry<CellProvider>() {
     val id: ResourceLocation get() = this.registryName ?: error("ID not available in CellProvider")
 
-    protected abstract fun createInstance(pos: CellPos, id: ResourceLocation): Cell
+    protected abstract fun createInstance(ci: CellCI): Cell
 
     /**
      * Creates a new Cell, at the specified position.
      * */
-    fun create(pos: CellPos): Cell {
-        return createInstance(pos, id)
+    fun create(pos: CellPos, envNode: DataFieldMap): Cell {
+        return createInstance(
+            CellCI(
+                pos,
+                id,
+                envNode
+            )
+        )
     }
 }
 
@@ -1402,12 +1442,12 @@ abstract class CellProvider : ForgeRegistryEntry<CellProvider>() {
  * Usually, the constructor of the cell can be passed as factory.
  * */
 fun interface CellFactory {
-    fun create(pos: CellPos, id: ResourceLocation): Cell
+    fun create(ci: CellCI): Cell
 }
 
 class BasicCellProvider(private val factory: CellFactory) : CellProvider() {
-    override fun createInstance(pos: CellPos, id: ResourceLocation): Cell {
-        return factory.create(pos, id)
+    override fun createInstance(ci: CellCI): Cell {
+        return factory.create(ci)
     }
 }
 

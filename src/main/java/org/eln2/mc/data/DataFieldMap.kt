@@ -16,10 +16,25 @@ class DataFieldMap {
     }
 
     inline fun<reified T> withField(access: DataFieldAccessor<T>): DataFieldMap = withField(T::class.java, access)
-
     private fun getAccessor(c: Class<*>): DataFieldAccessor<*>? = fields[c]
     fun<T> read(c: Class<T>): T? = (getAccessor(c) as? DataFieldAccessor<T>)?.getField()
     inline fun<reified T> read(): T? = read(T::class.java)
+    fun has(c: Class<*>) = fields.containsKey(c)
+    inline fun<reified T> has(): Boolean = has(T::class.java)
+}
+
+inline fun<reified T1, reified T2> DataFieldMap.readAll2(): Pair<T1, T2>? {
+    return Pair(
+        this.read<T1>() ?: return null,
+        this.read<T2>() ?: return null)
+}
+
+inline fun<reified T1, reified T2, reified T3> DataFieldMap.readAll3(): Triple<T1, T2, T3>? {
+    return Triple(
+        this.read<T1>() ?: return null,
+        this.read<T2>() ?: return null,
+        this.read<T3>() ?: return null
+    )
 }
 
 class DataNode(val data: DataFieldMap) {
