@@ -18,12 +18,7 @@ import org.eln2.mc.client.render.foundation.colorF
 import org.eln2.mc.client.render.foundation.colorLerp
 import org.eln2.mc.client.render.foundation.applyBlockBenchTransform
 import org.eln2.mc.common.blocks.foundation.GhostLight
-import org.eln2.mc.common.cells.foundation.Cell
-import org.eln2.mc.common.cells.foundation.CellPos
-import org.eln2.mc.common.cells.foundation.CellProvider
-import org.eln2.mc.common.cells.foundation.SubscriberPhase
-import org.eln2.mc.common.cells.foundation.withStandardBehavior
-import org.eln2.mc.common.cells.foundation.SimulationObjectSet
+import org.eln2.mc.common.cells.foundation.*
 import org.eln2.mc.common.events.*
 import org.eln2.mc.common.parts.foundation.CellPart
 import org.eln2.mc.common.parts.foundation.PartRenderer
@@ -35,12 +30,12 @@ import org.eln2.mc.extensions.useSubTag
 import org.eln2.mc.extensions.withSubTag
 import org.eln2.mc.integration.WailaTooltipBuilder
 
-fun interface ILightBrightnessFunction {
+fun interface BrightnessFunction {
     fun calculateBrightness(power: Double): Double
 }
 
 data class LightModel(
-    val brightnessFunction: ILightBrightnessFunction,
+    val brightnessFunction: BrightnessFunction,
     val resistance: Double
 )
 
@@ -50,7 +45,7 @@ object LightModels {
     }
 }
 
-data class LightChangeEvent(val brightness: Int): IEvent
+data class LightChangeEvent(val brightness: Int): Event
 
 class LightCell(
     pos: CellPos,
@@ -210,7 +205,7 @@ class LightRenderer(
 
 class LightPart(id: ResourceLocation, placementContext: PartPlacementInfo, cellProvider: CellProvider):
     CellPart(id, placementContext, cellProvider),
-    IEventListener {
+    EventListener {
 
     companion object {
         private const val RAW_BRIGHTNESS = "rawBrightness"

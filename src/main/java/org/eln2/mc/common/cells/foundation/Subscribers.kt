@@ -32,7 +32,7 @@ data class SubscriberOptions(val interval: Int, val phase: SubscriberPhase)
  * The Subscriber Collection is used to manage sets of subscribers, with different execution policies.
  * [SubscriberOptions] will be used to choose a [SubscriberPool].
  * */
-class SubscriberCollection {
+class SubscriberPool : SubscriberCollection {
     private val pools = HashMap<SubscriberOptions, SubscriberPool>()
     private val subscribers = mutableMultiMapOf<Subscriber, SubscriberPool>()
 
@@ -92,34 +92,20 @@ class SubscriberCollection {
         }
     }
 
-    fun addSubscriber(parameters: SubscriberOptions, subscriber: Subscriber)  {
+    override fun addSubscriber(parameters: SubscriberOptions, subscriber: Subscriber)  {
         enqueueOrApply(AddUpdate(subscriber, parameters))
     }
 
-    /**
-     * Adds a subscriber that runs on [SubscriberPhase.Pre] every tick (interval is 0).
-     * */
-    fun addPre(subscriber: Subscriber){
-        addSubscriber(SubscriberOptions(0, SubscriberPhase.Pre), subscriber)
-    }
-
-    /**
-     * Adds a subscriber that runs on [SubscriberPhase.Post] every tick (interval is 0).
-     * */
-    fun addPost(subscriber: Subscriber){
-        addSubscriber(SubscriberOptions(0, SubscriberPhase.Post), subscriber)
-    }
-
-    fun remove(subscriber: Subscriber){
+    override fun remove(subscriber: Subscriber){
         enqueueOrApply(RemoveAllUpdate(subscriber))
     }
 
     fun update(dt: Double, phase: SubscriberPhase) {
         iterating = true
 
-        pools.values.filter { it.parameters.phase == phase }.forEach { pool ->
-            pool.update(dt)
-        }
+        pools.values
+            .filter { it.parameters.phase == phase }
+            .forEach { it.update(dt) }
 
         iterating = false
 
@@ -164,4 +150,24 @@ class SubscriberCollection {
             }
         }
     }
+}
+
+interface SubscriberCollection {
+    fun addSubscriber(parameters: SubscriberOptions, subscriber: Subscriber)
+
+    fun remove(subscriber: Subscriber)
+}
+
+/**
+ * Adds a subscriber that runs on [SubscriberPhase.Pre] every tick (interval is 0).
+ * */
+fun SubscriberCollection.addPre(subscriber: Subscriber){
+    this.addSubscriber(SubscriberOptions(0, SubscriberPhase.Pre), subscriber)
+}
+
+/**
+ * Adds a subscriber that runs on [SubscriberPhase.Post] every tick (interval is 0).
+ * */
+fun SubscriberCollection.addPost(subscriber: Subscriber){
+    this.addSubscriber(SubscriberOptions(0, SubscriberPhase.Post), subscriber)
 }

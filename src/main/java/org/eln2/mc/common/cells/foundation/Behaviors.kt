@@ -16,9 +16,9 @@ import org.eln2.mc.integration.WailaTooltipBuilder
 import org.eln2.mc.sim.ThermalBody
 
 interface CellBehavior {
-    fun onAdded(container: CellBehaviorContainer)
-    fun subscribe(subscribers: SubscriberCollection)
-    fun destroy(subscribers: SubscriberCollection)
+    fun onAdded(container: CellBehaviorContainer) { }
+    fun subscribe(subscribers: SubscriberCollection) { }
+    fun destroy() { }
 }
 
 class CellBehaviorContainer(private val cell: Cell) : DataEntity {
@@ -53,7 +53,7 @@ class CellBehaviorContainer(private val cell: Cell) : DataEntity {
     }
 
     fun changeGraph(){
-        behaviors.forEach { it.subscribe(cell.graph.subscribers) }
+        behaviors.forEach { it.subscribe(cell.subscribers) }
     }
 
     fun destroy() {
@@ -62,7 +62,7 @@ class CellBehaviorContainer(private val cell: Cell) : DataEntity {
                 dataNode.children.removeIf { access -> access == it.dataNode }
             }
 
-            it.destroy(cell.graph.subscribers)
+            it.destroy()
         }
     }
 
@@ -84,10 +84,6 @@ class ElectricalPowerConverterBehavior(private val accessor: ElectricalPowerAcce
 
     override fun subscribe(subscribers: SubscriberCollection) {
         subscribers.addPre(this::simulationTick)
-    }
-
-    override fun destroy(subscribers: SubscriberCollection) {
-        subscribers.remove(this::simulationTick)
     }
 
     private fun simulationTick(dt: Double, p: SubscriberPhase){
@@ -114,12 +110,8 @@ class ElectricalHeatTransferBehavior(private val bodyAccessor: ThermalBodyAccess
         subscribers.addPre(this::simulationTick)
     }
 
-    override fun destroy(subscribers: SubscriberCollection) {
-        subscribers.remove(this::simulationTick)
-    }
-
     private fun simulationTick(dt: Double, p: SubscriberPhase){
-        bodyAccessor.get().thermalEnergy += converterBehavior.deltaEnergy
+        bodyAccessor.get().energy += converterBehavior.deltaEnergy
         converterBehavior.energy -= converterBehavior.deltaEnergy
     }
 }
@@ -176,10 +168,6 @@ class TemperatureExplosionBehavior(
 
     override fun subscribe(subscribers: SubscriberCollection) {
         subscribers.addSubscriber(SubscriberOptions(10, SubscriberPhase.Post), this::simulationTick)
-    }
-
-    override fun destroy(subscribers: SubscriberCollection) {
-        subscribers.remove(this::simulationTick)
     }
 
     private fun simulationTick(dt: Double, phase: SubscriberPhase) {
@@ -261,4 +249,4 @@ fun CellBehaviorContainer.withStandardExplosionBehavior(cell: Cell, threshold: D
 fun CellBehaviorContainer.withStandardBehavior(cell: Cell, power: ElectricalPowerAccessor, thermal: ThermalBodyAccessor): CellBehaviorContainer = this
     .withElectricalPowerConverter(power)
     .withElectricalHeatTransfer(thermal)
-    .withStandardExplosionBehavior(cell, 600.0) { thermal.get().temperatureK }
+    .withStandardExplosionBehavior(cell, 600.0) { thermal.get().tempK }

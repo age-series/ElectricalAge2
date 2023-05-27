@@ -17,7 +17,7 @@ abstract class SimulationObject(val cell: Cell) {
     abstract val type: SimulationObjectType
 
     private val rsLazy = lazy { LocatorRelationRuleSet() }
-    protected val ruleSet get() = rsLazy.value
+    val ruleSet get() = rsLazy.value
 
     /**
      * Called when the connections and/or graph changes.
@@ -117,8 +117,8 @@ abstract class ThermalObject(cell: Cell) : SimulationObject(cell) {
             assert(remote.simulation == simulation)
 
             simulation!!.connect(
-                this.offerComponent(remote).body.thermalMass,
-                remote.offerComponent(this).body.thermalMass,
+                this.offerComponent(remote).body.thermal,
+                remote.offerComponent(this).body.thermal,
                 ConnectionParameters.DEFAULT
             )
         }
@@ -226,7 +226,7 @@ abstract class ElectricalObject(cell: Cell) : SimulationObject(cell) {
 /**
  * Represents an object with NBT saving capabilities.
  * */
-interface IPersistentObject {
+interface PersistentObject {
     fun save(): CompoundTag
     fun load(tag: CompoundTag)
 }
