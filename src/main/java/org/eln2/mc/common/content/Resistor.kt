@@ -8,12 +8,7 @@ import org.eln2.mc.mathematics.bbVec
 import org.eln2.mc.client.render.PartialModels
 import org.eln2.mc.client.render.PartialModels.bbOffset
 import org.eln2.mc.client.render.foundation.BasicPartRenderer
-import org.eln2.mc.common.cells.foundation.Cell
-import org.eln2.mc.common.cells.foundation.CellPos
-import org.eln2.mc.common.cells.foundation.withStandardBehavior
-import org.eln2.mc.common.cells.foundation.ElectricalComponentInfo
-import org.eln2.mc.common.cells.foundation.ElectricalObject
-import org.eln2.mc.common.cells.foundation.SimulationObjectSet
+import org.eln2.mc.common.cells.foundation.*
 import org.eln2.mc.common.parts.foundation.CellPart
 import org.eln2.mc.common.parts.foundation.PartRenderer
 import org.eln2.mc.common.parts.foundation.PartPlacementInfo
@@ -82,18 +77,17 @@ class ResistorObject(cell: Cell, val dir1: RelativeDirection = RelativeDirection
     }
 }
 
-class ResistorCell(pos: CellPos, id: ResourceLocation) : Cell(pos, id) {
+class ResistorCell(ci: CellCI) : Cell(ci) {
+    @SimObject
+    val resistorObj = ResistorObject(this)
+
+    @SimObject
+    val thermalWireObj = ThermalWireObject(this)
+
     init {
-        behaviors.withStandardBehavior(this, { resistor.power }, { thermal.body })
+        behaviors.withStandardBehavior(this, { resistorObj.power }, { thermalWireObj.body })
         ruleSet.withDirectionActualRule(DirectionMask.FRONT + DirectionMask.BACK)
     }
-
-    override fun createObjSet(): SimulationObjectSet {
-        return SimulationObjectSet(ResistorObject(this), ThermalWireObject(this))
-    }
-
-    private val resistor get() = electricalObject as ResistorObject
-    private val thermal get() = thermalObject as ThermalWireObject
 }
 
 class ResistorPart(id: ResourceLocation, placementContext: PartPlacementInfo) :

@@ -172,37 +172,34 @@ data class BatteryModel(
 
 data class BatteryState(val energy: Double, val life: Double, val energyIo: Double)
 
-class BatteryCell(pos: CellPos, id: ResourceLocation, override val model: BatteryModel) : Cell(pos, id), BatteryView {
+class BatteryCell(ci: CellCI, override val model: BatteryModel) : Cell(ci), BatteryView {
     companion object {
         private const val ENERGY = "energy"
         private const val LIFE = "life"
         private const val ENERGY_IO = "energyIo"
     }
 
-    private val generator = VRGeneratorObject(this, dirActualMap()).also {
+    @SimObject
+    val generatorObj = VRGeneratorObject(this, dirActualMap()).also {
         it.ruleSet.withDirectionActualRule(DirectionMask.FRONT + DirectionMask.BACK)
+    }
+
+    @SimObject
+    val thermalWireObj = ThermalWireObject(this).also {
+        it.body = ThermalBody(
+            ThermalMass(model.material, null, model.mass),
+            model.surfaceArea
+        )
     }
 
     init {
         ruleSet.withDirectionActualRule(DirectionMask.FRONT + DirectionMask.BACK)
     }
 
-    override fun createObjSet(): SimulationObjectSet {
-        return SimulationObjectSet(
-            generator,
-            ThermalWireObject(this).also {
-                it.body = ThermalBody(
-                    ThermalMass(model.material, null, model.mass),
-                    model.surfaceArea
-                )
-            }
-        )
-    }
-
     init {
         behaviors.apply {
-            withElectricalPowerConverter { generator.generatorPower }
-            withElectricalHeatTransfer { thermalWireObject.body }
+            withElectricalPowerConverter { generatorObj.generatorPower }
+            withElectricalHeatTransfer { thermalWireObj.body }
         }
     }
 
@@ -217,7 +214,7 @@ class BatteryCell(pos: CellPos, id: ResourceLocation, override val model: Batter
     override val cycles
         get() = energyIo / model.energyCapacity
 
-    override val current get() = generator.generatorCurrent
+    override val current get() = generatorObj.generatorCurrent
 
     private val stateUpdate = AtomicUpdate<BatteryState>()
 
@@ -232,7 +229,7 @@ class BatteryCell(pos: CellPos, id: ResourceLocation, override val model: Batter
     )
 
     override val temperature: Temperature
-        get() = thermalWireObject.body.temp
+        get() = thermalWireObj.body.temp
 
     /**
      * Gets the capacity coefficient of this battery. It is computed using the [BatteryModel.capacityFunction].
@@ -296,7 +293,7 @@ class BatteryCell(pos: CellPos, id: ResourceLocation, override val model: Batter
 
     private fun simulateEnergyFlow(elapsed: Double) {
         // Get energy transfer:
-        val transfer = generator.generatorPower * elapsed
+        val transfer = generatorObj.generatorPower * elapsed
 
         // Update total IO:
         energyIo += abs(transfer)
@@ -316,22 +313,21 @@ class BatteryCell(pos: CellPos, id: ResourceLocation, override val model: Batter
             energy -= extraEnergy
 
             // Conserve energy by increasing temperature:
-            thermalWireObject.body.energy += extraEnergy
+            thermalWireObj.body.energy += extraEnergy
         }
     }
 
     private fun simulationTick(elapsed: Double, phase: SubscriberPhase){
         applyExternalUpdates()
 
-        if(!generator.hasResistor){
-            LOGGER.info("no res")
+        if(!generatorObj.hasResistor){
             return
         }
 
         simulateEnergyFlow(elapsed)
 
-        generator.potential = model.voltageFunction.computeVoltage(this, elapsed)
-        generator.resistance = model.resistanceFunction.computeResistance(this, elapsed)
+        generatorObj.potential = model.voltageFunction.computeVoltage(this, elapsed)
+        generatorObj.resistance = model.resistanceFunction.computeResistance(this, elapsed)
         life -= model.damageFunction.computeDamage(this, elapsed)
         life = life.coerceIn(0.0, 1.0)
 
@@ -349,12 +345,9 @@ class BatteryCell(pos: CellPos, id: ResourceLocation, override val model: Batter
         builder.energy(energy)
         builder.current(current)
     }
-
-    private val thermalWireObject get() = thermalObject as ThermalWireObject
 }
 
-class BatteryPart(id: ResourceLocation, placementContext: PartPlacementInfo, provider: CellProvider): CellPart(id, placementContext, provider),
-    ItemPersistentPart {
+class BatteryPart(id: ResourceLocation, placementContext: PartPlacementInfo, provider: CellProvider): CellPart(id, placementContext, provider), ItemPersistentPart {
     companion object {
         private const val BATTERY = "battery"
     }

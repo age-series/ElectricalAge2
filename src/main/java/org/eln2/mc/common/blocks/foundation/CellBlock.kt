@@ -36,6 +36,7 @@ import org.eln2.mc.data.DataEntity
 import org.eln2.mc.extensions.isHorizontal
 import org.eln2.mc.integration.WailaEntity
 import org.eln2.mc.integration.WailaTooltipBuilder
+import org.eln2.mc.sim.BiomeEnvironments
 import java.util.*
 
 abstract class CellBlock(props: Properties? = null) : HorizontalDirectionalBlock(props ?: Properties.of(Material.STONE).noOcclusion()), EntityBlock {
@@ -168,7 +169,8 @@ open class CellBlockEntity(pos: BlockPos, state: BlockState, targetType: BlockEn
 
         // Create the cell based on the provider.
 
-        cell = cellProvider.create(getCellPos())
+        val p = getCellPos()
+        cell = cellProvider.create(p, BiomeEnvironments.cellEnv(level, p).fieldMap())
 
         cell!!.container = this
 

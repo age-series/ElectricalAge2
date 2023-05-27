@@ -57,6 +57,7 @@ import org.eln2.mc.integration.WailaTooltipBuilder
 import org.eln2.mc.mathematics.*
 import org.eln2.mc.mathematics.map
 import org.eln2.mc.mathematics.vec4fOne
+import org.eln2.mc.sim.EnvTemperatureField
 import org.eln2.mc.sim.ThermalBody
 import org.eln2.mc.utility.SelfDescriptiveUnitMultipliers.megaJoules
 import kotlin.math.*
@@ -149,25 +150,30 @@ class VRGeneratorObject(cell: Cell, val map: PoleMap) : ElectricalObject(cell), 
         it.data.withField { CurrentField { generatorCurrent } }
     }
 }
+
+interface ThermalBipole {
+    val b1: ThermalBody
+    val b2: ThermalBody
+}
+
 /**
  * Thermal body with two connection sides.
  * */
-class ThermalBipoleObject(cell: Cell, val b1Dir: RelativeDirection = RelativeDirection.Front, val b2Dir: RelativeDirection = RelativeDirection.Back) : ThermalObject(cell), WailaEntity {
-    var b1 = ThermalBody.createDefault().also { it.temp = cell.getEnvironmentTemp() }
-    var b2 = ThermalBody.createDefault().also { it.temp = cell.getEnvironmentTemp() }
+class ThermalBipoleObject(cell: Cell, val map: PoleMap) : ThermalObject(cell), WailaEntity, ThermalBipole {
+    override var b1 = ThermalBody.createDefault()
+    override var b2 = ThermalBody.createDefault()
 
     init {
-        ruleSet.withDirectionActualRule(DirectionMask.ofRelatives(b1Dir, b2Dir))
+        cell.envFm.read<EnvTemperatureField>()?.readTemperature()?.also {
+            b1.temp = it
+            b2.temp = it
+        }
     }
 
     override fun offerComponent(neighbour: ThermalObject): ThermalComponentInfo {
-        val dirActual = cell.posDescr.findDirActualOrNull(neighbour.cell.posDescr)
-            ?: error("Thermal Bipole requires a direction")
-
-        return ThermalComponentInfo(when(dirActual){
-            b1Dir -> b1
-            b2Dir -> b2
-            else -> error("Unhandled bipole direction $dirActual")
+        return ThermalComponentInfo(when(map.eval(cell.posDescr, neighbour.cell.posDescr)){
+            GeneratorPole.Plus -> b1
+            GeneratorPole.Minus -> b2
         })
     }
 
@@ -190,8 +196,8 @@ data class ThermocoupleModel(
 
 class ThermocoupleBehavior(
     private val generator: VRGeneratorObject,
-    private val coldSupp: () -> ThermalBody,
-    private val hotSupp: () -> ThermalBody,
+    private val cold: ThermalBody,
+    private val hot: ThermalBody,
     val model: ThermocoupleModel
 ):
     CellBehavior,
@@ -202,74 +208,68 @@ class ThermocoupleBehavior(
         subscribers.addPost(this::postTick)
     }
 
+    val connection = MassConnection(hot.thermal, cold.thermal)
+
     private fun preTick(dt: Double, phase: SubscriberPhase) {
-        val cold = coldSupp()
-        val hot = hotSupp()
-
-        val heatTf = MassConnection(hot.thermal, cold.thermal).transfer(dt)
+        val heatTf = connection.transfer(dt)
         val targetRx = min(heatTf.first.absoluteValue, heatTf.second.absoluteValue) * model.genEfficiency
-
         generator.potential = sqrt((targetRx / dt) * generator.resistance).coerceAtMost(model.maxV) * -heatTf.first.sign
     }
 
     private fun postTick(dt: Double, phase: SubscriberPhase) {
-        val h = hotSupp()
-        val c = coldSupp()
-
         val actualRx = generator.power * dt * -generator.generatorCurrent.sign
 
         val actualModeRx = snzi(actualRx)
-        val actualModeTemp = snzi((h.tempK - c.tempK))
+        val actualModeTemp = snzi((hot.tempK - cold.tempK))
 
         if(actualModeRx == actualModeTemp) {
             // Converting heat to electricity:
 
-            val rxEntr = (actualRx / model.genEfficiency) * (1.0 - model.genEfficiency)
+            val rxEntr = (actualRx / (model.genEfficiency - 0.01)) * (1.0 - (model.genEfficiency - 0.01))
 
             if(actualModeRx == 1) {
                 // Remove from hot:
-                h.energy -= actualRx
-                h.energy -= rxEntr
-                c.energy += rxEntr
+                hot.energy -= actualRx
+                hot.energy -= rxEntr
+                cold.energy += rxEntr
             }
             else {
                 // Remove from cold:
-                c.energy += actualRx
-                c.energy += rxEntr
-                h.energy -= rxEntr
+                cold.energy += actualRx
+                cold.energy += rxEntr
+                hot.energy -= rxEntr
             }
         }
         else {
             // Move heat using electricity:
-            c.energy += actualRx * model.moveEfficiency
-            h.energy -= actualRx * model.moveEfficiency
+            cold.energy += actualRx * model.moveEfficiency
+            hot.energy -= actualRx * model.moveEfficiency
 
             val rxEntr = actualRx.absoluteValue * (1.0 - model.moveEfficiency)
-            h.energy += rxEntr / 2.0
-            c.energy += rxEntr / 2.0
+            hot.energy += rxEntr / 2.0
+            cold.energy += rxEntr / 2.0
         }
     }
 
     override fun appendBody(builder: WailaTooltipBuilder, config: IPluginConfig?) {
-        val hot = hotSupp()
-        val cold = coldSupp()
-
         builder.text("Hot T", hot.tempK.formatted())
         builder.text("Cold T", cold.tempK.formatted())
     }
 }
 
-class ThermocoupleCell(pos: CellPos, id: ResourceLocation) : Cell(pos, id) {
-    private val generator = VRGeneratorObject(this, dirActualMap()).also {
-        it.ruleSet.withDirectionActualRule(DirectionMask.FRONT + DirectionMask.BACK)
-    }
+class ThermocoupleCell(ci: CellCI, electricalMap: PoleMap, thermalMap: PoleMap): Cell(ci) {
+    @SimObject
+    val generatorObj = VRGeneratorObject(this, electricalMap)
+
+    @SimObject
+    val thermalBipoleObj = ThermalBipoleObject(this, thermalMap)
 
     init {
         behaviors.add(
             ThermocoupleBehavior(
-                generator,
-                { bipole.b1 },
-                { bipole.b2 },
+                generatorObj,
+                thermalBipoleObj.b1,
+                thermalBipoleObj.b2,
                 ThermocoupleModel(
                     genEfficiency = 1.0,
                     moveEfficiency = 1.0
@@ -280,18 +280,8 @@ class ThermocoupleCell(pos: CellPos, id: ResourceLocation) : Cell(pos, id) {
         ruleSet.withDirectionActualRule(DirectionMask.HORIZONTALS)
     }
 
-    override fun createObjSet() = SimulationObjectSet(
-        generator,
-        ThermalBipoleObject(
-            this,
-            RelativeDirection.Left,
-            RelativeDirection.Right)
-    )
-
-    private val bipole get() = thermalObject as ThermalBipoleObject
-
-    val b1Temperature get() = bipole.b1.temp
-    val b2Temperature get() = bipole.b2.temp
+    val b1Temperature get() = thermalBipoleObj.b1.temp
+    val b2Temperature get() = thermalBipoleObj.b2.temp
 }
 
 class ThermocouplePart(id: ResourceLocation, placementContext: PartPlacementInfo) : CellPart(id, placementContext, Content.THERMOCOUPLE_CELL.get()) {
@@ -493,14 +483,17 @@ private class FuelBurnerBehavior(val cell: Cell, val bodyGetter: ThermalBodyAcce
     }
 }
 
-class HeatGeneratorCell(pos: CellPos, id: ResourceLocation) : Cell(pos, id) {
+class HeatGeneratorCell(ci: CellCI) : Cell(ci) {
     companion object {
         const val BURNER_BEHAVIOR = "burner"
     }
 
+    @SimObject
+    val thermalWireObj = ThermalWireObject(this)
+
     init {
         behaviors.add(
-            FuelBurnerBehavior(this) { thermalWireObject.body }
+            FuelBurnerBehavior(this) { thermalWireObj.body }
         )
 
         ruleSet.withDirectionActualRule(DirectionMask.HORIZONTALS)
@@ -515,10 +508,6 @@ class HeatGeneratorCell(pos: CellPos, id: ResourceLocation) : Cell(pos, id) {
         behaviors.get<FuelBurnerBehavior>().replaceFuel(mass)
     }
 
-    override fun createObjSet(): SimulationObjectSet {
-        return SimulationObjectSet(ThermalWireObject(this))
-    }
-
     override fun loadCellData(tag: CompoundTag) {
         tag.useSubTagIfPreset(BURNER_BEHAVIOR, behaviors.get<FuelBurnerBehavior>()::loadNbt)
     }
@@ -526,8 +515,6 @@ class HeatGeneratorCell(pos: CellPos, id: ResourceLocation) : Cell(pos, id) {
     override fun saveCellData(): CompoundTag {
         return CompoundTag().withSubTag(BURNER_BEHAVIOR, behaviors.get<FuelBurnerBehavior>().saveNbt())
     }
-
-    val thermalWireObject get() = thermalObject as ThermalWireObject
 }
 
 class HeatGeneratorBlockEntity(pos: BlockPos, state: BlockState): CellBlockEntity(pos, state, Content.HEAT_GENERATOR_BLOCK_ENTITY.get()) {
@@ -835,7 +822,8 @@ class PhotovoltaicBehavior(val cell: Cell, val generator: VRGeneratorObject, val
     override val normal: Direction get() = cell.posDescr.requireBlockFaceLoc { "Photovoltaic behavior requires a face locator" }
 }
 
-class PhotovoltaicGeneratorCell(pos: CellPos, id: ResourceLocation, model: PhotovoltaicModel) : Cell(pos, id) {
+class PhotovoltaicGeneratorCell(ci: CellCI, model: PhotovoltaicModel) : Cell(ci) {
+    @SimObject
     val generator = VRGeneratorObject(this, dirActualMap()).also {
         it.ruleSet.withDirectionActualRule(DirectionMask.FRONT + DirectionMask.BACK)
     }
@@ -844,6 +832,4 @@ class PhotovoltaicGeneratorCell(pos: CellPos, id: ResourceLocation, model: Photo
         behaviors.add(PhotovoltaicBehavior(this, generator, model))
         ruleSet.withDirectionActualRule(DirectionMask.FRONT + DirectionMask.BACK)
     }
-
-    override fun createObjSet() = SimulationObjectSet(generator)
 }

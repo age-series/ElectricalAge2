@@ -48,15 +48,22 @@ object LightModels {
 data class LightChangeEvent(val brightness: Int): Event
 
 class LightCell(
-    pos: CellPos,
-    id: ResourceLocation,
+    ci: CellCI,
     val model: LightModel,
     val dir1: RelativeDirection = RelativeDirection.Left,
     val dir2: RelativeDirection = RelativeDirection.Right
-) : Cell(pos, id) {
+):
+    Cell(ci)
+{
     private var trackedBrightness: Int = 0
 
     private var receiver: EventQueue? = null
+
+    @SimObject
+    val resistorObj = ResistorObject(this, dir1, dir2).also { it.resistance = model.resistance }
+
+    @SimObject
+    val thermalWireObj = ThermalWireObject(this)
 
     var rawBrightness: Double = 0.0
         private set
@@ -70,15 +77,8 @@ class LightCell(
     }
 
     init {
-        behaviors.withStandardBehavior(this, { resistorObject.power }, { thermal.body })
+        behaviors.withStandardBehavior(this, { resistorObj.power }, { thermalWireObj.body })
         ruleSet.withDirectionActualRule(DirectionMask.ofRelatives(dir1, dir2))
-    }
-
-    override fun createObjSet(): SimulationObjectSet {
-        return SimulationObjectSet(
-            ResistorObject(this, dir1, dir2).also { it.resistance = model.resistance },
-            ThermalWireObject(this)
-        )
     }
 
     override fun onGraphChanged() {
@@ -90,7 +90,7 @@ class LightCell(
     }
 
     private fun simulationTick(elapsed: Double, phase: SubscriberPhase){
-        rawBrightness = model.brightnessFunction.calculateBrightness(resistorObject.power)
+        rawBrightness = model.brightnessFunction.calculateBrightness(resistorObj.power)
 
         val actualBrightness =
             (rawBrightness * 15.0)
@@ -109,9 +109,6 @@ class LightCell(
 
         receiver.enqueue(LightChangeEvent(actualBrightness))
     }
-
-    private val resistorObject get() = electricalObject as ResistorObject
-    private val thermal get() = thermalObject as ThermalWireObject
 
     override fun appendBody(builder: WailaTooltipBuilder, config: IPluginConfig?) {
         super.appendBody(builder, config)

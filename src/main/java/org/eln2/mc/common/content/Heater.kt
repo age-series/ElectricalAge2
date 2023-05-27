@@ -4,7 +4,6 @@ import com.google.common.util.concurrent.AtomicDouble
 import mcp.mobius.waila.api.IPluginConfig
 import net.minecraft.core.BlockPos
 import net.minecraft.nbt.CompoundTag
-import net.minecraft.resources.ResourceLocation
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.state.BlockState
@@ -12,21 +11,21 @@ import org.ageseries.libage.sim.electrical.mna.Circuit
 import org.ageseries.libage.sim.electrical.mna.component.Resistor
 import org.ageseries.libage.sim.thermal.Simulator
 import org.eln2.mc.RaceCondition
-import org.eln2.mc.common.blocks.foundation.*
+import org.eln2.mc.common.blocks.foundation.MultiblockControllerEntity
+import org.eln2.mc.common.blocks.foundation.MultiblockDefinition
+import org.eln2.mc.common.blocks.foundation.MultiblockManager
 import org.eln2.mc.common.cells.foundation.*
 import org.eln2.mc.extensions.*
 import org.eln2.mc.integration.WailaTooltipBuilder
 import org.eln2.mc.sim.ThermalBody
 import kotlin.math.absoluteValue
 
-class HeaterHeatPortCell(pos: CellPos, id: ResourceLocation) : Cell(pos, id) {
+class HeaterHeatPortCell(ci: CellCI) : Cell(ci) {
     @RaceCondition
     var provider: HeaterPowerPortCell? = null
 
-    private val output = lazy {
-        // Lazy because we are using getEnvironmentTemp which requires the level
-        HeatOutputObject(this)
-    }
+    @SimObject
+    private val outputObj = HeatOutputObject(this)
 
     override fun onGraphChanged() {
         graph.subscribers.addPre(this::simulationTick)
@@ -40,7 +39,7 @@ class HeaterHeatPortCell(pos: CellPos, id: ResourceLocation) : Cell(pos, id) {
         val provider = this.provider
 
         if(provider != null) {
-            output.value.body.energy += provider.getIncr()
+            outputObj.body.energy += provider.getIncr()
         }
     }
 
@@ -49,8 +48,6 @@ class HeaterHeatPortCell(pos: CellPos, id: ResourceLocation) : Cell(pos, id) {
 
         builder.text("Provider", provider ?: "none")
     }
-
-    override fun createObjSet() = SimulationObjectSet(output.value)
 
     private var loadTag: CompoundTag? = null
 
@@ -83,10 +80,7 @@ class HeaterHeatPortCell(pos: CellPos, id: ResourceLocation) : Cell(pos, id) {
     }
 
     class HeatOutputObject(cell: Cell) : ThermalObject(cell) {
-        val body = ThermalBody.createDefault().also {
-            it.temp = cell.getEnvironmentTemp()
-        }
-
+        val body = ThermalBody.createDefault(cell.envFm)
         override fun offerComponent(neighbour: ThermalObject) = ThermalComponentInfo(body)
         override fun addComponents(simulator: Simulator) = simulator.add(body)
     }
@@ -97,12 +91,13 @@ class HeaterHeatPortCell(pos: CellPos, id: ResourceLocation) : Cell(pos, id) {
     }
 }
 
-class HeaterPowerPortCell(pos: CellPos, id: ResourceLocation, val onResistance: Double = 1.0, val offResistance: Double = 10e10) : Cell(pos, id) {
-    private val port = PowerPortObject(this)
+class HeaterPowerPortCell(ci: CellCI, val onResistance: Double = 1.0, val offResistance: Double = 10e10) : Cell(ci) {
+    @SimObject
+    private val portObj = PowerPortObject(this)
 
     private var active = false
 
-    init { behaviors.withElectricalPowerConverter { port.power.absoluteValue } }
+    init { behaviors.withElectricalPowerConverter { portObj.power.absoluteValue } }
 
     private val atomicIncr = AtomicDouble()
 
@@ -110,13 +105,13 @@ class HeaterPowerPortCell(pos: CellPos, id: ResourceLocation, val onResistance: 
 
     fun setActive() {
         active = true
-        port.resistance = onResistance
+        portObj.resistance = onResistance
         setChanged()
     }
 
     fun setInactive() {
         active = false
-        port.resistance = offResistance
+        portObj.resistance = offResistance
         setChanged()
     }
 
@@ -142,8 +137,6 @@ class HeaterPowerPortCell(pos: CellPos, id: ResourceLocation, val onResistance: 
         super.appendBody(builder, config)
         builder.text("Active", active)
     }
-
-    override fun createObjSet() = SimulationObjectSet(port)
 
     class PowerPortObject(cell: Cell) : ElectricalObject(cell) {
         var resistance = 1.0

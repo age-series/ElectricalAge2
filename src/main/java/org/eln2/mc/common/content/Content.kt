@@ -27,6 +27,9 @@ import org.eln2.mc.common.parts.PartRegistry.part
 import org.eln2.mc.common.parts.foundation.BasicCellPart
 import org.eln2.mc.common.parts.foundation.basicPartRenderer
 import org.eln2.mc.common.parts.foundation.BasicPartProvider
+import org.eln2.mc.common.space.DirectionMask
+import org.eln2.mc.common.space.RelativeDirection
+import org.eln2.mc.common.space.withDirectionActualRule
 import org.eln2.mc.mathematics.bbSize
 import org.eln2.mc.utility.SelfDescriptiveUnitMultipliers.centimeters
 import org.eln2.mc.utility.SelfDescriptiveUnitMultipliers.milliOhms
@@ -44,12 +47,12 @@ object Content {
 
     //#region Wires
 
-    val ELECTRICAL_WIRE_CELL_COPPER = cell("electrical_wire_cell_copper", BasicCellProvider  { a, b ->
-        WireCell(a, b, ElectricalWireModels.copper(centimeters(5.0)), WireType.Electrical)
+    val ELECTRICAL_WIRE_CELL_COPPER = cell("electrical_wire_cell_copper", BasicCellProvider  {
+        WireCell(it, ElectricalWireModels.copper(centimeters(5.0)), WireType.Electrical)
     })
 
-    val THERMAL_WIRE_CELL_COPPER = cell("thermal_wire_cell_copper", BasicCellProvider  { a, b ->
-        WireCell(a, b, ElectricalWireModels.copper(centimeters(5.0)), WireType.Thermal)
+    val THERMAL_WIRE_CELL_COPPER = cell("thermal_wire_cell_copper", BasicCellProvider  {
+        WireCell(it, ElectricalWireModels.copper(centimeters(5.0)), WireType.Thermal)
     })
 
     val ELECTRICAL_WIRE_PART_COPPER: PartRegistry.PartRegistryItem = part("electrical_wire_part_copper", BasicPartProvider({ a, b ->
@@ -67,13 +70,15 @@ object Content {
     val GROUND_CELL = cell("ground_cell", BasicCellProvider(::GroundCell))
     val GROUND_PART = part("ground_part", BasicPartProvider(::GroundPart, Vec3(0.3, 0.3, 0.3)))
 
-    val THERMAL_RADIATOR_CELL = cell("thermal_radiator_cell", BasicCellProvider { a, b ->
-        ThermalRadiatorCell(a, b, RadiatorModel(
-            2000.0,
-            100.0,
-            Material.COPPER,
-            100.0
-        ))
+    val THERMAL_RADIATOR_CELL = cell("thermal_radiator_cell", BasicCellProvider {
+        ThermalRadiatorCell(it,
+            RadiatorModel(
+                2000.0,
+                100.0,
+               Material.COPPER,
+                100.0
+            )
+        )
     })
     val THERMAL_RADIATOR = part("thermal_radiator_part", BasicPartProvider(::RadiatorPart, Vec3(1.0, 3.0 / 16.0, 1.0)))
 
@@ -85,8 +90,8 @@ object Content {
     val FURNACE_BLOCK = block("furnace", tab = null) { FurnaceBlock() }
     val FURNACE_MENU = menu("furnace_menu", ::FurnaceMenu)
 
-    val BATTERY_CELL_100V = cell("battery_cell_t", BasicCellProvider{ pos, id ->
-        BatteryCell(pos, id, BatteryModel(
+    val BATTERY_CELL_100V = cell("battery_cell_t", BasicCellProvider{ createInfo ->
+        BatteryCell(createInfo, BatteryModel(
             voltageFunction = BatteryVoltageModels.WET_CELL_12V,
             resistanceFunction = { _, _ -> milliOhms(100.0) },
             damageFunction = { battery, dt ->
@@ -126,8 +131,15 @@ object Content {
 
     val BATTERY_PART_100V = part("battery_part_100v", BasicPartProvider({a, b -> BatteryPart(a, b, BATTERY_CELL_100V.get())}, vec3(1.0)))
 
-    val THERMOCOUPLE_CELL = cell("thermocouple_cell", BasicCellProvider{ pos, id ->
-        ThermocoupleCell(pos, id)
+    val THERMOCOUPLE_CELL = cell("thermocouple_cell", BasicCellProvider{ createInfo ->
+        ThermocoupleCell(
+            createInfo,
+            dirActualMap(plusDir = RelativeDirection.Front, minusDir = RelativeDirection.Back),
+            dirActualMap(plusDir = RelativeDirection.Left, minusDir = RelativeDirection.Right)
+        ).also {
+            it.generatorObj.ruleSet.withDirectionActualRule(DirectionMask.FRONT + DirectionMask.BACK)
+            it.thermalBipoleObj.ruleSet.withDirectionActualRule(DirectionMask.LEFT + DirectionMask.RIGHT)
+        }
     })
     val THERMOCOUPLE_PART = part("thermocouple_part", BasicPartProvider({id, context ->
         ThermocouplePart(id, context)
@@ -141,8 +153,8 @@ object Content {
     val HEAT_GENERATOR_BLOCK_ENTITY = blockEntity("heat_generator", ::HeatGeneratorBlockEntity) { HEAT_GENERATOR_BLOCK.block.get() }
     val HEAT_GENERATOR_MENU = menu("heat_generator_menu", ::HeatGeneratorMenu)
 
-    val PHOTOVOLTAIC_GENERATOR_CELL = cell("photovoltaic_cell", BasicCellProvider { pos, id ->
-        PhotovoltaicGeneratorCell(pos, id, PhotovoltaicModels.test24Volts())
+    val PHOTOVOLTAIC_GENERATOR_CELL = cell("photovoltaic_cell", BasicCellProvider{
+        PhotovoltaicGeneratorCell(it, PhotovoltaicModels.test24Volts())
     })
 
     val PHOTOVOLTAIC_PANEL_PART = part("photovoltaic_panel_part", BasicPartProvider({id, context ->
@@ -158,8 +170,8 @@ object Content {
         )
     }, Vec3(1.0, bbSize(2.0), 1.0)))
 
-    val LIGHT_CELL = cell("light_cell", BasicCellProvider { pos, id ->
-        LightCell(pos, id, LightModels.test())
+    val LIGHT_CELL = cell("light_cell", BasicCellProvider {
+        LightCell(it, LightModels.test())
     })
     val LIGHT_PART = part("light_part", BasicPartProvider({a, b -> LightPart(a, b, LIGHT_CELL.get())}, bbVec(8.0, 4.0, 5.0)))
 

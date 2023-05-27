@@ -6,13 +6,7 @@ import org.eln2.mc.mathematics.bbVec
 import org.eln2.mc.client.render.PartialModels
 import org.eln2.mc.client.render.PartialModels.bbOffset
 import org.eln2.mc.client.render.foundation.BasicPartRenderer
-import org.eln2.mc.common.cells.foundation.Cell
-import org.eln2.mc.common.cells.foundation.CellPos
-import org.eln2.mc.common.cells.foundation.CellConvention
-import org.eln2.mc.common.cells.foundation.ElectricalComponentInfo
-import org.eln2.mc.common.cells.foundation.ElectricalObject
-import org.eln2.mc.common.cells.foundation.ResistorBundle
-import org.eln2.mc.common.cells.foundation.SimulationObjectSet
+import org.eln2.mc.common.cells.foundation.*
 import org.eln2.mc.common.parts.foundation.CellPart
 import org.eln2.mc.common.parts.foundation.PartRenderer
 import org.eln2.mc.common.parts.foundation.PartPlacementInfo
@@ -52,13 +46,12 @@ class GroundObject(cell: Cell) : ElectricalObject(cell) {
     }
 }
 
-class GroundCell(pos: CellPos, id: ResourceLocation) : Cell(pos, id) {
+class GroundCell(ci: CellCI) : Cell(ci) {
+    @SimObject
+    val groundObj = GroundObject(this)
+
     init {
         ruleSet.withDirectionActualRule(DirectionMask.FRONT)
-    }
-
-    override fun createObjSet(): SimulationObjectSet {
-        return SimulationObjectSet(GroundObject(this))
     }
 }
 
