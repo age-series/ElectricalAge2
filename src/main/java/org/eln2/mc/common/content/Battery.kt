@@ -8,6 +8,7 @@ import org.ageseries.libage.sim.thermal.Temperature
 import org.ageseries.libage.sim.thermal.ThermalMass
 import org.eln2.mc.CrossThreadAccess
 import org.eln2.mc.Eln2
+import org.eln2.mc.Eln2.LOGGER
 import org.eln2.mc.client.render.PartialModels
 import org.eln2.mc.client.render.foundation.BasicPartRenderer
 import org.eln2.mc.common.cells.foundation.*
@@ -171,12 +172,15 @@ data class BatteryModel(
 
 data class BatteryState(val energy: Double, val life: Double, val energyIo: Double)
 
-class BatteryCell(pos: CellPos, id: ResourceLocation, override val model: BatteryModel) : VRGeneratorCell(pos, id),
-    BatteryView {
+class BatteryCell(pos: CellPos, id: ResourceLocation, override val model: BatteryModel) : Cell(pos, id), BatteryView {
     companion object {
         private const val ENERGY = "energy"
         private const val LIFE = "life"
         private const val ENERGY_IO = "energyIo"
+    }
+
+    private val generator = VRGeneratorObject(this, dirActualMap()).also {
+        it.ruleSet.withDirectionActualRule(DirectionMask.FRONT + DirectionMask.BACK)
     }
 
     init {
@@ -185,7 +189,7 @@ class BatteryCell(pos: CellPos, id: ResourceLocation, override val model: Batter
 
     override fun createObjSet(): SimulationObjectSet {
         return SimulationObjectSet(
-            VRGeneratorObject(this),
+            generator,
             ThermalWireObject(this).also {
                 it.body = ThermalBody(
                     ThermalMass(model.material, null, model.mass),
@@ -197,7 +201,7 @@ class BatteryCell(pos: CellPos, id: ResourceLocation, override val model: Batter
 
     init {
         behaviors.apply {
-            withElectricalPowerConverter { generatorObject.resistorPower }
+            withElectricalPowerConverter { generator.generatorPower }
             withElectricalHeatTransfer { thermalWireObject.body }
         }
     }
@@ -213,8 +217,7 @@ class BatteryCell(pos: CellPos, id: ResourceLocation, override val model: Batter
     override val cycles
         get() = energyIo / model.energyCapacity
 
-    override val current
-        get() = generatorObject.resistorCurrent
+    override val current get() = generator.generatorCurrent
 
     private val stateUpdate = AtomicUpdate<BatteryState>()
 
@@ -229,7 +232,7 @@ class BatteryCell(pos: CellPos, id: ResourceLocation, override val model: Batter
     )
 
     override val temperature: Temperature
-        get() = thermalWireObject.body.temperature
+        get() = thermalWireObject.body.temp
 
     /**
      * Gets the capacity coefficient of this battery. It is computed using the [BatteryModel.capacityFunction].
@@ -293,10 +296,11 @@ class BatteryCell(pos: CellPos, id: ResourceLocation, override val model: Batter
 
     private fun simulateEnergyFlow(elapsed: Double) {
         // Get energy transfer:
-        val transfer = generatorObject.generatorPower * elapsed
+        val transfer = generator.generatorPower * elapsed
 
         // Update total IO:
         energyIo += abs(transfer)
+
         energy -= transfer
 
         val capacity = adjustedEnergyCapacity
@@ -312,21 +316,22 @@ class BatteryCell(pos: CellPos, id: ResourceLocation, override val model: Batter
             energy -= extraEnergy
 
             // Conserve energy by increasing temperature:
-            thermalWireObject.body.thermalEnergy += extraEnergy
+            thermalWireObject.body.energy += extraEnergy
         }
     }
 
     private fun simulationTick(elapsed: Double, phase: SubscriberPhase){
         applyExternalUpdates()
 
-        if(!generatorObject.hasResistor){
+        if(!generator.hasResistor){
+            LOGGER.info("no res")
             return
         }
 
         simulateEnergyFlow(elapsed)
 
-        generatorObject.potential = model.voltageFunction.computeVoltage(this, elapsed)
-        generatorObject.internalResistance = model.resistanceFunction.computeResistance(this, elapsed)
+        generator.potential = model.voltageFunction.computeVoltage(this, elapsed)
+        generator.resistance = model.resistanceFunction.computeResistance(this, elapsed)
         life -= model.damageFunction.computeDamage(this, elapsed)
         life = life.coerceIn(0.0, 1.0)
 

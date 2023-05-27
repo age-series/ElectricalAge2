@@ -369,6 +369,14 @@ fun snz(a: Double): Double {
     return -1.0
 }
 
+fun snzi(a: Double): Int {
+    if (a >= 0.0) {
+        return 1
+    }
+
+    return -1
+}
+
 private const val ADAPTLOB_ALPHA = 0.816496580927726
 private const val ADAPTLOB_BETA = 0.447213595499958
 

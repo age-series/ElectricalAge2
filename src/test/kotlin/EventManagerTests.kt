@@ -1,12 +1,12 @@
 import org.eln2.mc.common.events.EventManager
-import org.eln2.mc.common.events.IEvent
+import org.eln2.mc.common.events.Event
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.fail
 import java.util.concurrent.ConcurrentLinkedQueue
 
 class EventManagerTests {
-    private class MyEvent1 : IEvent
-    private class MyEvent2 : IEvent
+    private class MyEvent1 : Event
+    private class MyEvent2 : Event
 
     @Test
     fun testEvents(){
@@ -61,7 +61,7 @@ class EventManagerTests {
         assert(receiveCount1 == 100 && receiveCount2 == 50)
     }
 
-    class MyTestEventParallel(val x: Int): IEvent
+    class MyTestEventParallel(val x: Int): Event
 
     @Test
     fun testParallel(){

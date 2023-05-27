@@ -44,15 +44,15 @@ fun VoltageSource.setPotentialEpsilon(potential: Double, epsilon: Double = EPSIL
 }
 
 fun Simulator.add(body: ThermalBody) {
-    this.add(body.thermalMass)
+    this.add(body.thermal)
 }
 
 fun Simulator.remove(body: ThermalBody) {
-    this.remove(body.thermalMass)
+    this.remove(body.thermal)
 }
 
 fun Simulator.connect(a: ThermalBody, b: ThermalBody, parameters: ConnectionParameters){
-    this.connect(a.thermalMass, b.thermalMass, parameters)
+    this.connect(a.thermal, b.thermal, parameters)
 }
 
 fun Simulator.connect(a: ThermalMass, environmentInformation: EnvironmentInformation) {
@@ -64,5 +64,5 @@ fun Simulator.connect(a: ThermalMass, environmentInformation: EnvironmentInforma
 }
 
 fun Simulator.connect(a: ThermalBody, environmentInformation: EnvironmentInformation) {
-    this.connect(a.thermalMass, environmentInformation)
+    this.connect(a.thermal, environmentInformation)
 }

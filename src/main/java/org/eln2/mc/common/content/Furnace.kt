@@ -46,10 +46,7 @@ import org.eln2.mc.client.render.foundation.renderColored
 import org.eln2.mc.client.render.foundation.renderTextured
 import org.eln2.mc.common.blocks.foundation.CellBlock
 import org.eln2.mc.common.blocks.foundation.CellBlockEntity
-import org.eln2.mc.common.cells.foundation.Cell
-import org.eln2.mc.common.cells.foundation.CellPos
-import org.eln2.mc.common.cells.foundation.SubscriberPhase
-import org.eln2.mc.common.cells.foundation.SimulationObjectSet
+import org.eln2.mc.common.cells.foundation.*
 import org.eln2.mc.common.events.AtomicUpdate
 import org.eln2.mc.common.events.EventScheduler
 import org.eln2.mc.common.space.DirectionMask
@@ -141,7 +138,7 @@ class FurnaceCell(pos: CellPos, id: ResourceLocation, val dir1: RelativeDirectio
     fun serializeNbt(): CompoundTag{
         return CompoundTag().also {
             it.put(OPTIONS, options.serializeNbt())
-            it.putThermalMassMapped(RESISTOR_THERMAL_MASS, resistorHeatBody.thermalMass)
+            it.putThermalMassMapped(RESISTOR_THERMAL_MASS, resistorHeatBody.thermal)
         }
     }
 
@@ -196,12 +193,12 @@ class FurnaceCell(pos: CellPos, id: ResourceLocation, val dir1: RelativeDirectio
      * Gets the temperature of the latest smelting body. This body has been visited by the update thread;
      * it may be different from the latest body loaded with [loadSmeltingBody]
      * */
-    val bodyTemperature: Temperature? get() = knownSmeltingBody?.temperature
+    val bodyTemperature: Temperature? get() = knownSmeltingBody?.temp
 
     /**
      * Gets the temperature of the resistor's body.
      * */
-    val resistorTemperature: Temperature get() = resistorHeatBody.temperature
+    val resistorTemperature: Temperature get() = resistorHeatBody.temp
 
     override fun createObjSet(): SimulationObjectSet {
         return SimulationObjectSet(ResistorObject(this, dir1, dir2))
@@ -228,7 +225,7 @@ class FurnaceCell(pos: CellPos, id: ResourceLocation, val dir1: RelativeDirectio
      * the specified [FurnaceOptions.targetTemperature].
      * */
     private fun applyControlSignal(){
-        resistorObject.resistance = if(resistorHeatBody.temperatureK < options.targetTemperature){
+        resistorObject.resistance = if(resistorHeatBody.tempK < options.targetTemperature){
             options.runningResistance
         } else{
             options.idleResistance
@@ -238,7 +235,7 @@ class FurnaceCell(pos: CellPos, id: ResourceLocation, val dir1: RelativeDirectio
     private fun updateThermalSimulation(dt: Double){
         simulator.subStep(dt, 10) { _, elapsed ->
             // Add converted energy into the system
-            resistorHeatBody.thermalEnergy += resistorObject.power * elapsed
+            resistorHeatBody.energy += resistorObject.power * elapsed
         }
     }
 
@@ -253,7 +250,7 @@ class FurnaceCell(pos: CellPos, id: ResourceLocation, val dir1: RelativeDirectio
         isHot = if(knownSmeltingBody == null) {
             false
         } else{
-            knownSmeltingBody.temperatureK > options.temperatureThreshold
+            knownSmeltingBody.tempK > options.temperatureThreshold
         }
     }
 

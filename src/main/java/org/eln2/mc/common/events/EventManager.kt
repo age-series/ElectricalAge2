@@ -10,17 +10,17 @@ import kotlin.reflect.KClass
  * It is supposedly thread-safe.
  * */
 class EventManager {
-    private val handlers = ConcurrentHashMap<KClass<*>, CopyOnWriteArrayList<IEventHandler<IEvent>>>()
+    private val handlers = ConcurrentHashMap<KClass<*>, CopyOnWriteArrayList<EventHandler<Event>>>()
 
     /**
      * Registers an event handler for events of type TEvent.
      * */
     @Suppress("UNCHECKED_CAST")
-    inline fun <reified TEvent : IEvent> registerHandler(handler: IEventHandler<TEvent>) {
-        registerHandler(TEvent::class, handler as IEventHandler<IEvent>)
+    inline fun <reified TEvent : Event> registerHandler(handler: EventHandler<TEvent>) {
+        registerHandler(TEvent::class, handler as EventHandler<Event>)
     }
 
-    fun registerHandler(eventClass: KClass<*>, handler: IEventHandler<IEvent>) {
+    fun registerHandler(eventClass: KClass<*>, handler: EventHandler<Event>) {
         handlers.computeIfAbsent(eventClass) { CopyOnWriteArrayList() }.add(handler)
     }
 
@@ -28,11 +28,11 @@ class EventManager {
      * Removes an event handler for events of type TEvent.
      * */
     @Suppress("UNCHECKED_CAST")
-    inline fun <reified TEvent : IEvent> unregisterHandler(handler: IEventHandler<TEvent>) {
-        unregisterHandler(TEvent::class, handler as IEventHandler<IEvent>)
+    inline fun <reified TEvent : Event> unregisterHandler(handler: EventHandler<TEvent>) {
+        unregisterHandler(TEvent::class, handler as EventHandler<Event>)
     }
 
-    fun unregisterHandler(eventClass: KClass<*>, handler: IEventHandler<IEvent>) {
+    fun unregisterHandler(eventClass: KClass<*>, handler: EventHandler<Event>) {
         val handlers = handlers[eventClass]
             ?: error("Could not find handlers for $eventClass")
 
@@ -44,7 +44,7 @@ class EventManager {
     /**
      * Sends an event to all subscribed listeners.
      * */
-    fun send(event: IEvent) {
+    fun send(event: Event) {
         val listeners = this.handlers[event::class]
             ?: return
 
@@ -58,12 +58,12 @@ class EventManager {
  * Marker interface implemented by all events.
  * @see EventManager
  * */
-interface IEvent
+interface Event
 
 /**
  * A handler for events of the specified type.
  * */
-fun interface IEventHandler<T : IEvent> {
+fun interface EventHandler<T : Event> {
     fun handle(event: T)
 }
 
@@ -71,4 +71,4 @@ fun interface IEventHandler<T : IEvent> {
  * Event Listeners are implemented by game objects.
  * @see EventScheduler.register
  * */
-interface IEventListener
+interface EventListener

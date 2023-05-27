@@ -11,7 +11,6 @@ import net.minecraft.world.level.block.state.BlockState
 import org.ageseries.libage.sim.electrical.mna.Circuit
 import org.ageseries.libage.sim.electrical.mna.component.Resistor
 import org.ageseries.libage.sim.thermal.Simulator
-import org.eln2.mc.Eln2.LOGGER
 import org.eln2.mc.RaceCondition
 import org.eln2.mc.common.blocks.foundation.*
 import org.eln2.mc.common.cells.foundation.*
@@ -41,7 +40,7 @@ class HeaterHeatPortCell(pos: CellPos, id: ResourceLocation) : Cell(pos, id) {
         val provider = this.provider
 
         if(provider != null) {
-            output.value.body.thermalEnergy += provider.getIncr()
+            output.value.body.energy += provider.getIncr()
         }
     }
 
@@ -85,7 +84,7 @@ class HeaterHeatPortCell(pos: CellPos, id: ResourceLocation) : Cell(pos, id) {
 
     class HeatOutputObject(cell: Cell) : ThermalObject(cell) {
         val body = ThermalBody.createDefault().also {
-            it.temperature = cell.getEnvironmentTemp()
+            it.temp = cell.getEnvironmentTemp()
         }
 
         override fun offerComponent(neighbour: ThermalObject) = ThermalComponentInfo(body)

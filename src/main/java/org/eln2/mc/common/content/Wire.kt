@@ -106,7 +106,7 @@ object ElectricalWireModels {
     }
 }
 
-class ThermalWireObject(cell: Cell) : ThermalObject(cell), WailaEntity, IPersistentObject, DataEntity {
+class ThermalWireObject(cell: Cell) : ThermalObject(cell), WailaEntity, PersistentObject, DataEntity {
     private val environmentInformation
         get() = BiomeEnvironments.get(cell.graph.level, cell.pos)
 
@@ -118,7 +118,7 @@ class ThermalWireObject(cell: Cell) : ThermalObject(cell), WailaEntity, IPersist
     var body = ThermalBody(
         ThermalMass(Material.COPPER),
         cylinderSurfaceArea(1.0, 0.05)
-    ).also { it.temperature = environmentInformation.temperature }
+    ).also { it.temp = environmentInformation.temperature }
 
     override fun offerComponent(neighbour: ThermalObject): ThermalComponentInfo {
         return ThermalComponentInfo(body)
@@ -130,15 +130,15 @@ class ThermalWireObject(cell: Cell) : ThermalObject(cell), WailaEntity, IPersist
     }
 
     override fun appendBody(builder: WailaTooltipBuilder, config: IPluginConfig?) {
-        builder.temperature(body.temperatureK)
-        builder.energy(body.thermalEnergy)
+        builder.temperature(body.tempK)
+        builder.energy(body.energy)
     }
 
     override fun save(): CompoundTag {
         return CompoundTag().also {
-            it.putThermalMass(THERMAL_MASS, body.thermalMass
+            it.putThermalMass(THERMAL_MASS, body.thermal
             )
-            it.putDouble(SURFACE_AREA, body.surfaceArea)
+            it.putDouble(SURFACE_AREA, body.area)
         }
     }
 
@@ -150,7 +150,7 @@ class ThermalWireObject(cell: Cell) : ThermalObject(cell), WailaEntity, IPersist
 
     override val dataNode = DataNode().also {
         it.data.withField {
-            TemperatureField { body.temperature }
+            TemperatureField { body.temp }
         }
     }
 }
@@ -175,7 +175,7 @@ open class WireCell(
         }
 
         behaviors.withStandardExplosionBehavior(this, type.temperatureThreshold.kelvin) {
-            thermalWire.body.temperatureK
+            thermalWire.body.tempK
         }
     }
 
@@ -194,7 +194,7 @@ open class WireCell(
     private val electricalWire get() = electricalObject as ElectricalWireObject
     private val thermalWire get() = thermalObject as ThermalWireObject
 
-    val temperature get() = thermalWire.body.temperatureK
+    val temperature get() = thermalWire.body.tempK
 }
 
 class WirePart(id: ResourceLocation, context: PartPlacementInfo, cellProvider: CellProvider, val type: WireType) :

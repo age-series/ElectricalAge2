@@ -38,7 +38,7 @@ data class RadiatorModel(
 class ThermalRadiatorCell(pos: CellPos, id: ResourceLocation, val model: RadiatorModel): Cell(pos, id) {
     init {
         behaviors.withStandardExplosionBehavior(this, model.destructionTemperature) {
-            thermalWire.body.temperatureK
+            thermalWire.body.tempK
         }
 
         ruleSet.withDirectionActualRule(DirectionMask.HORIZONTALS)
@@ -46,13 +46,13 @@ class ThermalRadiatorCell(pos: CellPos, id: ResourceLocation, val model: Radiato
 
     override fun createObjSet(): SimulationObjectSet {
         return SimulationObjectSet(ThermalWireObject(this).also {
-            it.body = ThermalBody(ThermalMass(model.material, it.body.thermalEnergy, model.mass), model.surfaceArea)
+            it.body = ThermalBody(ThermalMass(model.material, it.body.energy, model.mass), model.surfaceArea)
         })
     }
 
     private val thermalWire get() = thermalObject as ThermalWireObject
 
-    val temperature get() = thermalWire.body.temperatureK
+    val temperature get() = thermalWire.body.tempK
 }
 
 class RadiatorPart(id: ResourceLocation, placementContext: PartPlacementInfo) : CellPart(id, placementContext, Content.THERMAL_WIRE_CELL_COPPER.get()) {

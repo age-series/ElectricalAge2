@@ -8,21 +8,21 @@ import org.eln2.mc.extensions.appendBody
 import org.eln2.mc.integration.WailaEntity
 import org.eln2.mc.integration.WailaTooltipBuilder
 
-class ThermalBody(var thermalMass: ThermalMass, var surfaceArea: Double) : WailaEntity {
-    var temperature: Temperature
-        get() = thermalMass.temperature
-        set(value) { thermalMass.temperature = value }
+class ThermalBody(var thermal: ThermalMass, var area: Double) : WailaEntity {
+    var temp: Temperature
+        get() = thermal.temperature
+        set(value) { thermal.temperature = value }
 
-    var temperatureK: Double
-        get() = temperature.kelvin
-        set(value) { thermalMass.temperature = Temperature(value) }
+    var tempK: Double
+        get() = temp.kelvin
+        set(value) { thermal.temperature = Temperature(value) }
 
-    var thermalEnergy: Double
-        get() = thermalMass.energy
-        set(value) { thermalMass.energy = value }
+    var energy: Double
+        get() = thermal.energy
+        set(value) { thermal.energy = value }
 
     override fun appendBody(builder: WailaTooltipBuilder, config: IPluginConfig?) {
-        thermalMass.appendBody(builder, config)
+        thermal.appendBody(builder, config)
     }
 
     companion object {

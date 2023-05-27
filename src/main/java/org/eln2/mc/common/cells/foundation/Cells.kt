@@ -38,6 +38,27 @@ import kotlin.system.measureNanoTime
 
 data class CellPos(val descriptor: LocationDescriptor)
 
+class TrackedSubscriberCollection(val underlying: SubscriberCollection) : SubscriberCollection {
+    private val subscribers = HashSet<Sub>()
+
+    override fun addSubscriber(parameters: SubscriberOptions, subscriber: Subscriber) {
+        require(subscribers.add(Sub(parameters, subscriber))) { "Duplicate subscriber $subscriber" }
+        underlying.addSubscriber(parameters, subscriber)
+    }
+
+    override fun remove(subscriber: Subscriber) {
+        require(subscribers.removeAll { it.subscriber == subscriber }) { "Subscriber $subscriber was never added" }
+        underlying.remove(subscriber)
+    }
+
+    fun destroy() {
+        subscribers.forEach { underlying.remove(it.subscriber) }
+        subscribers.clear()
+    }
+
+    private data class Sub(val parameters: SubscriberOptions, val subscriber: Subscriber)
+}
+
 /**
  * The cell is a physical unit, that may participate in multiple simulations. Each simulation will
  * have a Simulation Object associated with it.
@@ -45,6 +66,10 @@ data class CellPos(val descriptor: LocationDescriptor)
  * */
 abstract class Cell(val pos: CellPos, val id: ResourceLocation) : WailaEntity, DataEntity {
     val posDescr get() = pos.descriptor
+
+    private var trackedPool: TrackedSubscriberCollection? = null
+    val subscribers: SubscriberCollection get() = trackedPool
+        ?: error("Failed to fetch subscriber collection")
 
     companion object {
         private const val CELL_DATA = "cellData"
@@ -156,7 +181,7 @@ abstract class Cell(val pos: CellPos, val id: ResourceLocation) : WailaEntity, D
 
     private fun saveObjectData(tag: CompoundTag) {
         objSet.process { obj ->
-            if(obj is IPersistentObject) {
+            if(obj is PersistentObject) {
                 tag.put(obj.type.name, obj.save())
             }
         }
@@ -164,7 +189,7 @@ abstract class Cell(val pos: CellPos, val id: ResourceLocation) : WailaEntity, D
 
     private fun loadObjectData(tag: CompoundTag) {
         objSet.process { obj ->
-            if(obj is IPersistentObject) {
+            if(obj is PersistentObject) {
                 obj.load(tag.getCompound(obj.type.name))
             }
         }
@@ -199,6 +224,7 @@ abstract class Cell(val pos: CellPos, val id: ResourceLocation) : WailaEntity, D
     fun remove() {
         behaviors.destroy()
         onRemoving()
+        trackedPool?.destroy()
     }
 
     /**
@@ -214,7 +240,7 @@ abstract class Cell(val pos: CellPos, val id: ResourceLocation) : WailaEntity, D
     /**
      * Called after the cell was destroyed.
      */
-    open fun onDestroyed() {
+    protected open fun onDestroyed() {
         objSet.process { it.destroy() }
     }
 
@@ -229,21 +255,25 @@ abstract class Cell(val pos: CellPos, val id: ResourceLocation) : WailaEntity, D
         }
 
         if(graphChanged) {
+            trackedPool?.destroy()
+            trackedPool = TrackedSubscriberCollection(graph.subscribers)
             behaviors.changeGraph()
             onGraphChanged()
+            subscribe(subscribers)
         }
     }
 
     /**
      * Called when this cell's connection list changes.
      * */
-    open fun onConnectionsChanged() {}
+    protected open fun onConnectionsChanged() {}
 
     /**
      * Called when this cell joined another graph.
-     * Subscribers may be added here.
      * */
-    open fun onGraphChanged() {}
+    protected open fun onGraphChanged() {}
+
+    protected open fun subscribe(subs: SubscriberCollection) { }
 
     /**
      * Called when the solver is being built, in order to clear and prepare the objects.
@@ -417,12 +447,16 @@ object CellConnections {
             val graph = manager.createGraph()
 
             graph.addCell(insertedCell)
+
+            graph.setChanged()
         } else if (isCommonGraph(neighborInfoList)) {
             // Case 2 and 3. Join the existing circuit.
 
             val graph = neighborInfoList[0].neighbor.graph
 
             graph.addCell(insertedCell)
+
+            graph.setChanged()
 
             // Send connection update to the neighbor (the graph has not changed):
             neighborInfoList.forEach {
@@ -466,6 +500,8 @@ object CellConnections {
                 // And now destroy the old graph:
                 existingGraph.destroy()
             }
+
+            graph.setChanged()
         }
 
         insertedCell.graph.buildSolver()
@@ -527,6 +563,7 @@ object CellConnections {
 
             graph.buildSolver()
             graph.startSimulation()
+            graph.setChanged()
         } else {
             // Case 3 and 4. Implement a more sophisticated algorithm, if necessary.
             graph.destroy()
@@ -632,6 +669,7 @@ object CellConnections {
 
             graph.buildSolver()
             graph.startSimulation()
+            graph.setChanged()
 
             // We don't need to keep the cells, we have already traversed all the connected ones.
             bfsVisited.clear()
@@ -729,7 +767,7 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
 
     private var updatesCheckpoint = 0L
 
-    val subscribers = SubscriberCollection()
+    val subscribers = SubscriberPool()
 
     @CrossThreadAccess
     var lastTickTime = 0.0
@@ -1246,7 +1284,7 @@ class CellGraphManager(val level: ServerLevel) : SavedData() {
     fun createGraph(): CellGraph {
         val graph = CellGraph(UUID.randomUUID(), this, level)
         addGraph(graph)
-
+        setDirty()
         return graph
     }
 
