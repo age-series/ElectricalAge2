@@ -33,6 +33,7 @@ import org.eln2.mc.common.parts.foundation.*
 import org.eln2.mc.common.space.*
 import org.eln2.mc.data.DataNode
 import org.eln2.mc.data.DataEntity
+import org.eln2.mc.data.TemperatureField
 import org.eln2.mc.data.readAll2
 import org.eln2.mc.extensions.*
 import org.eln2.mc.extensions.times
@@ -116,7 +117,7 @@ class ThermalWireObject(cell: Cell) : ThermalObject(cell), WailaEntity, Persiste
         ThermalMass(Material.COPPER),
         cylinderSurfaceArea(1.0, 0.05)
     ).also { b ->
-        cell.envFm.read<EnvTemperatureField>()?.readTemperature()?.also {
+        cell.envFldMap.read<EnvTemperatureField>()?.readTemperature()?.also {
             b.temp = it
         }
     }
@@ -128,7 +129,7 @@ class ThermalWireObject(cell: Cell) : ThermalObject(cell), WailaEntity, Persiste
     override fun addComponents(simulator: Simulator) {
         simulator.add(body)
 
-        cell.envFm.readAll2<EnvTemperatureField, EnvThermalConductivityField>()?.also { (tempField, condField) ->
+        cell.envFldMap.readAll2<EnvTemperatureField, EnvThermalConductivityField>()?.also { (tempField, condField) ->
             simulator.connect(
                 body,
                 EnvironmentInformation(
@@ -146,8 +147,7 @@ class ThermalWireObject(cell: Cell) : ThermalObject(cell), WailaEntity, Persiste
 
     override fun save(): CompoundTag {
         return CompoundTag().also {
-            it.putThermalMass(THERMAL_MASS, body.thermal
-            )
+            it.putThermalMass(THERMAL_MASS, body.thermal)
             it.putDouble(SURFACE_AREA, body.area)
         }
     }

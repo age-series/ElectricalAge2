@@ -9,6 +9,7 @@ import net.minecraft.network.chat.TranslatableComponent
 import net.minecraft.world.level.block.entity.BlockEntity
 import org.ageseries.libage.sim.electrical.mna.component.Pin
 import org.eln2.mc.Eln2
+import org.eln2.mc.data.DataEntity
 import org.eln2.mc.integration.WailaTooltipEntryType.Companion.getTooltipEntryType
 import org.eln2.mc.integration.WailaTooltipEntryType.Companion.putTooltipEntryType
 import org.eln2.mc.utility.UnitType
@@ -71,7 +72,17 @@ class Eln2WailaPlugin : IWailaPlugin {
  * */
 @FunctionalInterface
 interface WailaEntity {
-    fun appendBody(builder: WailaTooltipBuilder, config: IPluginConfig?)
+    fun appendBody(builder: WailaTooltipBuilder, config: IPluginConfig?) {
+        if(this is DataEntity) {
+            val node = this.dataNode
+
+            node.valueScan {
+                if(it is WailaEntity) {
+                    it.appendBody(builder, config)
+                }
+            }
+        }
+    }
 }
 
 enum class WailaTooltipEntryType(val id: Int) {
