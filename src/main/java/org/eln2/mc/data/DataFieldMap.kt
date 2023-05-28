@@ -53,6 +53,9 @@ inline fun<reified T1, reified T2, reified T3> DataFieldMap.readAll3(): Triple<T
     )
 }
 
+fun node(cfg: (DataNode) -> Unit): DataNode = DataNode().also(cfg)
+fun data(cfg: (DataFieldMap) -> Unit): DataNode = node { cfg(it.data) }
+
 class DataNode(val data: DataFieldMap) {
     constructor() : this(DataFieldMap())
 

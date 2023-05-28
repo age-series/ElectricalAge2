@@ -25,8 +25,6 @@ import org.eln2.mc.client.render.foundation.MultipartBlockEntityInstance
 import org.eln2.mc.client.render.PartialModels
 import org.eln2.mc.client.render.foundation.defaultRadiantBodyColor
 import org.eln2.mc.common.cells.foundation.*
-import org.eln2.mc.common.cells.foundation.withElectricalHeatTransfer
-import org.eln2.mc.common.cells.foundation.withElectricalPowerConverter
 import org.eln2.mc.common.cells.foundation.withStandardExplosionBehavior
 import org.eln2.mc.common.cells.foundation.CellProvider
 import org.eln2.mc.common.events.AtomicUpdate
@@ -34,10 +32,7 @@ import org.eln2.mc.common.events.EventScheduler
 import org.eln2.mc.common.network.serverToClient.with
 import org.eln2.mc.common.parts.foundation.*
 import org.eln2.mc.common.space.*
-import org.eln2.mc.data.DataNode
-import org.eln2.mc.data.DataEntity
-import org.eln2.mc.data.TemperatureField
-import org.eln2.mc.data.readAll2
+import org.eln2.mc.data.*
 import org.eln2.mc.extensions.*
 import org.eln2.mc.extensions.times
 import org.eln2.mc.extensions.toVec3
@@ -51,6 +46,7 @@ import org.eln2.mc.sim.*
 import org.eln2.mc.utility.Stopwatch
 import java.nio.ByteBuffer
 import java.util.concurrent.atomic.AtomicReference
+import kotlin.math.absoluteValue
 
 /**
  * The [ElectricalWireObject] has a single [ResistorBundle]. The Internal Pins of the bundle are connected to each other, and
@@ -101,28 +97,22 @@ class ElectricalWireObject(cell: Cell) : ElectricalObject(cell) {
     }
 }
 
-data class ElectricalWireModel(val resistanceMeter: Double)
-
-object ElectricalWireModels {
-    private fun getResistance(ρ: Double, L: Double, A: Double): Double {
-        return ρ * L / A
-    }
-
-    fun copper(thickness: Double): ElectricalWireModel {
-        return ElectricalWireModel(getResistance(1.77 * 10e-8, 1.0, thickness))
-    }
-}
-
-class ThermalWireObject(cell: Cell) : ThermalObject(cell), WailaEntity, PersistentObject, DataEntity {
+class ThermalWireObject(cell: Cell, def: ThermalBodyDef) : ThermalObject(cell), WailaEntity, PersistentObject, DataEntity {
     companion object {
         private const val THERMAL_MASS = "thermalMass"
         private const val SURFACE_AREA = "area"
     }
 
-    var body = ThermalBody(
-        ThermalMass(Material.COPPER),
-        cylinderSurfaceArea(1.0, 0.05)
-    ).also { b ->
+    constructor(cell: Cell): this(
+        cell,
+        ThermalBodyDef(
+            Material.COPPER,
+            mass = 1.0,
+            area = cylinderSurfaceArea(1.0, 0.05)
+        )
+    )
+
+    var body = def.create().also { b ->
         cell.envFldMap.read<EnvTemperatureField>()?.readTemperature()?.also {
             b.temp = it
         }
@@ -171,31 +161,52 @@ class ThermalWireObject(cell: Cell) : ThermalObject(cell), WailaEntity, Persiste
     }
 }
 
-enum class WireType(val temperatureThreshold: Temperature, val isRadiant: Boolean) {
-    Electrical(Temperature.from(300.0, ThermalUnits.CELSIUS), false),
-    Thermal(Temperature.from(2000.0, ThermalUnits.CELSIUS), true)
-}
-
 fun interface WireClientDataConsumer {
-    fun use(temp: Double)
+    fun use(temperature: Double)
 }
 
-class WireCell(ci: CellCI, val model: ElectricalWireModel, val type: WireType) : Cell(ci) {
+class WireModel {
+    var electricalResistance = 2.14 * 10e-6
+    var material = Material.COPPER
+    var isRadiant = false
+    var isElectrical = true
+    var damageThreshold = Temperature.from(500.0, ThermalUnits.CELSIUS)
+}
+
+class WireCell(ci: CellCI, val model: WireModel) : Cell(ci) {
     companion object {
         private const val SYNC_TEMP_EPS = 10e-2
         private const val RENDER_SYNC_INTERVAL = 1.0 / 25.0
     }
 
-    @SimObject
-    val thermalWire = ThermalWireObject(this)
+    override val dataNode = data {
+        if(model.isElectrical) {
+            it.withField(ResistanceField {
+                electricalWireObj!!.resistance
+            })
+
+            it.withField(PowerField {
+                electricalWireObj!!.power.absoluteValue
+            })
+        }
+    }
 
     @SimObject
-    val electricalWire =
-        if(type == WireType.Electrical){
+    val thermalWireObj = ThermalWireObject(this)
+
+    @SimObject
+    val electricalWireObj =
+        if(model.isElectrical){
             ElectricalWireObject(this).also {
-                it.resistance = model.resistanceMeter / 2.0 // Divide by two because bundle creates 2 resistors
+                it.resistance = model.electricalResistance / 2.0 // Divide by two because bundle creates 2 resistors
             }
         }
+        else null
+
+    @Behavior
+    val electricalBehaviorObj =
+        if(model.isElectrical)
+            activate<ElectricalPowerConverterBehavior>() * activate<ElectricalHeatTransferBehavior>(thermalWireObj.body)
         else null
 
     private var consumer: WireClientDataConsumer? = null
@@ -203,15 +214,8 @@ class WireCell(ci: CellCI, val model: ElectricalWireModel, val type: WireType) :
     private val trackSw = Stopwatch()
 
     init {
-        if(type == WireType.Electrical) {
-            behaviors.apply {
-                withElectricalPowerConverter { electricalWire!!.power }
-                withElectricalHeatTransfer { thermalWire.body }
-            }
-        }
-
-        behaviors.withStandardExplosionBehavior(this, type.temperatureThreshold.kelvin) {
-            thermalWire.body.tempK
+        behaviors.withStandardExplosionBehavior(this, model.damageThreshold.kelvin) {
+            thermalWireObj.body.tempK
         }
     }
 
@@ -223,7 +227,7 @@ class WireCell(ci: CellCI, val model: ElectricalWireModel, val type: WireType) :
         if(trackSw.total >= RENDER_SYNC_INTERVAL) {
             trackSw.resetTotal()
 
-            if(type.isRadiant) {
+            if(model.isRadiant) {
                 if(!this.trackedTemp.approxEq(temperature, SYNC_TEMP_EPS)) {
                     this.trackedTemp = temperature
                     consumer?.use(temperature)
@@ -240,12 +244,10 @@ class WireCell(ci: CellCI, val model: ElectricalWireModel, val type: WireType) :
         this.consumer = null
     }
 
-    val temperature get() = thermalWire.body.tempK
+    val temperature get() = thermalWireObj.body.tempK
 }
 
-class WirePart(id: ResourceLocation, context: PartPlacementInfo, cellProvider: CellProvider, val type: WireType) :
-    CellPart(id, context, cellProvider) {
-
+class WirePart(id: ResourceLocation, context: PartPlacementInfo, cellProvider: CellProvider, val model: WireModel) : CellPart(id, context, cellProvider) {
     companion object {
         private const val DIRECTIONS = "directions"
         private const val COLD_LIGHT_LEVEL = 0.0
@@ -289,9 +291,9 @@ class WirePart(id: ResourceLocation, context: PartPlacementInfo, cellProvider: C
 
     override fun createRenderer(): PartRenderer {
         wireRenderer = WirePartRenderer(this,
-            if(type == WireType.Electrical) WireMeshSets.electricalWireMap
+            if(model.isElectrical) WireMeshSets.electricalWireMap
             else WireMeshSets.thermalWireMap,
-            type)
+            model)
 
         applyRendererState()
 
@@ -342,7 +344,7 @@ class WirePart(id: ResourceLocation, context: PartPlacementInfo, cellProvider: C
     }
 
     private fun updateLight() {
-        if(type != WireType.Thermal) {
+        if(!model.isRadiant) {
             return
         }
 
@@ -470,7 +472,7 @@ object WireMeshSets {
     )
 }
 
-class WirePartRenderer(val part: WirePart, val meshes: Map<DirectionMask, PartialModel>, val type: WireType) : PartRenderer {
+class WirePartRenderer(val part: WirePart, val meshes: Map<DirectionMask, PartialModel>, val model: WireModel) : PartRenderer {
     companion object {
         private val COLOR = defaultRadiantBodyColor()
     }
@@ -534,7 +536,7 @@ class WirePartRenderer(val part: WirePart, val meshes: Map<DirectionMask, Partia
     }
 
     private fun applyTemperatureRendering() {
-        if(!type.isRadiant) {
+        if(!model.isRadiant) {
             return
         }
 
@@ -546,9 +548,6 @@ class WirePartRenderer(val part: WirePart, val meshes: Map<DirectionMask, Partia
     private fun updateInstance(model: PartialModel, rotation: Quaternion) {
         modelInstance?.delete()
 
-        // Conversion equation:
-        // let S - world size, B - block bench size
-        // S = B / 16
         val size = 1.5 / 16
 
         modelInstance = multipartInstance.materialManager

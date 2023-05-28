@@ -135,6 +135,9 @@ fun ThermalBodyAccessor.temperature(): TemperatureAccessor = TemperatureAccessor
  * Converts dissipated electrical energy to thermal energy.
  * */
 class ElectricalHeatTransferBehavior(private val bodyAccessor: ThermalBodyAccessor) : CellBehavior {
+    @Inj
+    constructor(body: ThermalBody): this({ body })
+
     private lateinit var converterBehavior: ElectricalPowerConverterBehavior
 
     override fun onAdded(container: CellBehaviorContainer) {
