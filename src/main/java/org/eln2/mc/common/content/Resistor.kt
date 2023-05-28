@@ -13,7 +13,7 @@ import org.eln2.mc.common.parts.foundation.CellPart
 import org.eln2.mc.common.parts.foundation.PartRenderer
 import org.eln2.mc.common.parts.foundation.PartPlacementInfo
 import org.eln2.mc.common.space.DirectionMask
-import org.eln2.mc.common.space.RelativeDirection
+import org.eln2.mc.common.space.RelativeDir
 import org.eln2.mc.common.space.withDirectionActualRule
 import org.eln2.mc.extensions.resistor
 import org.eln2.mc.integration.WailaEntity
@@ -22,7 +22,7 @@ import org.eln2.mc.integration.WailaTooltipBuilder
 /**
  * The resistor object has a single resistor. At most, two connections can be made by this object.
  * */
-class ResistorObject(cell: Cell, val dir1: RelativeDirection = RelativeDirection.Front, val dir2: RelativeDirection = RelativeDirection.Back) : ElectricalObject(cell),
+class ResistorObject(cell: Cell, val dir1: RelativeDir = RelativeDir.Front, val dir2: RelativeDir = RelativeDir.Back) : ElectricalObject(cell),
     WailaEntity {
     private lateinit var resistor: Resistor
 
@@ -84,8 +84,10 @@ class ResistorCell(ci: CellCI) : Cell(ci) {
     @SimObject
     val thermalWireObj = ThermalWireObject(this)
 
+    @Behavior
+    val behavior = standardBehavior(this, { resistorObj.power }, { thermalWireObj.body })
+
     init {
-        behaviors.withStandardBehavior(this, { resistorObj.power }, { thermalWireObj.body })
         ruleSet.withDirectionActualRule(DirectionMask.FRONT + DirectionMask.BACK)
     }
 }

@@ -838,12 +838,7 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
             return
         }
 
-        val tag = packet.tag
-
-        if(tag == null){
-            Eln2.LOGGER.error("Got null update tag")
-            return
-        }
+        val tag = packet.tag ?: return
 
         unpackPlacementUpdates(tag)
         unpackPartUpdates(tag)

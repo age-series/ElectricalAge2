@@ -1,5 +1,6 @@
 package org.eln2.mc.common.cells.foundation
 
+import net.minecraft.CrashReport
 import net.minecraft.core.Direction
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.nbt.ListTag
@@ -816,6 +817,14 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
         }
     }
 
+    private enum class UpdateStep {
+        Start,
+        UpdateSubsPre,
+        UpdateElectricalSims,
+        UpdateThermalSims,
+        UpdateSubsPost
+    }
+
     /**
      * Runs one simulation step. This is called from the update thread.
      * */
@@ -823,33 +832,47 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
     private fun update() {
         simStopLock.lock()
 
-        val elapsed = 1.0 / 100.0
+        var stage = UpdateStep.Start
 
-        subscribers.update(elapsed, SubscriberPhase.Pre)
+        try {
+            val elapsed = 1.0 / 100.0
 
-        lastTickTime = Time.toSeconds(measureNanoTime {
-            isElectricalSuccessful = true
+            stage = UpdateStep.UpdateSubsPre
+            subscribers.update(elapsed, SubscriberPhase.Pre)
 
-            electricalSims.forEach {
-                val success = it.step(elapsed)
+            lastTickTime = Time.toSeconds(measureNanoTime {
+                isElectricalSuccessful = true
 
-                isElectricalSuccessful = isElectricalSuccessful && success
+                stage = UpdateStep.UpdateElectricalSims
+                electricalSims.forEach {
+                    val success = it.step(elapsed)
 
-                if (!success && !it.isFloating) {
-                    LOGGER.error("Failed to update non-floating circuit!")
+                    isElectricalSuccessful = isElectricalSuccessful && success
+
+                    if (!success && !it.isFloating) {
+                        LOGGER.error("Failed to update non-floating circuit!")
+                    }
                 }
-            }
 
-            thermalSims.forEach {
-                it.step(elapsed)
-            }
-        })
+                stage = UpdateStep.UpdateThermalSims
+                thermalSims.forEach {
+                    it.step(elapsed)
+                }
+            })
 
-        subscribers.update(elapsed, SubscriberPhase.Post)
+            stage = UpdateStep.UpdateSubsPost
+            subscribers.update(elapsed, SubscriberPhase.Post)
 
-        updates++
+            updates++
 
-        simStopLock.unlock()
+        }
+        catch (t: Throwable) {
+            LOGGER.error("FAILED TO UPDATE SIMULATION at $stage: $t")
+        }
+        finally {
+            // Maybe blow up the game instead of just allowing this to go on?
+            simStopLock.unlock()
+        }
     }
 
     /**
@@ -1318,7 +1341,7 @@ class CellGraphManager(val level: ServerLevel) : SavedData() {
         }
 
         tag.put("Graphs", graphListTag)
-        LOGGER.info("Wrote ${graphs.count()} graphs to disk.")
+        LOGGER.info("Saved ${graphs.size} graphs to disk.")
         return tag
     }
 

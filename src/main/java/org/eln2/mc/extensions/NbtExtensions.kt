@@ -113,16 +113,16 @@ fun CompoundTag.getDirection(key: String): Direction {
     return Direction.from3DDataValue(data3d)
 }
 
-fun CompoundTag.putRelativeDirection(key: String, direction: RelativeDirection) {
+fun CompoundTag.putRelativeDirection(key: String, direction: RelativeDir) {
     val data = direction.id
 
     this.putInt(key, data)
 }
 
-fun CompoundTag.getDirectionActual(key: String): RelativeDirection {
+fun CompoundTag.getDirectionActual(key: String): RelativeDir {
     val data = this.getInt(key)
 
-    return RelativeDirection.fromId(data)
+    return RelativeDir.fromId(data)
 }
 
 fun CompoundTag.putPartUpdateType(key: String, type: PartUpdateType) {

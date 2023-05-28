@@ -1,7 +1,7 @@
 package org.eln2.mc.utility
 
 class Stopwatch {
-    private val initialTimeStamp = System.nanoTime()
+    private var initialTimeStamp = System.nanoTime()
     private var lastTimeStamp = initialTimeStamp
 
     fun sample(): Double {
@@ -13,4 +13,8 @@ class Stopwatch {
     }
 
     val total get() = Time.toSeconds(System.nanoTime() - initialTimeStamp)
+
+    fun resetTotal() {
+        initialTimeStamp = System.nanoTime()
+    }
 }

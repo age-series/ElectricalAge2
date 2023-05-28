@@ -68,7 +68,7 @@ fun interface PoleMap {
     fun eval(actualDescr: LocationDescriptor, targetDescr: LocationDescriptor): Pole
 }
 
-fun dirActualMap(plusDir: RelativeDirection = RelativeDirection.Front, minusDir: RelativeDirection = RelativeDirection.Back) : PoleMap {
+fun dirActualMap(plusDir: RelativeDir = RelativeDir.Front, minusDir: RelativeDir = RelativeDir.Back) : PoleMap {
     return PoleMap { actualDescr, targetDescr ->
         when(val dirActual = actualDescr.findDirActual(targetDescr)){
             plusDir -> Pole.Plus

@@ -7,7 +7,7 @@ import org.eln2.mc.extensions.isVertical
 /**
  * The Relative Rotation Direction represents a direction relative to an object's frame.
  * */
-enum class RelativeDirection(val id: Int) {
+enum class RelativeDir(val id: Int) {
     Front(1),
     Back(2),
     Left(3),
@@ -46,7 +46,7 @@ enum class RelativeDirection(val id: Int) {
          * @param direction The global direction.
          * @return The global direction, mapped to the relative direction, in the object's frame.
          * */
-        fun fromForwardUp(facing: Direction, normal: Direction, direction: Direction): RelativeDirection {
+        fun fromForwardUp(facing: Direction, normal: Direction, direction: Direction): RelativeDir {
             if (facing.isVertical()) {
                 error("Facing cannot be vertical")
             }
@@ -78,7 +78,7 @@ enum class RelativeDirection(val id: Int) {
             return result
         }
 
-        fun fromId(id: Int): RelativeDirection {
+        fun fromId(id: Int): RelativeDir {
             return when (id) {
                 Front.id -> Front
                 Back.id -> Back

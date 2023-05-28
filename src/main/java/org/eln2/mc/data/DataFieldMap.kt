@@ -67,8 +67,9 @@ class DataNode(val data: DataFieldMap) {
 
     fun withChild(child: DataFieldMap): DataNode = withChild(DataNode(child))
 
-    fun withChild(action: (DataNode) -> Unit) {
+    fun withChild(action: (DataNode) -> Unit): DataNode {
         withChild(DataNode().also(action))
+        return this
     }
 
     fun<T> fieldScan(c: Class<T>): ArrayList<T> {

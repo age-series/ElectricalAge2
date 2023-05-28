@@ -17,7 +17,9 @@ import org.ageseries.libage.sim.Material
 import org.ageseries.libage.sim.electrical.mna.Circuit
 import org.ageseries.libage.sim.thermal.*
 import net.minecraft.core.BlockPos
+import org.eln2.mc.ClientOnly
 import org.eln2.mc.Eln2.LOGGER
+import org.eln2.mc.ServerOnly
 import org.eln2.mc.mathematics.bbVec
 import org.eln2.mc.client.render.foundation.MultipartBlockEntityInstance
 import org.eln2.mc.client.render.PartialModels
@@ -29,6 +31,7 @@ import org.eln2.mc.common.cells.foundation.withStandardExplosionBehavior
 import org.eln2.mc.common.cells.foundation.CellProvider
 import org.eln2.mc.common.events.AtomicUpdate
 import org.eln2.mc.common.events.EventScheduler
+import org.eln2.mc.common.network.serverToClient.with
 import org.eln2.mc.common.parts.foundation.*
 import org.eln2.mc.common.space.*
 import org.eln2.mc.data.DataNode
@@ -43,7 +46,10 @@ import org.eln2.mc.integration.WailaTooltipBuilder
 import org.eln2.mc.mathematics.lerp
 import org.eln2.mc.mathematics.map
 import org.eln2.mc.mathematics.Geometry.cylinderSurfaceArea
+import org.eln2.mc.mathematics.approxEq
 import org.eln2.mc.sim.*
+import org.eln2.mc.utility.Stopwatch
+import java.nio.ByteBuffer
 import java.util.concurrent.atomic.AtomicReference
 
 /**
@@ -170,7 +176,16 @@ enum class WireType(val temperatureThreshold: Temperature, val isRadiant: Boolea
     Thermal(Temperature.from(2000.0, ThermalUnits.CELSIUS), true)
 }
 
+fun interface WireClientDataConsumer {
+    fun use(temp: Double)
+}
+
 class WireCell(ci: CellCI, val model: ElectricalWireModel, val type: WireType) : Cell(ci) {
+    companion object {
+        private const val SYNC_TEMP_EPS = 10e-2
+        private const val RENDER_SYNC_INTERVAL = 1.0 / 25.0
+    }
+
     @SimObject
     val thermalWire = ThermalWireObject(this)
 
@@ -182,6 +197,10 @@ class WireCell(ci: CellCI, val model: ElectricalWireModel, val type: WireType) :
             }
         }
         else null
+
+    private var consumer: WireClientDataConsumer? = null
+    private var trackedTemp = Double.NaN
+    private val trackSw = Stopwatch()
 
     init {
         if(type == WireType.Electrical) {
@@ -196,6 +215,31 @@ class WireCell(ci: CellCI, val model: ElectricalWireModel, val type: WireType) :
         }
     }
 
+    override fun subscribe(subs: SubscriberCollection) {
+        subs.addPre(this::simulationTick)
+    }
+
+    private fun simulationTick(dt: Double, phase: SubscriberPhase) {
+        if(trackSw.total >= RENDER_SYNC_INTERVAL) {
+            trackSw.resetTotal()
+
+            if(type.isRadiant) {
+                if(!this.trackedTemp.approxEq(temperature, SYNC_TEMP_EPS)) {
+                    this.trackedTemp = temperature
+                    consumer?.use(temperature)
+                }
+            }
+        }
+    }
+
+    fun bind(renderConsumer: WireClientDataConsumer) {
+        this.consumer = renderConsumer
+    }
+
+    fun unbind() {
+        this.consumer = null
+    }
+
     val temperature get() = thermalWire.body.tempK
 }
 
@@ -203,9 +247,7 @@ class WirePart(id: ResourceLocation, context: PartPlacementInfo, cellProvider: C
     CellPart(id, context, cellProvider) {
 
     companion object {
-        private const val TEMPERATURE = "temperature"
         private const val DIRECTIONS = "directions"
-        private const val DIRECTION = "dir"
         private const val COLD_LIGHT_LEVEL = 0.0
         private const val COLD_LIGHT_TEMPERATURE = 500.0
         private const val HOT_LIGHT_LEVEL = 5.0
@@ -215,7 +257,7 @@ class WirePart(id: ResourceLocation, context: PartPlacementInfo, cellProvider: C
     override val sizeActual = bbVec(8.0, 2.0, 8.0)
 
     private data class Connection(
-        val directionActual: RelativeDirection,
+        val directionActual: RelativeDir,
         val mode: CellPartConnectionMode,
         val remotePosWorld: BlockPos
     ) {
@@ -283,14 +325,13 @@ class WirePart(id: ResourceLocation, context: PartPlacementInfo, cellProvider: C
         return tag
     }
 
-    override fun getSyncTag(): CompoundTag {
+    override fun getSyncTag(): CompoundTag? {
+        if(!connectionsChanged) {
+            return null
+        }
+
         return CompoundTag().also { tag ->
-            if(connectionsChanged) {
-                saveConnections(tag)
-                connectionsChanged = false
-            }
-            temperature = (cell as WireCell).temperature
-            tag.putDouble(TEMPERATURE, temperature)
+            saveConnections(tag)
         }
     }
 
@@ -298,9 +339,6 @@ class WirePart(id: ResourceLocation, context: PartPlacementInfo, cellProvider: C
         if(tag.contains(DIRECTIONS)) {
             loadConnectionsTag(tag)
         }
-
-        temperature = tag.getDouble(TEMPERATURE)
-        wireRenderer?.updateTemperature(temperature)
     }
 
     private fun updateLight() {
@@ -376,19 +414,38 @@ class WirePart(id: ResourceLocation, context: PartPlacementInfo, cellProvider: C
     }
 
     override fun onCellAcquired() {
-        sendTemperatureUpdates()
+        updateInGameLighting()
+        wireCell.bind(::onRenderDataUpdate)
     }
 
-    private fun sendTemperatureUpdates() {
+    @ServerOnly
+    private fun updateInGameLighting() {
         if(!isAlive) {
             return
         }
 
-        syncChanges()
         updateLight()
-
-        EventScheduler.scheduleWorkPre(20, this::sendTemperatureUpdates)
+        EventScheduler.scheduleWorkPre(20, this::updateInGameLighting)
     }
+
+    @ServerOnly
+    private fun onRenderDataUpdate(temp: Double) {
+        val buffer = ByteBuffer.allocate(8) with temp
+        enqueueBulkMessage(buffer.array())
+    }
+
+    @ClientOnly
+    override fun handleBulkMessage(msg: ByteArray) {
+        val buffer = ByteBuffer.wrap(msg)
+        val temp = buffer.double
+        wireRenderer?.updateTemperature(temp)
+    }
+
+    override fun onCellReleased() {
+        wireCell.unbind()
+    }
+
+    private val wireCell get() = cell as WireCell
 }
 
 object WireMeshSets {
@@ -426,7 +483,7 @@ class WirePartRenderer(val part: WirePart, val meshes: Map<DirectionMask, Partia
     private var modelInstance: ModelData? = null
 
     // Reset on every frame
-    private var latestDirections = AtomicReference<List<RelativeDirection>>()
+    private var latestDirections = AtomicReference<List<RelativeDir>>()
 
     private val temperatureUpdate = AtomicUpdate<Double>()
 
@@ -434,7 +491,7 @@ class WirePartRenderer(val part: WirePart, val meshes: Map<DirectionMask, Partia
         temperatureUpdate.setLatest(value)
     }
 
-    fun applyDirections(directions: List<RelativeDirection>) {
+    fun applyDirections(directions: List<RelativeDir>) {
         latestDirections.set(directions)
     }
 
