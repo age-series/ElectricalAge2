@@ -9,11 +9,13 @@ import org.eln2.mc.common.space.SO3
 import org.eln2.mc.common.space.requireLocator
 import org.eln2.mc.data.DataNode
 import org.eln2.mc.data.DataEntity
+import org.eln2.mc.data.PowerField
 import org.eln2.mc.extensions.destroyPart
 import org.eln2.mc.extensions.formattedPercentN
 import org.eln2.mc.integration.WailaEntity
 import org.eln2.mc.integration.WailaTooltipBuilder
 import org.eln2.mc.sim.ThermalBody
+import org.eln2.mc.utility.Inj
 
 interface CellBehavior {
     fun onAdded(container: CellBehaviorContainer) { }
@@ -103,6 +105,9 @@ fun interface ElectricalPowerAccessor {
  * Integrates electrical power into energy.
  * */
 class ElectricalPowerConverterBehavior(private val accessor: ElectricalPowerAccessor): CellBehavior {
+    @Inj
+    constructor(powerField: PowerField) : this(powerField.read)
+
     var energy: Double = 0.0
     var deltaEnergy: Double = 0.0
 

@@ -15,6 +15,8 @@ import org.eln2.mc.common.blocks.foundation.MultiblockControllerEntity
 import org.eln2.mc.common.blocks.foundation.MultiblockDefinition
 import org.eln2.mc.common.blocks.foundation.MultiblockManager
 import org.eln2.mc.common.cells.foundation.*
+import org.eln2.mc.data.DataNode
+import org.eln2.mc.data.PowerField
 import org.eln2.mc.extensions.*
 import org.eln2.mc.integration.WailaTooltipBuilder
 import org.eln2.mc.sim.ThermalBody
@@ -25,7 +27,7 @@ class HeaterHeatPortCell(ci: CellCI) : Cell(ci) {
     var provider: HeaterPowerPortCell? = null
 
     @SimObject
-    private val outputObj = HeatOutputObject(this)
+    val outputObj = HeatOutputObject(this)
 
     override fun onGraphChanged() {
         graph.subscribers.addPre(this::simulationTick)
@@ -92,12 +94,19 @@ class HeaterHeatPortCell(ci: CellCI) : Cell(ci) {
 }
 
 class HeaterPowerPortCell(ci: CellCI, val onResistance: Double = 1.0, val offResistance: Double = 10e10) : Cell(ci) {
+    override val dataNode = DataNode().also {
+        it.data.withField(PowerField {
+            portObj.power.absoluteValue
+        })
+    }
+
     @SimObject
-    private val portObj = PowerPortObject(this)
+    val portObj = activate<PowerPortObject>()
+
+    @Behavior
+    val converterBehavior = activate<ElectricalPowerConverterBehavior>()
 
     private var active = false
-
-    init { behaviors.withElectricalPowerConverter { portObj.power.absoluteValue } }
 
     private val atomicIncr = AtomicDouble()
 
