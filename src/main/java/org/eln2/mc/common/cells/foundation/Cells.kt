@@ -121,6 +121,7 @@ abstract class Cell(val pos: CellPos, val id: ResourceLocation, val envFldMap: D
         .withSingleton(this.javaClass) { this }
         .withSingleton { posDescr }
         .withExternalResolver { dataNode.data.read(it) }
+        
 
     protected inline fun<reified T> activate(vararg extraParams: Any): T = services.activate(extraParams.asList())
 

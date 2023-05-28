@@ -8,6 +8,8 @@ import net.minecraftforge.eventbus.api.SubscribeEvent
 import net.minecraftforge.fml.common.Mod
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent
 import org.ageseries.libage.sim.Material
+import org.ageseries.libage.sim.thermal.Temperature
+import org.ageseries.libage.sim.thermal.ThermalUnits
 import org.eln2.mc.Eln2.LOGGER
 import org.eln2.mc.client.render.PartialModels
 import org.eln2.mc.client.render.PartialModels.bbOffset
@@ -45,20 +47,27 @@ object Content {
 
     //#region Wires
 
+    val WIRE_MODEL_COPPER_ELECTRICAL_TEST = WireModel()
+    val WIRE_MODEL_COPPER_THERMAL_TEST = WireModel().apply {
+        isRadiant = true
+        isElectrical = false
+        damageThreshold = Temperature.from(2000.0, ThermalUnits.CELSIUS)
+    }
+
     val ELECTRICAL_WIRE_CELL_COPPER = cell("electrical_wire_cell_copper", BasicCellProvider  {
-        WireCell(it, ElectricalWireModels.copper(0.1), WireType.Electrical)
+        WireCell(it, WIRE_MODEL_COPPER_ELECTRICAL_TEST)
     })
 
     val THERMAL_WIRE_CELL_COPPER = cell("thermal_wire_cell_copper", BasicCellProvider  {
-        WireCell(it, ElectricalWireModels.copper(0.1), WireType.Thermal)
+        WireCell(it, WIRE_MODEL_COPPER_THERMAL_TEST)
     })
 
     val ELECTRICAL_WIRE_PART_COPPER: PartRegistry.PartRegistryItem = part("electrical_wire_part_copper", BasicPartProvider({ a, b ->
-        WirePart(a, b, ELECTRICAL_WIRE_CELL_COPPER.get(), WireType.Electrical)
+        WirePart(a, b, ELECTRICAL_WIRE_CELL_COPPER.get(), WIRE_MODEL_COPPER_ELECTRICAL_TEST)
     }, Vec3(0.1, 0.1, 0.1)))
 
     val THERMAL_WIRE_PART_COPPER: PartRegistry.PartRegistryItem = part("thermal_wire_part_copper", BasicPartProvider({ a, b ->
-        WirePart(a, b, THERMAL_WIRE_CELL_COPPER.get(), WireType.Thermal)
+        WirePart(a, b, THERMAL_WIRE_CELL_COPPER.get(), WIRE_MODEL_COPPER_THERMAL_TEST)
     }, Vec3(0.1, 0.1, 0.1)))
 
 

@@ -9,6 +9,17 @@ import org.eln2.mc.extensions.appendBody
 import org.eln2.mc.integration.WailaEntity
 import org.eln2.mc.integration.WailaTooltipBuilder
 
+data class ThermalBodyDef(val material: Material, val mass: Double, val area: Double, val energy: Double? = null) {
+    fun create() = ThermalBody(
+        ThermalMass(
+            material,
+            energy,
+            mass,
+        ),
+        area
+    )
+}
+
 class ThermalBody(var thermal: ThermalMass, var area: Double) : WailaEntity {
     var temp: Temperature
         get() = thermal.temperature
