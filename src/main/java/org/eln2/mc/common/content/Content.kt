@@ -186,7 +186,7 @@ object Content {
     }
 
     val MB_HEATER_HEAT_PORT_CELL = cell("heater_heat_port_cell", BasicCellProvider(::HeaterHeatPortCell))
-    val MB_HEATER_HEAT_PORT_BLOCK = block("heater_heat_port") { BasicCellBlock(MB_HEATER_HEAT_PORT_CELL) }
+    val MB_HEATER_HEAT_PORT_BLOCK = block("heater_heat_port_block") { BasicCellBlock(MB_HEATER_HEAT_PORT_CELL) }
     val MB_HEATER_POWER_PORT_CELL = cell("heater_power_port_cell", BasicCellProvider(::HeaterPowerPortCell))
     val MB_HEATER_POWER_PORT_BLOCK = block("heater_power_port_block") { BasicCellBlock(MB_HEATER_POWER_PORT_CELL) }
     val MB_HEATER_CTRL_BLOCK = block("heater_controller_block") { BasicMBControllerBlock(::HeaterCtrlBlockEntity) }
