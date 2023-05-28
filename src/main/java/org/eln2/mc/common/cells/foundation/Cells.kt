@@ -25,10 +25,7 @@ import org.eln2.mc.data.ObjectField
 import org.eln2.mc.extensions.*
 import org.eln2.mc.integration.WailaEntity
 import org.eln2.mc.sim.BiomeEnvironments
-import org.eln2.mc.utility.FieldReader
-import org.eln2.mc.utility.Stopwatch
-import org.eln2.mc.utility.Time
-import org.eln2.mc.utility.fieldScan
+import org.eln2.mc.utility.*
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
@@ -87,13 +84,23 @@ annotation class Behavior
 abstract class Cell(val pos: CellPos, val id: ResourceLocation, val envFldMap: DataFieldMap) : WailaEntity, DataEntity {
     constructor(ci: CellCI) : this(ci.pos, ci.id, ci.envFm)
 
+    override val dataNode = DataNode().also { root ->
+        root.withChild {
+            it.data.withField(
+                ObjectField("ID") {
+                    if(hasGraph) graph.id
+                    else null
+                }
+            )
+        }
+    }
+
     companion object {
         private val OBJECT_READERS = ConcurrentHashMap<Class<*>, List<FieldReader<Cell>>>()
         private val BEHAVIOR_READERS = ConcurrentHashMap<Class<*>, List<FieldReader<Cell>>>()
 
         private const val CELL_DATA = "cellData"
         private const val OBJECT_DATA = "objectData"
-
     }
 
     val posDescr get() = pos.descriptor
@@ -107,6 +114,17 @@ abstract class Cell(val pos: CellPos, val id: ResourceLocation, val envFldMap: D
 
     private val ruleSetLazy = lazy { LocatorRelationRuleSet() }
     protected val ruleSet get() = ruleSetLazy.value
+
+    protected val services = ServiceCollection()
+        .withSingleton { dataNode }
+        .withSingleton { this }
+        .withSingleton(this.javaClass) { this }
+        .withSingleton { posDescr }
+        .withExternalResolver { dataNode.data.read(it) }
+
+    protected inline fun<reified T> activate(vararg extraParams: Any): T = services.activate(extraParams.asList())
+
+    protected open fun registerServices(services: ServiceCollection) { }
 
     open fun acceptsConnection(remote: Cell): Boolean {
         return ruleSet.accepts(pos.descriptor, remote.pos.descriptor)
@@ -366,18 +384,6 @@ abstract class Cell(val pos: CellPos, val id: ResourceLocation, val envFldMap: D
      * */
     fun hasObject(type: SimulationObjectType): Boolean {
         return objSet.hasObject(type)
-    }
-
-
-    override val dataNode = DataNode().also { root ->
-        root.withChild {
-            it.data.withField(
-                ObjectField("ID") {
-                    if(hasGraph) graph.id
-                    else null
-                }
-            )
-        }
     }
 }
 
