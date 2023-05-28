@@ -71,10 +71,14 @@ object EventScheduler {
      * Only one queue can exist per listener.
      * This queue can be subsequently accessed, and events can be enqueued for the next tick.
      * */
-    fun register(listener: EventListener) {
-        if (eventQueues.put(listener, EventQueue()) != null) {
+    fun register(listener: EventListener): EventManager {
+        val result = EventQueue()
+
+        if (eventQueues.put(listener, result) != null) {
             error("Duplicate add $listener")
         }
+
+        return result.manager
     }
 
     /**

@@ -31,6 +31,10 @@ import org.eln2.mc.common.cells.foundation.Cell
 import org.eln2.mc.common.cells.foundation.CellGraphManager
 import org.eln2.mc.common.cells.foundation.CellPos
 import org.eln2.mc.common.cells.foundation.CellProvider
+import org.eln2.mc.common.network.serverToClient.BulkMessages
+import org.eln2.mc.common.network.serverToClient.BulkPartMessage
+import org.eln2.mc.common.network.serverToClient.PartMessage
+import org.eln2.mc.common.network.serverToClient.id
 import org.eln2.mc.common.parts.PartRegistry
 import org.eln2.mc.common.space.*
 import org.eln2.mc.data.DataNode
@@ -156,8 +160,8 @@ object PartGeometry {
     /**
      * @see Part.getDirectionActual
      * */
-    fun getDirectionActual(actualFacingActual: Direction, faceWorld: Direction, dirWorld: Direction): RelativeDirection =
-        RelativeDirection.fromForwardUp(
+    fun getDirectionActual(actualFacingActual: Direction, faceWorld: Direction, dirWorld: Direction): RelativeDir =
+        RelativeDir.fromForwardUp(
             actualFacingActual,
             faceWorld,
             dirWorld
@@ -181,6 +185,13 @@ abstract class Part(val id: ResourceLocation, val placement: PartPlacementInfo):
         }
     }
 
+    open fun handleBulkMessage(msg: ByteArray) { }
+
+    fun enqueueBulkMessage(payload: ByteArray) {
+        require(!placement.level.isClientSide) { "Tried to send bulk message from client" }
+        BulkMessages.enqueuePartMessage(placement.level as ServerLevel, PartMessage(placement.pos, placement.face, payload))
+    }
+
     /**
      * This is the size that will be used to create the bounding box for this part.
      * It should not exceed the block size, but that is not enforced.
@@ -197,7 +208,7 @@ abstract class Part(val id: ResourceLocation, val placement: PartPlacementInfo):
      * @param dirWorld A global direction.
      * @return The relative direction towards the global direction.
      * */
-    fun getDirectionActual(dirWorld: Direction): RelativeDirection {
+    fun getDirectionActual(dirWorld: Direction): RelativeDir {
         return PartGeometry.getDirectionActual(placement.horizontalFacing, placement.face, dirWorld)
     }
 
@@ -687,7 +698,7 @@ enum class CellPartConnectionMode {
 
 data class CellPartConnectionInfo(
     val mode: CellPartConnectionMode,
-    val actualDirActualPlr: RelativeDirection
+    val actualDirActualPlr: RelativeDir
 )
 
 fun solveCellPartConnection(actualCell: Cell, remoteCell: Cell): CellPartConnectionInfo {
@@ -753,7 +764,7 @@ fun solveCellPartConnection(actualCell: Cell, remoteCell: Cell): CellPartConnect
 
     return CellPartConnectionInfo(
         mode,
-        RelativeDirection.fromForwardUp(
+        RelativeDir.fromForwardUp(
             actualCell.posDescr.requireLocator<SO3, IdentityDirectionLocator>().forwardWorld,
             actualFaceWorld,
             dirGlobal

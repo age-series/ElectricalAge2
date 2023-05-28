@@ -339,13 +339,13 @@ fun LocatorRelationRuleSet.withDirectionActualRule(mask: DirectionMask): Locator
     }
 }
 
-fun LocationDescriptor.findDirActualOrNull(other: LocationDescriptor) : RelativeDirection? {
+fun LocationDescriptor.findDirActualOrNull(other: LocationDescriptor) : RelativeDir? {
     val actualPosWorld = this.getLocator<R3, BlockPosLocator>() ?: return null
     val actualIdWorld = this.getLocator<SO3, IdentityDirectionLocator>() ?: return null
     val actualFaceWorld = this.getLocator<SO3, BlockFaceLocator>() ?: return null
     val targetPosWorld = other.getLocator<R3, BlockPosLocator>() ?: return null
 
-    return RelativeDirection.fromForwardUp(
+    return RelativeDir.fromForwardUp(
         actualIdWorld.forwardWorld,
         actualFaceWorld.faceWorld,
         actualPosWorld.pos.directionTo(targetPosWorld.pos)
@@ -353,6 +353,6 @@ fun LocationDescriptor.findDirActualOrNull(other: LocationDescriptor) : Relative
     )
 }
 
-fun LocationDescriptor.findDirActual(other: LocationDescriptor): RelativeDirection {
+fun LocationDescriptor.findDirActual(other: LocationDescriptor): RelativeDir {
     return this.findDirActualOrNull(other) ?: error("Failed to get relative rotation direction")
 }

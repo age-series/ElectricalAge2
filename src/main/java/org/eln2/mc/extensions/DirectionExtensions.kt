@@ -2,7 +2,7 @@ package org.eln2.mc.extensions
 
 import net.minecraft.core.Direction
 import org.apache.commons.math3.geometry.euclidean.threed.Vector3D
-import org.eln2.mc.common.space.RelativeDirection
+import org.eln2.mc.common.space.RelativeDir
 
 fun Direction.isVertical(): Boolean {
     return this == Direction.UP || this == Direction.DOWN
@@ -12,25 +12,25 @@ fun Direction.isHorizontal(): Boolean {
     return !isVertical()
 }
 
-fun Direction.relativeAlias(): RelativeDirection {
+fun Direction.relativeAlias(): RelativeDir {
     return when (this) {
-        Direction.DOWN -> RelativeDirection.Down
-        Direction.UP -> RelativeDirection.Up
-        Direction.NORTH -> RelativeDirection.Front
-        Direction.SOUTH -> RelativeDirection.Back
-        Direction.WEST -> RelativeDirection.Left
-        Direction.EAST -> RelativeDirection.Right
+        Direction.DOWN -> RelativeDir.Down
+        Direction.UP -> RelativeDir.Up
+        Direction.NORTH -> RelativeDir.Front
+        Direction.SOUTH -> RelativeDir.Back
+        Direction.WEST -> RelativeDir.Left
+        Direction.EAST -> RelativeDir.Right
     }
 }
 
-fun RelativeDirection.directionAlias(): Direction {
+fun RelativeDir.directionAlias(): Direction {
     return when (this) {
-        RelativeDirection.Front -> Direction.NORTH
-        RelativeDirection.Back -> Direction.SOUTH
-        RelativeDirection.Left -> Direction.WEST
-        RelativeDirection.Right -> Direction.EAST
-        RelativeDirection.Up -> Direction.UP
-        RelativeDirection.Down -> Direction.DOWN
+        RelativeDir.Front -> Direction.NORTH
+        RelativeDir.Back -> Direction.SOUTH
+        RelativeDir.Left -> Direction.WEST
+        RelativeDir.Right -> Direction.EAST
+        RelativeDir.Up -> Direction.UP
+        RelativeDir.Down -> Direction.DOWN
     }
 }
 

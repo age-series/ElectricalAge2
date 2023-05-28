@@ -21,20 +21,46 @@ interface CellBehavior {
     fun destroy() { }
 }
 
+/**
+ * Temporary staging storage for behaviors.
+ * */
+class CellBehaviorSource : CellBehavior {
+    private val behaviors = ArrayList<CellBehavior>()
+
+    fun add(behavior: CellBehavior): CellBehaviorSource {
+        if(behavior is CellBehaviorSource) {
+            behaviors.addAll(behavior.behaviors)
+        }
+        else{
+            behaviors.add(behavior)
+        }
+
+        return this
+    }
+
+    override fun onAdded(container: CellBehaviorContainer) {
+        behaviors.forEach { behavior ->
+            if(container.behaviors.any { it.javaClass == behavior.javaClass }) {
+                error("Duplicate behavior")
+            }
+
+            container.behaviors.add(behavior)
+            behavior.onAdded(container)
+        }
+
+        require(container.behaviors.remove(this)) { "Failed to clean up behavior source" }
+    }
+}
+
+operator fun CellBehavior.times(b: CellBehavior) = CellBehaviorSource().also { it.add(this).add(b) }
+operator fun CellBehaviorSource.times(b: CellBehavior) = this.add(b)
+
 class CellBehaviorContainer(private val cell: Cell) : DataEntity {
     val behaviors = ArrayList<CellBehavior>()
 
-    fun forEach(action: ((CellBehavior) -> Unit)) {
-        behaviors.forEach(action)
-    }
-
-    inline fun <reified T : CellBehavior> getOrNull(): T? {
-        return behaviors.first { it is T } as? T
-    }
-
-    inline fun <reified T : CellBehavior> get(): T {
-        return getOrNull() ?: error("Failed to get behavior")
-    }
+    fun forEach(action: ((CellBehavior) -> Unit)) = behaviors.forEach(action)
+    inline fun <reified T : CellBehavior> getOrNull(): T? = behaviors.first { it is T } as? T
+    inline fun <reified T : CellBehavior> get(): T = getOrNull() ?: error("Failed to get behavior")
 
     inline fun <reified T : CellBehavior> add(behavior: T): CellBehaviorContainer {
         if(behaviors.any { it is T }){
@@ -94,6 +120,10 @@ class ElectricalPowerConverterBehavior(private val accessor: ElectricalPowerAcce
 
 fun interface ThermalBodyAccessor {
     fun get(): ThermalBody
+}
+
+fun ThermalBodyAccessor.temperature(): TemperatureAccessor = TemperatureAccessor {
+    this.get().tempK
 }
 
 /**
@@ -246,7 +276,32 @@ fun CellBehaviorContainer.withStandardExplosionBehavior(cell: Cell, threshold: D
  * - [TemperatureExplosionBehavior]
  *      - explodes part when a threshold temperature is held for a certain time period
  * */
-fun CellBehaviorContainer.withStandardBehavior(cell: Cell, power: ElectricalPowerAccessor, thermal: ThermalBodyAccessor): CellBehaviorContainer = this
-    .withElectricalPowerConverter(power)
-    .withElectricalHeatTransfer(thermal)
-    .withStandardExplosionBehavior(cell, 600.0) { thermal.get().tempK }
+fun standardBehavior(cell: Cell, power: ElectricalPowerAccessor, thermal: ThermalBodyAccessor) =
+    ElectricalPowerConverterBehavior(power) *
+    ElectricalHeatTransferBehavior(thermal) *
+    TemperatureExplosionBehavior(
+        thermal.temperature(),
+        TemperatureExplosionBehaviorOptions(
+            temperatureThreshold = 600.0,
+            increaseSpeed = 0.1,
+            decayRate = 0.25
+        )
+    ) {
+        val container = cell.container
+            ?: return@TemperatureExplosionBehavior
+
+        if (container is MultipartBlockEntity) {
+            if (container.isRemoved) {
+                return@TemperatureExplosionBehavior
+            }
+
+            val part = container.getPart(cell.posDescr.requireLocator<SO3, BlockFaceLocator>().faceWorld)
+                ?: return@TemperatureExplosionBehavior
+
+            val level = (part.placement.level as ServerLevel)
+
+            level.destroyPart(part)
+        } else {
+            error("Cannot explode $container")
+        }
+    }

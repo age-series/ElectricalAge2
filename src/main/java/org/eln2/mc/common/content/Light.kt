@@ -5,8 +5,6 @@ import com.jozufozu.flywheel.core.PartialModel
 import com.jozufozu.flywheel.core.materials.FlatLit
 import com.jozufozu.flywheel.core.materials.model.ModelData
 import com.jozufozu.flywheel.util.Color
-import mcp.mobius.waila.api.IPluginConfig
-import net.minecraft.nbt.CompoundTag
 import net.minecraft.resources.ResourceLocation
 import org.eln2.mc.Eln2.LOGGER
 import org.eln2.mc.mathematics.bbVec
@@ -20,44 +18,52 @@ import org.eln2.mc.client.render.foundation.applyBlockBenchTransform
 import org.eln2.mc.common.blocks.foundation.GhostLight
 import org.eln2.mc.common.cells.foundation.*
 import org.eln2.mc.common.events.*
+import org.eln2.mc.common.network.serverToClient.getArray
+import org.eln2.mc.common.network.serverToClient.with
 import org.eln2.mc.common.parts.foundation.CellPart
 import org.eln2.mc.common.parts.foundation.PartRenderer
 import org.eln2.mc.common.parts.foundation.PartPlacementInfo
 import org.eln2.mc.common.space.DirectionMask
-import org.eln2.mc.common.space.RelativeDirection
+import org.eln2.mc.common.space.RelativeDir
 import org.eln2.mc.common.space.withDirectionActualRule
-import org.eln2.mc.extensions.useSubTag
-import org.eln2.mc.extensions.withSubTag
-import org.eln2.mc.integration.WailaTooltipBuilder
-
-fun interface BrightnessFunction {
-    fun calculateBrightness(power: Double): Double
-}
+import org.eln2.mc.data.DataNode
+import org.eln2.mc.data.TooltipField
+import org.eln2.mc.mathematics.approxEq
+import org.eln2.mc.utility.Stopwatch
+import java.nio.ByteBuffer
 
 data class LightModel(
-    val brightnessFunction: BrightnessFunction,
+    val brightnessFunction: (Double) -> Double,
     val resistance: Double
 )
 
-object LightModels {
-    fun test(): LightModel{
-        return LightModel({it / 100.0}, 10.0)
-    }
-}
-
 data class LightChangeEvent(val brightness: Int): Event
+
+fun interface RenderBrightnessConsumer {
+    fun consume(brightness: Double)
+}
 
 class LightCell(
     ci: CellCI,
     val model: LightModel,
-    val dir1: RelativeDirection = RelativeDirection.Left,
-    val dir2: RelativeDirection = RelativeDirection.Right
+    // Probably doesn't make sense to use maps here:
+    dir1: RelativeDir = RelativeDir.Left,
+    dir2: RelativeDir = RelativeDir.Right
 ):
     Cell(ci)
 {
-    private var trackedBrightness: Int = 0
+    companion object {
+        private const val RENDER_SYNC_INTERVAL = 0.05
+        private const val RENDER_EPS = 10e-4
+    }
 
-    private var receiver: EventQueue? = null
+    private var trackedBr: Int = 0
+
+    private var trackedRenderBr: Double = 0.0
+    private var renderBrSw = Stopwatch()
+
+    private var serverThreadReceiver: EventQueue? = null
+    private var renderBrConsumer: RenderBrightnessConsumer? = null
 
     @SimObject
     val resistorObj = ResistorObject(this, dir1, dir2).also { it.resistance = model.resistance }
@@ -65,62 +71,64 @@ class LightCell(
     @SimObject
     val thermalWireObj = ThermalWireObject(this)
 
-    var rawBrightness: Double = 0.0
+    @Behavior
+    val behavior = standardBehavior(this, { resistorObj.power }, { thermalWireObj.body })
+
+    var rawBr: Double = 0.0
         private set
 
-    fun subscribeEvents(access: EventQueue) {
-        receiver = access
+    fun bind(serverThreadAccess: EventQueue, renderBrightnessConsumer: RenderBrightnessConsumer) {
+        this.serverThreadReceiver = serverThreadAccess
+        this.renderBrConsumer = renderBrightnessConsumer
     }
 
-    fun unsubscribeEvents() {
-        receiver = null
+    fun unbind() {
+        serverThreadReceiver = null
+        renderBrConsumer = null
     }
 
-    init {
-        behaviors.withStandardBehavior(this, { resistorObj.power }, { thermalWireObj.body })
-        ruleSet.withDirectionActualRule(DirectionMask.ofRelatives(dir1, dir2))
-    }
-
-    override fun onGraphChanged() {
-        graph.subscribers.addPre(this::simulationTick)
-    }
-
-    override fun onRemoving() {
-        graph.subscribers.remove(this::simulationTick)
+    override fun subscribe(subs: SubscriberCollection) {
+        subs.addPre10(this::simulationTick)
     }
 
     private fun simulationTick(elapsed: Double, phase: SubscriberPhase){
-        rawBrightness = model.brightnessFunction.calculateBrightness(resistorObj.power)
+        rawBr = model.brightnessFunction(resistorObj.power)
 
-        val actualBrightness =
-            (rawBrightness * 15.0)
-                .toInt()
-                .coerceIn(0, 15)
+        if(renderBrSw.total >= RENDER_SYNC_INTERVAL) {
+            renderBrSw.resetTotal()
 
-        val receiver = this.receiver
+            if(!rawBr.approxEq(trackedRenderBr, RENDER_EPS)) {
+                trackedRenderBr = rawBr
+                renderBrConsumer?.consume(rawBr)
+            }
+        }
 
-        if(trackedBrightness == actualBrightness || receiver == null) {
-            // Cannot track the value.
+        val actualBrightness = (rawBr * 15.0).toInt().coerceIn(0, 15)
 
+        val receiver = this.serverThreadReceiver
+
+        if(trackedBr == actualBrightness || receiver == null) {
             return
         }
 
-        trackedBrightness = actualBrightness
+        trackedBr = actualBrightness
 
         receiver.enqueue(LightChangeEvent(actualBrightness))
     }
 
-    override fun appendBody(builder: WailaTooltipBuilder, config: IPluginConfig?) {
-        super.appendBody(builder, config)
-        builder.text("Brightness", trackedBrightness)
+    override val dataNode = super.dataNode.withChild {
+        it.data.withField(TooltipField { b ->
+            b.text("Minecraft Brightness", trackedBr)
+            b.text("Model Brightness", rawBr)
+        })
+    }
+
+    init {
+        ruleSet.withDirectionActualRule(DirectionMask.ofRelatives(dir1, dir2))
     }
 }
 
-class LightRenderer(
-    private val part: LightPart,
-    private val cage: PartialModel,
-    private val emitter: PartialModel) : PartRenderer {
-
+class LightRenderer(private val part: LightPart, private val cage: PartialModel, private val emitter: PartialModel, ): PartRenderer {
     companion object {
         val COLD_TINT = colorF(1f, 1f, 1f, 1f)
         val WARM_TINT = Color(254, 196, 127, 255)
@@ -200,18 +208,8 @@ class LightRenderer(
     }
 }
 
-class LightPart(id: ResourceLocation, placementContext: PartPlacementInfo, cellProvider: CellProvider):
-    CellPart(id, placementContext, cellProvider),
-    EventListener {
-
-    companion object {
-        private const val RAW_BRIGHTNESS = "rawBrightness"
-        private const val CLIENT_DATA = "clientData"
-    }
-
+class LightPart(id: ResourceLocation, placementContext: PartPlacementInfo, cellProvider: CellProvider): CellPart(id, placementContext, cellProvider), EventListener {
     override val sizeActual = bbVec(8.0, 1.0 + 2.302, 5.0)
-
-    private var lights = ArrayList<GhostLight>()
 
     override fun createRenderer(): PartRenderer {
         return LightRenderer(
@@ -221,88 +219,36 @@ class LightPart(id: ResourceLocation, placementContext: PartPlacementInfo, cellP
             .also { it.downOffset = sizeActual.y / 2.0 }
     }
 
-    private fun cleanup() {
-        lights.forEach { it.destroy() }
-        lights.clear()
-    }
-
+    @ServerOnly
     override fun onCellAcquired() {
-        EventScheduler.register(this)
+        EventScheduler.register(this).registerHandler(this::onLightUpdate)
 
-        registerHandlers()
-        createLights()
-
-        lightCell.subscribeEvents(EventScheduler.getEventAccess(this))
-    }
-
-    private fun registerHandlers() {
-        val manager = EventScheduler.getManager(this)
-
-        manager.registerHandler(this::onLightUpdate)
-    }
-
-    private fun createLights(){
-        /* val normal = placementContext.face
-
-         (perpendicular(normal) + normal).directionList
-         .map { placementContext.pos + it }
-         .map { GhostLightBlock.createHandle(placementContext.level, it) }
-         .forEach { lights.add(it) }*/
-    }
-
-    private fun onLightUpdate(event: LightChangeEvent) {
-        LOGGER.info("Light update event: ${event.brightness}")
-
-        lights.forEach {
-            it.update(event.brightness)
-        }
-
-        updateBrightness(event.brightness)
-
-        syncChanges()
+        lightCell.bind(
+            serverThreadAccess = EventScheduler.getEventAccess(this),
+            renderBrightnessConsumer = ::sendRenderBrBulk
+        )
     }
 
     @ServerOnly
-    override fun getSyncTag(): CompoundTag {
-        return CompoundTag().withSubTag(CLIENT_DATA, packClientData())
+    private fun sendRenderBrBulk(value: Double) {
+        val buffer = ByteBuffer.allocate(8) with value
+        enqueueBulkMessage(buffer.array())
     }
 
     @ClientOnly
-    override fun handleSyncTag(tag: CompoundTag) {
-        tag.useSubTag(CLIENT_DATA, this::unpackClientData)
+    override fun handleBulkMessage(msg: ByteArray) {
+        val buffer = ByteBuffer.wrap(msg)
+        lightRenderer.updateBrightness(buffer.double)
     }
 
-    override fun getSaveTag(): CompoundTag? {
-        return super.getSaveTag()?.withSubTag(CLIENT_DATA, packClientData())
-    }
-
-    override fun loadFromTag(tag: CompoundTag) {
-        super.loadFromTag(tag)
-
-        if(placement.level.isClientSide){
-            tag.useSubTag(CLIENT_DATA, this::unpackClientData)
-        }
+    @ServerOnly
+    private fun onLightUpdate(event: LightChangeEvent) {
+        updateBrightness(event.brightness)
     }
 
     override fun onCellReleased() {
-        lightCell.unsubscribeEvents()
+        lightCell.unbind()
         EventScheduler.remove(this)
-    }
-
-    override fun onRemoved() {
-        super.onRemoved()
-
-        cleanup()
-    }
-
-    private fun unpackClientData(tag: CompoundTag){
-        lightRenderer.updateBrightness(tag.getDouble(RAW_BRIGHTNESS))
-    }
-
-    private fun packClientData(): CompoundTag{
-        return CompoundTag().also {
-            it.putDouble(RAW_BRIGHTNESS, lightCell.rawBrightness)
-        }
     }
 
     private val lightCell get() = cell as LightCell

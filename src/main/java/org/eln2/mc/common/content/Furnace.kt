@@ -50,7 +50,7 @@ import org.eln2.mc.common.cells.foundation.*
 import org.eln2.mc.common.events.AtomicUpdate
 import org.eln2.mc.common.events.EventScheduler
 import org.eln2.mc.common.space.DirectionMask
-import org.eln2.mc.common.space.RelativeDirection
+import org.eln2.mc.common.space.RelativeDir
 import org.eln2.mc.common.space.withDirectionActualRule
 import org.eln2.mc.extensions.*
 import org.eln2.mc.extensions.subStep
@@ -125,7 +125,7 @@ data class FurnaceOptions(
     }
 }
 
-class FurnaceCell(ci: CellCI, val dir1: RelativeDirection = RelativeDirection.Left, val dir2: RelativeDirection = RelativeDirection.Right) : Cell(ci) {
+class FurnaceCell(ci: CellCI, val dir1: RelativeDir = RelativeDir.Left, val dir2: RelativeDir = RelativeDir.Right) : Cell(ci) {
     companion object {
         private const val OPTIONS = "options"
         private const val RESISTOR_THERMAL_MASS = "resistorThermalMass"

@@ -28,7 +28,7 @@ import org.eln2.mc.common.parts.foundation.BasicCellPart
 import org.eln2.mc.common.parts.foundation.basicPartRenderer
 import org.eln2.mc.common.parts.foundation.BasicPartProvider
 import org.eln2.mc.common.space.DirectionMask
-import org.eln2.mc.common.space.RelativeDirection
+import org.eln2.mc.common.space.RelativeDir
 import org.eln2.mc.common.space.withDirectionActualRule
 import org.eln2.mc.mathematics.bbSize
 import org.eln2.mc.utility.UnitConversions.kwHoursInJ
@@ -132,8 +132,8 @@ object Content {
     val THERMOCOUPLE_CELL = cell("thermocouple_cell", BasicCellProvider{ createInfo ->
         ThermocoupleCell(
             createInfo,
-            dirActualMap(plusDir = RelativeDirection.Front, minusDir = RelativeDirection.Back),
-            dirActualMap(plusDir = RelativeDirection.Left, minusDir = RelativeDirection.Right)
+            dirActualMap(plusDir = RelativeDir.Front, minusDir = RelativeDir.Back),
+            dirActualMap(plusDir = RelativeDir.Left, minusDir = RelativeDir.Right)
         ).also {
             it.generatorObj.ruleSet.withDirectionActualRule(DirectionMask.FRONT + DirectionMask.BACK)
             it.thermalBipoleObj.ruleSet.withDirectionActualRule(DirectionMask.LEFT + DirectionMask.RIGHT)
@@ -169,7 +169,10 @@ object Content {
     }, Vec3(1.0, bbSize(2.0), 1.0)))
 
     val LIGHT_CELL = cell("light_cell", BasicCellProvider {
-        LightCell(it, LightModels.test())
+        LightCell(
+            it,
+            LightModel({ pwr -> pwr / 100.0 }, 0.1)
+        )
     })
     val LIGHT_PART = part("light_part", BasicPartProvider({a, b -> LightPart(a, b, LIGHT_CELL.get())}, bbVec(8.0, 4.0, 5.0)))
 

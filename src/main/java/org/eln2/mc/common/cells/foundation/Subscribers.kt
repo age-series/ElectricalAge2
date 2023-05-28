@@ -166,9 +166,25 @@ fun SubscriberCollection.addPre(subscriber: Subscriber){
     this.addSubscriber(SubscriberOptions(0, SubscriberPhase.Pre), subscriber)
 }
 
+fun SubscriberCollection.addPre10(subscriber: Subscriber) {
+    this.addSubscriber(SubscriberOptions(10, SubscriberPhase.Pre), subscriber)
+}
+
+fun SubscriberCollection.addPre100(subscriber: Subscriber) {
+    this.addSubscriber(SubscriberOptions(100, SubscriberPhase.Pre), subscriber)
+}
+
 /**
  * Adds a subscriber that runs on [SubscriberPhase.Post] every tick (interval is 0).
  * */
 fun SubscriberCollection.addPost(subscriber: Subscriber){
     this.addSubscriber(SubscriberOptions(0, SubscriberPhase.Post), subscriber)
+}
+
+fun SubscriberCollection.addPost10(subscriber: Subscriber){
+    this.addSubscriber(SubscriberOptions(10, SubscriberPhase.Post), subscriber)
+}
+
+fun SubscriberCollection.addPost100(subscriber: Subscriber){
+    this.addSubscriber(SubscriberOptions(100, SubscriberPhase.Post), subscriber)
 }

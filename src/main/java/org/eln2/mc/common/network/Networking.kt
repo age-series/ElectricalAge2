@@ -7,10 +7,16 @@ import net.minecraft.server.level.ServerPlayer
 import net.minecraftforge.network.NetworkDirection
 import net.minecraftforge.network.NetworkRegistry
 import org.eln2.mc.Eln2
+import org.eln2.mc.common.network.serverToClient.*
+import org.eln2.mc.common.network.serverToClient.BulkMessages.decodeBulkPartMessage
+import org.eln2.mc.common.network.serverToClient.BulkMessages.encodeBulkPartMessage
+import org.eln2.mc.common.network.serverToClient.BulkMessages.handleBulkPartMessage
+import java.util.Optional
 
 object Networking {
     private const val protocolVersion = "1"
     private const val channelName = "main"
+
     private val channel = NetworkRegistry.newSimpleChannel(
         ResourceLocation(Eln2.MODID, channelName),
         { protocolVersion },
@@ -19,6 +25,17 @@ object Networking {
 
     fun setup() {
         Eln2.LOGGER.info("Network packets registered")
+
+        var idx = 0
+
+        channel.registerMessage(
+            idx++,
+            BulkPartMessage::class.java,
+            BulkMessages::encodeBulkPartMessage,
+            BulkMessages::decodeBulkPartMessage,
+            BulkMessages::handleBulkPartMessage,
+            Optional.of(NetworkDirection.PLAY_TO_CLIENT)
+        )
     }
 
     /**

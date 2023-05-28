@@ -61,7 +61,7 @@ value class DirectionMask(val mask: Int) {
         /**
          * Gets the cached mask for the specified direction.
          * */
-        fun ofRelative(direction: RelativeDirection): DirectionMask {
+        fun ofRelative(direction: RelativeDir): DirectionMask {
             return of(direction.directionAlias())
         }
 
@@ -89,7 +89,7 @@ value class DirectionMask(val mask: Int) {
         /**
          * **Computes** the mask for the specified directions.
          * */
-        fun ofRelatives(directions: List<RelativeDirection>): DirectionMask {
+        fun ofRelatives(directions: List<RelativeDir>): DirectionMask {
             if (directions.isEmpty()) {
                 return EMPTY
             }
@@ -103,7 +103,7 @@ value class DirectionMask(val mask: Int) {
         /**
          * **Computes** the mask for the specified directions.
          * */
-        fun ofRelatives(vararg directions: RelativeDirection): DirectionMask {
+        fun ofRelatives(vararg directions: RelativeDir): DirectionMask {
             return ofRelatives(directions.asList())
         }
 
@@ -111,16 +111,16 @@ value class DirectionMask(val mask: Int) {
         val UP = of(Direction.UP)
 
         val NORTH = of(Direction.NORTH)
-        val FRONT = ofRelative(RelativeDirection.Front)
+        val FRONT = ofRelative(RelativeDir.Front)
 
         val SOUTH = of(Direction.SOUTH)
-        val BACK = ofRelative(RelativeDirection.Back)
+        val BACK = ofRelative(RelativeDir.Back)
 
         val WEST = of(Direction.WEST)
-        val LEFT = ofRelative(RelativeDirection.Left)
+        val LEFT = ofRelative(RelativeDir.Left)
 
         val EAST = of(Direction.EAST)
-        val RIGHT = ofRelative(RelativeDirection.Right)
+        val RIGHT = ofRelative(RelativeDir.Right)
 
         val HORIZONTALS = NORTH + SOUTH + EAST + WEST
         val VERTICALS = UP + DOWN
@@ -232,7 +232,7 @@ value class DirectionMask(val mask: Int) {
     /**
      * @return True if this mask has the specified direction stored in it. Otherwise, false.
      * */
-    fun hasFlag(direction: RelativeDirection): Boolean {
+    fun hasFlag(direction: RelativeDir): Boolean {
         return hasFlag(direction.directionAlias())
     }
 
@@ -259,7 +259,7 @@ value class DirectionMask(val mask: Int) {
         return hasFlag(direction)
     }
 
-    infix fun has(direction: RelativeDirection): Boolean {
+    infix fun has(direction: RelativeDir): Boolean {
         return hasFlag(direction)
     }
 
@@ -294,13 +294,13 @@ value class DirectionMask(val mask: Int) {
     val hasDown get() = hasFlag(Direction.DOWN)
     val hasUp get() = hasFlag(Direction.UP)
     val hasNorth get() = hasFlag(Direction.NORTH)
-    val hasFront get() = hasFlag(RelativeDirection.Front)
+    val hasFront get() = hasFlag(RelativeDir.Front)
     val hasSouth get() = hasFlag(Direction.SOUTH)
-    val hasBack get() = hasFlag(RelativeDirection.Back)
+    val hasBack get() = hasFlag(RelativeDir.Back)
     val hasWest get() = hasFlag(Direction.WEST)
-    val hasLeft get() = hasFlag(RelativeDirection.Left)
+    val hasLeft get() = hasFlag(RelativeDir.Left)
     val hasEast get() = hasFlag(Direction.EAST)
-    val hasRight get() = hasFlag(RelativeDirection.Right)
+    val hasRight get() = hasFlag(RelativeDir.Right)
 
     //#endregion
 
