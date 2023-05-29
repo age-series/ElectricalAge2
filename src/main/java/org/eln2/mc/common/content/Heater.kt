@@ -138,7 +138,7 @@ class HeaterPowerPortCell(ci: CellCI, val onResistance: Double = 1.0, val offRes
 
     private fun simulationTick(d: Double, subscriberPhase: SubscriberPhase) {
         if(active) {
-            atomicIncr.addAndGet(behaviors.get<ElectricalPowerConverterBehavior>().deltaEnergy)
+            atomicIncr.addAndGet(behaviorContainer.get<ElectricalPowerConverterBehavior>().deltaEnergy)
         }
     }
 
@@ -161,7 +161,7 @@ class HeaterPowerPortCell(ci: CellCI, val onResistance: Double = 1.0, val offRes
             if(resistor.isPresent) resistor.instance.power
             else 0.0
 
-        private val resistor = ElectricalComponentHolder {
+        private val resistor = ComponentHolder {
             Resistor().also { it.resistance = this.resistance }
         }
 

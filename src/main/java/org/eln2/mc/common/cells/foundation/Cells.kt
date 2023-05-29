@@ -1,6 +1,5 @@
 package org.eln2.mc.common.cells.foundation
 
-import net.minecraft.CrashReport
 import net.minecraft.core.Direction
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.nbt.ListTag
@@ -36,8 +35,6 @@ import java.util.concurrent.locks.ReentrantLock
 import kotlin.collections.ArrayDeque
 import kotlin.collections.ArrayList
 import kotlin.collections.HashSet
-import kotlin.reflect.full.functions
-import kotlin.reflect.full.hasAnnotation
 import kotlin.system.measureNanoTime
 
 data class CellPos(val descriptor: LocationDescriptor)
@@ -105,9 +102,8 @@ abstract class Cell(val pos: CellPos, val id: ResourceLocation, val envFldMap: D
 
     val posDescr get() = pos.descriptor
 
-    private var trackedPool: TrackedSubscriberCollection? = null
-    val subscribers: SubscriberCollection get() = trackedPool
-        ?: error("Failed to fetch subscriber collection")
+    private var persistentPool: TrackedSubscriberCollection? = null
+    private var transientPool: TrackedSubscriberCollection? = null
 
     lateinit var graph: CellGraph
     lateinit var connections: ArrayList<Cell>
@@ -115,21 +111,27 @@ abstract class Cell(val pos: CellPos, val id: ResourceLocation, val envFldMap: D
     private val ruleSetLazy = lazy { LocatorRelationRuleSet() }
     protected val ruleSet get() = ruleSetLazy.value
 
-    protected val services = ServiceCollection()
-        .withSingleton { dataNode }
-        .withSingleton { this }
-        .withSingleton(this.javaClass) { this }
-        .withSingleton { posDescr }
-        .withExternalResolver { dataNode.data.read(it) }
-        
+    private val servicesLazy = lazy {
+        ServiceCollection()
+            .withSingleton { dataNode }
+            .withSingleton { this }
+            .withSingleton(this.javaClass) { this }
+            .withSingleton { posDescr }
+            .withExternalResolver { dataNode.data.read(it) }
+            .also { registerServices(it) }
+    }
 
-    protected inline fun<reified T> activate(vararg extraParams: Any): T = services.activate(extraParams.asList())
+    protected val services get() = servicesLazy.value
 
     protected open fun registerServices(services: ServiceCollection) { }
+
+    protected inline fun<reified T> activate(vararg extraParams: Any): T = services.activate(extraParams.asList())
 
     open fun acceptsConnection(remote: Cell): Boolean {
         return ruleSet.accepts(pos.descriptor, remote.pos.descriptor)
     }
+
+    private val replicators = ArrayList<ReplicatorBehavior>()
 
     /**
      * If [hasGraph], [CellGraph.setChanged] is called to ensure the cell data will be saved.
@@ -168,7 +170,7 @@ abstract class Cell(val pos: CellPos, val id: ResourceLocation, val envFldMap: D
         }
     }
 
-    protected val behaviors get() = behaviorsLazy.value
+    protected val behaviorContainer get() = behaviorsLazy.value
 
     /**
      * Called once when the object set is requested. The result is then cached.
@@ -243,11 +245,48 @@ abstract class Cell(val pos: CellPos, val id: ResourceLocation, val envFldMap: D
         }
     }
 
-    /**
-     * Called when the tile entity is being unloaded.
-     * After this method is called, the field will become null.
-     */
+    open fun onContainerUnloading() { }
+
     open fun onContainerUnloaded() {}
+
+    fun bindGameObjects(objects: List<Any>) {
+        val transient = this.transientPool
+            ?: error("Transient pool is null in bind")
+
+        require(replicators.isEmpty()) {
+            "Lingering replicators in bind"
+        }
+
+        objects.forEach { obj ->
+            fun bindReplicator(replicatorBehavior: ReplicatorBehavior) {
+                behaviorContainer.addInst(replicatorBehavior)
+                replicators.add(replicatorBehavior)
+            }
+
+            Replicators.replicatorScan(
+                cellK = this.javaClass.kotlin,
+                containerK = obj.javaClass.kotlin,
+                cellInst = this,
+                containerInst = obj
+            ).forEach { bindReplicator(it) }
+        }
+
+        replicators.forEach { replicator ->
+            replicator.subscribe(transient)
+        }
+    }
+
+    fun unbindGameObjects() {
+        val transient = this.transientPool
+            ?: error("Transient null in unbind")
+
+        replicators.forEach {
+            behaviorContainer.destroy(it)
+        }
+
+        replicators.clear()
+        transient.destroy()
+    }
 
     /**
      * Called when the block entity is being loaded.
@@ -270,9 +309,9 @@ abstract class Cell(val pos: CellPos, val id: ResourceLocation, val envFldMap: D
     protected open fun onCreated() {}
 
     fun remove() {
-        behaviors.destroy()
+        behaviorContainer.destroy()
         onRemoving()
-        trackedPool?.destroy()
+        persistentPool?.destroy()
     }
 
     /**
@@ -303,11 +342,18 @@ abstract class Cell(val pos: CellPos, val id: ResourceLocation, val envFldMap: D
         }
 
         if(graphChanged) {
-            trackedPool?.destroy()
-            trackedPool = TrackedSubscriberCollection(graph.subscribers)
-            behaviors.changeGraph()
+            persistentPool?.destroy()
+            transientPool?.destroy()
+
+            persistentPool = TrackedSubscriberCollection(graph.subscribers)
+            transientPool = TrackedSubscriberCollection(graph.subscribers)
+
+            behaviorContainer.behaviors.forEach {
+                it.subscribe(persistentPool!!)
+            }
+
             onGraphChanged()
-            subscribe(subscribers)
+            subscribe(persistentPool!!)
         }
     }
 
@@ -1454,9 +1500,18 @@ fun interface CellFactory {
 }
 
 class BasicCellProvider(private val factory: CellFactory) : CellProvider() {
-    override fun createInstance(ci: CellCI): Cell {
-        return factory.create(ci)
-    }
+    override fun createInstance(ci: CellCI) = factory.create(ci)
+}
+
+class InjectCellProvider<T : Cell>(val c: Class<T>, val extraParams: List<Any>) : CellProvider() {
+    constructor(c: Class<T>) : this(c, listOf())
+
+    @Suppress("UNCHECKED_CAST")
+    override fun createInstance(ci: CellCI) =
+        ServiceCollection()
+            .withSingleton { ci }
+            .withSingleton { this }
+        .activate(c, extraParams) as T
 }
 
 /**

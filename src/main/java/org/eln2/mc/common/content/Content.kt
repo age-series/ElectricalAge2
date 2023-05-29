@@ -21,6 +21,7 @@ import org.eln2.mc.common.blocks.BlockRegistry.blockEntity
 import org.eln2.mc.common.blocks.foundation.BasicCellBlock
 import org.eln2.mc.common.blocks.foundation.BasicMBControllerBlock
 import org.eln2.mc.common.cells.CellRegistry.cell
+import org.eln2.mc.common.cells.CellRegistry.injCell
 import org.eln2.mc.common.cells.foundation.BasicCellProvider
 import org.eln2.mc.common.containers.ContainerRegistry.menu
 import org.eln2.mc.common.items.ItemRegistry.item
@@ -54,13 +55,8 @@ object Content {
         damageThreshold = Temperature.from(2000.0, ThermalUnits.CELSIUS)
     }
 
-    val ELECTRICAL_WIRE_CELL_COPPER = cell("electrical_wire_cell_copper", BasicCellProvider  {
-        WireCell(it, WIRE_MODEL_COPPER_ELECTRICAL_TEST)
-    })
-
-    val THERMAL_WIRE_CELL_COPPER = cell("thermal_wire_cell_copper", BasicCellProvider  {
-        WireCell(it, WIRE_MODEL_COPPER_THERMAL_TEST)
-    })
+    val ELECTRICAL_WIRE_CELL_COPPER = injCell<WireCell>("electrical_wire_cell_copper", WIRE_MODEL_COPPER_ELECTRICAL_TEST)
+    val THERMAL_WIRE_CELL_COPPER = injCell<WireCell>("thermal_wire_cell_copper", WIRE_MODEL_COPPER_THERMAL_TEST)
 
     val ELECTRICAL_WIRE_PART_COPPER: PartRegistry.PartRegistryItem = part("electrical_wire_part_copper", BasicPartProvider({ a, b ->
         WirePart(a, b, ELECTRICAL_WIRE_CELL_COPPER.get(), WIRE_MODEL_COPPER_ELECTRICAL_TEST)

@@ -208,16 +208,14 @@ class LightRenderer(private val part: LightPart, private val cage: PartialModel,
     }
 }
 
-class LightPart(id: ResourceLocation, placementContext: PartPlacementInfo, cellProvider: CellProvider): CellPart(id, placementContext, cellProvider), EventListener {
+class LightPart(id: ResourceLocation, placementContext: PartPlacementInfo, cellProvider: CellProvider): CellPart<LightRenderer>(id, placementContext, cellProvider), EventListener {
     override val sizeActual = bbVec(8.0, 1.0 + 2.302, 5.0)
 
-    override fun createRenderer(): PartRenderer {
-        return LightRenderer(
-            this,
-            PartialModels.SMALL_WALL_LAMP_CAGE,
-            PartialModels.SMALL_WALL_LAMP_EMITTER)
-            .also { it.downOffset = sizeActual.y / 2.0 }
-    }
+    override fun createRenderer() = LightRenderer(
+        this,
+        PartialModels.SMALL_WALL_LAMP_CAGE,
+        PartialModels.SMALL_WALL_LAMP_EMITTER)
+        .also { it.downOffset = sizeActual.y / 2.0 }
 
     @ServerOnly
     override fun onCellAcquired() {

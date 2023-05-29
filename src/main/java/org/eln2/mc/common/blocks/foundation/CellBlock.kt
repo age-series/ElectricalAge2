@@ -174,9 +174,13 @@ open class CellBlockEntity(pos: BlockPos, state: BlockState, targetType: BlockEn
 
         cell!!.container = this
 
-        CellConnections.insert(this, cell ?: error("Unexpected"))
+        CellConnections.insert(this, cell!!)
 
         setChanged()
+
+        cell!!.bindGameObjects(listOf(
+            this
+        ))
     }
 
     fun setDestroyed() {
@@ -191,6 +195,7 @@ open class CellBlockEntity(pos: BlockPos, state: BlockState, targetType: BlockEn
             return
         }
 
+        cell.unbindGameObjects()
         CellConnections.delete(cell, this)
     }
 
@@ -225,10 +230,10 @@ open class CellBlockEntity(pos: BlockPos, state: BlockState, targetType: BlockEn
         super.onChunkUnloaded()
 
         if (!level!!.isClientSide) {
-            cell!!.onContainerUnloaded()
-
-            // GC reference tracking
+            cell!!.onContainerUnloading()
             cell!!.container = null
+            cell!!.onContainerUnloaded()
+            cell!!.unbindGameObjects()
         }
     }
 
@@ -253,9 +258,11 @@ open class CellBlockEntity(pos: BlockPos, state: BlockState, targetType: BlockEn
             cell = graph.getCell(getCellPos())
 
             cellProvider = CellRegistry.getProvider(cell!!.id)
-
             cell!!.container = this
             cell!!.onContainerLoaded()
+            cell!!.bindGameObjects(listOf(
+                this
+            ))
         }
     }
 

@@ -2,10 +2,6 @@ package org.eln2.mc.utility
 
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.reflect.KClass
-import kotlin.reflect.KFunction
-import kotlin.reflect.KType
-import kotlin.reflect.full.functions
-import kotlin.reflect.full.hasAnnotation
 import kotlin.reflect.full.isSubclassOf
 import kotlin.reflect.full.memberProperties
 import kotlin.reflect.jvm.javaField
@@ -40,4 +36,18 @@ fun<TFldAnnotation : Annotation, TInst : Any> fieldScan(
 
 fun interface FieldReader<TInst: Any> {
     fun get(inst: TInst): Any?
+}
+
+private val classId = HashMap<KClass<*>, Int>()
+
+val KClass<*>.reflectId: Int get() = synchronized(classId) {
+    classId.getOrPut(this) {
+        val result = (this.qualifiedName ?: error("Failed to get name of $this")).hashCode()
+
+        if(classId.values.any { it == result}) {
+            error("reflect ID collision $this")
+        }
+
+        result
+    }
 }

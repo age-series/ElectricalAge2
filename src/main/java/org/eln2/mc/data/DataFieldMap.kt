@@ -96,26 +96,42 @@ interface DataEntity {
     val dataNode: DataNode
 }
 
-data class VoltageField(val read: () -> Double): WailaEntity {
+data class VoltageField(var inspect: Boolean = true, val read: () -> Double): WailaEntity {
     override fun appendBody(builder: WailaTooltipBuilder, config: IPluginConfig?) {
-        builder.voltage(read())
+        if(inspect) {
+            builder.voltage(read())
+        }
     }
 }
 
-data class CurrentField(val read: () -> Double): WailaEntity {
+data class CurrentField(var inspect: Boolean = true, val read: () -> Double): WailaEntity {
     override fun appendBody(builder: WailaTooltipBuilder, config: IPluginConfig?) {
-        builder.current(read())
+        if(inspect) {
+            builder.current(read())
+        }
     }
 }
 
-data class TemperatureField(val read: () -> Temperature): WailaEntity {
+data class TemperatureField(var inspect: Boolean = true, val read: () -> Temperature): WailaEntity {
     override fun appendBody(builder: WailaTooltipBuilder, config: IPluginConfig?) {
-        builder.temperature(read().kelvin)
+        if(inspect) {
+            builder.temperature(read().kelvin)
+        }
+    }
+
+    fun readK() = read().kelvin
+}
+
+data class EnergyField(var inspect: Boolean = true, val read: () -> Double): WailaEntity {
+    override fun appendBody(builder: WailaTooltipBuilder, config: IPluginConfig?) {
+        if(inspect) {
+            builder.energy(read())
+        }
     }
 }
 
-data class PowerField(val read: () -> Double): WailaEntity {
-    constructor(self: DataFieldMap) : this({
+data class PowerField(var inspect: Boolean = true, val read: () -> Double): WailaEntity {
+    constructor(self: DataFieldMap, inspect: Boolean = true) : this(inspect, {
         // Maybe blow up?
         val vf = self.read<VoltageField>()?.read?.invoke() ?: 0.0
         val cf = self.read<CurrentField>()?.read?.invoke() ?: 0.0
@@ -123,20 +139,26 @@ data class PowerField(val read: () -> Double): WailaEntity {
     })
 
     override fun appendBody(builder: WailaTooltipBuilder, config: IPluginConfig?) {
-        builder.power(read())
+        if(inspect) {
+            builder.power(read())
+        }
     }
 }
 
-data class ResistanceField(val read: () -> Double): WailaEntity {
+data class ResistanceField(var inspect: Boolean = true, val read: () -> Double): WailaEntity {
     override fun appendBody(builder: WailaTooltipBuilder, config: IPluginConfig?) {
-        builder.resistance(read())
+        if(inspect) {
+            builder.resistance(read())
+        }
     }
 }
 
-data class ObjectField(val name: String, val read: () -> Any?): WailaEntity {
+data class ObjectField(val name: String, var inspect: Boolean = true, val read: () -> Any?): WailaEntity {
     override fun appendBody(builder: WailaTooltipBuilder, config: IPluginConfig?) {
-        read()?.also {
-            builder.text(name, it)
+        if(inspect) {
+            read()?.also {
+                builder.text(name, it)
+            }
         }
     }
 }

@@ -55,14 +55,10 @@ class GroundCell(ci: CellCI) : Cell(ci) {
     }
 }
 
-class GroundPart(id: ResourceLocation, placementContext: PartPlacementInfo) :
-    CellPart(id, placementContext, Content.GROUND_CELL.get()) {
-
+class GroundPart(id: ResourceLocation, placementContext: PartPlacementInfo) : CellPart<BasicPartRenderer>(id, placementContext, Content.GROUND_CELL.get()) {
     override val sizeActual = bbVec(4.0, 4.0, 4.0)
 
-    override fun createRenderer(): PartRenderer {
-        return BasicPartRenderer(this, PartialModels.GROUND).also {
-            it.downOffset = bbOffset(3 + 1)
-        }
+    override fun createRenderer() = BasicPartRenderer(this, PartialModels.GROUND).also {
+        it.downOffset = bbOffset(3 + 1)
     }
 }

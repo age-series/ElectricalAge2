@@ -2,6 +2,8 @@ package org.eln2.mc.common.cells.foundation
 
 import mcp.mobius.waila.api.IPluginConfig
 import net.minecraft.server.level.ServerLevel
+import org.ageseries.libage.sim.thermal.Temperature
+import org.ageseries.libage.sim.thermal.ThermalUnits
 import org.eln2.mc.common.blocks.foundation.MultipartBlockEntity
 import org.eln2.mc.common.events.EventScheduler
 import org.eln2.mc.common.space.BlockFaceLocator
@@ -10,6 +12,7 @@ import org.eln2.mc.common.space.requireLocator
 import org.eln2.mc.data.DataNode
 import org.eln2.mc.data.DataEntity
 import org.eln2.mc.data.PowerField
+import org.eln2.mc.data.TemperatureField
 import org.eln2.mc.extensions.destroyPart
 import org.eln2.mc.extensions.formattedPercentN
 import org.eln2.mc.integration.WailaEntity
@@ -60,6 +63,16 @@ operator fun CellBehaviorSource.times(b: CellBehavior) = this.add(b)
 class CellBehaviorContainer(private val cell: Cell) : DataEntity {
     val behaviors = ArrayList<CellBehavior>()
 
+    fun addInst(b: CellBehavior) {
+        if(behaviors.any { it.javaClass == b.javaClass }) {
+            error("Duplicate behavior $b")
+        }
+
+        behaviors.add(b)
+
+        b.onAdded(this)
+    }
+
     fun forEach(action: ((CellBehavior) -> Unit)) = behaviors.forEach(action)
     inline fun <reified T : CellBehavior> getOrNull(): T? = behaviors.first { it is T } as? T
     inline fun <reified T : CellBehavior> get(): T = getOrNull() ?: error("Failed to get behavior")
@@ -80,18 +93,18 @@ class CellBehaviorContainer(private val cell: Cell) : DataEntity {
         return this
     }
 
-    fun changeGraph(){
-        behaviors.forEach { it.subscribe(cell.subscribers) }
+    fun destroy(behavior: CellBehavior) {
+        require(behaviors.remove(behavior)) { "Illegal behavior remove $behavior" }
+
+        if(behavior is DataEntity) {
+            dataNode.children.removeIf { access -> access == behavior.dataNode }
+        }
+
+        behavior.destroy()
     }
 
     fun destroy() {
-        behaviors.forEach {
-            if(it is DataEntity) {
-                dataNode.children.removeIf { access -> access == it.dataNode }
-            }
-
-            it.destroy()
-        }
+        behaviors.toList().forEach { destroy(it) }
     }
 
     override val dataNode: DataNode = DataNode()
@@ -173,20 +186,19 @@ data class TemperatureExplosionBehaviorOptions(
      * If the temperature is above this threshold, [increaseSpeed] will be used to increase the explosion score.
      * Otherwise, [decayRate] will be used to decrease it.
      * */
-    val temperatureThreshold: Double,
+    val temperatureThreshold: Double = Temperature.from(600.0, ThermalUnits.CELSIUS).kelvin,
 
     /**
      * The score increase speed.
      * This value is scaled by the difference between the temperature and the threshold.
      * */
-    val increaseSpeed: Double,
+    val increaseSpeed: Double = 0.1,
 
     /**
      * The score decrease speed. This value is not controlled by temperature.
      * */
-    val decayRate: Double,
+    val decayRate: Double = 0.25,
 )
-
 /**
  * The [TemperatureExplosionBehavior] will destroy the game object if a temperature is held
  * above a threshold for a certain time period, as specified in [TemperatureExplosionBehaviorOptions]
@@ -201,6 +213,23 @@ class TemperatureExplosionBehavior(
 ) : CellBehavior, WailaEntity {
     private var score = 0.0
     private var enqueued = false
+
+    @Inj
+    constructor(temperatureAccessor: TemperatureAccessor, options: TemperatureExplosionBehaviorOptions, cell: Cell) :
+        this(temperatureAccessor, options, { defaultNotifier(cell) })
+
+    @Inj
+    constructor(temperatureAccessor: TemperatureAccessor, consumer: ExplosionConsumer) :
+        this(temperatureAccessor, TemperatureExplosionBehaviorOptions(), consumer)
+
+    @Inj
+    constructor(temperatureField: TemperatureField, options: TemperatureExplosionBehaviorOptions, cell: Cell) :
+        this(temperatureField::readK, options, cell)
+
+    @Inj
+    constructor(temperatureField: TemperatureField, cell: Cell) :
+        this(temperatureField::readK, TemperatureExplosionBehaviorOptions(), cell)
+
 
     override fun onAdded(container: CellBehaviorContainer) {}
 
@@ -239,6 +268,28 @@ class TemperatureExplosionBehavior(
 
     override fun appendBody(builder: WailaTooltipBuilder, config: IPluginConfig?) {
         builder.text("Explode", score.formattedPercentN())
+    }
+
+    companion object {
+        fun defaultNotifier(cell: Cell) {
+            val container = cell.container ?: return
+
+            if(container is MultipartBlockEntity) {
+                if(container.isRemoved){
+                    return
+                }
+
+                val part = container.getPart(cell.posDescr.requireLocator<SO3, BlockFaceLocator>().faceWorld)
+                    ?: return
+
+                val level = (part.placement.level as ServerLevel)
+
+                level.destroyPart(part)
+            }
+            else {
+                error("Cannot explode $container")
+            }
+        }
     }
 }
 

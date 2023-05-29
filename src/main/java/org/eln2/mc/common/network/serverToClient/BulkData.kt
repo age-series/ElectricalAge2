@@ -1,5 +1,8 @@
 package org.eln2.mc.common.network.serverToClient
 
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import net.minecraft.client.Minecraft
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
@@ -16,12 +19,13 @@ import net.minecraftforge.server.ServerLifecycleHooks
 import org.eln2.mc.CrossThreadAccess
 import org.eln2.mc.Eln2.LOGGER
 import org.eln2.mc.common.blocks.foundation.MultipartBlockEntity
+import org.eln2.mc.common.events.Event
 import org.eln2.mc.common.network.Networking
+import org.eln2.mc.utility.reflectId
 import java.nio.ByteBuffer
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedDeque
 import java.util.function.Supplier
-
 
 fun ByteBuffer.putBlockPos(pos: BlockPos) {
     this.putInt(pos.x)
@@ -237,6 +241,68 @@ object BulkMessages {
             }
 
             bulkPartMessageBuffer.clear()
+        }
+    }
+}
+
+data class PacketEvent<P>(val packet: P): Event
+
+fun interface DeserializeHandler {
+    fun handle(binary: ByteArray)
+}
+
+class PacketHandlerBuilder {
+    val registeredIds = HashMap<Int, DeserializeHandler>()
+
+    inline fun<reified P> withHandler(crossinline consume: (P) -> Unit): PacketHandlerBuilder {
+        registeredIds[P::class.reflectId] = DeserializeHandler {
+            val instance = Json.decodeFromString<P>(it.decodeToString())
+
+            try {
+                consume(instance)
+            }
+            catch (t: Throwable) {
+                LOGGER.error("Failed to handle ${P::class}: $t")
+            }
+        }
+
+        return this
+    }
+
+    fun build() = PacketHandler(registeredIds.toMap())
+}
+
+class PacketHandler(private val registeredIds: Map<Int, DeserializeHandler>) {
+    fun handle(data: ByteArray): Boolean {
+        val buffer = ByteBuffer.wrap(data)
+
+        val id = buffer.int
+
+        val handler = registeredIds[id]
+
+        if(handler == null) {
+            LOGGER.error("Unhandled packet $id")
+            return false
+        }
+
+        val payload = ByteArray(data.size - 4)
+        buffer.get(payload)
+        handler.handle(payload)
+
+        return true
+    }
+    
+    companion object {
+        inline fun<reified P> encode(packet: P): ByteArray {
+            val data = Json.encodeToString(packet).encodeToByteArray()
+
+            val sendBuffer = ByteArray(4 + data.size)
+            val result = ByteBuffer.wrap(sendBuffer)
+
+            result.putInt(P::class.reflectId)
+            result.put(data)
+
+            return sendBuffer
         }
     }
 }
