@@ -183,7 +183,7 @@ abstract class Cell(val pos: CellPos, val id: ResourceLocation, val envFldMap: D
 
     open fun createBehaviorContainer() = CellBehaviorContainer(this).also { container ->
         fieldScan(this.javaClass, CellBehavior::class, Behavior::class.java, BEHAVIOR_READERS)
-            .mapNotNull { it.get(this) as? CellBehavior }.forEach(container::add)
+            .mapNotNull { it.get(this) as? CellBehavior }.forEach(container::addInst)
     }
 
     fun loadTag(tag: CompoundTag) {

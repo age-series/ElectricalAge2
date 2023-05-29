@@ -50,7 +50,7 @@ object Content {
 
     val WIRE_MODEL_COPPER_ELECTRICAL_TEST = WireModel()
     val WIRE_MODEL_COPPER_THERMAL_TEST = WireModel().apply {
-        isRadiant = true
+        replicateTemperature = true
         isElectrical = false
         damageThreshold = Temperature.from(2000.0, ThermalUnits.CELSIUS)
     }

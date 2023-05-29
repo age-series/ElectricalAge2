@@ -62,12 +62,16 @@ class ServiceCollection {
 
             ArrayList(
                 constructors.map { ctor ->
-                    val args = HashSet<Class<*>>()
+                    val args = ArrayList<Class<*>>()
 
                     ctor.parameters.forEach {
-                        if(!args.add(it.parameterizedType as Class<*>)) {
+                        val pClass = it.parameterizedType as Class<*>
+
+                        if(args.contains(pClass)) {
                             error("Ambiguous inject parameter $it")
                         }
+
+                        args.add(pClass)
                     }
 
                     ActivatorRsi(ArrayList(args)) { inst -> ctor.newInstance(*inst) }

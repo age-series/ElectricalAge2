@@ -68,6 +68,10 @@ class CellBehaviorContainer(private val cell: Cell) : DataEntity {
             error("Duplicate behavior $b")
         }
 
+        if(b is DataEntity) {
+            dataNode.withChild(b.dataNode)
+        }
+
         behaviors.add(b)
 
         b.onAdded(this)
@@ -77,6 +81,7 @@ class CellBehaviorContainer(private val cell: Cell) : DataEntity {
     inline fun <reified T : CellBehavior> getOrNull(): T? = behaviors.first { it is T } as? T
     inline fun <reified T : CellBehavior> get(): T = getOrNull() ?: error("Failed to get behavior")
 
+    // todo remove
     inline fun <reified T : CellBehavior> add(behavior: T): CellBehaviorContainer {
         if(behaviors.any { it is T }){
             error("Duplicate add behavior $behavior")

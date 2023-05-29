@@ -14,10 +14,10 @@ interface ReplicatorBehavior : CellBehavior
 
 object Replicators {
     fun replicatorScan(cellK: KClass<*>, containerK: KClass<*>, cellInst: Any, containerInst: Any) =
-        getReplicators(cellK, containerK).map { it.create(cellInst, containerInst) }
+        getReplicators(cellK, containerK).mapNotNull { it.create(cellInst, containerInst) }
 
     private fun interface ReplicatorFactory {
-        fun create(cellInst: Any, containerInst: Any): ReplicatorBehavior
+        fun create(cellInst: Any, containerInst: Any): ReplicatorBehavior?
     }
 
     private val replicators = ConcurrentHashMap<Pair<KClass<*>, KClass<*>>, List<ReplicatorFactory>>()
@@ -42,7 +42,7 @@ object Replicators {
 
             if((containerParam.type.classifier as KClass<*>).isSuperclassOf(containerK)) {
                 results.add { self, rxContainerTarget ->
-                    it.call(self, rxContainerTarget) as ReplicatorBehavior
+                    it.call(self, rxContainerTarget) as? ReplicatorBehavior
                 }
             }
         }
