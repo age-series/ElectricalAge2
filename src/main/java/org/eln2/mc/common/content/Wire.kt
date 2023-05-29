@@ -8,7 +8,7 @@ import com.jozufozu.flywheel.core.materials.FlatLit
 import com.jozufozu.flywheel.core.materials.model.ModelData
 import com.mojang.math.Quaternion
 import com.mojang.math.Vector3f
-import mcp.mobius.waila.api.IPluginConfig
+import kotlinx.serialization.Serializable
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.nbt.ListTag
 import net.minecraft.resources.ResourceLocation
@@ -17,7 +17,6 @@ import org.ageseries.libage.sim.Material
 import org.ageseries.libage.sim.electrical.mna.Circuit
 import org.ageseries.libage.sim.thermal.*
 import net.minecraft.core.BlockPos
-import org.eln2.mc.ClientOnly
 import org.eln2.mc.Eln2.LOGGER
 import org.eln2.mc.ServerOnly
 import org.eln2.mc.mathematics.bbVec
@@ -25,11 +24,10 @@ import org.eln2.mc.client.render.foundation.MultipartBlockEntityInstance
 import org.eln2.mc.client.render.PartialModels
 import org.eln2.mc.client.render.foundation.defaultRadiantBodyColor
 import org.eln2.mc.common.cells.foundation.*
-import org.eln2.mc.common.cells.foundation.withStandardExplosionBehavior
 import org.eln2.mc.common.cells.foundation.CellProvider
 import org.eln2.mc.common.events.AtomicUpdate
 import org.eln2.mc.common.events.EventScheduler
-import org.eln2.mc.common.network.serverToClient.with
+import org.eln2.mc.common.network.serverToClient.PacketHandlerBuilder
 import org.eln2.mc.common.parts.foundation.*
 import org.eln2.mc.common.space.*
 import org.eln2.mc.data.*
@@ -37,14 +35,10 @@ import org.eln2.mc.extensions.*
 import org.eln2.mc.extensions.times
 import org.eln2.mc.extensions.toVec3
 import org.eln2.mc.integration.WailaEntity
-import org.eln2.mc.integration.WailaTooltipBuilder
 import org.eln2.mc.mathematics.lerp
 import org.eln2.mc.mathematics.map
 import org.eln2.mc.mathematics.Geometry.cylinderSurfaceArea
-import org.eln2.mc.mathematics.approxEq
 import org.eln2.mc.sim.*
-import org.eln2.mc.utility.Stopwatch
-import java.nio.ByteBuffer
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.math.absoluteValue
 
@@ -158,24 +152,15 @@ class ThermalWireObject(cell: Cell, def: ThermalBodyDef) : ThermalObject(cell), 
     }
 }
 
-fun interface WireVisualDataConsumer {
-    fun use(temperature: Double)
-}
-
 class WireModel {
     var electricalResistance = 2.14 * 10e-6
     var material = Material.COPPER
-    var isRadiant = false
+    var replicateTemperature = false
     var isElectrical = true
     var damageThreshold = Temperature.from(500.0, ThermalUnits.CELSIUS)
 }
 
 class WireCell(ci: CellCI, val model: WireModel) : Cell(ci) {
-    companion object {
-        private const val SYNC_TEMP_EPS = 10e-2
-        private const val RENDER_SYNC_INTERVAL = 1.0 / 25.0
-    }
-
     override val dataNode = data {
         if(model.isElectrical) {
             it.withField(ResistanceField {
@@ -217,39 +202,25 @@ class WireCell(ci: CellCI, val model: WireModel) : Cell(ci) {
         )
     )
 
-    private var consumer: WireVisualDataConsumer? = null
-    private var trackedTemp = Double.NaN
-    private val trackSw = Stopwatch()
-
-    override fun subscribe(subs: SubscriberCollection) {
-        subs.addPre(this::simulationTick)
-    }
-
-    private fun simulationTick(dt: Double, phase: SubscriberPhase) {
-        if(trackSw.total >= RENDER_SYNC_INTERVAL) {
-            trackSw.resetTotal()
-
-            if(model.isRadiant) {
-                if(!this.trackedTemp.approxEq(temperature, SYNC_TEMP_EPS)) {
-                    this.trackedTemp = temperature
-                    consumer?.use(temperature)
-                }
-            }
-        }
-    }
-
-    fun bind(renderConsumer: WireVisualDataConsumer) {
-        this.consumer = renderConsumer
-    }
-
-    fun unbind() {
-        this.consumer = null
-    }
+    @Replicator
+    fun replicator(thermalReplicator: ThermalReplicator) =
+        if(model.replicateTemperature) ThermalReplicatorBehavior(
+            listOf(thermalWireObj.body), thermalReplicator
+        )
+        else null
 
     val temperature get() = thermalWireObj.body.tempK
 }
 
-class WirePart(id: ResourceLocation, context: PartPlacementInfo, cellProvider: CellProvider, val model: WireModel) : CellPart<WirePartRenderer>(id, context, cellProvider) {
+class WirePart(
+    id: ResourceLocation,
+    context: PartPlacementInfo,
+    cellProvider: CellProvider,
+    val model: WireModel
+):
+    CellPart<WirePartRenderer>(id, context, cellProvider),
+    ThermalReplicator
+{
     companion object {
         private const val DIRECTIONS = "directions"
         private const val COLD_LIGHT_LEVEL = 0.0
@@ -295,7 +266,7 @@ class WirePart(id: ResourceLocation, context: PartPlacementInfo, cellProvider: C
         wireRenderer = WirePartRenderer(this,
             if(model.isElectrical) WireMeshSets.electricalWireMap
             else WireMeshSets.thermalWireMap,
-            model.isRadiant
+            model.replicateTemperature
         )
 
         applyRendererState()
@@ -347,7 +318,7 @@ class WirePart(id: ResourceLocation, context: PartPlacementInfo, cellProvider: C
     }
 
     private fun updateLight() {
-        if(!model.isRadiant) {
+        if(!model.replicateTemperature) {
             return
         }
 
@@ -419,38 +390,32 @@ class WirePart(id: ResourceLocation, context: PartPlacementInfo, cellProvider: C
     }
 
     override fun onCellAcquired() {
-        updateInGameLighting()
-        wireCell.bind(::onRenderDataUpdate)
+        startGameLightUpdates()
     }
 
     @ServerOnly
-    private fun updateInGameLighting() {
+    private fun startGameLightUpdates() {
         if(!isAlive) {
             return
         }
 
         updateLight()
-        EventScheduler.scheduleWorkPre(20, this::updateInGameLighting)
+
+        EventScheduler.scheduleWorkPre(20, this::startGameLightUpdates)
     }
 
-    @ServerOnly
-    private fun onRenderDataUpdate(temp: Double) {
-        val buffer = ByteBuffer.allocate(8) with temp
-        enqueueBulkMessage(buffer.array())
+    override fun registerPackets(builder: PacketHandlerBuilder) {
+        builder.withHandler<Sync> {
+            renderer.updateTemperature(it.temp)
+        }
     }
 
-    @ClientOnly
-    override fun handleBulkMessage(msg: ByteArray) {
-        val buffer = ByteBuffer.wrap(msg)
-        val temp = buffer.double
-        wireRenderer?.updateTemperature(temp)
+    override fun streamTemperatureChanges(bodies: List<ThermalBody>, dirty: List<ThermalBody>) {
+        sendBulkPacket(Sync(bodies.first().tempK))
     }
 
-    override fun onCellReleased() {
-        wireCell.unbind()
-    }
-
-    private val wireCell get() = cell as WireCell
+    @Serializable
+    private data class Sync(val temp: Double)
 }
 
 object WireMeshSets {
