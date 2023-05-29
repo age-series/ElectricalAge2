@@ -5,7 +5,9 @@ import net.minecraftforge.eventbus.api.IEventBus
 import net.minecraftforge.registries.*
 import org.eln2.mc.Eln2
 import org.eln2.mc.Eln2.LOGGER
+import org.eln2.mc.common.cells.foundation.Cell
 import org.eln2.mc.common.cells.foundation.CellProvider
+import org.eln2.mc.common.cells.foundation.InjectCellProvider
 import java.util.function.Supplier
 
 object CellRegistry {
@@ -26,6 +28,9 @@ object CellRegistry {
     fun cell(id: String, provider: CellProvider): RegistryObject<CellProvider> {
         return CELLS.register(id) { provider }
     }
+
+    inline fun<reified T : Cell> injCell(id: String, vararg extraParams: Any): RegistryObject<CellProvider> =
+        cell(id, InjectCellProvider(T::class.java, extraParams.asList()))
 
     /**
      * Gets the Cell Provider with the specified ID, or produces an error.

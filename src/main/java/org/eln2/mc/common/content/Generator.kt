@@ -1,6 +1,7 @@
 package org.eln2.mc.common.content
 
 import com.mojang.blaze3d.vertex.PoseStack
+import kotlinx.serialization.Serializable
 import mcp.mobius.waila.api.IPluginConfig
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen
 import net.minecraft.core.BlockPos
@@ -34,7 +35,9 @@ import org.ageseries.libage.sim.electrical.mna.component.Resistor
 import org.ageseries.libage.sim.electrical.mna.component.VoltageSource
 import org.ageseries.libage.sim.thermal.MassConnection
 import org.ageseries.libage.sim.thermal.Simulator
+import org.ageseries.libage.sim.thermal.Temperature
 import org.apache.commons.math3.geometry.euclidean.threed.Vector3D
+import org.eln2.mc.ClientOnly
 import org.eln2.mc.Eln2
 import org.eln2.mc.Eln2.LOGGER
 import org.eln2.mc.RaceCondition
@@ -45,7 +48,7 @@ import org.eln2.mc.common.blocks.foundation.CellBlock
 import org.eln2.mc.common.blocks.foundation.CellBlockEntity
 import org.eln2.mc.common.cells.foundation.*
 import org.eln2.mc.common.cells.foundation.ThermalBodyAccessor
-import org.eln2.mc.common.events.EventScheduler
+import org.eln2.mc.common.network.serverToClient.PacketHandlerBuilder
 import org.eln2.mc.common.parts.foundation.*
 import org.eln2.mc.common.space.*
 import org.eln2.mc.control.pid
@@ -96,11 +99,11 @@ class VRGeneratorObject(cell: Cell, val map: PoleMap) : ElectricalObject(cell), 
 
     val power get() = if(resistor.isPresent) resistor.instance.power else 0.0
 
-    val resistor = ElectricalComponentHolder {
+    val resistor = ComponentHolder {
         Resistor().also { it.resistance = resistance }
     }
 
-    val source = ElectricalComponentHolder {
+    val source = ComponentHolder {
         VoltageSource().also { it.potential = potential }
     }
 
@@ -263,7 +266,7 @@ class ThermocoupleBehavior(
     }
 }
 
-class ThermocoupleCell(ci: CellCI, electricalMap: PoleMap, thermalMap: PoleMap): Cell(ci) {
+class ThermocoupleCell(ci: CellCI, electricalMap: PoleMap, thermalMap: PoleMap) : Cell(ci) {
     @SimObject
     val generatorObj = VRGeneratorObject(this, electricalMap)
 
@@ -281,66 +284,57 @@ class ThermocoupleCell(ci: CellCI, electricalMap: PoleMap, thermalMap: PoleMap):
         )
     )
 
+    @Replicator
+    fun replicator(target: ThermalReplicator) = ThermalReplicatorBehavior(
+        listOf(thermalBipoleObj.b1, thermalBipoleObj.b2), target
+    )
+
     init {
         ruleSet.withDirectionActualRule(DirectionMask.HORIZONTALS)
     }
-
-    val b1Temperature get() = thermalBipoleObj.b1.temp
-    val b2Temperature get() = thermalBipoleObj.b2.temp
 }
 
-class ThermocouplePart(id: ResourceLocation, placementContext: PartPlacementInfo) : CellPart(id, placementContext, Content.THERMOCOUPLE_CELL.get()) {
-    companion object {
-        private const val LEFT_TEMP = "left"
-        private const val RIGHT_TEMP = "right"
+class ThermocouplePart(id: ResourceLocation, placementContext: PartPlacementInfo):
+    CellPart<RadiantBipoleRenderer>(
+        id,
+        placementContext,
+        Content.THERMOCOUPLE_CELL.get()
+    ),
+    ThermalReplicator
+{
+    override val sizeActual: Vec3 get() = Vec3(1.0, 15.0 / 16.0, 1.0)
+
+    override fun createRenderer() = RadiantBipoleRenderer(
+        this,
+        PartialModels.PELTIER_BODY,
+        PartialModels.PELTIER_LEFT,
+        PartialModels.PELTIER_RIGHT,
+        bbOffset(15.0),
+        0f
+    )
+
+    @ClientOnly
+    override fun registerPackets(builder: PacketHandlerBuilder) {
+        builder.withHandler<SyncPacket> {
+            renderer.updateRightSideTemperature(Temperature(it.b1Temp))
+            renderer.updateLeftSideTemperature(Temperature(it.b2Temp))
+        }
     }
 
-    override val sizeActual: Vec3
-        get() = Vec3(1.0, 15.0 / 16.0, 1.0)
-
-    override fun createRenderer(): PartRenderer {
-        return RadiantBipoleRenderer(
-            this,
-            PartialModels.PELTIER_BODY,
-            PartialModels.PELTIER_LEFT,
-            PartialModels.PELTIER_RIGHT,
-            bbOffset(15.0),
-            0f
+    override fun streamTemperatureChanges(bodies: List<ThermalBody>, dirty: List<ThermalBody>) {
+        sendBulkPacket(
+            SyncPacket(
+                bodies[0].tempK,
+                bodies[1].tempK
+            )
         )
     }
 
-    override fun getSyncTag(): CompoundTag {
-        return CompoundTag().also { tag ->
-            val cell = cell as ThermocoupleCell
-
-            tag.putTemperature(LEFT_TEMP, cell.b2Temperature)
-            tag.putTemperature(RIGHT_TEMP, cell.b1Temperature)
-        }
-    }
-
-    override fun handleSyncTag(tag: CompoundTag) {
-        val renderer = renderer as? RadiantBipoleRenderer
-            ?: return
-
-        renderer.updateLeftSideTemperature(tag.getTemperature(LEFT_TEMP))
-        renderer.updateRightSideTemperature(tag.getTemperature(RIGHT_TEMP))
-    }
-
-    override fun onCellAcquired() {
-        sendTemperatureUpdates()
-    }
-
-    private fun sendTemperatureUpdates() {
-        if(!isAlive) {
-            return
-        }
-
-        syncChanges()
-
-        EventScheduler.scheduleWorkPre(20, this::sendTemperatureUpdates)
-    }
-
-    val thermocoupleCell get() = cell as ThermocoupleCell
+    @Serializable
+    data class SyncPacket(
+        val b1Temp: Double,
+        val b2Temp: Double
+    )
 }
 
 data class HeatGeneratorFuelMass(
@@ -506,18 +500,18 @@ class HeatGeneratorCell(ci: CellCI) : Cell(ci) {
     /**
      * If true, this burner needs more fuel to continue burning. Internally, this checks if the available energy is less than a threshold value.
      * */
-    val needsFuel get() = behaviors.get<FuelBurnerBehavior>().availableEnergy approxEq 0.0
+    val needsFuel get() = behaviorContainer.get<FuelBurnerBehavior>().availableEnergy approxEq 0.0
 
     fun replaceFuel(mass: HeatGeneratorFuelMass) {
-        behaviors.get<FuelBurnerBehavior>().replaceFuel(mass)
+        behaviorContainer.get<FuelBurnerBehavior>().replaceFuel(mass)
     }
 
     override fun loadCellData(tag: CompoundTag) {
-        tag.useSubTagIfPreset(BURNER_BEHAVIOR, behaviors.get<FuelBurnerBehavior>()::loadNbt)
+        tag.useSubTagIfPreset(BURNER_BEHAVIOR, behaviorContainer.get<FuelBurnerBehavior>()::loadNbt)
     }
 
     override fun saveCellData(): CompoundTag {
-        return CompoundTag().withSubTag(BURNER_BEHAVIOR, behaviors.get<FuelBurnerBehavior>().saveNbt())
+        return CompoundTag().withSubTag(BURNER_BEHAVIOR, behaviorContainer.get<FuelBurnerBehavior>().saveNbt())
     }
 }
 

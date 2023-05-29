@@ -99,8 +99,7 @@ class ElectricalWireObject(cell: Cell) : ElectricalObject(cell) {
 
 class ThermalWireObject(cell: Cell, def: ThermalBodyDef) : ThermalObject(cell), WailaEntity, PersistentObject, DataEntity {
     companion object {
-        private const val THERMAL_MASS = "thermalMass"
-        private const val SURFACE_AREA = "area"
+        private const val THERMAL_BODY = "thermalBody"
     }
 
     constructor(cell: Cell): this(
@@ -113,8 +112,10 @@ class ThermalWireObject(cell: Cell, def: ThermalBodyDef) : ThermalObject(cell), 
     )
 
     var body = def.create().also { b ->
-        cell.envFldMap.read<EnvTemperatureField>()?.readTemperature()?.also {
-            b.temp = it
+        if(def.energy == null) {
+            cell.envFldMap.read<EnvTemperatureField>()?.readTemperature()?.also {
+                b.temp = it
+            }
         }
     }
 
@@ -136,32 +137,28 @@ class ThermalWireObject(cell: Cell, def: ThermalBodyDef) : ThermalObject(cell), 
         }
     }
 
-    override fun appendBody(builder: WailaTooltipBuilder, config: IPluginConfig?) {
-        builder.temperature(body.tempK)
-        builder.energy(body.energy)
-    }
-
     override fun save(): CompoundTag {
         return CompoundTag().also {
-            it.putThermalMass(THERMAL_MASS, body.thermal)
-            it.putDouble(SURFACE_AREA, body.area)
+            it.putThermalBody(THERMAL_BODY, body)
         }
     }
 
     override fun load(tag: CompoundTag) {
-        body = ThermalBody(
-            tag.getThermalMass(THERMAL_MASS),
-            tag.getDouble(SURFACE_AREA))
+        body = tag.getThermalBody(THERMAL_BODY)
     }
 
-    override val dataNode = DataNode().also {
-        it.data.withField {
-            TemperatureField { body.temp }
-        }
+    override val dataNode = data {
+        it.withField(TemperatureField {
+            body.temp
+        })
+
+        it.withField(EnergyField {
+            body.energy
+        })
     }
 }
 
-fun interface WireClientDataConsumer {
+fun interface WireVisualDataConsumer {
     fun use(temperature: Double)
 }
 
@@ -189,6 +186,10 @@ class WireCell(ci: CellCI, val model: WireModel) : Cell(ci) {
                 electricalWireObj!!.power.absoluteValue
             })
         }
+
+        it.withField(TemperatureField(inspect = false) {
+            thermalWireObj.body.temp
+        })
     }
 
     @SimObject
@@ -209,15 +210,16 @@ class WireCell(ci: CellCI, val model: WireModel) : Cell(ci) {
             activate<ElectricalPowerConverterBehavior>() * activate<ElectricalHeatTransferBehavior>(thermalWireObj.body)
         else null
 
-    private var consumer: WireClientDataConsumer? = null
+    @Behavior
+    val explosionBehavior = activate<TemperatureExplosionBehavior>(
+        TemperatureExplosionBehaviorOptions(
+            temperatureThreshold = model.damageThreshold.kelvin
+        )
+    )
+
+    private var consumer: WireVisualDataConsumer? = null
     private var trackedTemp = Double.NaN
     private val trackSw = Stopwatch()
-
-    init {
-        behaviors.withStandardExplosionBehavior(this, model.damageThreshold.kelvin) {
-            thermalWireObj.body.tempK
-        }
-    }
 
     override fun subscribe(subs: SubscriberCollection) {
         subs.addPre(this::simulationTick)
@@ -236,7 +238,7 @@ class WireCell(ci: CellCI, val model: WireModel) : Cell(ci) {
         }
     }
 
-    fun bind(renderConsumer: WireClientDataConsumer) {
+    fun bind(renderConsumer: WireVisualDataConsumer) {
         this.consumer = renderConsumer
     }
 
@@ -247,7 +249,7 @@ class WireCell(ci: CellCI, val model: WireModel) : Cell(ci) {
     val temperature get() = thermalWireObj.body.tempK
 }
 
-class WirePart(id: ResourceLocation, context: PartPlacementInfo, cellProvider: CellProvider, val model: WireModel) : CellPart(id, context, cellProvider) {
+class WirePart(id: ResourceLocation, context: PartPlacementInfo, cellProvider: CellProvider, val model: WireModel) : CellPart<WirePartRenderer>(id, context, cellProvider) {
     companion object {
         private const val DIRECTIONS = "directions"
         private const val COLD_LIGHT_LEVEL = 0.0
@@ -289,11 +291,12 @@ class WirePart(id: ResourceLocation, context: PartPlacementInfo, cellProvider: C
     private var temperature = 0.0
     private var connectionsChanged = true
 
-    override fun createRenderer(): PartRenderer {
+    override fun createRenderer(): WirePartRenderer {
         wireRenderer = WirePartRenderer(this,
             if(model.isElectrical) WireMeshSets.electricalWireMap
             else WireMeshSets.thermalWireMap,
-            model)
+            model.isRadiant
+        )
 
         applyRendererState()
 
@@ -472,7 +475,13 @@ object WireMeshSets {
     )
 }
 
-class WirePartRenderer(val part: WirePart, val meshes: Map<DirectionMask, PartialModel>, val model: WireModel) : PartRenderer {
+class WirePartRenderer(
+    val part: WirePart,
+    val meshes: Map<DirectionMask, PartialModel>,
+    val radiant: Boolean
+):
+    PartRenderer
+{
     companion object {
         private val COLOR = defaultRadiantBodyColor()
     }
@@ -536,7 +545,7 @@ class WirePartRenderer(val part: WirePart, val meshes: Map<DirectionMask, Partia
     }
 
     private fun applyTemperatureRendering() {
-        if(!model.isRadiant) {
+        if(!radiant) {
             return
         }
 

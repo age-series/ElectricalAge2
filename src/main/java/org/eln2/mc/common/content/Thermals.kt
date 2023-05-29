@@ -39,26 +39,24 @@ class ThermalRadiatorCell(ci: CellCI, val model: RadiatorModel): Cell(ci) {
     }
 
     init {
-        behaviors.withStandardExplosionBehavior(this, model.destructionTemperature) { thermalWireObj.body.tempK }
+        behaviorContainer.withStandardExplosionBehavior(this, model.destructionTemperature) { thermalWireObj.body.tempK }
         ruleSet.withDirectionActualRule(DirectionMask.HORIZONTALS)
     }
 
     val temperature get() = thermalWireObj.body.tempK
 }
 
-class RadiatorPart(id: ResourceLocation, placementContext: PartPlacementInfo) : CellPart(id, placementContext, Content.THERMAL_WIRE_CELL_COPPER.get()) {
+class RadiatorPart(id: ResourceLocation, placementContext: PartPlacementInfo) : CellPart<BasicPartRenderer>(id, placementContext, Content.THERMAL_WIRE_CELL_COPPER.get()) {
     override val sizeActual: Vec3
         get() = Vec3(1.0, 3.0 / 16.0, 1.0)
 
-    override fun createRenderer(): PartRenderer {
-        return BasicPartRenderer(this, PartialModels.RADIATOR).also {
-            it.downOffset = bbOffset(3.0)
-        }
+    override fun createRenderer() = BasicPartRenderer(this, PartialModels.RADIATOR).also {
+        it.downOffset = bbOffset(3.0)
     }
 }
 
 class RadiantBipoleRenderer(
-    val part: Part,
+    val part: Part<*>,
     val body: PartialModel,
     val left: PartialModel,
     val right: PartialModel,
@@ -69,11 +67,14 @@ class RadiantBipoleRenderer(
     val rightDownOffset: Double,
     val rightRotation: Float,
     val leftColor: RadiantBodyColor,
-    val rightColor: RadiantBodyColor) : PartRenderer {
-    constructor(part: Part, body: PartialModel, left: PartialModel, right: PartialModel, downOffset: Double, rotation: Float, leftColor: RadiantBodyColor, rightColor: RadiantBodyColor) :
+    val rightColor: RadiantBodyColor
+):
+    PartRenderer
+{
+    constructor(part: Part<*>, body: PartialModel, left: PartialModel, right: PartialModel, downOffset: Double, rotation: Float, leftColor: RadiantBodyColor, rightColor: RadiantBodyColor) :
         this(part, body, left, right, downOffset, rotation, downOffset, rotation, downOffset, rotation, leftColor, rightColor)
 
-    constructor(part: Part, body: PartialModel, left: PartialModel, right: PartialModel, downOffset: Double, rotation: Float) :
+    constructor(part: Part<*>, body: PartialModel, left: PartialModel, right: PartialModel, downOffset: Double, rotation: Float) :
         this(part, body, left, right, downOffset, rotation, defaultRadiantBodyColor(), defaultRadiantBodyColor())
 
     override fun isSetupWith(multipartBlockEntityInstance: MultipartBlockEntityInstance): Boolean {
@@ -138,3 +139,4 @@ class RadiantBipoleRenderer(
         rightInstance?.delete()
     }
 }
+

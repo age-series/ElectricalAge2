@@ -7,16 +7,12 @@ import org.eln2.mc.common.space.*
 import org.eln2.mc.extensions.connect
 import kotlin.math.abs
 
-fun interface ComponentFactory<T> {
-    fun create(): T
-}
-
-class ElectricalComponentHolder<T : Component>(private val factory: ComponentFactory<T>) {
+class ComponentHolder<T : Component>(private val factory: () -> T) {
     private var value: T? = null
 
     val instance: T get() {
         if(value == null) {
-            value = factory.create()
+            value = factory()
         }
 
         return value!!

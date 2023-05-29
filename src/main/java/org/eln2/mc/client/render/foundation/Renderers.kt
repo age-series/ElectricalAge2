@@ -24,7 +24,7 @@ import org.eln2.mc.extensions.zeroCenter
 import org.eln2.mc.mathematics.map
 import org.eln2.mc.mathematics.vec3
 
-fun createPartInstance(multipart: MultipartBlockEntityInstance, model: PartialModel, part: Part, downOffset: Double, yRotation: Float): ModelData {
+fun createPartInstance(multipart: MultipartBlockEntityInstance, model: PartialModel, part: Part<*>, downOffset: Double, yRotation: Float): ModelData {
     return multipart.materialManager
         .defaultSolid()
         .material(Materials.TRANSFORMED)
@@ -37,7 +37,7 @@ fun createPartInstance(multipart: MultipartBlockEntityInstance, model: PartialMo
 /**
  * The basic part renderer is used to render a single partial model.
  * */
-open class BasicPartRenderer(val part: Part, val model: PartialModel) : PartRenderer {
+open class BasicPartRenderer(val part: Part<*>, val model: PartialModel) : PartRenderer {
     override fun isSetupWith(multipartBlockEntityInstance: MultipartBlockEntityInstance): Boolean {
         return this::multipart.isInitialized && this.multipart == multipartBlockEntityInstance
     }
@@ -89,7 +89,7 @@ open class BasicPartRenderer(val part: Part, val model: PartialModel) : PartRend
     }
 }
 
-fun ModelData.applyBlockBenchTransform(part: Part, downOffset: Double, yRotation: Float = 0f): ModelData {
+fun ModelData.applyBlockBenchTransform(part: Part<*>, downOffset: Double, yRotation: Float = 0f): ModelData {
     return this
         .translate(part.placement.face.opposite.normal.toVec3() * vec3(downOffset))
         .blockCenter()
@@ -145,11 +145,13 @@ class RadiantBodyColor(
 }
 
 @ClientOnly
-class MultipartBlockEntityInstance(val materialManager: MaterialManager, blockEntity: MultipartBlockEntity) :
+class MultipartBlockEntityInstance(val materialManager: MaterialManager, blockEntity: MultipartBlockEntity
+):
     BlockEntityInstance<MultipartBlockEntity>(materialManager, blockEntity),
-    DynamicInstance {
+    DynamicInstance
+{
 
-    private val parts = ArrayList<Part>()
+    private val parts = ArrayList<Part<*>>()
 
     override fun init() {
         super.init()
@@ -233,7 +235,7 @@ class MultipartBlockEntityInstance(val materialManager: MaterialManager, blockEn
      * This is called by parts when they need to force a re-light.
      * This may happen when a model is initially created.
      * */
-    fun relightPart(part: Part) {
+    fun relightPart(part: Part<*>) {
         val models = part.renderer.relightModels()
 
         if (models != null) {

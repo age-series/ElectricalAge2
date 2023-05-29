@@ -7,7 +7,7 @@ import org.ageseries.libage.sim.electrical.mna.component.VoltageSource
 import org.ageseries.libage.sim.thermal.ConnectionParameters
 import org.ageseries.libage.sim.thermal.Simulator
 import org.ageseries.libage.sim.thermal.ThermalMass
-import org.eln2.mc.common.cells.foundation.ElectricalComponentHolder
+import org.eln2.mc.common.cells.foundation.ComponentHolder
 import org.eln2.mc.common.cells.foundation.ElectricalComponentInfo
 import org.eln2.mc.sim.EnvironmentInformation
 import org.eln2.mc.sim.ThermalBody
@@ -19,7 +19,7 @@ fun Component.connect(pin: Int, info: ElectricalComponentInfo){
     this.connect(pin, info.component, info.index)
 }
 
-fun Circuit.add(holder: ElectricalComponentHolder<*>){
+fun Circuit.add(holder: ComponentHolder<*>){
     this.add(holder.instance)
 }
 

@@ -92,14 +92,11 @@ class ResistorCell(ci: CellCI) : Cell(ci) {
     }
 }
 
-class ResistorPart(id: ResourceLocation, placementContext: PartPlacementInfo) :
-    CellPart(id, placementContext, Content.RESISTOR_CELL.get()) {
+class ResistorPart(id: ResourceLocation, placementContext: PartPlacementInfo) : CellPart<BasicPartRenderer>(id, placementContext, Content.RESISTOR_CELL.get()) {
 
     override val sizeActual = bbVec(3.5, 2.25, 5.0)
 
-    override fun createRenderer(): PartRenderer {
-        return BasicPartRenderer(this, PartialModels.RESISTOR).also {
-            it.downOffset = bbOffset(2.5)
-        }
+    override fun createRenderer() = BasicPartRenderer(this, PartialModels.RESISTOR).also {
+        it.downOffset = bbOffset(2.5)
     }
 }

@@ -196,7 +196,7 @@ class BatteryCell(ci: CellCI, override val model: BatteryModel) : Cell(ci), Batt
     }
 
     init {
-        behaviors.apply {
+        behaviorContainer.apply {
             withElectricalPowerConverter { generatorObj.generatorPower }
             withElectricalHeatTransfer { thermalWireObj.body }
         }
@@ -344,17 +344,15 @@ class BatteryCell(ci: CellCI, override val model: BatteryModel) : Cell(ci), Batt
     }
 }
 
-class BatteryPart(id: ResourceLocation, placementContext: PartPlacementInfo, provider: CellProvider): CellPart(id, placementContext, provider), ItemPersistentPart {
+class BatteryPart(id: ResourceLocation, placementContext: PartPlacementInfo, provider: CellProvider): CellPart<BasicPartRenderer>(id, placementContext, provider), ItemPersistentPart {
     companion object {
         private const val BATTERY = "battery"
     }
 
     override val sizeActual = bbVec(6.0, 8.0, 12.0)
 
-    override fun createRenderer(): PartRenderer {
-        return BasicPartRenderer(this, PartialModels.BATTERY).also {
-            it.downOffset = PartialModels.bbOffset(8.0)
-        }
+    override fun createRenderer() = BasicPartRenderer(this, PartialModels.BATTERY).also {
+        it.downOffset = PartialModels.bbOffset(8.0)
     }
 
     private val batteryCell get() = cell as BatteryCell

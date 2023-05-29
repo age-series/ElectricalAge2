@@ -94,13 +94,11 @@ class VoltageSourceCell(ci: CellCI) : Cell(ci) {
     }
 }
 
-class VoltageSourcePart(id: ResourceLocation, placementContext: PartPlacementInfo) : CellPart(id, placementContext, Content.VOLTAGE_SOURCE_CELL.get()) {
+class VoltageSourcePart(id: ResourceLocation, placementContext: PartPlacementInfo) : CellPart<BasicPartRenderer>(id, placementContext, Content.VOLTAGE_SOURCE_CELL.get()) {
 
     override val sizeActual = bbVec(6.0, 2.5, 6.0)
 
-    override fun createRenderer(): PartRenderer {
-        return BasicPartRenderer(this, PartialModels.VOLTAGE_SOURCE).also {
-            it.downOffset = bbOffset(2.5)
-        }
+    override fun createRenderer() = BasicPartRenderer(this, PartialModels.VOLTAGE_SOURCE).also {
+        it.downOffset = bbOffset(2.5)
     }
 }

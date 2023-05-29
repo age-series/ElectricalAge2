@@ -27,14 +27,8 @@ import org.eln2.mc.ServerOnly
 import org.eln2.mc.client.render.foundation.BasicPartRenderer
 import org.eln2.mc.client.render.foundation.MultipartBlockEntityInstance
 import org.eln2.mc.common.blocks.foundation.MultipartBlockEntity
-import org.eln2.mc.common.cells.foundation.Cell
-import org.eln2.mc.common.cells.foundation.CellGraphManager
-import org.eln2.mc.common.cells.foundation.CellPos
-import org.eln2.mc.common.cells.foundation.CellProvider
-import org.eln2.mc.common.network.serverToClient.BulkMessages
-import org.eln2.mc.common.network.serverToClient.BulkPartMessage
-import org.eln2.mc.common.network.serverToClient.PartMessage
-import org.eln2.mc.common.network.serverToClient.id
+import org.eln2.mc.common.cells.foundation.*
+import org.eln2.mc.common.network.serverToClient.*
 import org.eln2.mc.common.parts.PartRegistry
 import org.eln2.mc.common.space.*
 import org.eln2.mc.data.DataNode
@@ -86,7 +80,7 @@ enum class PartUpdateType(val id: Int) {
         }
     }
 }
-data class PartUpdate(val part: Part, val type: PartUpdateType)
+data class PartUpdate(val part: Part<*>, val type: PartUpdateType)
 data class PartUseInfo(val player: Player, val hand: InteractionHand)
 
 object PartGeometry {
@@ -173,7 +167,7 @@ object PartGeometry {
  * but up to 6 can exist in the same block space.
  * They are placed on the inner faces of a multipart container block space.
  * */
-abstract class Part(val id: ResourceLocation, val placement: PartPlacementInfo): DataEntity {
+abstract class Part<Renderer : PartRenderer>(val id: ResourceLocation, val placement: PartPlacementInfo): DataEntity {
     companion object {
         fun createPartDropStack(id: ResourceLocation, saveTag: CompoundTag?, count: Int = 1): ItemStack {
             val item = PartRegistry.getPartItem(id)
@@ -185,7 +179,36 @@ abstract class Part(val id: ResourceLocation, val placement: PartPlacementInfo):
         }
     }
 
-    open fun handleBulkMessage(msg: ByteArray) { }
+    /**
+     * [PacketHandler] for server -> client packets.
+     * It will receive messages if and only if the base [handleBulkMessage] gets called when a bulk message is received.
+     * */
+    @ClientOnly
+    private val packetHandlerLazy = lazy {
+        val builder = PacketHandlerBuilder()
+        registerPackets(builder)
+        builder.build()
+    }
+
+    @ClientOnly
+    protected open fun registerPackets(builder: PacketHandlerBuilder) {}
+
+    /**
+     * Enqueues a bulk packet to be sent to the client.
+     * This makes sense to call if and only if [P] is registered on the client
+     * in [registerPackets], and the default behavior of [handleBulkMessage] gets executed.
+     * */
+    @ServerOnly
+    protected inline fun<reified P> sendBulkPacket(packet: P) {
+        enqueueBulkMessage(
+            PacketHandler.encode(packet)
+        )
+    }
+
+    @ClientOnly
+    open fun handleBulkMessage(msg: ByteArray) {
+        packetHandlerLazy.value.handle(msg)
+    }
 
     fun enqueueBulkMessage(payload: ByteArray) {
         require(!placement.level.isClientSide) { "Tried to send bulk message from client" }
@@ -384,14 +407,14 @@ abstract class Part(val id: ResourceLocation, val placement: PartPlacementInfo):
     open fun onAddedToClient() {}
 
     @ClientOnly
-    private var cachedRenderer: PartRenderer? = null
+    private var cachedRenderer: Renderer? = null
 
     /**
      * Gets the renderer instance for this part.
      * By default, it calls the createRenderer method, and caches the result.
      * */
     @ClientOnly
-    open val renderer: PartRenderer
+    open val renderer: Renderer
         get() {
             if (!placement.level.isClientSide) {
                 error("Tried to get renderer on non-client side!")
@@ -409,7 +432,7 @@ abstract class Part(val id: ResourceLocation, val placement: PartPlacementInfo):
      * @return A new instance of the part renderer.
      * */
     @ClientOnly
-    abstract fun createRenderer(): PartRenderer
+    abstract fun createRenderer(): Renderer
 
     @ClientOnly
     open fun destroyRenderer() {
@@ -441,7 +464,7 @@ abstract class PartProvider : ForgeRegistryEntry<PartProvider>() {
      * @param context The placement context of this part.
      * @return Unique instance of the part.
      */
-    abstract fun create(context: PartPlacementInfo): Part
+    abstract fun create(context: PartPlacementInfo): Part<*>
 
     /**
      * This is the size used to validate placement. This is different from baseSize, because
@@ -454,10 +477,8 @@ abstract class PartProvider : ForgeRegistryEntry<PartProvider>() {
  * The basic part provider uses a functional interface as part factory.
  * Often, the part's constructor can be passed in as factory.
  * */
-open class BasicPartProvider(val factory: ((id: ResourceLocation, context: PartPlacementInfo) -> Part), final override val placementCollisionSize: Vec3) : PartProvider() {
-    override fun create(context: PartPlacementInfo): Part {
-        return factory(id, context)
-    }
+open class BasicPartProvider(val factory: ((id: ResourceLocation, context: PartPlacementInfo) -> Part<*>), final override val placementCollisionSize: Vec3) : PartProvider() {
+    override fun create(context: PartPlacementInfo) = factory(id, context)
 }
 
 /**
@@ -504,7 +525,7 @@ interface PartCellContainer {
 /**
  * This part represents a simulation object. It can become part of a cell network.
  * */
-abstract class CellPart(id: ResourceLocation, placement: PartPlacementInfo, final override val provider: CellProvider) : Part(id, placement), PartCellContainer, WailaEntity {
+abstract class CellPart<Renderer : PartRenderer>(id: ResourceLocation, placement: PartPlacementInfo, final override val provider: CellProvider) : Part<Renderer>(id, placement), PartCellContainer, WailaEntity {
     companion object {
         private const val GRAPH_ID = "GraphID"
         private const val CUSTOM_SIMULATION_DATA = "SimulationData"
@@ -549,8 +570,10 @@ abstract class CellPart(id: ResourceLocation, placement: PartPlacementInfo, fina
      * */
     override fun onUnloaded() {
         if (hasCell) {
-            cell.onContainerUnloaded()
+            cell.onContainerUnloading()
             cell.container = null
+            cell.onContainerUnloaded()
+            cell.unbindGameObjects()
             isAlive = false
             onCellReleased()
         }
@@ -629,6 +652,8 @@ abstract class CellPart(id: ResourceLocation, placement: PartPlacementInfo, fina
 
         isAlive = true
         acquireCell()
+
+        cell.bindGameObjects(listOf(this, placement.multipart))
     }
 
     open fun saveCustomSimData(): CompoundTag?{
@@ -661,14 +686,17 @@ abstract class CellPart(id: ResourceLocation, placement: PartPlacementInfo, fina
     override val allowWrappedConnections = true
 }
 
-open class BasicCellPart(
+
+open class BasicCellPart<R : PartRenderer>(
     id: ResourceLocation,
     placementContext: PartPlacementInfo,
     override val sizeActual: Vec3,
     provider: CellProvider,
-    private val rendererFactory: PartRendererFactory
-): CellPart(id, placementContext, provider) {
-    override fun createRenderer(): PartRenderer {
+    private val rendererFactory: PartRendererFactory<R>
+):
+    CellPart<R>(id, placementContext, provider)
+{
+    override fun createRenderer(): R {
         return rendererFactory.create(this)
     }
 }
@@ -836,11 +864,11 @@ interface PartRenderer {
     fun remove()
 }
 
-fun interface PartRendererFactory {
-    fun create(part: Part): PartRenderer
+fun interface PartRendererFactory<R : PartRenderer> {
+    fun create(part: Part<R>): R
 }
 
-fun basicPartRenderer(model: PartialModel, downOffset: Double): PartRendererFactory {
+fun basicPartRenderer(model: PartialModel, downOffset: Double): PartRendererFactory<BasicPartRenderer> {
     return PartRendererFactory { part ->
         BasicPartRenderer(part, model).also { it.downOffset = downOffset }
     }

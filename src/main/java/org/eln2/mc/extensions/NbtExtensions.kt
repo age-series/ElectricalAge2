@@ -11,6 +11,7 @@ import org.eln2.mc.common.cells.foundation.CellPos
 import org.eln2.mc.common.parts.foundation.PartUpdateType
 import org.eln2.mc.common.space.*
 import org.eln2.mc.sim.MaterialMapping
+import org.eln2.mc.sim.ThermalBody
 
 private const val ELECTRICAL_RESISTIVITY = "electricalResistivity"
 private const val THERMAL_CONDUCTIVITY = "thermalConductivity"
@@ -269,6 +270,22 @@ fun CompoundTag.getThermalMassMapped(id: String): ThermalMass {
     return this.getThermalMass(id) { key, tag ->
         tag.getMaterialMapped(key)
     }
+}
+
+fun CompoundTag.putThermalBody(id: String, body: ThermalBody) {
+    this.putSubTag(id) {
+        it.putThermalMass("Mass", body.thermal)
+        it.putDouble("Area", body.area)
+    }
+}
+
+fun CompoundTag.getThermalBody(id: String): ThermalBody {
+    val tag = this.getCompound(id)
+
+    return ThermalBody(
+        tag.getThermalMass("Mass"),
+        tag.getDouble("Area")
+    )
 }
 
 fun CompoundTag.putTemperature(id: String, temperature: Temperature) {
