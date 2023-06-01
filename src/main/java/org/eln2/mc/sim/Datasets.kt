@@ -15,8 +15,8 @@ object Datasets {
         return CsvLoader.loadNumericData(ResourceReader.getResourceString(Eln2.resource("datasets/$name")))
     }
 
-    private fun loadCsvSpline(name: String, keyIndex: Int, valueIndex: Int): Spline {
-        val builder = SplineBuilder()
+    private fun loadCsvSpline(name: String, keyIndex: Int, valueIndex: Int): Spline1d {
+        val builder = InterpolatorBuilder()
 
         getCsv(name).also { csv ->
             csv.entries.forEach {
@@ -33,13 +33,13 @@ object Datasets {
         var xSize = 0
         var ySize = 0
 
-        val xMapping = SplineBuilder().apply {
+        val xMapping = InterpolatorBuilder().apply {
             csv.headers.drop(1).forEach { header ->
                 with(header.toDouble(), (xSize++).toDouble())
             }
         }.buildCubicKB()
 
-        val yMapping =SplineBuilder().apply {
+        val yMapping =InterpolatorBuilder().apply {
             csv.entries.forEach {
                 with(it[0], (ySize++).toDouble())
             }

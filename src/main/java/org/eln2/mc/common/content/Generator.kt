@@ -757,7 +757,7 @@ data class PhotovoltaicModel(
 
 object PhotovoltaicModels {
     // We map angle difference to a voltage coefficient. 0 - directly overhead, 1 - under horizon
-    private val TEST_SPLINE = SplineBuilder()
+    private val TEST_SPLINE = InterpolatorBuilder()
         .with(0.0, 1.0)
         .with(0.95, 0.8)
         .with(1.0, 0.0)
