@@ -1,9 +1,9 @@
 package org.eln2.mc.utility
 
-import org.eln2.mc.mathematics.KDVectorD
+import org.eln2.mc.mathematics.ArrayKDVectorD
 
 
-data class CsvNumeric(val headers: ArrayList<String>, val entries: ArrayList<KDVectorD>)
+data class CsvNumeric(val headers: ArrayList<String>, val entries: ArrayList<ArrayKDVectorD>)
 
 object CsvLoader {
     fun loadNumericData(csv: String): CsvNumeric {
@@ -13,7 +13,7 @@ object CsvLoader {
 
         lines[0].split(',').forEach { headers.add(it) }
 
-        val results = ArrayList<KDVectorD>()
+        val results = ArrayList<ArrayKDVectorD>()
 
         for (i in 1 until lines.size) {
             val line = lines[i]
@@ -28,7 +28,7 @@ object CsvLoader {
                 error("Mismatched CSV token count")
             }
 
-            results.add(KDVectorD(tokens.toDoubleArray()))
+            results.add(ArrayKDVectorD(tokens.toDoubleArray()))
         }
 
         return CsvNumeric(headers, results)

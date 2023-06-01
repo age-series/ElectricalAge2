@@ -1,7 +1,6 @@
 package org.eln2.mc.sim
 
 import org.eln2.mc.Eln2
-import org.eln2.mc.Eln2.LOGGER
 import org.eln2.mc.mathematics.*
 import org.eln2.mc.utility.CsvLoader
 import org.eln2.mc.utility.CsvNumeric
@@ -16,16 +15,16 @@ object Datasets {
         return CsvLoader.loadNumericData(ResourceReader.getResourceString(Eln2.resource("datasets/$name")))
     }
 
-    private fun loadCsvSpline(name: String, keyIndex: Int, valueIndex: Int): HermiteSplineCubicMapped {
-        val builder = hermiteMappedCubic()
+    private fun loadCsvSpline(name: String, keyIndex: Int, valueIndex: Int): Spline {
+        val builder = SplineBuilder()
 
         getCsv(name).also { csv ->
             csv.entries.forEach {
-                builder.point(it[keyIndex], it[valueIndex])
+                builder.with(it[keyIndex], it[valueIndex])
             }
         }
 
-        return builder.buildHermite()
+        return builder.buildCubicKB()
     }
 
     private fun loadCsvGrid2(name: String): MappedGridInterpolator {
@@ -34,19 +33,19 @@ object Datasets {
         var xSize = 0
         var ySize = 0
 
-        val xMapping = hermiteMappedCubic().apply {
+        val xMapping = SplineBuilder().apply {
             csv.headers.drop(1).forEach { header ->
-                point(header.toDouble(), (xSize++).toDouble())
+                with(header.toDouble(), (xSize++).toDouble())
             }
-        }.buildHermite()
+        }.buildCubicKB()
 
-        val yMapping = hermiteMappedCubic().apply {
+        val yMapping =SplineBuilder().apply {
             csv.entries.forEach {
-                point(it[0], (ySize++).toDouble())
+                with(it[0], (ySize++).toDouble())
             }
-        }.buildHermite()
+        }.buildCubicKB()
 
-        val grid = kdGridDOf(xSize, ySize)
+        val grid = arrayKDGridDOf(xSize, ySize)
 
         for (y in 0 until ySize) {
             val row = csv.entries[y]

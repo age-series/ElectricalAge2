@@ -1,18 +1,21 @@
+@file:Suppress("NonAsciiCharacters", "LocalVariableName", "RemoveRedundantBackticks")
+
 package org.eln2.mc.mathematics
 
-import org.eln2.mc.Eln2
 import org.eln2.mc.data.SegmentRange
 import org.eln2.mc.data.SegmentTree
 import org.eln2.mc.data.SegmentTreeBuilder
-import org.eln2.mc.utility.ResourceReader
-import kotlin.math.floor
+import kotlin.math.abs
+import kotlin.math.cos
+import kotlin.math.cosh
+import kotlin.math.pow
 
 /**
- * The grid interpolator is used to query arbitrary coordinates inside a [KDGridD], with interpolation
+ * The grid interpolator is used to query arbitrary coordinates inside a [ArrayKDGridD], with interpolation
  * of the neighbor cells.
  * */
 class GridInterpolator(val grid: KDGridD) {
-    fun interface IInterpolationFunction {
+    fun interface Interpolator {
         fun interpolate(a: Double, b: Double, t: Double): Double
     }
 
@@ -20,15 +23,15 @@ class GridInterpolator(val grid: KDGridD) {
      * Pre-computed offset table to compute neighbor coordinates.
      * */
     private val neighborOffsets =
-        ArrayList<KDVectorI>()
-            .also { findCorners(it, grid.dimensions - 1, KDVectorI.ofSize(grid.dimensions)) }
+        ArrayList<ArrayKDVectorI>()
+            .also { findCorners(it, grid.dimensions - 1, ArrayKDVectorI.ofSize(grid.dimensions)) }
             .map { KDVectorIImmutable(it.values.toList()) }
 
     /**
      * Clamps the [coordinates] and returns the cell value.
      * */
-    private fun getClamped(coordinates: IKDVectorI): Double {
-        val clamped = KDVectorI(coordinates.toArray()).also {
+    private fun getClamped(coordinates: KDVectorI): Double {
+        val clamped = ArrayKDVectorI(coordinates.toArray()).also {
             for (i in 0 until it.size) {
                 it.values[i] = it.values[i].coerceIn(0, grid.getSize(i) - 1)
             }
@@ -41,7 +44,7 @@ class GridInterpolator(val grid: KDGridD) {
      * Queries the grid at the specified coordinates, applying the interpolation function on
      * the neighbor cells.
      * */
-    fun evaluate(coordinates: IKDVectorD, function: IInterpolationFunction): Double {
+    fun evaluate(coordinates: KDVectorD, function: Interpolator): Double {
         if (coordinates.size != grid.dimensions) {
             error("Cannot access ${grid.dimensions}-D grid with ${coordinates.size} coordinates")
         }
@@ -61,13 +64,13 @@ class GridInterpolator(val grid: KDGridD) {
         /**
          * Finds neighbor coordinate offsets.
          * */
-        private fun findCorners(results: ArrayList<KDVectorI>, index: Int, current: KDVectorI) {
+        private fun findCorners(results: ArrayList<ArrayKDVectorI>, index: Int, current: ArrayKDVectorI) {
             if (index == 0) {
-                results.add(current.copy().also { it[0] = 0 })
-                results.add(current.copy().also { it[0] = 1 })
+                results.add(current.bind().also { it[0] = 0 })
+                results.add(current.bind().also { it[0] = 1 })
             } else {
-                findCorners(results, index - 1, current.copy().also { it[index] = 0 })
-                findCorners(results, index - 1, current.copy().also { it[index] = 1 })
+                findCorners(results, index - 1, current.bind().also { it[index] = 0 })
+                findCorners(results, index - 1, current.bind().also { it[index] = 1 })
             }
         }
 
@@ -78,8 +81,8 @@ class GridInterpolator(val grid: KDGridD) {
             dimension: Int,
             index: Int,
             samples: List<Double>,
-            progress: IKDVectorD,
-            function: IInterpolationFunction
+            progress: KDVectorD,
+            function: Interpolator,
         ): Double {
             return if (dimension == 1) {
                 function.interpolate(samples[index], samples[index + 1], progress[0])
@@ -94,8 +97,8 @@ class GridInterpolator(val grid: KDGridD) {
             dims: Int,
             i: Int,
             values: List<Double>,
-            t: IKDVectorD,
-            function: IInterpolationFunction
+            t: KDVectorD,
+            function: Interpolator,
         ): Double {
             return kdInterpolate(dims - 1, i, values, t, function)
         }
@@ -104,169 +107,41 @@ class GridInterpolator(val grid: KDGridD) {
             dims: Int,
             i: Int,
             values: List<Double>,
-            t: IKDVectorD,
-            function: IInterpolationFunction
+            t: KDVectorD,
+            function: Interpolator,
         ): Double {
             return kdInterpolate(dims - 1, i + pow2I(dims - 1), values, t, function)
         }
     }
 }
 
-/**
- * The grid vector interpolator is used to interpolate a grid of vectors.
- * Internally, this uses a [GridInterpolator] for every dimension.
- * */
-class GridVectorInterpolator(val interpolators: List<GridInterpolator>) {
-    fun evaluate(coordinates: IKDVectorD, function: GridInterpolator.IInterpolationFunction): KDVectorD {
-        val result = KDVectorD.ofSize(interpolators.size)
+interface SplineSegment {
+    val t0: Double
+    val t1: Double
+    val y0: Double
+    val y1: Double
 
-        for (i in interpolators.indices) {
-            result[i] = interpolators[i].evaluate(coordinates, function)
-        }
-
-        return result
-    }
+    fun evaluate(t: Double): Double
+    fun evaluateDual(t: Dual): Dual
 }
 
-/**
- * Represents a cubic hermite spline with parameter ranges assigned based on the number of samples, from 0-1.
- * */
-class HermiteSplineCubic {
-    val points = ArrayList<Double>()
+abstract class SplineSegmentMap(val segments: List<SplineSegment>) {
+    init {
+        require(segments.isNotEmpty()) { "Cannot create empty spline segment list" }
 
-    fun evaluate(progress: Double): Double {
-        if (points.size == 0) {
-            // Wouldn't make sense to evaluate it with one, but let's throw errors only for 0
+        if(segments.size > 1) {
+            for(i in 1 until segments.size) {
+                val previous = segments[i - 1]
+                val current = segments[i]
 
-            error("Cannot evaluate spline with 0 points")
-        }
-
-        val fuzzyIndex = (points.size - 1) * progress
-        val t = fuzzyIndex - floor(fuzzyIndex)
-        val pointIndex = fuzzyIndex.toInt()
-
-        return hermiteCubic(
-            getPoint(pointIndex - 1),
-            getPoint(pointIndex + 0),
-            getPoint(pointIndex + 1),
-            getPoint(pointIndex + 2),
-            t
-        )
-    }
-
-    private fun getPoint(index: Int): Double {
-        if (index < 0) {
-            return points.first()
-        }
-
-        if (index >= points.size) {
-            return points.last()
-        }
-
-        return points[index]
-    }
-
-    companion object {
-
-        fun loadSpline(path: String): HermiteSplineCubic {
-            return HermiteSplineCubic().also { spline ->
-                ResourceReader.getResourceString(Eln2.resource(path))
-                    .lines()
-                    .filter { it.isNotBlank() && it.isNotEmpty() }
-                    .map { it.toDouble() }
-                    .forEach(spline.points::add)
-
-                Eln2.LOGGER.info("Loaded ${spline.points.size} points from $path")
+                if(previous.t1 != current.t0) {
+                    error("Segment list continuity error")
+                }
             }
         }
     }
-}
 
-interface ISplineSegment {
-    /**
-     * Gets the parameter range's lower boundary.
-     * */
-    val keyStart: Double
-
-    /**
-     * Gets the parameter range's upper boundary.
-     * */
-    val keyEnd: Double
-
-    /**
-     * Gets the values stored in this segment.
-     * */
-    val points: List<Double>
-
-    /**
-     * Gets the leftmost value in this segment.
-     * */
-    val valueStart: Double
-
-    /**
-     * Gets the rightmost value in this segment.
-     * */
-    val valueEnd: Double
-}
-
-/**
- * Represents a list of spline segments with search capabilities.
- * Implementors should document time complexities of the search functions.
- * */
-interface ISplineSegmentList<Segment : ISplineSegment> {
-    /**
-     * Finds the spline segment that matches the range of the key.
-     * @return The index of the spline segment. If the segment is out of range,
-     * the corresponding boundary index will be given.
-     * */
-    fun find(key: Double): Int
-
-    /**
-     * Gets the left neighbor of the segment at the specified index.
-     * */
-    fun left(index: Int): Segment
-
-    /**
-     * Gets the right neighbor of the segment at the specified index.
-     * */
-    fun right(index: Int): Segment
-
-    /**
-     * Gets the spline segment at the specified index.
-     * */
-    operator fun get(index: Int): Segment
-
-    /**
-     * Gets the leftmost (smallest) key in this segment list.
-     * */
-    val startKey: Double
-
-    /**
-     * Gets the rightmost (largest) key in this segment list.
-     * */
-    val endKey: Double
-
-    /**
-     * Gets the leftmost value in this segment list.
-     * */
-    val startValue: Double
-
-    /**
-     * Gets the rightmost value in this segment list.
-     * */
-    val endValue: Double
-
-    /**
-     * Gets the number of spline segments.
-     * */
-    val count: Int
-}
-
-/**
- * Base [SplineSegmentList] behavior. Search is not implemented here.
- * */
-abstract class SplineSegmentList<Segment : ISplineSegment>(protected val segments: List<Segment>): ISplineSegmentList<Segment> {
-    override fun left(index: Int): Segment {
+    fun left(index: Int): SplineSegment {
         if (index <= 0) {
             return segments.first()
         }
@@ -274,7 +149,7 @@ abstract class SplineSegmentList<Segment : ISplineSegment>(protected val segment
         return segments[index - 1]
     }
 
-    override fun right(index: Int): Segment {
+    fun right(index: Int): SplineSegment {
         if (index >= count - 1) {
             return segments.last()
         }
@@ -282,183 +157,405 @@ abstract class SplineSegmentList<Segment : ISplineSegment>(protected val segment
         return segments[index + 1]
     }
 
-    override fun get(index: Int): Segment {
-        return segments[index]
-    }
-
-    override val startKey: Double
-        get() = segments.first().keyStart
-
-    override val endKey: Double
-        get() = segments.last().keyEnd
-
-    override val startValue: Double
-        get() = segments.first().valueStart
-
-    override val endValue: Double
-        get() = segments.last().valueEnd
-
-    override val count: Int
-        get() = segments.size
-}
-
-/**
- * This is a [SplineSegmentList] with *O(n)* search time.
- * */
-class LinearSplineSegmentList<Segment : ISplineSegment>(segments: List<Segment>) : SplineSegmentList<Segment>(segments) {
-    init {
-        if(segments.isEmpty()){
-            error("Tried to initialize segment list with 0 segments")
+    fun findIndex(t: Double): Int {
+        if(t <= t0) {
+            return 0
         }
 
-        if(segments.size > 1) {
-            for(i in 1 until segments.size) {
-                val previous = segments[i - 1]
-                val current = segments[i]
-
-                if(previous.keyEnd != current.keyStart) {
-                    error("Segment list continuity error")
-                }
-            }
-        }
-    }
-
-    override fun find(key: Double): Int {
-        val index = segments.indexOfFirst { it.keyStart <= key && it.keyEnd >= key }
-
-        if (index == -1) {
-            return if(key < segments.first().keyStart) {
-                0
-            } else if(key > segments.last().keyEnd) {
-                segments.size - 1
-            }
-            else error("Unexpected key $key")
+        if(t >= t1) {
+            return segments.size - 1
         }
 
-        return index
+        return findIndexCore(t)
     }
 
+    protected abstract fun findIndexCore(key: Double): Int
 
+    operator fun get(index: Int) = segments[index]
+    operator fun get(key: Double) = segments[findIndex(key)]
+
+    val t0 get() = segments.first().t0
+    val t1 get() = segments.last().t1
+    val y0 get() = segments.first().y0
+    val y1 get() = segments.last().y1
+    val count get() = segments.size
 }
 
 /**
  * This is a spline segment list that uses a [SegmentTree] to search indices.
  * Time complexity is as specified by [SegmentTree.query]
  * */
-class TreeSplineSegmentList<Segment : ISplineSegment>(segments: List<Segment>): SplineSegmentList<Segment>(segments) {
+class TreeSplineSegmentMap(segments: List<SplineSegment>): SplineSegmentMap(segments) {
     private val segmentTree = SegmentTreeBuilder<Int>().also {
         segments.forEachIndexed { index, s ->
-            it.insert(index, SegmentRange(s.keyStart, s.keyEnd))
+            it.insert(index, SegmentRange(s.t0, s.t1))
         }
     }.build()
 
-    //FIXME: we should be returning the boundary index, not ERROR!
-    override fun find(key: Double): Int {
-        return segmentTree.queryOrNull(key) ?: error("Spline index $key out of range")
-    }
+    override fun findIndexCore(key: Double) = segmentTree.query(key)
 }
 
-/**
- * @param keyStart Parameter range lower boundary.
- * @param keyEnd Parameter range upper boundary.
- * @param points Spline knots.
- * */
-data class HermiteSplineCubicSegment(override val keyStart: Double, override val keyEnd: Double, override val points: List<Double>) : ISplineSegment {
-    init {
-        if (points.size < 2) {
-            error("Cannot create spline segment with ${points.size} points")
-        }
+fun hermiteCubic(p0: Double, v0: Double, v1: Double, p1: Double, t: Double): Double {
+    val t2 = t * t
+    val t3 = t2 * t
+    val h0 = 1.0 - 3.0 * t2 + 2.0 * t3
+    val h1 = t - 2.0 * t2 + t3
+    val h2 = -t2 + t3
+    val h3 = 3.0 * t2 - 2.0 * t3
 
-        if (keyEnd <= keyStart) {
-            error("Cannot create spline segment with keys $keyStart - $keyEnd")
-        }
-    }
-
-    /**
-     * Gets the leftmost value in this segment.
-     * */
-    override val valueStart get() = points.first()
-
-    /**
-     * Gets the rightmost value in this segment.
-     * */
-    override val valueEnd get() = points.last()
+    return h0 * p0 + h1 * v0 + h2 * v1 + h3 * p1
 }
 
-/**
- * Represents a cubic hermite spline with arbitrary parameter ranges.
- * */
-class HermiteSplineCubicMapped(val segments: ISplineSegmentList<HermiteSplineCubicSegment>) {
-    fun evaluate(key: Double): Double {
-        if(key < segments.startKey) {
-            return segments.startValue
-        }
+fun hermiteCubicDual(p0: Double, v0: Double, v1: Double, p1: Double, t: Dual): Dual {
+    val t2 = t * t
+    val t3 = t2 * t
+    val h0 = 1.0 - 3.0 * t2 + 2.0 * t3
+    val h1 = t - 2.0 * t2 + t3
+    val h2 = -t2 + t3
+    val h3 = 3.0 * t2 - 2.0 * t3
 
-        if(key > segments.endKey) {
-            return segments.endValue
-        }
+    return h0 * p0 + h1 * v0 + h2 * v1 + h3 * p1
+}
 
-        val index = segments.find(key)
+fun hermiteQuintic(p0: Double, v0: Double, a0: Double, a1: Double, v1: Double, p1: Double, t: Double): Double {
+    val t3 = t * t * t
+    val t4 = t3 * t
+    val t5 = t4 * t
+    val h0 = 1.0 - 10.0 * t3 + 15.0 * t4 - 6.0 * t5
+    val h1 = t - 6.0 * t3 + 8.0 * t4 - 3.0 * t5
+    val h2 = 1.0 / 2.0 * (t * t) - 3.0 / 2.0 * t3 + 3.0 / 2.0 * t4 - 1.0 / 2.0 * t5
+    val h3 = 1.0 / 2.0 * t3 - t4 + 1.0 / 2.0 * t5
+    val h4 = -4.0 * t3 + 7.0 * t4 - 3.0 * t5
+    val h5 = 10.0 * t3 - 15.0 * t4 + 6.0 * t5
 
-        val left = segments.left(index)
-        val right = segments.right(index)
-        val middle = segments[index]
+    return h0 * p0 + h1 * v0 + h2 * a0 + h3 * a1 + h4 * v1 + h5 * p1
+}
 
-        val progress = map(key, middle.keyStart, middle.keyEnd, 0.0, 1.0)
+fun hermiteQuinticDual(p0: Double, v0: Double, a0: Double, a1: Double, v1: Double, p1: Double, t: Dual): Dual {
+    val t3 = t * t * t
+    val t4 = t3 * t
+    val t5 = t4 * t
+    val h0 = 1.0 - 10.0 * t3 + 15.0 * t4 - 6.0 * t5
+    val h1 = t - 6.0 * t3 + 8.0 * t4 - 3.0 * t5
+    val h2 = 1.0 / 2.0 * (t * t) - 3.0 / 2.0 * t3 + 3.0 / 2.0 * t4 - 1.0 / 2.0 * t5
+    val h3 = 1.0 / 2.0 * t3 - t4 + 1.0 / 2.0 * t5
+    val h4 = -4.0 * t3 + 7.0 * t4 - 3.0 * t5
+    val h5 = 10.0 * t3 - 15.0 * t4 + 6.0 * t5
 
-        return hermiteCubic(
-            left.valueStart,
-            middle.valueStart,
-            middle.valueEnd,
-            right.valueEnd,
-            progress
+    return h0 * p0 + h1 * v0 + h2 * a0 + h3 * a1 + h4 * v1 + h5 * p1
+}
+
+fun catenary(a: Double, x: Double) = a * cosh(x / a)
+fun catenaryDual(a: Double, x: Dual) = a * cosh(x / a)
+
+data class CubicHermiteSplineSegment(
+    override val t0: Double,
+    override val t1: Double,
+    override val y0: Double,
+    override val y1: Double,
+    val v0: Double,
+    val v1: Double,
+) : SplineSegment {
+    override fun evaluate(t: Double) = hermiteCubic(y0, v0, v1, y1, t)
+    override fun evaluateDual(t: Dual) = hermiteCubicDual(y0, v0, v1, y1, t)
+}
+
+data class QuinticHermiteSplineSegment(
+    override val t0: Double,
+    override val t1: Double,
+    override val y0: Double,
+    override val y1: Double,
+    val v0: Double,
+    val a0: Double,
+    val a1: Double,
+    val v1: Double,
+) : SplineSegment {
+    override fun evaluate(t: Double) = hermiteQuintic(y0, v0, a0, a1, v1, y1, t)
+    override fun evaluateDual(t: Dual) = hermiteQuinticDual(y0, v0, a0, a1, v1, y1, t)
+}
+
+data class Spline(val segments: SplineSegmentMap) {
+    fun evaluate(t: Double) = segments[t].let {
+        it.evaluate(
+            t.mappedTo(it.t0, it.t1, 0.0, 1.0)
+        )
+    }
+
+    fun evaluateDual(t: Double, n: Int = 1) = segments[t].let {
+        it.evaluateDual(
+            Dual.variable(
+                t.mappedTo(it.t0, it.t1, 0.0, 1.0), n
+            )
         )
     }
 }
 
-/**
- * Utility class for building a spline from data points.
- * */
-class MappedSplineBuilder {
-    private val segments = ArrayList<HermiteSplineCubicSegment>()
+class SplineBuilder {
+    private data class Point(val t: Double, val y: Double) {
+        operator fun minus(b: Point) = y - b.y
+    }
 
-    private var started = false
-    private var lastKey = 0.0
-    private var lastValue = 0.0
+    private val points = ArrayList<Point>()
 
-    fun point(key: Double, value: Double): MappedSplineBuilder {
-        if (!started) {
-            started = true
-            lastKey = key
-            lastValue = value
-        } else {
-            segments.add(HermiteSplineCubicSegment(lastKey, key, listOf(lastValue, value)))
-            lastKey = key
-            lastValue = value
-        }
+    fun with(t: Double, y: Double): SplineBuilder {
+        points.add(Point(t, y))
 
         return this
     }
 
-    fun buildHermite(listFactory: ((List<HermiteSplineCubicSegment>) -> ISplineSegmentList<HermiteSplineCubicSegment>)): HermiteSplineCubicMapped {
-        if (segments.isEmpty()) {
-            error("Tried to build spline with 0 segments")
+    fun buildCubicKB(t: Double = 0.0, b: Double = 0.0, c: Double = 0.0): Spline {
+        require(points.size >= 2) { "Cannot build spline with ${points.size} points"}
+
+        val segments = ArrayList<SplineSegment>()
+
+        for (i in 1 until points.size) {
+            val `pᵢ` = points[i - 1]
+            val `pᵢ₊₁` = points[i]
+            val `pᵢ₋₁` = if(i == 1) `pᵢ` else points[i - 2]
+            val `pᵢ₊₂` = if(i == points.size - 1) `pᵢ₊₁` else points[i + 1]
+
+           segments.add(
+                CubicHermiteSplineSegment(
+                    `pᵢ`.t,
+                    `pᵢ₊₁`.t,
+                    `pᵢ`.y,
+                    `pᵢ₊₁`.y,
+                    dy0KochanekBartels(t, b, c, `pᵢ₋₁`.y, `pᵢ`.y, `pᵢ₊₁`.y),
+                    dy1KochanekBartels(t, b, c, `pᵢ`.y, `pᵢ₊₁`.y, `pᵢ₊₂`.y)
+                )
+            )
         }
 
-        return HermiteSplineCubicMapped(listFactory(segments.toList()))
+        return Spline(TreeSplineSegmentMap(segments))
     }
 
-    fun buildHermite(): HermiteSplineCubicMapped {
-        return buildHermite(::TreeSplineSegmentList)
+    fun buildQuinticLoose(): Spline {
+        require(points.size >= 2) { "Cannot build spline with ${points.size} points"}
+
+        val segments = ArrayList<SplineSegment>()
+
+        for (i in 1 until points.size) {
+            val `pᵢ` = points[i - 1]
+            val `pᵢ₊₁` = points[i]
+            val `pᵢ₋₁` = if(i == 1) `pᵢ` else points[i - 2]
+            val `pᵢ₊₂` = if(i == points.size - 1) `pᵢ₊₁` else points[i + 1]
+
+            segments.add(
+                QuinticHermiteSplineSegment(
+                    `pᵢ`.t,
+                    `pᵢ₊₁`.t,
+                    `pᵢ`.y,
+                    `pᵢ₊₁`.y,
+                    `pᵢ₋₁`.y,
+                    0.0,
+                    0.0,
+                    `pᵢ₊₂`.y
+                )
+            )
+        }
+
+        return Spline(TreeSplineSegmentMap(segments))
     }
 
-    fun buildHermite2(): HermiteSplineCubicMapped {
-        return buildHermite(::LinearSplineSegmentList)
+    companion object {
+        private fun dy0KochanekBartels(t: Double, b: Double, c: Double, `pᵢ₋₁`: Double, `pᵢ`: Double, `pᵢ₊₁`: Double) = ((1.0 - t) * (1.0 + b) * (1.0 + c)) / 2.0 * (`pᵢ` - `pᵢ₋₁`) + ((1.0 - t) * (1.0 - b) * (1.0 - c)) / 2.0 * (`pᵢ₊₁` - `pᵢ`)
+        private fun dy1KochanekBartels(t: Double, b: Double, c: Double, `pᵢ`: Double, `pᵢ₊₁`: Double, `pᵢ₊₂`: Double) = ((1.0 - t) * (1.0 + b) * (1.0 - c)) / 2.0 * (`pᵢ₊₁` - `pᵢ`) + ((1.0 - t) * (1.0 - b) * (1.0 + c)) / 2.0 * (`pᵢ₊₂` - `pᵢ₊₁`)
     }
 }
 
-fun hermiteMappedCubic(): MappedSplineBuilder {
-    return MappedSplineBuilder()
+class SplineBuilder3d {
+    val x = SplineBuilder()
+    val y = SplineBuilder()
+    val z = SplineBuilder()
+
+    fun with(t: Double, v: Vector3d): SplineBuilder3d {
+        x.with(t, v.x)
+        y.with(t, v.y)
+        z.with(t, v.z)
+
+        return this
+    }
+
+    fun buildCubicKB(t: Double = 0.0, b: Double = 0.0, c: Double = 0.0) = Spline3d(
+        x.buildCubicKB(t, b, c),
+        y.buildCubicKB(t, b, c),
+        z.buildCubicKB(t, b, c)
+    )
+
+    fun buildQuinticLoose(t: Double = 0.0, b: Double = 0.0, c: Double = 0.0) = Spline3d(
+        x.buildCubicKB(t, b, c),
+        y.buildCubicKB(t, b, c),
+        z.buildCubicKB(t, b, c)
+    )
+}
+
+class KDCubicInterpolatorBuilder(val size: Int) {
+    init {
+        require(size > 0)
+    }
+
+    val builders = List(size) { SplineBuilder() }
+
+    fun with(t: Double, y: KDVectorD): KDCubicInterpolatorBuilder {
+        require(y.size == size)
+
+        builders.forEachIndexed { i, builder ->
+            builder.with(t, y[i])
+        }
+
+        return this
+    }
+}
+
+fun Spline.valueScan(samples: Int): DoubleArray {
+    val results = DoubleArray(samples)
+
+    for (i in 0 until samples) {
+        results[i] = this.evaluate(
+            i.toDouble().mappedTo(
+                0.0,
+                samples - 1.0,
+                this.segments.t0,
+                this.segments.t1
+            )
+        )
+    }
+
+    return results
+}
+
+fun Spline.pairScan(samples: Int): List<Pair<Double, Double>> {
+    val results = ArrayList<Pair<Double, Double>>(samples)
+
+    for (i in 0 until samples) {
+        val t = i.toDouble().mappedTo(
+            0.0,
+            samples - 1.0,
+            this.segments.t0,
+            this.segments.t1
+        )
+
+        results.add(Pair(t, this.evaluate(t)))
+    }
+
+    return results
+}
+
+fun Spline.pairScanDual(samples: Int, n: Int = 1): List<Pair<Double, Dual>> {
+    val results = ArrayList<Pair<Double, Dual>>(samples)
+
+    for (i in 0 until samples) {
+        val t = i.toDouble().mappedTo(
+            0.0,
+            samples - 1.0,
+            this.segments.t0,
+            this.segments.t1
+        )
+
+        results.add(Pair(t, this.evaluateDual(t, n)))
+    }
+
+    return results
+}
+
+fun Spline.arclengthScan(a: Double, b: Double, eps: Double = 1e-15) = integralScan(a, b, eps) { this.evaluateDual(it, 2)[1] }
+
+data class Pose2dParametric(val value: Pose2d, val param: Double)
+
+data class Spline2d(val x: Spline, val y: Spline) {
+    fun evaluate(t: Double) = Vector2d(x.evaluate(t), y.evaluate(t))
+    fun evaluateDual(t: Double, n: Int = 1) = Vector2dDual(x.evaluateDual(t, n), y.evaluateDual(t, n))
+    fun evaluateTan(t: Double) = evaluateDual(t, 2).tail().value.normalized()
+    fun evaluatePose(t: Double) = Pose2d(evaluate(t), Rotation2d.dir(evaluateTan(t)))
+    fun arclengthScan(a: Double, b: Double, eps: Double = 1e-15) = integralScan(a, b, eps) { this.evaluateDual(it, 2)[1].norm }
+}
+
+data class Pose3dParametric(val value: Pose3d, val param: Double)
+
+data class Spline3d(val x: Spline, val y: Spline, val z: Spline) {
+    fun evaluate(t: Double) = Vector3d(x.evaluate(t), y.evaluate(t), z.evaluate(t))
+    fun evaluateDual(t: Double, n: Int = 1) = Vector3dDual(x.evaluateDual(t, n), y.evaluateDual(t, n), z.evaluateDual(t, n))
+    fun tangent(t: Double) = evaluateDual(t, 2)[1].normalized()
+    fun evaluatePose(t: Double) = Pose3d(evaluate(t), Rotation3d.rma(frenet(t)))
+    fun arclengthScan(a: Double, b: Double, eps: Double = 1e-15) = integralScan(a, b, eps) { this.evaluateDual(it, 2)[1].norm }
+    fun paramSpeed(t: Double) = evaluateDual(t, 2)[1].norm
+    fun curvature(t: Double) = evaluateDual(t, 3).let { (it[1] x it[2]).norm / it[1].norm.pow(3) }
+    fun torsion(t: Double) = evaluateDual(t, 4).let { ((it[1] x it[2]) o it[3]) / (it[1] x it[2]).norm.pow(2) }
+
+    fun frenet(t: Double) = evaluateDual(t, 3).let {
+        val T = it[1].normalized()
+        val B = (it[1] x it[2]).normalized()
+        val N = (B x T)
+        Matrix3x3(T, N, B)
+    }
+}
+
+fun interface Adaptscan3dCondition {
+    fun splits(s: Spline3d, t0: Double, t1: Double): Boolean
+}
+
+fun chordNormCondition3d(distMax: Double) : Adaptscan3dCondition {
+    require(distMax > 0.0)
+
+    val distMaxSqr = distMax * distMax
+
+    return Adaptscan3dCondition { s, t0, t1 ->
+        s.evaluate(t0) distToSqr s.evaluate(t1) > distMaxSqr
+    }
+}
+
+fun diffCondition3d(distMax: Double, rotIncrMax: Double) : Adaptscan3dCondition {
+    require(distMax > 0.0)
+    require(rotIncrMax > 0.0)
+
+    val distMaxSqr = distMax * distMax
+    val c = cos(rotIncrMax)
+
+    return Adaptscan3dCondition { s, t0, t1 ->
+        val r0 = s.evaluateDual(t0, 2)
+        val r1 = s.evaluateDual(t1, 2)
+
+        (r0.value - r1.value).normSqr > distMaxSqr || abs(r0[1] cosAngle r1[1]) < c
+    }
+}
+
+private data class AdaptscanFrame(val t0: Double, val t1: Double)
+
+fun Spline3d.adaptscan(
+    rxT: MutableList<Double>, t0: Double, t1: Double,
+    tIncrMax: Double,
+    iMax: Int = Int.MAX_VALUE,
+    condition: Adaptscan3dCondition
+): Boolean {
+    require(t0 < t1)
+    require(tIncrMax > 0.0)
+
+    rxT.add(t0)
+
+    val stack = ArrayDeque<AdaptscanFrame>().apply {
+        addLast(AdaptscanFrame(t0, t1))
+    }
+
+    var iter = 0
+    var t = t0
+
+    while (stack.isNotEmpty()) {
+        val fr = stack.removeLast()
+
+        if (abs(fr.t1 - t) > tIncrMax || condition.splits(this, fr.t0, fr.t1)) {
+            stack.addLast(AdaptscanFrame((fr.t0 + fr.t1) / 2.0, fr.t1))
+            stack.addLast(AdaptscanFrame(fr.t0, (fr.t0 + fr.t1) / 2.0))
+        } else {
+            rxT.add(fr.t1)
+            t = fr.t1
+        }
+
+        if (iter++ >= iMax) {
+            return false
+        }
+    }
+
+    return true
 }
 
 /**
@@ -466,19 +563,17 @@ fun hermiteMappedCubic(): MappedSplineBuilder {
  * @param interpolator The grid interpolator to use.
  * @param mappings Value-coordinate splines for every grid dimension.
  * */
-class MappedGridInterpolator(
-    val interpolator: GridInterpolator,
-    val mappings: List<HermiteSplineCubicMapped>) {
+class MappedGridInterpolator(val interpolator: GridInterpolator, val mappings: List<Spline>) {
     init {
         if(mappings.size != interpolator.grid.dimensions) {
             error("Mismatched mapping set")
         }
     }
 
-    fun evaluate(coordinates: IKDVectorD): Double {
+    fun evaluate(coordinates: KDVectorD): Double {
         val grid = interpolator.grid
 
-        val gridCoordinates = KDVectorD.ofSize(grid.dimensions)
+        val gridCoordinates = ArrayKDVectorD.ofSize(grid.dimensions)
 
         for (dim in 0 until grid.dimensions) {
             gridCoordinates[dim] = mappings[dim].evaluate(coordinates[dim])
@@ -492,13 +587,9 @@ fun MappedGridInterpolator.evaluate(vararg coordinates: Double): Double {
     return this.evaluate(kdVectorDOf(coordinates.asList()))
 }
 
-fun hermiteCubic(a: Double, b: Double, c: Double, d: Double, t: Double): Double {
-    val t2 = t * t
-    val t3 = t2 * t
-
-    val h1 = -a / 2.0 + 3.0 * b / 2.0 - 3.0 * c / 2.0 + d / 2.0
-    val h2 = a - 5.0 * b / 2.0 + 2.0 * c - d / 2.0
-    val h3 = -a / 2.0 + c / 2.0
-
-    return h1 * t3 + h2 * t2 + h3 * t + b
+/**
+ * @return A [GridInterpolator] created from [this] grid.
+ * */
+fun ArrayKDGridD.interpolator(): GridInterpolator {
+    return GridInterpolator(this)
 }

@@ -14,17 +14,17 @@ class GeometryTests {
         assert(Vector2d.unitY == Vector2d(0.0, 1.0))
         assert(Vector2d.unitX + Vector2d.unitY == Vector2d.one)
         assert(Vector2d.zero != Vector2d.one)
-        assert(Vector2d.zero.length == 0.0 && Vector2d.zero.lengthSqr == 0.0)
-        assert(Vector2d.one.length == sqrt(2.0) && Vector2d.one.lengthSqr == 2.0)
-        assert(Vector2d.unitX.length == 1.0 && Vector2d.unitX.lengthSqr == 1.0)
-        assert(Vector2d.unitY.length == 1.0 && Vector2d.unitY.lengthSqr == 1.0)
+        assert(Vector2d.zero.norm == 0.0 && Vector2d.zero.normSqr == 0.0)
+        assert(Vector2d.one.norm == sqrt(2.0) && Vector2d.one.normSqr == 2.0)
+        assert(Vector2d.unitX.norm == 1.0 && Vector2d.unitX.normSqr == 1.0)
+        assert(Vector2d.unitY.norm == 1.0 && Vector2d.unitY.normSqr == 1.0)
         assert((Vector2d.one * 0.5 + Vector2d.one / 2.0) == Vector2d.one)
         assert(Vector2d.one == Vector2d.one * 2.0 - Vector2d.one)
-        assert(Vector2d(1000.0, 1000.0).normalized().length.approxEq(1.0))
+        assert(Vector2d(1000.0, 1000.0).normalized().norm.approxEq(1.0))
         assert(Vector2d(1000.0, 1000.0).normalized() * sqrt(1000.0 * 1000.0 * 2) == Vector2d(1000.0, 1000.0))
-        assert(lerp(Vector2d.zero, Vector2d(1.0, 2.0), 0.0) == Vector2d.zero)
-        assert(lerp(Vector2d.zero, Vector2d(1.0, 2.0), 0.5) == Vector2d(1.0, 2.0) / 2.0)
-        assert(lerp(Vector2d.zero, Vector2d(1.0, 2.0), 1.0) == Vector2d(1.0, 2.0))
+        assert(Vector2d.lerp(Vector2d.zero, Vector2d(1.0, 2.0), 0.0) == Vector2d.zero)
+        assert(Vector2d.lerp(Vector2d.zero, Vector2d(1.0, 2.0), 0.5) == Vector2d(1.0, 2.0) / 2.0)
+        assert(Vector2d.lerp(Vector2d.zero, Vector2d(1.0, 2.0), 1.0) == Vector2d(1.0, 2.0))
     }
 
     @Test
@@ -52,13 +52,13 @@ class GeometryTests {
         assert((Rotation2d.exp(PI * 2.0) * Vector2d.unitX).approxEq(Vector2d.unitX, EPS))
         assert((Rotation2d.exp(PI * 8.0) * Vector2d.unitX).approxEq(Vector2d.unitX, EPS))
 
-        areEqual(interpolate(Rotation2d.zero, rpi, 0.0), Rotation2d.zero)
-        areEqual(interpolate(Rotation2d.zero, rpi, 1.0), rpi)
-        areEqual(interpolate(Rotation2d.zero, rpi, 0.5), Rotation2d.exp(PI / 2.0))
-        areEqual(interpolate(Rotation2d.zero, rpi, 0.25), Rotation2d.exp(PI / 4.0))
+        areEqual(Rotation2d.interpolate(Rotation2d.zero, rpi, 0.0), Rotation2d.zero)
+        areEqual(Rotation2d.interpolate(Rotation2d.zero, rpi, 1.0), rpi)
+        areEqual(Rotation2d.interpolate(Rotation2d.zero, rpi, 0.5), Rotation2d.exp(PI / 2.0))
+        areEqual(Rotation2d.interpolate(Rotation2d.zero, rpi, 0.25), Rotation2d.exp(PI / 4.0))
 
         rangeScan(start = 0.0, end = 1.0) { t ->
-            areEqual(interpolate(rpi, rpi, t), rpi)
+            areEqual(Rotation2d.interpolate(rpi, rpi, t), rpi)
         }
 
         rangeScanRec({ vec ->

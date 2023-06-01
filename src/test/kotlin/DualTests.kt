@@ -1,10 +1,8 @@
 import org.eln2.mc.mathematics.*
+import org.eln2.mc.mathematics.sinh
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
-import kotlin.math.cos
-import kotlin.math.pow
-import kotlin.math.sin
-import kotlin.math.sqrt
+import kotlin.math.*
 
 class DualTests {
     private val EPS = 10e-12
@@ -52,6 +50,30 @@ class DualTests {
             areEqual(v[1], -sin(x))
             areEqual(v[2], -cos(x))
             areEqual(v[3], sin(x))
+        }
+    }
+
+    @Test
+    fun sinhTest() {
+        rangeScanDual { x, xDual ->
+            val v = sinh(xDual)
+
+            areEqual(v.value, sinh(x))
+            areEqual(v[1], cosh(x))
+            areEqual(v[2], sinh(x))
+            areEqual(v[3], cosh(x))
+        }
+    }
+
+    @Test
+    fun coshTest() {
+        rangeScanDual { x, xDual ->
+            val v = cosh(xDual)
+
+            areEqual(v.value, cosh(x))
+            areEqual(v[1], sinh(x))
+            areEqual(v[2], cosh(x))
+            areEqual(v[3], sinh(x))
         }
     }
 
