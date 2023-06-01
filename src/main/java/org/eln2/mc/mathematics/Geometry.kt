@@ -875,6 +875,11 @@ data class Vector3d(val x: Double, val y: Double, val z: Double) {
 
 data class Vector3dDual(val x: Dual, val y: Dual, val z: Dual) {
     constructor(value: Dual): this(value, value, value)
+    constructor(values: List<Vector3d>) : this(
+        Dual(values.map { it.x }),
+        Dual(values.map { it.y }),
+        Dual(values.map { it.z })
+    )
 
     init {
         require(x.size == y.size && y.size == z.size) { "Dual X, Y and Z must be of the same size" }
@@ -906,6 +911,7 @@ data class Vector3dDual(val x: Dual, val y: Dual, val z: Dual) {
     companion object {
         fun const(x: Double, y: Double, z: Double, n: Int = 1) = Vector3dDual(Dual.const(x, n), Dual.const(y, n), Dual.const(z, n))
         fun const(value: Vector3d, n: Int = 1) = const(value.x, value.y, value.z, n)
+        fun of(vararg values: Vector3d) = Vector3dDual(values.asList())
     }
 }
 

@@ -1,11 +1,11 @@
-import org.eln2.mc.mathematics.SplineBuilder
+import org.eln2.mc.mathematics.InterpolatorBuilder
 import org.eln2.mc.mathematics.approxEq
 import org.junit.jupiter.api.Test
 
 class HermiteSplineTests {
     @Test
     fun testInterpolation() {
-        val builder = SplineBuilder()
+        val builder = InterpolatorBuilder()
 
         val points = ArrayList<Pair<Double, Double>>().also {
             for (i in 0..1000) {

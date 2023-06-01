@@ -468,6 +468,8 @@ fun integralScan(a: Double, b: Double, tolerance: Double = 1e-15, f: ((Double) -
 }
 
 class Dual private constructor(private val values: DoubleArray) {
+    constructor(values: List<Double>) : this(values.toDoubleArray())
+
     /**
      * Constructs a [Dual] from the value [x] and the [tail].
      * */
@@ -584,7 +586,7 @@ class Dual private constructor(private val values: DoubleArray) {
             }
         )
 
-        fun of(vararg values: Double) = Dual(values.asList().toDoubleArray())
+        fun of(vararg values: Double) = Dual(values.asList())
     }
 }
 
