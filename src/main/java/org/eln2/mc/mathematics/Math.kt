@@ -359,7 +359,7 @@ fun snzEps(a: Double): Double {
     return -2.2e-15
 }
 
-fun Double.nonZero() = this + snzEps(this)
+fun Double.nz() = this + snzEps(this)
 
 fun snz(a: Double): Double {
     if (a >= 0.0) {
@@ -407,7 +407,7 @@ private fun adaptlobStp(f: ((Double) -> Double), a: Double, b: Double, fa: Doubl
         adaptlobStp(f, mrr, b, fmrr, fb, `is`)
 }
 
-fun integralScan(f: ((Double) -> Double), a: Double, b: Double, tolerance: Double = 1e-15): Double {
+fun integralScan(a: Double, b: Double, tolerance: Double = 1e-15, f: ((Double) -> Double)): Double {
     var tol = tolerance
 
     val eps = 1e-15
@@ -529,9 +529,9 @@ class Dual private constructor(private val values: DoubleArray) {
         if (this.isReal || other.isReal) const(this[0] / other[0])
         else Dual(this.value / other.value, (this.tail() * other - this * other.tail()) / (other * other))
 
-    inline fun function(x: ((Double) -> Double), dxFront: ((Dual) -> Dual)): Dual =
+    inline fun function(x: ((Double) -> Double), dx: ((Dual) -> Dual)): Dual =
         if (this.isReal) const(x(this.value))
-        else Dual(x(this.value), dxFront(this.head()) * this.tail())
+        else Dual(x(this.value), dx(this.head()) * this.tail())
 
     operator fun plus(const: Double) = Dual(values.clone().also { it[0] += const })
     operator fun minus(const: Double) = Dual(values.clone().also { it[0] -= const })
@@ -597,4 +597,6 @@ fun sin(d: Dual): Dual = d.function({ sin(it) }) { cos(it) }
 fun cos(d: Dual): Dual = d.function({ cos(it) }) { -sin(it) }
 fun pow(d: Dual, n: Double): Dual = d.function({ it.pow(n) }) { n * pow(it, n - 1) }
 fun sqrt(d: Dual): Dual = d.function({ sqrt(it) }) { (Dual.const(1.0, d.size) / (Dual.const(2.0, d.size) * sqrt(it))) }
-fun Dual.sqr() = this * this
+fun sinh(d: Dual): Dual = d.function({ sinh(it) }) { cosh(it) }
+fun cosh(d: Dual): Dual = d.function({ cosh(it) }) { sinh(it) }
+

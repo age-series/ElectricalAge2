@@ -245,8 +245,6 @@ object BulkMessages {
     }
 }
 
-data class PacketEvent<P>(val packet: P): Event
-
 fun interface DeserializeHandler {
     fun handle(binary: ByteArray)
 }

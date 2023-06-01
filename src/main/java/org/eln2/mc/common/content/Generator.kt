@@ -757,11 +757,11 @@ data class PhotovoltaicModel(
 
 object PhotovoltaicModels {
     // We map angle difference to a voltage coefficient. 0 - directly overhead, 1 - under horizon
-    private val TEST_SPLINE = hermiteMappedCubic().apply {
-        point(0.0, 1.0)
-        point(0.95, 0.8)
-        point(1.0, 0.0)
-    }.buildHermite()
+    private val TEST_SPLINE = SplineBuilder()
+        .with(0.0, 1.0)
+        .with(0.95, 0.8)
+        .with(1.0, 0.0)
+        .buildCubicKB()
 
     private fun voltageTest(maximumVoltage: Double): PVFunction {
         return PVFunction { view ->
