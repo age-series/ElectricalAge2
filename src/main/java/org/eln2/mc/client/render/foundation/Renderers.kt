@@ -17,10 +17,10 @@ import org.eln2.mc.common.blocks.foundation.MultipartBlockEntity
 import org.eln2.mc.common.parts.foundation.PartRenderer
 import org.eln2.mc.common.parts.foundation.Part
 import org.eln2.mc.common.parts.foundation.PartUpdateType
-import org.eln2.mc.extensions.blockCenter
-import org.eln2.mc.extensions.times
-import org.eln2.mc.extensions.toVec3
-import org.eln2.mc.extensions.zeroCenter
+import org.eln2.mc.blockCenter
+import org.eln2.mc.times
+import org.eln2.mc.toVec3
+import org.eln2.mc.zeroCenter
 import org.eln2.mc.mathematics.map
 import org.eln2.mc.mathematics.vec3
 

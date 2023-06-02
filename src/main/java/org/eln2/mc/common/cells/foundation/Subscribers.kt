@@ -1,8 +1,6 @@
 package org.eln2.mc.common.cells.foundation
 
 import org.ageseries.libage.data.mutableMultiMapOf
-import org.eln2.mc.extensions.removeAll
-import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.max
 
 /**
@@ -110,7 +108,8 @@ class SubscriberPool : SubscriberCollection {
 
         iterating = false
 
-        updates.removeAll { applyUpdate(it) }
+        updates.forEach { applyUpdate(it) }
+        updates.clear()
     }
 
     private interface Update

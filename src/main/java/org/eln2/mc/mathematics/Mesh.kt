@@ -5,45 +5,39 @@ import java.io.File
 import java.io.FileWriter
 import kotlin.math.PI
 
-class Obj {
+class ObjWriter {
     val file = FileWriter(File("test.obj"), false)
 
     private fun getValue(d: Double) = d.toBigDecimal().toPlainString()
-
     private fun getValue(v: Vector3d) = "${getValue(v.x)} ${getValue(v.y)} ${getValue(v.z)}"
 
     fun vert(v: Vector3d) = file.appendLine("v ${getValue(v)}")
     fun vert(x: Double, y: Double, z: Double) = vert(Vector3d(x, y, z))
     fun vert(v: List<Vector3d>) = file.appendLine("v ${v.joinToString(" ")}")
-    fun indices(a: Int, b: Int, c: Int) = file.appendLine("f ${a + 1} ${b + 1} ${c + 1}")
-    fun indices(a: Int, b: Int, c: Int, d: Int) = file.appendLine("f ${a + 1} ${b + 1} ${c + 1} ${d + 1}")
+    fun indices(indices: List<Int>) = file.appendLine("f ${indices.map{ it + 1}.joinToString(" ")}")
 
     fun close() {
         file.close()
     }
 }
 
-class IndexedMesh {
-    val vertices = ArrayList<Vector3d>()
-    val indices = ArrayList<Int>()
-
-    // precondition: triangulated
-    fun save() {
-        Obj().apply {
+data class IndexedMesh(val vertices: List<Vector3d>, val indices: List<Int>) {
+    fun saveTest(size: Int = 3) {
+        ObjWriter().apply {
             vertices.forEach { vert(it) }
-            indices.chunked(3).forEach {
-                indices(it[0], it[1], it[2])
+            indices.chunked(size).forEach {
+                indices(it)
             }
         }.close()
     }
 }
 
-data class VtxTri(val a: Int, val b: Int, val c: Int)
-data class VtxQuad(val a: Int, val b: Int, val c: Int, val d: Int)
+data class IndexedTri(val a: Int, val b: Int, val c: Int)
+data class IndexedQuad(val a: Int, val b: Int, val c: Int, val d: Int)
 
 class MeshBuilder {
     val vertices = ArrayList<Vector3d>()
-    val connections = MutableSetMapMultiMap<Int, Int>()
+    val edges = MutableSetMapMultiMap<Int, Int>()
 
     fun addVertex(v: Vector3d): Int {
         val idx = vertices.size
@@ -51,13 +45,13 @@ class MeshBuilder {
         return idx
     }
 
-    fun connect(a: Int, b: Int) {
-        connections[a] = b
-        connections[b] = a
+    fun addEdge(a: Int, b: Int) {
+        edges[a] = b
+        edges[b] = a
     }
 
     fun triangulate() {
-        val generated = HashSet<VtxQuad>()
+        val generated = HashSet<IndexedQuad>()
 
         vertices.indices.forEach { vertIdxMesh ->
             cycleScan(vertIdxMesh, 4).forEach {
@@ -66,36 +60,37 @@ class MeshBuilder {
                 it.add(vertIdxMesh)
                 it.sort()
 
-                val quad = VtxQuad(it[0], it[1], it[2], it[3])
+                val quad = IndexedQuad(it[0], it[1], it[2], it[3])
 
                 if(generated.add(quad)) {
-                    connect(vertIdxMesh, splitTarget)
+                    addEdge(vertIdxMesh, splitTarget)
                 }
             }
         }
     }
 
-    fun indexedMeshScan(): IndexedMesh {
-        val mesh = IndexedMesh()
+    fun build(): IndexedMesh {
+        val indices = ArrayList<Int>()
 
-        mesh.vertices.addAll(vertices)
+        val generated = HashSet<IndexedTri>()
 
-        val generated = HashSet<VtxTri>()
-
-        mesh.vertices.indices.forEach { vertIdxMesh ->
+        vertices.indices.forEach { vertIdxMesh ->
             cycleScan(vertIdxMesh, 3).forEach {
                 it.add(vertIdxMesh)
                 it.sort()
 
-                val tri = VtxTri(it[0], it[1], it[2])
+                val tri = IndexedTri(it[0], it[1], it[2])
 
                 if(generated.add(tri)) {
-                    mesh.indices.addAll(it)
+                    indices.addAll(it)
                 }
             }
         }
 
-        return mesh
+        return IndexedMesh(
+            vertices.toList(),
+            indices
+        )
     }
 
     fun cycleScan(vert: Int, targetLength: Int): ArrayList<ArrayList<Int>> {
@@ -106,7 +101,7 @@ class MeshBuilder {
             visits[actualVert] = actualVertSource
 
             if (rxRemaining > 0) {
-                connections[actualVert].forEach { actualVertConn ->
+                edges[actualVert].forEach { actualVertConn ->
                     if(!visits.contains(actualVertConn)) {
                         levelScan(
                             rxRemaining = rxRemaining - 1,
@@ -121,7 +116,7 @@ class MeshBuilder {
                 return
             }
 
-            if(connections[actualVert].contains(cycleVert)) {
+            if(edges[actualVert].contains(cycleVert)) {
                 val pathway = ArrayList<Int>()
 
                 var current = actualVert
@@ -152,104 +147,59 @@ class MeshBuilder {
     }
 }
 
-fun printCircle(vertices: Int, r: Double = 1.0): ArrayList<Vector2d> {
-    require(vertices >= 2)
+data class Sketch(val vertices: List<Vector2d>)
+
+fun sketchCircle(vertices: Int, r: Double = 1.0): Sketch {
+    require(vertices >= 3)
 
     val results = ArrayList<Vector2d>()
 
-    repeat(vertices) {
-        val angle = it.toDouble().mappedTo(0.0, vertices.toDouble(), -PI, PI)
+    repeat(vertices) { vertIdx ->
+        val angle = vertIdx
+            .toDouble()
+            .mappedTo(
+                srcMin = 0.0,
+                srcMax = vertices.toDouble(),
+                dstMin = -PI,
+                dstMax = PI
+            )
+
         results.add(Rotation2d.exp(angle).direction * r)
     }
 
-    return results
+    return Sketch(results)
 }
 
-fun main() {
-    val path = PathBuilder3d().apply {
-        add(
-            0.0,
-            Vector3dDual.of(
-                Vector3d(0.0, 0.0, 0.0),
-                Vector3d(0.0, 0.0, 5.0),
-                Vector3d(1.0, 0.0, 0.0)
-            )
-        )
-        add(
-            1.0,
-            Vector3dDual.of(
-                Vector3d(3.0, 0.0, 10.0),
-                Vector3d(5.0, 0.0, 0.0),
-                Vector3d(0.0, 0.0, -1.0)
-            )
-        )
-    }.buildQuintic()
+fun extrudeSketch(sketch: Sketch, spline: Spline3d, samples: List<Double>): MeshBuilder {
+    val builder = MeshBuilder()
 
-    val meshB = MeshBuilder()
+    fun extrude(isFirst: Boolean, t: Double) {
+        val mapSketchModel = HashMap<Int, Int>()
 
-    val params = ArrayList<Double>()
+        val txSketchTarget = spline.evaluatePoseFrenet(t)
 
-    path.adaptscan(
-        rxT = params,
-        0.0,
-        1.0,
-        0.1,
-        condition = diffCondition3d(
-            distMax = 1.0,
-            rotIncrMax = PI / 32.0
-        )
-    )
-
-    val circlePrint = printCircle(
-        vertices = 8,
-        r = 0.25
-    )
-
-    val txPathMdl = Matrix3x3(
-        Vector3d.unitX,
-        Vector3d.unitZ,
-        -Vector3d.unitY
-    )
-
-    fun extrude(previousLayer: HashMap<Int, Int>?, t: Double): HashMap<Int, Int> {
-        val mapPrintMdl = HashMap<Int, Int>()
-
-        val txPrintPath = path.evaluatePoseFrenet(t)
-
-        circlePrint.forEachIndexed { vertIdxPrint, (xPrint, yPrint) ->
-            val vertIdxMdl = meshB.addVertex(
-                txPathMdl * (txPrintPath * Vector3d(0.0, xPrint, yPrint))
+        sketch.vertices.forEachIndexed { vertIdxSketch, (xSketch, ySketch) ->
+            val vertIdxModel = builder.addVertex(
+                txSketchTarget * Vector3d(0.0, xSketch, ySketch)
             )
 
-            mapPrintMdl[vertIdxPrint] = vertIdxMdl
+            mapSketchModel[vertIdxSketch] = vertIdxModel
 
-            if(previousLayer != null) {
-                meshB.connect(
-                    vertIdxMdl,
-                    previousLayer[vertIdxPrint]!!
-                )
+            if(!isFirst) {
+                builder.addEdge(vertIdxModel, vertIdxModel - sketch.vertices.size)
             }
         }
 
-        circlePrint.indices.forEach { vertIdxPrint ->
-            meshB.connect(
-                mapPrintMdl[vertIdxPrint]!!,
-                if(vertIdxPrint == circlePrint.size - 1) mapPrintMdl[0]!!
-                else mapPrintMdl[vertIdxPrint+1]!!
+        sketch.vertices.indices.forEach { vertIdxSketch ->
+            builder.addEdge(
+                mapSketchModel[vertIdxSketch]!!,
+                if(vertIdxSketch == sketch.vertices.size - 1) mapSketchModel[0]!!
+                else mapSketchModel[vertIdxSketch+1]!!
             )
         }
-
-        return mapPrintMdl
     }
 
-    var level: HashMap<Int, Int>? = null
-    params.forEach {
-        level = extrude(level, it)
-    }
+    samples.forEachIndexed { i, t -> extrude(i == 0, t) }
 
-    meshB.triangulate()
-
-    val mesh = meshB.indexedMeshScan()
-
-    mesh.save()
+    return builder
 }

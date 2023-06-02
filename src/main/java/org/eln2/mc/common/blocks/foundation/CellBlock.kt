@@ -33,7 +33,7 @@ import org.eln2.mc.common.space.IdentityDirectionLocator
 import org.eln2.mc.common.space.LocationDescriptor
 import org.eln2.mc.data.DataNode
 import org.eln2.mc.data.DataEntity
-import org.eln2.mc.extensions.isHorizontal
+import org.eln2.mc.isHorizontal
 import org.eln2.mc.integration.WailaEntity
 import org.eln2.mc.integration.WailaTooltipBuilder
 import org.eln2.mc.sim.BiomeEnvironments

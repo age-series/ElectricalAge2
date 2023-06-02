@@ -13,8 +13,8 @@ import org.eln2.mc.data.DataNode
 import org.eln2.mc.data.DataEntity
 import org.eln2.mc.data.PowerField
 import org.eln2.mc.data.TemperatureField
-import org.eln2.mc.extensions.destroyPart
-import org.eln2.mc.extensions.formattedPercentN
+import org.eln2.mc.destroyPart
+import org.eln2.mc.formattedPercentN
 import org.eln2.mc.integration.WailaEntity
 import org.eln2.mc.integration.WailaTooltipBuilder
 import org.eln2.mc.sim.ThermalBody

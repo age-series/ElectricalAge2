@@ -8,7 +8,6 @@ import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.entity.player.Player
 import net.minecraftforge.event.TickEvent
 import net.minecraftforge.event.entity.EntityJoinWorldEvent
-import net.minecraftforge.event.server.ServerStartingEvent
 import net.minecraftforge.event.server.ServerStoppingEvent
 import net.minecraftforge.event.world.BlockEvent
 import net.minecraftforge.eventbus.api.SubscribeEvent
@@ -17,7 +16,6 @@ import net.minecraftforge.fml.loading.FMLPaths
 import net.minecraftforge.server.ServerLifecycleHooks
 import org.eln2.mc.Eln2
 import org.eln2.mc.Eln2.LOGGER
-import org.eln2.mc.Metrics
 import org.eln2.mc.common.blocks.foundation.GhostLightBlock
 import org.eln2.mc.common.cells.foundation.CellGraphManager
 import org.eln2.mc.common.events.EventScheduler
@@ -32,11 +30,6 @@ object CommonEvents {
     private val tickTimeAveragingList = AveragingList(100)
     private var logCountdown = 0
     private const val logInterval = 100
-
-    @SubscribeEvent
-    fun onServerStart(event: ServerStartingEvent){
-        Metrics.initialize()
-    }
 
     @SubscribeEvent
     fun onServerTick(event: TickEvent.ServerTickEvent) {
@@ -70,8 +63,6 @@ object CommonEvents {
         event.server.allLevels.forEach {
             CellGraphManager.getFor(it).serverStop()
         }
-
-        Metrics.destroy()
     }
 
     @SubscribeEvent

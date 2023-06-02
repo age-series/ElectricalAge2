@@ -11,7 +11,7 @@ import org.eln2.mc.common.items.eln2Tab
 import org.eln2.mc.data.CurrentField
 import org.eln2.mc.data.TemperatureField
 import org.eln2.mc.data.VoltageField
-import org.eln2.mc.extensions.getDataAccess
+import org.eln2.mc.getDataAccess
 import org.eln2.mc.utility.UnitType
 import org.eln2.mc.utility.valueText
 

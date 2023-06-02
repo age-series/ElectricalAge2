@@ -15,9 +15,9 @@ import org.eln2.mc.common.events.AtomicUpdate
 import org.eln2.mc.common.parts.foundation.*
 import org.eln2.mc.common.space.DirectionMask
 import org.eln2.mc.common.space.withDirectionActualRule
-import org.eln2.mc.extensions.formatted
-import org.eln2.mc.extensions.formattedPercentN
-import org.eln2.mc.extensions.useSubTagIfPreset
+import org.eln2.mc.formatted
+import org.eln2.mc.formattedPercentN
+import org.eln2.mc.useSubTagIfPreset
 import org.eln2.mc.integration.WailaTooltipBuilder
 import org.eln2.mc.mathematics.bbVec
 import org.eln2.mc.mathematics.evaluate

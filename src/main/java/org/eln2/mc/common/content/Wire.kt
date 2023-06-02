@@ -17,8 +17,8 @@ import org.ageseries.libage.sim.Material
 import org.ageseries.libage.sim.electrical.mna.Circuit
 import org.ageseries.libage.sim.thermal.*
 import net.minecraft.core.BlockPos
+import org.eln2.mc.*
 import org.eln2.mc.Eln2.LOGGER
-import org.eln2.mc.ServerOnly
 import org.eln2.mc.mathematics.bbVec
 import org.eln2.mc.client.render.foundation.MultipartBlockEntityInstance
 import org.eln2.mc.client.render.PartialModels
@@ -31,9 +31,6 @@ import org.eln2.mc.common.network.serverToClient.PacketHandlerBuilder
 import org.eln2.mc.common.parts.foundation.*
 import org.eln2.mc.common.space.*
 import org.eln2.mc.data.*
-import org.eln2.mc.extensions.*
-import org.eln2.mc.extensions.times
-import org.eln2.mc.extensions.toVec3
 import org.eln2.mc.integration.WailaEntity
 import org.eln2.mc.mathematics.lerp
 import org.eln2.mc.mathematics.map
