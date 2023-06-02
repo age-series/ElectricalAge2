@@ -6,7 +6,7 @@ import net.minecraft.nbt.CompoundTag
 import net.minecraft.nbt.ListTag
 import org.ageseries.libage.data.ImmutableBiMapView
 import org.ageseries.libage.data.biMapOf
-import org.eln2.mc.extensions.*
+import org.eln2.mc.*
 import java.util.function.Supplier
 
 interface Locator<Param>

@@ -26,10 +26,9 @@ import net.minecraft.world.level.gameevent.GameEventListener
 import net.minecraft.world.level.material.FluidState
 import net.minecraft.world.level.material.Material
 import net.minecraft.world.phys.AABB
-import org.eln2.mc.Eln2
+import org.eln2.mc.*
 import org.eln2.mc.Eln2.LOGGER
 import org.eln2.mc.common.events.EventScheduler
-import org.eln2.mc.extensions.*
 import org.eln2.mc.utility.ResourceReader
 import kotlin.math.ceil
 

@@ -12,8 +12,8 @@ import net.minecraftforge.server.ServerLifecycleHooks
 import org.ageseries.libage.sim.electrical.mna.Circuit
 import org.ageseries.libage.sim.electrical.mna.component.VoltageSource
 import org.ageseries.libage.sim.thermal.Simulator
+import org.eln2.mc.*
 import org.eln2.mc.Eln2.LOGGER
-import org.eln2.mc.CrossThreadAccess
 import org.eln2.mc.common.cells.CellRegistry
 import org.eln2.mc.common.configs.Configuration
 import org.eln2.mc.common.space.*
@@ -21,7 +21,6 @@ import org.eln2.mc.data.DataNode
 import org.eln2.mc.data.DataEntity
 import org.eln2.mc.data.DataFieldMap
 import org.eln2.mc.data.ObjectField
-import org.eln2.mc.extensions.*
 import org.eln2.mc.integration.WailaEntity
 import org.eln2.mc.sim.BiomeEnvironments
 import org.eln2.mc.utility.*

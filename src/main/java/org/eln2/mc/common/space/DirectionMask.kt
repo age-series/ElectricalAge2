@@ -1,9 +1,9 @@
 package org.eln2.mc.common.space
 
 import net.minecraft.core.Direction
-import org.eln2.mc.extensions.directionAlias
-import org.eln2.mc.extensions.index
-import org.eln2.mc.extensions.isHorizontal
+import org.eln2.mc.alias
+import org.eln2.mc.index
+import org.eln2.mc.isHorizontal
 
 /**
  * The Direction Mask is used to manipulate up to 6 directions at the same time.
@@ -62,7 +62,7 @@ value class DirectionMask(val mask: Int) {
          * Gets the cached mask for the specified direction.
          * */
         fun ofRelative(direction: RelativeDir): DirectionMask {
-            return of(direction.directionAlias())
+            return of(direction.alias)
         }
 
         /**
@@ -95,7 +95,7 @@ value class DirectionMask(val mask: Int) {
             }
 
             return DirectionMask(directions
-                .map { getBit(it.directionAlias()) }
+                .map { getBit(it.alias) }
                 .reduce { acc, mask -> acc or mask }
             )
         }
@@ -233,7 +233,7 @@ value class DirectionMask(val mask: Int) {
      * @return True if this mask has the specified direction stored in it. Otherwise, false.
      * */
     fun hasFlag(direction: RelativeDir): Boolean {
-        return hasFlag(direction.directionAlias())
+        return hasFlag(direction.alias)
     }
 
     /**

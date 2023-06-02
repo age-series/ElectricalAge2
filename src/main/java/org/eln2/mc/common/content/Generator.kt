@@ -37,10 +37,8 @@ import org.ageseries.libage.sim.thermal.MassConnection
 import org.ageseries.libage.sim.thermal.Simulator
 import org.ageseries.libage.sim.thermal.Temperature
 import org.apache.commons.math3.geometry.euclidean.threed.Vector3D
-import org.eln2.mc.ClientOnly
-import org.eln2.mc.Eln2
+import org.eln2.mc.*
 import org.eln2.mc.Eln2.LOGGER
-import org.eln2.mc.RaceCondition
 import org.eln2.mc.client.render.PartialModels
 import org.eln2.mc.client.render.PartialModels.bbOffset
 import org.eln2.mc.client.render.foundation.renderTextured
@@ -53,7 +51,6 @@ import org.eln2.mc.common.parts.foundation.*
 import org.eln2.mc.common.space.*
 import org.eln2.mc.control.pid
 import org.eln2.mc.data.*
-import org.eln2.mc.extensions.*
 import org.eln2.mc.integration.WailaEntity
 import org.eln2.mc.integration.WailaTooltipBuilder
 import org.eln2.mc.mathematics.*

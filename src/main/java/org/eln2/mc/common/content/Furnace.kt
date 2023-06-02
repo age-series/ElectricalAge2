@@ -40,7 +40,7 @@ import net.minecraftforge.items.ItemStackHandler
 import net.minecraftforge.items.SlotItemHandler
 import org.ageseries.libage.sim.Material
 import org.ageseries.libage.sim.thermal.*
-import org.eln2.mc.Eln2
+import org.eln2.mc.*
 import org.eln2.mc.Eln2.LOGGER
 import org.eln2.mc.client.render.foundation.renderColored
 import org.eln2.mc.client.render.foundation.renderTextured
@@ -52,10 +52,6 @@ import org.eln2.mc.common.events.EventScheduler
 import org.eln2.mc.common.space.DirectionMask
 import org.eln2.mc.common.space.RelativeDir
 import org.eln2.mc.common.space.withDirectionActualRule
-import org.eln2.mc.extensions.*
-import org.eln2.mc.extensions.subStep
-import org.eln2.mc.extensions.plus
-import org.eln2.mc.extensions.toVec3
 import org.eln2.mc.integration.WailaTooltipBuilder
 import org.eln2.mc.mathematics.*
 import org.eln2.mc.mathematics.map

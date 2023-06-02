@@ -1,6 +1,10 @@
 package org.eln2.mc.mathematics
 
+import net.minecraft.core.Direction
+import org.eln2.mc.toVector3d
 import kotlin.math.*
+
+const val GEO_COMPARE_EPS = 10e-8
 
 interface KDVector<T> {
     val size: Int
@@ -530,24 +534,38 @@ data class Rectangle4F(val x: Float, val y: Float, val width: Float, val height:
 }
 
 data class Matrix3x3(val c0: Vector3d, val c1: Vector3d, val c2: Vector3d) {
+    constructor(m00: Double, m01: Double, m02: Double, m10: Double, m11: Double, m12: Double, m20: Double, m21: Double, m22: Double) : this(
+        Vector3d(m00, m10, m20),
+        Vector3d(m01, m11, m21),
+        Vector3d(m02, m12, m22)
+    )
+
     val r0 get() = Vector3d(c0.x, c1.x, c2.x)
     val r1 get() = Vector3d(c0.y, c1.y, c2.y)
     val r2 get() = Vector3d(c0.z, c1.z, c2.z)
-
-    fun transpose() = Matrix3x3(r0, r1, r2)
+    val determinant get() = c0.x * (c1.y * c2.z - c2.y * c1.z) - c1.x * (c0.y * c2.z - c2.y * c0.z) + c2.x * (c0.y * c1.z - c1.y * c0.z)
+    val transpose get() = Matrix3x3(r0, r1, r2)
     val trace get() = c0.x + c1.y + c2.z
+    val normFrobeniusSqr get() = c0.normSqr + c1.normSqr + c2.normSqr
+    val normFrobenius get() = sqrt(normFrobeniusSqr)
+    val isOrthogonal get() = (this * this.transpose).approxEq(identity) && this.determinant.absoluteValue.approxEq(1.0)
+    val isSpecialOrthogonal get() = (this * this.transpose).approxEq(identity) && this.determinant.approxEq(1.0)
 
     override fun toString(): String {
         fun rowStr(row: Vector3d) = "${row.x} ${row.y} ${row.z}"
         return "${rowStr(r0)}\n${rowStr(r1)}\n${rowStr(r2)}"
     }
 
+    operator fun not() = Matrix3x3(
+        (c1.y * c2.z - c2.y * c1.z), -(c1.x * c2.z - c2.x * c1.z), (c1.x * c2.y - c2.x * c1.y),
+        -(c0.y * c2.z - c2.y * c0.z), (c0.x * c2.z - c2.x * c0.z), -(c0.x * c2.y - c2.x * c0.y),
+        (c0.y * c1.z - c1.y * c0.z), -(c0.x * c1.z - c1.x * c0.z), (c0.x * c1.y - c1.x * c0.y)
+    ) * (1.0 / determinant)
+
     operator fun times(scalar: Double) = Matrix3x3(c0 * scalar, c1 * scalar, c2 * scalar)
     operator fun times(v: Vector3d) = c0 * v.x + c1 * v.y + c2 * v.z
     operator fun times(m: Matrix3x3) = Matrix3x3(this * m.c0, this * m.c1, this * m.c2)
-
     operator fun plus(m: Matrix3x3) = Matrix3x3(c0 + m.c0, c1 + m.c1, c2 + m.c2)
-
     operator fun minus(m: Matrix3x3) = Matrix3x3(c0 - m.c0, c1 - m.c1, c2 - m.c2)
 
     fun getColumn(c: Int) = when(c) {
@@ -571,6 +589,8 @@ data class Matrix3x3(val c0: Vector3d, val c1: Vector3d, val c2: Vector3d) {
         else -> error("Row $r out of bounds")
     }
 
+    fun approxEq(other: Matrix3x3, eps: Double = GEO_COMPARE_EPS) = this.c0.approxEq(other.c0, eps) && this.c1.approxEq(other.c1, eps) && this.c2.approxEq(other.c2, eps)
+
     companion object {
         fun rows(r0: Vector3d, r1: Vector3d, r2: Vector3d) = Matrix3x3(
             Vector3d(r0.x, r1.x, r2.x),
@@ -578,17 +598,7 @@ data class Matrix3x3(val c0: Vector3d, val c1: Vector3d, val c2: Vector3d) {
             Vector3d(r0.z, r1.z, r2.z)
         )
 
-        fun of(m00: Double, m01: Double, m02: Double, m10: Double, m11: Double, m12: Double, m20: Double, m21: Double, m22: Double) = Matrix3x3(
-            Vector3d(m00, m10, m20),
-            Vector3d(m01, m11, m21),
-            Vector3d(m02, m12, m22)
-        )
-
-        val identity: Matrix3x3 = of(
-            1.0, 0.0, 0.0,
-            0.0, 1.0, 0.0,
-            0.0, 0.0, 1.0
-        )
+        val identity = Matrix3x3(Vector3d.unitX, Vector3d.unitY, Vector3d.unitZ)
     }
 }
 
@@ -598,16 +608,19 @@ data class Vector2d(val x: Double, val y: Double) {
     infix fun o(b: Vector2d) = x * b.x + y * b.y
     val normSqr get() = this o this
     val norm get() = sqrt(normSqr)
+    infix fun distTo(b: Vector2d) = (this - b).norm
+    infix fun distToSqr(b: Vector2d) = (this - b).normSqr
     fun nz() = Vector2d(x.nz(), y.nz())
     fun normalized() = this / norm
     fun normalizedNz() = this.nz() / norm.nz()
     val perpLeft get() = Vector2d(-y, x);
     val perpRight get() = Vector2d(y, -x);
 
-    fun approxEq(other: Vector2d, eps: Double = 10e-6) = x.approxEq(other.x, eps) && y.approxEq(other.y, eps)
+    fun approxEq(other: Vector2d, eps: Double = GEO_COMPARE_EPS) = x.approxEq(other.x, eps) && y.approxEq(other.y, eps)
 
     override fun toString() = "x=$x, y=$y"
 
+    operator fun rangeTo(b: Vector2d) = this distTo b
     operator fun unaryPlus() = this
     operator fun unaryMinus() = Vector2d(-x, -y)
     operator fun plus(other: Vector2d) = Vector2d(x + other.x, y + other.y)
@@ -676,7 +689,7 @@ data class Rotation2d(val re: Double, val im: Double) {
     val inverse get() = Rotation2d(re, -im)
     val direction get() = Vector2d(re, im)
 
-    fun approxEq(other: Rotation2d, eps: Double = 10e-10) = re.approxEq(other.re, eps) && im.approxEq(other.im, eps)
+    fun approxEq(other: Rotation2d, eps: Double = GEO_COMPARE_EPS) = re.approxEq(other.re, eps) && im.approxEq(other.im, eps)
 
     override fun toString() = "${Math.toDegrees(log()).rounded()} deg"
 
@@ -777,7 +790,7 @@ data class Pose2d(val translation: Vector2d, val rotation: Rotation2d) {
         )
     }
 
-    fun approxEqs(other: Pose2d, eps: Double = 10e-10) = translation.approxEq(other.translation, eps) && rotation.approxEq(other.rotation, eps)
+    fun approxEqs(other: Pose2d, eps: Double = GEO_COMPARE_EPS) = translation.approxEq(other.translation, eps) && rotation.approxEq(other.rotation, eps)
 
     override fun toString() = "$translation $rotation"
 
@@ -833,9 +846,9 @@ data class Vector3d(val x: Double, val y: Double, val z: Double) {
     infix fun cosAngle(b: Vector3d) = (this o b) / (this.norm * b.norm)
     infix fun angle(b: Vector3d) = acos(this cosAngle b)
 
-    fun nonZero() = Vector3d(x.nz(), y.nz(), z.nz())
+    fun nz() = Vector3d(x.nz(), y.nz(), z.nz())
     fun normalized() = this / norm
-    fun normalizedNz() = this.nonZero() / norm.nz()
+    fun normalizedNz() = this.nz() / norm.nz()
 
     infix fun x(b: Vector3d) = Vector3d(
         this.y * b.z - this.z * b.y,
@@ -843,16 +856,18 @@ data class Vector3d(val x: Double, val y: Double, val z: Double) {
         this.x * b.y - this.y * b.x
     )
 
-    fun approxEqs(other: Vector3d, eps: Double = 10e-6) = x.approxEq(other.x, eps) && y.approxEq(other.y, eps) && z.approxEq(other.z, eps)
+    fun approxEq(other: Vector3d, eps: Double = GEO_COMPARE_EPS) = x.approxEq(other.x, eps) && y.approxEq(other.y, eps) && z.approxEq(other.z, eps)
 
     override fun toString() = "x=$x, y=$y, z=$z"
 
+    operator fun rangeTo(b: Vector3d) = this distTo b
     operator fun unaryPlus() = this
     operator fun unaryMinus() = Vector3d(-x, -y, -z)
-    operator fun plus(other: Vector3d) = Vector3d(x + other.x, y + other.y, z + other.z)
-    operator fun minus(other: Vector3d) = Vector3d(x - other.x, y - other.y, z - other.z)
-    operator fun times(other: Vector3d) = Vector3d(x * other.x, y * other.y, z * other.z)
-    operator fun div(other: Vector3d) = Vector3d(x / other.x, y / other.y, z / other.z)
+    operator fun plus(b: Vector3d) = Vector3d(x + b.x, y + b.y, z + b.z)
+    operator fun minus(b: Vector3d) = Vector3d(x - b.x, y - b.y, z - b.z)
+    operator fun times(b: Vector3d) = Vector3d(x * b.x, y * b.y, z * b.z)
+    operator fun div(b: Vector3d) = Vector3d(x / b.x, y / b.y, z / b.z)
+    operator fun rem(b: Vector3d) = this angle b
     operator fun times(scalar: Double) = Vector3d(x * scalar, y * scalar, z * scalar)
     operator fun div(scalar: Double) = Vector3d(x / scalar, y / scalar, z / scalar)
 
@@ -888,8 +903,8 @@ data class Vector3dDual(val x: Dual, val y: Dual, val z: Dual) {
 
     val size get() = x.size
     val isReal get() = size == 1
-    infix fun dot(b: Vector3dDual) = x * b.x + y * b.y + z * b.z
-    val normSqr get() = this dot this
+    infix fun o(b: Vector3dDual) = x * b.x + y * b.y + z * b.z
+    val normSqr get() = this o this
     val norm get() = sqrt(normSqr)
     fun normalized() = this / norm
     val value get() = Vector3d(x.value, y.value, z.value)
@@ -965,13 +980,13 @@ data class Rotation3d(val x: Double, val y: Double, val z: Double, val w: Double
     operator fun plus(w: Vector3d) = this * exp(w)
     operator fun minus(b: Rotation3d) = (this / b).log()
 
-    fun toMatrix() = Matrix3x3.of(
+    fun toMatrix() = Matrix3x3(
         1.0 - 2.0 * (y * y) - 2.0 * (z * z), 2.0 * x * y - 2.0 * z * w, 2.0 * x * z + 2.0 * y * w,
         2.0 * x * y + 2.0 * z * w, 1.0 - 2.0 * (x * x) - 2.0 * (z * z), 2.0 * y * z - 2.0 * x * w,
         2.0 * x * z - 2.0 * y * w, 2.0 * y * z + 2.0 * x * w, 1.0 - 2.0 * (x * x) - 2.0 * (y * y)
     )
 
-    fun approxEq(other: Rotation3d, eps: Double = 10e-6) = x.approxEq(other.x, eps) && y.approxEq(other.y, eps) && z.approxEq(other.z, eps) && w.approxEq(other.w, eps)
+    fun approxEq(other: Rotation3d, eps: Double = GEO_COMPARE_EPS) = x.approxEq(other.x, eps) && y.approxEq(other.y, eps) && z.approxEq(other.z, eps) && w.approxEq(other.w, eps)
 
     companion object {
         fun axisAngle(axis: Vector3d, angle: Double) = exp(axis.normalizedNz() * angle)
@@ -1041,7 +1056,7 @@ data class Rotation3d(val x: Double, val y: Double, val z: Double, val w: Double
             return Rotation3d(axis.x * s, axis.y * s, axis.z * s, cos(t / 2.0))
         }
 
-        fun alg(w: Vector3d) = Matrix3x3.of(
+        fun alg(w: Vector3d) = Matrix3x3(
             0.0, -w.z, w.y,
             w.z, 0.0, -w.x,
             -w.y, w.x, 0.0
@@ -1154,7 +1169,7 @@ data class Pose3d(val translation: Vector3d, val rotation: Rotation3d) {
     operator fun plus(incr: Twist3dIncr) = this * exp(incr)
     operator fun minus(b: Pose3d) = (this / b).log()
 
-    fun approxEq(other: Pose3d, eps: Double = 10e-6) = translation.approxEqs(other.translation) && rotation.approxEq(other.rotation)
+    fun approxEq(other: Pose3d, eps: Double = GEO_COMPARE_EPS) = translation.approxEq(other.translation) && rotation.approxEq(other.rotation)
 
     companion object {
         fun exp(incr: Twist3dIncr): Pose3d {
@@ -1189,4 +1204,24 @@ data class Pose3dDual(val translation: Vector3dDual, val rotation: Rotation3dDua
     operator fun times(b: Pose3dDual) = Pose3dDual(this.translation + this.rotation * b.translation, this.rotation * b.rotation)
     operator fun times(v: Vector3dDual) = this.translation + this.rotation * v
     operator fun div(b: Pose3dDual) = b.inverse * this
+}
+
+data class CoordinateSystem(val transform: Rotation3d) {
+    constructor(basis: Matrix3x3) : this(basis.let {
+        require(basis.isSpecialOrthogonal)
+
+        Rotation3d.rma(basis)
+    })
+
+    operator fun rangeTo(b: CoordinateSystem) = this.transform / b.transform
+
+    companion object {
+        val rfu = CoordinateSystem(Matrix3x3.identity)
+
+        val minecraft = CoordinateSystem(Matrix3x3(
+            Direction.EAST.step().toVector3d(),
+            Direction.UP.step().toVector3d(),
+            Direction.SOUTH.step().toVector3d()
+        ))
+    }
 }
