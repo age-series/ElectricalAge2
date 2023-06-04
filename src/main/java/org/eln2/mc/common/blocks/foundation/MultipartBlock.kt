@@ -583,7 +583,7 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
         part.onPlaced()
 
         if (part is PartCellContainer) {
-            CellConnections.insert(this, part.cell)
+            CellConnections.insertFresh(this, part.cell)
         }
 
         if(part is ItemPersistentPart && part.order == PersistentPartLoadOrder.AfterSim) {
@@ -629,7 +629,7 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
         if (part is PartCellContainer) {
             part.cell.unbindGameObjects()
 
-            CellConnections.delete(
+            CellConnections.destroy(
                 part.cell,
                 this
             )

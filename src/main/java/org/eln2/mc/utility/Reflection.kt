@@ -6,6 +6,8 @@ import kotlin.reflect.full.isSubclassOf
 import kotlin.reflect.full.memberProperties
 import kotlin.reflect.jvm.javaField
 
+fun noop() { }
+
 /**
  * Scans the target class [TInst] for fields annotated with [TFldAnnotation], and creates a list of [FieldReader]s, caching the result in [target].
  * The field types must be subclasses of [superK]

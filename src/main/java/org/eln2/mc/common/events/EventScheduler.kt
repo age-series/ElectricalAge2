@@ -167,3 +167,5 @@ object EventScheduler {
         }
     }
 }
+
+fun runPre(block: () -> Unit) = EventScheduler.scheduleWorkPre(0, block)

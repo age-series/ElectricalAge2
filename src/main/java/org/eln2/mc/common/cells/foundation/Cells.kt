@@ -307,7 +307,7 @@ abstract class Cell(val pos: CellPos, val id: ResourceLocation, val envFldMap: D
      */
     protected open fun onCreated() {}
 
-    fun remove() {
+    fun notifyRemoving() {
         behaviorContainer.destroy()
         onRemoving()
         persistentPool?.destroy()
@@ -454,7 +454,7 @@ object CellConnections {
      * Inserts a cell into a graph. It may create connections with other cells, and cause
      * topological changes to related networks.
      * */
-    fun insert(container: CellContainer, cell: Cell) {
+    fun insertFresh(container: CellContainer, cell: Cell) {
         connectCell(cell, container)
         cell.create()
     }
@@ -462,12 +462,12 @@ object CellConnections {
     /**
      * Removes a cell from the graph. It may cause topological changes to the graph, as outlined in the top document.
      * */
-    fun delete(cellInfo: Cell, container: CellContainer) {
+    fun destroy(cellInfo: Cell, container: CellContainer) {
         disconnectCell(cellInfo, container)
         cellInfo.destroy()
     }
 
-    private fun connectCell(insertedCell: Cell, container: CellContainer) {
+    fun connectCell(insertedCell: Cell, container: CellContainer) {
         val manager = container.manager
         val neighborInfoList = container.neighborScan(insertedCell)
         val neighborCells = neighborInfoList.map { it.neighbor }.toHashSet()
@@ -492,8 +492,6 @@ object CellConnections {
         insertedCell.connections = ArrayList(neighborInfoList.map { it.neighbor })
 
         neighborInfoList.forEach { neighborInfo ->
-            LOGGER.info("Neighbor $neighborInfo")
-
             neighborInfo.neighbor.connections.add(insertedCell)
             neighborInfo.neighborContainer.onCellConnected(
                 neighborInfo.neighbor,
@@ -580,21 +578,25 @@ object CellConnections {
         insertedCell.graph.startSimulation()
     }
 
-    private fun disconnectCell(cell: Cell, container: CellContainer) {
-        val manager = container.manager
-        val neighborCells = container.neighborScan(cell)
+    fun disconnectCell(actualCell: Cell, actualContainer: CellContainer, notify: Boolean = true) {
+        val manager = actualContainer.manager
+        val actualNeighborCells = actualContainer.neighborScan(actualCell)
 
-        val graph = cell.graph
+        val graph = actualCell.graph
 
         // Stop Simulation
         graph.stopSimulation()
 
-        cell.remove()
+        if(notify) {
+            actualCell.notifyRemoving()
+        }
 
-        // This is common logic for all cases.
-        neighborCells.forEach { (neighbor, neighborContainer) ->
-            neighbor.removeConnection(cell)
-            neighborContainer.onCellDisconnected(neighbor, cell)
+        actualNeighborCells.forEach { (neighbor, neighborContainer) ->
+            actualCell.removeConnection(neighbor)
+            neighbor.removeConnection(actualCell)
+
+            neighborContainer.onCellDisconnected(neighbor, actualCell)
+            actualContainer.onCellDisconnected(actualCell, neighbor)
         }
 
         /*
@@ -606,20 +608,20 @@ object CellConnections {
         *        and rebuild the circuits.
         */
 
-        if (neighborCells.isEmpty()) {
+        if (actualNeighborCells.isEmpty()) {
             // Case 1. Destroy this circuit.
 
             // Make sure we don't make any logic errors somewhere else.
             assert(graph.cells.size == 1)
 
             graph.destroy()
-        } else if (neighborCells.size == 1) {
+        } else if (actualNeighborCells.size == 1) {
             // Case 2.
 
             // Remove the cell from the circuit.
-            graph.removeCell(cell)
+            graph.removeCell(actualCell)
 
-            val neighbor = neighborCells[0].neighbor
+            val neighbor = actualNeighborCells[0].neighbor
 
             neighbor.update(connectionsChanged = true, graphChanged = false)
 
@@ -629,7 +631,7 @@ object CellConnections {
         } else {
             // Case 3 and 4. Implement a more sophisticated algorithm, if necessary.
             graph.destroy()
-            rebuildTopologies(neighborCells, cell, manager)
+            rebuildTopologies(actualNeighborCells, actualCell, manager)
         }
     }
 
@@ -637,7 +639,7 @@ object CellConnections {
      * Checks whether the cells share the same graph.
      * @return True, if the specified cells share the same graph. Otherwise, false.
      * */
-    private fun isCommonGraph(neighbors: ArrayList<CellNeighborInfo>): Boolean {
+    private fun isCommonGraph(neighbors: List<CellNeighborInfo>): Boolean {
         if (neighbors.size < 2) {
             return true
         }
@@ -661,7 +663,7 @@ object CellConnections {
      * Keep in mind that the simulation logic likely won't complete in constant time, in any case.
      * */
     private fun rebuildTopologies(
-        neighborInfoList: ArrayList<CellNeighborInfo>,
+        neighborInfoList: List<CellNeighborInfo>,
         removedCell: Cell,
         manager: CellGraphManager
     ) {
@@ -790,7 +792,7 @@ fun wrappedCellScan(level: Level, actualCell: Cell, searchDirectionTarget: Direc
 
 interface CellContainer {
     fun getCells(): ArrayList<Cell>
-    fun neighborScan(actualCell: Cell): ArrayList<CellNeighborInfo>
+    fun neighborScan(actualCell: Cell): List<CellNeighborInfo>
     fun onCellConnected(actualCell: Cell, remoteCell: Cell)
     fun onCellDisconnected(actualCell: Cell, remoteCell: Cell)
     fun onTopologyChanged()

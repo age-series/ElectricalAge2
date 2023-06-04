@@ -86,6 +86,10 @@ fun map(v: Float, srcMin: Float, srcMax: Float, dstMin: Float, dstMax: Float): F
     return dstMin + (v - srcMin) * (dstMax - dstMin) / (srcMax - srcMin)
 }
 
+fun map(v: Dual, srcMin: Dual, srcMax: Dual, dstMin: Dual, dstMax: Dual): Dual {
+    return dstMin + (v - srcMin) * (dstMax - dstMin) / (srcMax - srcMin)
+}
+
 /**
  * Maps [v] from a source range to a destination range.
  * @param srcMin The minimum value in [v]'s range.
@@ -215,9 +219,11 @@ fun avg(a: Double, b: Double): Double = (a + b) / 2.0
  * Computes the arithmetic mean of [a], [b] and [c].
  * */
 fun avg(a: Double, b: Double, c: Double): Double = (a + b + c) / 3.0
-
+fun avg(a: Double, b: Double, c: Double, d: Double): Double = (a + b + c + d) / 4.0
+fun avg(values: List<Double>) = values.sum() / values.size.toDouble()
 
 fun Double.mappedTo(srcMin: Double, srcMax: Double, dstMin: Double, dstMax: Double): Double = map(this, srcMin, srcMax, dstMin, dstMax)
+fun Dual.mappedTo(srcMin: Dual, srcMax: Dual, dstMin: Dual, dstMax: Dual): Dual = map(this, srcMin, srcMax, dstMin, dstMax)
 
 fun approxEqual(a: Double, b: Double, epsilon: Double = 10e-6): Boolean = abs(a - b) < epsilon
 fun Double.approxEq(other: Double, epsilon: Double = 10e-6): Boolean = approxEqual(this, other, epsilon)
@@ -467,6 +473,8 @@ fun integralScan(a: Double, b: Double, tolerance: Double = 1e-15, f: ((Double) -
     return adaptlobStp(f, a, b, y1, y13, `is`)
 }
 
+fun coth(d: Double) = cosh(d) / sinh(d)
+
 class Dual private constructor(private val values: DoubleArray) {
     constructor(values: List<Double>) : this(values.toDoubleArray())
 
@@ -601,4 +609,5 @@ fun pow(d: Dual, n: Double): Dual = d.function({ it.pow(n) }) { n * pow(it, n - 
 fun sqrt(d: Dual): Dual = d.function({ sqrt(it) }) { (Dual.const(1.0, d.size) / (Dual.const(2.0, d.size) * sqrt(it))) }
 fun sinh(d: Dual): Dual = d.function({ sinh(it) }) { cosh(it) }
 fun cosh(d: Dual): Dual = d.function({ cosh(it) }) { sinh(it) }
-
+fun ln(d: Dual): Dual = d.function({ ln(it) }) { Dual.const(1.0, d.size) / it }
+fun coth(x: Dual) = cosh(x) / sinh(x)

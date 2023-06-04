@@ -19,6 +19,7 @@ import net.minecraft.sounds.SoundEvent
 import net.minecraft.sounds.SoundSource
 import net.minecraft.world.InteractionResult
 import net.minecraft.world.MenuProvider
+import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.item.ItemEntity
 import net.minecraft.world.entity.player.Inventory
@@ -26,6 +27,7 @@ import net.minecraft.world.entity.player.Player
 import net.minecraft.world.inventory.AbstractContainerMenu
 import net.minecraft.world.inventory.Slot
 import net.minecraft.world.level.Level
+import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.HorizontalDirectionalBlock
 import net.minecraft.world.level.block.Rotation
 import net.minecraft.world.level.block.entity.BlockEntity
@@ -34,6 +36,7 @@ import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
 import net.minecraftforge.items.ItemStackHandler
 import net.minecraftforge.network.NetworkHooks
+import org.ageseries.libage.data.MutableSetMapMultiMap
 import org.ageseries.libage.sim.Material
 import org.ageseries.libage.sim.electrical.mna.Circuit
 import org.ageseries.libage.sim.electrical.mna.component.Resistor
@@ -63,6 +66,7 @@ import org.eln2.mc.sim.MaterialMapping
 import org.eln2.mc.sim.ThermalBody
 import org.eln2.mc.utility.Vectors
 import java.util.*
+import kotlin.collections.ArrayList
 import kotlin.math.abs
 
 fun AABB.viewClip(entity: LivingEntity): Optional<Vec3> {
@@ -830,3 +834,27 @@ fun Vec3.toVector4f(w: Float): Vector4f {
 }
 
 fun Vector3f.toVector3d() = Vector3d(this.x().toDouble(), this.y().toDouble(), this.z().toDouble())
+fun BlockPos.toVector3d() = Vector3d(this.x.toDouble(), this.y.toDouble(), this.z.toDouble())
+
+fun BlockEntity.sendClientUpdate() = this.level!!.sendBlockUpdated(this.blockPos, this.blockState, this.blockState, Block.UPDATE_CLIENTS)
+
+fun<K, V> MutableSetMapMultiMap<K, V>.bind(): MutableSetMapMultiMap<K, V> {
+    val result = MutableSetMapMultiMap<K, V>()
+
+    this.keys.forEach { k ->
+        result[k].addAll(this[k])
+    }
+
+    return result
+}
+
+fun<T> ArrayList<T>.bind() = ArrayList<T>(this.size).also { it.addAll(this) }
+
+fun<T> MutableList<T>.swapi(i: Int, j: Int) {
+    val tmp = this[i]
+    this[i] = this[j]
+    this[j] = tmp
+}
+
+fun Entity.moveTo(v: Vector3d) = this.moveTo(v.x, v.y, v.z)
+fun Vector3d.toVec3() = Vec3(this.x, this.y, this.z)
