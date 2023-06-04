@@ -38,6 +38,7 @@ import org.eln2.mc.integration.WailaEntity
 import org.eln2.mc.integration.WailaTooltipBuilder
 import org.eln2.mc.sim.BiomeEnvironments
 import java.util.*
+import kotlin.collections.ArrayList
 
 abstract class CellBlock(props: Properties? = null) : HorizontalDirectionalBlock(props ?: Properties.of(Material.STONE).noOcclusion()), EntityBlock {
     init {
@@ -174,7 +175,7 @@ open class CellBlockEntity(pos: BlockPos, state: BlockState, targetType: BlockEn
 
         cell!!.container = this
 
-        CellConnections.insert(this, cell!!)
+        CellConnections.insertFresh(this, cell!!)
 
         setChanged()
 
@@ -183,7 +184,15 @@ open class CellBlockEntity(pos: BlockPos, state: BlockState, targetType: BlockEn
         ))
     }
 
-    fun setDestroyed() {
+    fun disconnect() {
+        CellConnections.disconnectCell(cell!!, this, false)
+    }
+
+    fun reconnect() {
+        CellConnections.connectCell(cell!!, this)
+    }
+
+    open fun setDestroyed() {
         val level = this.level ?: error("Level is null in setDestroyed")
         val cell = this.cell
 
@@ -196,7 +205,7 @@ open class CellBlockEntity(pos: BlockPos, state: BlockState, targetType: BlockEn
         }
 
         cell.unbindGameObjects()
-        CellConnections.delete(cell, this)
+        CellConnections.destroy(cell, this)
     }
 
     //#region Saving and Loading
@@ -281,7 +290,7 @@ open class CellBlockEntity(pos: BlockPos, state: BlockState, targetType: BlockEn
         return arrayListOf(cell ?: error("Cell is null in getCells"))
     }
 
-    override fun neighborScan(actualCell: Cell): ArrayList<CellNeighborInfo> {
+    override fun neighborScan(actualCell: Cell): List<CellNeighborInfo> {
         val cell = this.cell ?: error("Cell is null in queryNeighbors")
         val level = this.level ?: error("Level is null in queryNeighbors")
 

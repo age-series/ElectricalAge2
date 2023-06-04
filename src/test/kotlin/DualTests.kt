@@ -90,4 +90,16 @@ class DualTests {
             }
         }
     }
+
+    @Test
+    fun lnTest() {
+        rangeScanDual(start = 5.0, end = 10.0) { x, xDual ->
+            val v = ln(xDual)
+
+            areEqual(v.value, ln(x))
+            areEqual(v[1], 1.0 / x)
+            areEqual(v[2], -1.0 / x.pow(2))
+            areEqual(v[3], 2.0 / x.pow(3))
+        }
+    }
 }

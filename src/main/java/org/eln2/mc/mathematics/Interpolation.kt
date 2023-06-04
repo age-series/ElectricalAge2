@@ -5,10 +5,7 @@ package org.eln2.mc.mathematics
 import org.eln2.mc.data.SegmentRange
 import org.eln2.mc.data.SegmentTree
 import org.eln2.mc.data.SegmentTreeBuilder
-import kotlin.math.abs
-import kotlin.math.cos
-import kotlin.math.cosh
-import kotlin.math.pow
+import kotlin.math.*
 
 /**
  * The grid interpolator is used to query arbitrary coordinates inside a [ArrayKDGridD], with interpolation
@@ -118,6 +115,13 @@ class GridInterpolator(val grid: KDGridD) {
 interface SplineSegmentParametric {
     val t0: Double
     val t1: Double
+
+    fun reparamSplineActual(tSpline: Double) = tSpline.mappedTo(
+        this.t0,
+        this.t1,
+        0.0,
+        1.0
+    )
 }
 
 abstract class SplineSegmentMap<S : SplineSegmentParametric>(val segments: List<S>) {
@@ -177,14 +181,15 @@ abstract class SplineSegmentMap<S : SplineSegmentParametric>(val segments: List<
 interface SplineSegment1d : SplineSegmentParametric {
     val y0: Dual
     val y1: Dual
-    fun evaluate(t: Double): Double
-    fun evaluateDual(t: Dual): Dual
+    fun evaluate(tActual: Double): Double
+    fun evaluateDual(tActual: Dual): Dual
 }
+
 interface SplineSegment3d : SplineSegmentParametric {
     val y0: Vector3dDual
     val y1: Vector3dDual
-    fun evaluate(t: Double): Vector3d
-    fun evaluateDual(t: Dual): Vector3dDual
+    fun evaluate(tActual: Double): Vector3d
+    fun evaluateDual(tActual: Dual): Vector3dDual
 }
 
 /**
@@ -254,8 +259,140 @@ fun hermiteQuinticDual(p0: Double, v0: Double, a0: Double, a1: Double, v1: Doubl
     return h0 * p0 + h1 * v0 + h2 * a0 + h3 * a1 + h4 * v1 + h5 * p1
 }
 
-fun catenary(a: Double, x: Double) = a * cosh(x / a)
-fun catenaryDual(a: Double, x: Dual) = a * cosh(x / a)
+data class ArcReparamCatenary2dDual(
+    val p0: Vector2d,
+    val p1: Vector2d,
+    val length: Double,
+    val t0: Double = 0.0,
+    val t1: Double = 1.0
+) {
+    private val a: Double
+
+    init {
+        require(p0.y <= p1.y)
+        require(p0 != p1)
+
+        a = parametricScan(length, p1.y - p0.y, p1.x - p0.x)
+    }
+
+    private fun abscissaReparamDual(t: Dual, x0: Dual, x1: Dual) = t.mappedTo(
+        Dual.const(t0, t.size),
+        Dual.const(t1, t.size),
+        x0,
+        x1
+    )
+
+    fun evaluateDual(t: Dual): Vector2dDual {
+        val p0Dual = Vector2dDual.const(p0, t.size)
+        val p1Dual = Vector2dDual.const(p1, t.size)
+        val lengthDual = Dual.const(this.length, t.size)
+        val widthDual = p1Dual.x - p0Dual.x
+        val heightDual = p1Dual.y - p0Dual.y
+        val `2` = Dual.const(2.0, t.size)
+        val aDual = Dual.const(this.a, t.size)
+
+        val p = (p0Dual.x + p1Dual.x - aDual * ln((lengthDual + heightDual) / (lengthDual - heightDual))) / `2`
+        val q = (p0Dual.y + p1Dual.y - lengthDual * coth(widthDual / (`2` * aDual))) / `2`
+
+        val x = abscissaReparamDual(
+            t,
+            p0Dual.x,
+            p1Dual.x
+        )
+
+        return Vector2dDual(x, aDual * cosh((x - p) / aDual) + q)
+    }
+
+    companion object {
+        fun parametricScan(s: Double, v: Double, h: Double, maxI: Int = 1024, eps: Double = 10e-12): Double {
+            val dagn = Dual.const(sqrt(s * s - v * v), 2)
+
+            var param = 0.5
+
+            val `2` = Dual.const(2.0, 2)
+            val hDual = Dual.const(h, 2)
+
+            fun rxErrorDual(): Dual {
+                val aDual = Dual.variable(param, 2)
+                return `2` * aDual * sinh(hDual / (`2` * aDual)) - dagn
+            }
+
+            // Solve using Newton-Grissess method:
+            for (i in 1..maxI) {
+                val error = rxErrorDual()
+
+                param -= (error.value / error[1])
+
+                if(error.value < eps) {
+                    break
+                }
+            }
+
+            return param
+        }
+    }
+}
+
+fun main() {
+    ArcReparamCatenary2dDual.parametricScan(10.0, 2.0, 3.0)
+}
+
+data class ArcReparamCatenary2dRFUProjection3dDual(
+    val p0: Vector3d,
+    val p1: Vector3d,
+    val length: Double,
+    val t0: Double = 0.0,
+    val t1: Double = 1.0
+) {
+    val catenary = ArcReparamCatenary2dDual(
+        Vector2d.zero,
+        Vector2d(
+            (p0 - p1).projectOnPlane(Vector3d.unitZ).norm,
+            p1.z - p0.z
+        ),
+        length,
+        t0,
+        t1
+    )
+
+    fun evaluateDual(t: Dual): Vector3dDual {
+        val actualPosCatenary = catenary.evaluateDual(t)
+
+        val p0Dual = Vector3dDual.const(p0, t.size)
+        val p1Dual = Vector3dDual.const(p1, t.size)
+
+        val dxDispReparam = p0Dual + (p1Dual - p0Dual)
+            .projectOnPlane(Vector3dDual.const(Vector3d.unitZ, t.size))
+            .normalized() * actualPosCatenary.x
+
+        return Vector3dDual(
+            dxDispReparam.x,
+            dxDispReparam.y,
+            p0Dual.z + actualPosCatenary.y
+        )
+    }
+}
+
+data class ArcReparamCatenary2dRFUProjectionSegment3d(
+    override val t0: Double,
+    override val t1: Double,
+    val p0: Vector3d,
+    val p1: Vector3d,
+    val length: Double,
+) : SplineSegment3d {
+    val catenary = ArcReparamCatenary2dRFUProjection3dDual(
+        p0,
+        p1,
+        length,
+        0.0,
+        1.0
+    )
+
+    override val y0 = Vector3dDual.const(p0, 1)
+    override val y1 = Vector3dDual.const(p1, 1)
+    override fun evaluate(tActual: Double) = catenary.evaluateDual(Dual.variable(tActual, 1)).value
+    override fun evaluateDual(tActual: Dual) = catenary.evaluateDual(tActual)
+}
 
 data class CubicHermiteSplineSegment1d(
     override val t0: Double,
@@ -267,8 +404,8 @@ data class CubicHermiteSplineSegment1d(
 ) : SplineSegment1d {
     override val y0 = Dual.of(p0, v0)
     override val y1 = Dual.of(p1, v1)
-    override fun evaluate(t: Double) = hermiteCubic(p0, v0, v1, p1, t)
-    override fun evaluateDual(t: Dual) = hermiteCubicDual(p0, v0, v1, p1, t)
+    override fun evaluate(tActual: Double) = hermiteCubic(p0, v0, v1, p1, tActual)
+    override fun evaluateDual(tActual: Dual) = hermiteCubicDual(p0, v0, v1, p1, tActual)
 }
 
 data class QuinticHermiteSplineSegment1d(
@@ -283,8 +420,8 @@ data class QuinticHermiteSplineSegment1d(
 ) : SplineSegment1d {
     override val y0 = Dual.of(p0, v0, a0)
     override val y1 = Dual.of(p1, v1, a1)
-    override fun evaluate(t: Double) = hermiteQuintic(p0, v0, a0, a1, v1, p1, t)
-    override fun evaluateDual(t: Dual) = hermiteQuinticDual(p0, v0, a0, a1, v1, p1, t)
+    override fun evaluate(tActual: Double) = hermiteQuintic(p0, v0, a0, a1, v1, p1, tActual)
+    override fun evaluateDual(tActual: Dual) = hermiteQuinticDual(p0, v0, a0, a1, v1, p1, tActual)
 }
 
 data class QuinticHermiteSplineSegment3d(
@@ -299,25 +436,25 @@ data class QuinticHermiteSplineSegment3d(
 ) : SplineSegment3d {
     override val y0 = Vector3dDual.of(p0, v0, a0)
     override val y1 = Vector3dDual.of(p1, v1, a1)
-    override fun evaluate(t: Double) = Vector3d(
-        hermiteQuintic(p0.x, v0.x, a0.x, a1.x, v1.x, p1.x, t),
-        hermiteQuintic(p0.y, v0.y, a0.y, a1.y, v1.y, p1.y, t),
-        hermiteQuintic(p0.z, v0.z, a0.z, a1.z, v1.z, p1.z, t)
+    override fun evaluate(tActual: Double) = Vector3d(
+        hermiteQuintic(p0.x, v0.x, a0.x, a1.x, v1.x, p1.x, tActual),
+        hermiteQuintic(p0.y, v0.y, a0.y, a1.y, v1.y, p1.y, tActual),
+        hermiteQuintic(p0.z, v0.z, a0.z, a1.z, v1.z, p1.z, tActual)
     )
-    override fun evaluateDual(t: Dual) = Vector3dDual(
-        hermiteQuinticDual(p0.x, v0.x, a0.x, a1.x, v1.x, p1.x, t),
-        hermiteQuinticDual(p0.y, v0.y, a0.y, a1.y, v1.y, p1.y, t),
-        hermiteQuinticDual(p0.z, v0.z, a0.z, a1.z, v1.z, p1.z, t)
+    override fun evaluateDual(tActual: Dual) = Vector3dDual(
+        hermiteQuinticDual(p0.x, v0.x, a0.x, a1.x, v1.x, p1.x, tActual),
+        hermiteQuinticDual(p0.y, v0.y, a0.y, a1.y, v1.y, p1.y, tActual),
+        hermiteQuinticDual(p0.z, v0.z, a0.z, a1.z, v1.z, p1.z, tActual)
     )
 }
 
 data class Spline1d(val segments: SplineSegmentMap<SplineSegment1d>) {
     fun evaluate(t: Double) = segments[t].let {
-        it.evaluate(t.mappedTo(it.t0, it.t1, 0.0, 1.0))
+        it.evaluate(it.reparamSplineActual(t))
     }
 
     fun evaluateDual(t: Double, n: Int = 1) = segments[t].let {
-        it.evaluateDual(Dual.variable(t.mappedTo(it.t0, it.t1, 0.0, 1.0), n))
+        it.evaluateDual(Dual.variable(it.reparamSplineActual(t), n))
     }
 
     fun arclengthScan(a: Double, b: Double, eps: Double = 1e-15) = integralScan(a, b, eps) { this.evaluateDual(it, 2)[1] }
@@ -326,8 +463,8 @@ data class Spline1d(val segments: SplineSegmentMap<SplineSegment1d>) {
 data class Pose3dParametric(val value: Pose3d, val param: Double)
 
 data class Spline3d(val segments: SplineSegmentMap<SplineSegment3d>) {
-    fun evaluate(t: Double) = segments[t].evaluate(t)
-    fun evaluateDual(t: Double, n: Int = 1) = segments[t].evaluateDual(Dual.variable(t, n))
+    fun evaluate(t: Double) = segments[t].let { it.evaluate(it.reparamSplineActual(t)) }
+    fun evaluateDual(t: Double, n: Int = 1) = segments[t].let { it.evaluateDual(Dual.variable(it.reparamSplineActual(t), n)) }
     fun tangent(t: Double) = evaluateDual(t, 2)[1].normalized()
     fun evaluatePoseFrenet(t: Double) = Pose3d(evaluate(t), Rotation3d.rma(frenet(t)))
     fun arclengthScan(a: Double, b: Double, eps: Double = 1e-15) = integralScan(a, b, eps) { this.evaluateDual(it, 2)[1].norm }
@@ -388,6 +525,7 @@ class InterpolatorBuilder {
     }
 }
 
+data class Vector3dParametric(val value: Vector3d, val param: Double)
 data class Vector3dDualParametric(val value: Vector3dDual, val param: Double)
 
 class PathBuilder3d {
@@ -455,7 +593,9 @@ fun diffCondition3d(distMax: Double, rotIncrMax: Double) : Adaptscan3dCondition 
 private data class AdaptscanFrame(val t0: Double, val t1: Double)
 
 fun Spline3d.adaptscan(
-    rxT: MutableList<Double>, t0: Double, t1: Double,
+    rxT: MutableList<Double>,
+    t0: Double,
+    t1: Double,
     tIncrMax: Double,
     iMax: Int = Int.MAX_VALUE,
     condition: Adaptscan3dCondition
@@ -489,6 +629,17 @@ fun Spline3d.adaptscan(
     }
 
     return true
+}
+
+fun Spline3d.adaptscan(
+    t0: Double,
+    t1: Double,
+    tIncrMax: Double,
+    iMax: Int = Int.MAX_VALUE,
+    condition: Adaptscan3dCondition
+): ArrayList<Double>? {
+    val results = ArrayList<Double>()
+    return if(this.adaptscan(results, t0, t1, tIncrMax, iMax, condition)) results else null
 }
 
 /**

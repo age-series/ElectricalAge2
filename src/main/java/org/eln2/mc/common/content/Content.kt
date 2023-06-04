@@ -3,6 +3,8 @@
 package org.eln2.mc.common.content
 
 import net.minecraft.client.gui.screens.MenuScreens
+import net.minecraft.world.entity.EntityType
+import net.minecraft.world.entity.MobCategory
 import net.minecraft.world.phys.Vec3
 import net.minecraftforge.eventbus.api.SubscribeEvent
 import net.minecraftforge.fml.common.Mod
@@ -24,6 +26,8 @@ import org.eln2.mc.common.cells.CellRegistry.cell
 import org.eln2.mc.common.cells.CellRegistry.injCell
 import org.eln2.mc.common.cells.foundation.BasicCellProvider
 import org.eln2.mc.common.containers.ContainerRegistry.menu
+import org.eln2.mc.common.entities.EntityRegistry
+import org.eln2.mc.common.entities.EntityRegistry.entity
 import org.eln2.mc.common.items.ItemRegistry.item
 import org.eln2.mc.common.parts.PartRegistry
 import org.eln2.mc.common.parts.PartRegistry.part
@@ -199,6 +203,12 @@ object Content {
     val MB_HEATER_POWER_PORT_BLOCK = block("heater_power_port_block") { BasicCellBlock(MB_HEATER_POWER_PORT_CELL) }
     val MB_HEATER_CTRL_BLOCK = block("heater_controller_block") { BasicMBControllerBlock(::HeaterCtrlBlockEntity) }
     val MB_HEATER_CTRL_BLOCK_ENTITY = blockEntity("heater_controller_block_entity", ::HeaterCtrlBlockEntity) { MB_HEATER_CTRL_BLOCK.block.get() }
+
+    val GRID_CELL = injCell<GridCell>("grid_cell")
+    val GRID_TEST_BLOCK = block("grid_test_block") { GridCellBlock() }
+    val GRID_TEST_BLOCK_ENTITY = blockEntity("grid_test_block_entity", ::GridCellBlockEntity) { GRID_TEST_BLOCK.block.get() }
+    val GRID_CONNECT_ITEM = item("grid_connect_item", ::GridConnectItem)
+    val GRID_CONNECTION_ENTITY = entity("grid_connection_entity", MobCategory.MISC, ::GridConnectionEntity)
 
     @Mod.EventBusSubscriber
     object ClientSetup {

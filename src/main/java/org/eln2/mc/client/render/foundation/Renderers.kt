@@ -145,8 +145,7 @@ class RadiantBodyColor(
 }
 
 @ClientOnly
-class MultipartBlockEntityInstance(val materialManager: MaterialManager, blockEntity: MultipartBlockEntity
-):
+class MultipartBlockEntityInstance(val materialManager: MaterialManager, blockEntity: MultipartBlockEntity):
     BlockEntityInstance<MultipartBlockEntity>(materialManager, blockEntity),
     DynamicInstance
 {

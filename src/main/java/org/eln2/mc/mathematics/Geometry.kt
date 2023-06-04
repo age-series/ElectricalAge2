@@ -1,8 +1,7 @@
 package org.eln2.mc.mathematics
 
-import net.minecraft.core.Direction
-import org.eln2.mc.toVector3d
 import kotlin.math.*
+
 
 const val GEO_COMPARE_EPS = 10e-8
 
@@ -602,6 +601,38 @@ data class Matrix3x3(val c0: Vector3d, val c1: Vector3d, val c2: Vector3d) {
     }
 }
 
+// to do: find a use for this dragon
+data class Matrix3x3Dual(val c0: Vector3dDual, val c1: Vector3dDual, val c2: Vector3dDual) {
+    constructor(m00: Dual, m01: Dual, m02: Dual, m10: Dual, m11: Dual, m12: Dual, m20: Dual, m21: Dual, m22: Dual) : this(
+        Vector3dDual(m00, m10, m20),
+        Vector3dDual(m01, m11, m21),
+        Vector3dDual(m02, m12, m22)
+    )
+
+    val determinant get() = c0.x * (c1.y * c2.z - c2.y * c1.z) - c1.x * (c0.y * c2.z - c2.y * c0.z) + c2.x * (c0.y * c1.z - c1.y * c0.z)
+
+    operator fun not() = Matrix3x3Dual(
+        (c1.y * c2.z - c2.y * c1.z), -(c1.x * c2.z - c2.x * c1.z), (c1.x * c2.y - c2.x * c1.y),
+        -(c0.y * c2.z - c2.y * c0.z), (c0.x * c2.z - c2.x * c0.z), -(c0.x * c2.y - c2.x * c0.y),
+        (c0.y * c1.z - c1.y * c0.z), -(c0.x * c1.z - c1.x * c0.z), (c0.x * c1.y - c1.x * c0.y)
+    ) * (1.0 / determinant)
+
+    operator fun times(scalar: Dual) = Matrix3x3Dual(c0 * scalar, c1 * scalar, c2 * scalar)
+    operator fun times(scalar: Double) = Matrix3x3Dual(c0 * scalar, c1 * scalar, c2 * scalar)
+    operator fun times(v: Vector3dDual) = c0 * v.x + c1 * v.y + c2 * v.z
+    operator fun times(v: Vector3d) = c0 * v.x + c1 * v.y + c2 * v.z
+    operator fun times(m: Matrix3x3Dual) = Matrix3x3Dual(this * m.c0, this * m.c1, this * m.c2)
+    operator fun times(m: Matrix3x3) = Matrix3x3Dual(this * m.c0, this * m.c1, this * m.c2)
+
+    companion object {
+        fun const(v: Matrix3x3, n: Int = 1) = Matrix3x3Dual(
+            Vector3dDual.const(v.c0, n),
+            Vector3dDual.const(v.c1, n),
+            Vector3dDual.const(v.c2, n)
+        )
+    }
+}
+
 data class Vector2d(val x: Double, val y: Double) {
     constructor(value: Double): this(value, value)
 
@@ -647,6 +678,10 @@ data class Vector2d(val x: Double, val y: Double) {
 
 data class Vector2dDual(val x: Dual, val y: Dual) {
     constructor(value: Dual): this(value, value)
+    constructor(values: List<Vector2d>) : this(
+        Dual(values.map { it.x }),
+        Dual(values.map { it.y })
+    )
 
     init {
         require(x.size == y.size) { "Dual X and Y must be of the same size" }
@@ -680,6 +715,7 @@ data class Vector2dDual(val x: Dual, val y: Dual) {
     companion object {
         fun const(x: Double, y: Double, n: Int = 1) = Vector2dDual(Dual.const(x, n), Dual.const(y, n))
         fun const(value: Vector2d, n: Int = 1) = const(value.x, value.y, n)
+        fun of(vararg values: Vector2d) = Vector2dDual(values.asList())
     }
 }
 
@@ -693,6 +729,7 @@ data class Rotation2d(val re: Double, val im: Double) {
 
     override fun toString() = "${Math.toDegrees(log()).rounded()} deg"
 
+    operator fun not() = this.inverse
     operator fun times(b: Rotation2d) = Rotation2d(this.re * b.re - this.im * b.im, this.re * b.im + this.im * b.re)
     operator fun times(r2: Vector2d) = Vector2d(this.re * r2.x - this.im * r2.y, this.im * r2.x + this.re * r2.y)
     operator fun div(b: Rotation2d) = b.inverse * this
@@ -720,6 +757,7 @@ data class Rotation2dDual(val re: Dual, val im: Dual) {
     val inverse get() = Rotation2dDual(re, -im)
     val direction get() = Vector2dDual(re, im)
 
+    operator fun not() = this.inverse
     operator fun times(b: Rotation2dDual) = Rotation2dDual(this.re * b.re - this.im * b.im, this.re * b.im + this.im * b.re)
     operator fun times(b: Rotation2d) = Rotation2dDual(this.re * b.re - this.im * b.im, this.re * b.im + this.im * b.re)
     operator fun times(r2: Vector2dDual) = Vector2dDual(this.re * r2.x - this.im * r2.y, this.im * r2.x + this.re * r2.y)
@@ -794,6 +832,7 @@ data class Pose2d(val translation: Vector2d, val rotation: Rotation2d) {
 
     override fun toString() = "$translation $rotation"
 
+    operator fun not() = this.inverse
     operator fun times(b: Pose2d) = Pose2d(this.translation + this.rotation * b.translation, this.rotation * b.rotation)
     operator fun times(v: Vector2d) = this.translation + this.rotation * v
     operator fun div(b: Pose2d) = b.inverse * this
@@ -824,6 +863,7 @@ data class Pose2dDual(val translation: Vector2dDual, val rotation: Rotation2dDua
 
     override fun toString() = "$translation $rotation"
 
+    operator fun not() = this.inverse
     operator fun times(b: Pose2dDual) = Pose2dDual(this.translation + this.rotation * b.translation, this.rotation * b.rotation)
     operator fun times(b: Pose2d) = Pose2dDual(this.translation + this.rotation * b.translation, this.rotation * b.rotation)
     operator fun times(b: Twist2dDual) = Twist2dDual(rotation * b.trVelocity, b.rotVelocity)
@@ -873,6 +913,9 @@ data class Vector3d(val x: Double, val y: Double, val z: Double) {
 
     operator fun compareTo(other: Vector3d) = this.normSqr.compareTo(other.normSqr)
 
+    fun projectOnPlane(n: Vector3d) = this - n * ((this o n) / n.normSqr)
+    fun projectOnVector(v: Vector3d) = if (this == zero || v == zero) zero else v * (this o v) / v.normSqr
+
     companion object {
         val zero = Vector3d(0.0, 0.0, 0.0)
         val one = Vector3d(1.0, 1.0, 1.0)
@@ -887,6 +930,11 @@ data class Vector3d(val x: Double, val y: Double, val z: Double) {
         )
     }
 }
+
+fun avg(a: Vector3d, b: Vector3d) = (a + b) / 2.0
+fun avg(a: Vector3d, b: Vector3d, c: Vector3d) = (a + b + c) / 3.0
+fun avg(a: Vector3d, b: Vector3d, c: Vector3d, d: Vector3d) = (a + b + c + d) / 4.0
+fun avg(vectors: List<Vector3d>) = vectors.reduce { a, b -> a + b } / vectors.size.toDouble()
 
 data class Vector3dDual(val x: Dual, val y: Dual, val z: Dual) {
     constructor(value: Dual): this(value, value, value)
@@ -910,6 +958,9 @@ data class Vector3dDual(val x: Dual, val y: Dual, val z: Dual) {
     val value get() = Vector3d(x.value, y.value, z.value)
     fun head(n: Int = 1) = Vector3dDual(x.head(n), y.head(n), z.head(n))
     fun tail(n: Int = 1) = Vector3dDual(x.tail(n), y.tail(n), z.tail(n))
+
+    fun projectOnPlane(n: Vector3dDual) = this - n * ((this o n) / n.normSqr)
+    fun projectOnVector(v: Vector3dDual) = v * (this o v) / v.normSqr
 
     operator fun unaryPlus() = this
     operator fun unaryMinus() = Vector3dDual(-x, -y, -z)
@@ -949,6 +1000,7 @@ data class Rotation3d(val x: Double, val y: Double, val z: Double, val w: Double
     operator fun div(scalar: Double) = Rotation3d(x / scalar, y / scalar, z / scalar, w / scalar)
     operator fun unaryPlus() = this
     operator fun unaryMinus() = Rotation3d(-x, -y, -z, -w)
+    operator fun not() = this.inverse
 
     operator fun times(b: Rotation3d) =
         Rotation3d(
@@ -1088,6 +1140,7 @@ data class Rotation3dDual(val x: Dual, val y: Dual, val z: Dual, val w: Dual) {
 
     operator fun unaryPlus() = this
     operator fun unaryMinus() = Rotation3dDual(-x, -y, -z, -w)
+    operator fun not() = this.inverse
     operator fun times(b: Rotation3dDual) =
         Rotation3dDual(
             x * b.w + b.x * w + (y * b.z - z * b.y),
@@ -1163,6 +1216,7 @@ data class Pose3d(val translation: Vector3d, val rotation: Rotation3d) {
         )
     }
 
+    operator fun not() = this.inverse
     operator fun times(b: Pose3d) = Pose3d(this.translation + this.rotation * b.translation, this.rotation * b.rotation)
     operator fun times(v: Vector3d) = this.translation + this.rotation * v
     operator fun div(b: Pose3d) = b.inverse * this
@@ -1201,27 +1255,26 @@ data class Pose3dDual(val translation: Vector3dDual, val rotation: Rotation3dDua
     val value get() = Pose3d(translation.value, rotation.value)
     val velocity get() = Twist3dDual(translation.tail(), rotation.angularVelocity)
 
+    operator fun not() = this.inverse
     operator fun times(b: Pose3dDual) = Pose3dDual(this.translation + this.rotation * b.translation, this.rotation * b.rotation)
     operator fun times(v: Vector3dDual) = this.translation + this.rotation * v
     operator fun div(b: Pose3dDual) = b.inverse * this
 }
 
-data class CoordinateSystem(val transform: Rotation3d) {
-    constructor(basis: Matrix3x3) : this(basis.let {
-        require(basis.isSpecialOrthogonal)
+data class CoordinateSystem(val transform: Matrix3x3) {
+    init {
+        require(transform.isOrthogonal)
+    }
 
-        Rotation3d.rma(basis)
-    })
-
-    operator fun rangeTo(b: CoordinateSystem) = this.transform / b.transform
+    operator fun rangeTo(b: CoordinateSystem) = b.transform * !this.transform
 
     companion object {
         val rfu = CoordinateSystem(Matrix3x3.identity)
 
         val minecraft = CoordinateSystem(Matrix3x3(
-            Direction.EAST.step().toVector3d(),
-            Direction.UP.step().toVector3d(),
-            Direction.SOUTH.step().toVector3d()
+            Vector3d.unitX,
+            Vector3d.unitZ,
+            Vector3d.unitY
         ))
     }
 }
