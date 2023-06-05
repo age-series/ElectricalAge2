@@ -25,8 +25,14 @@ fun lerp(from: Float, to: Float, factor: Float): Float {
 
 /**
  * Computes the [base] with the specified power [exponent] efficiently.
+ * Optimized cases:
+ *  - -1
  * */
 fun powI(base: Int, exponent: Int): Int {
+    if(base == -1) {
+        return 1 * snzi(-exponent % 2)
+    }
+
     var b = base
     var exp = exponent
     var result = 1
@@ -383,6 +389,14 @@ fun snzi(a: Double): Int {
     return -1
 }
 
+fun snzi(a: Int): Int {
+    if (a >= 0) {
+        return 1
+    }
+
+    return -1
+}
+
 private const val ADAPTLOB_ALPHA = 0.816496580927726
 private const val ADAPTLOB_BETA = 0.447213595499958
 
@@ -611,3 +625,40 @@ fun sinh(d: Dual): Dual = d.function({ sinh(it) }) { cosh(it) }
 fun cosh(d: Dual): Dual = d.function({ cosh(it) }) { sinh(it) }
 fun ln(d: Dual): Dual = d.function({ ln(it) }) { Dual.const(1.0, d.size) / it }
 fun coth(x: Dual) = cosh(x) / sinh(x)
+
+data class DualArray(val values: List<DoubleArray>) {
+    val size: Int
+
+    init {
+        if(values.isNotEmpty()) {
+            size = values[0].size
+            require(values.all { it.size == size })
+        }
+        else {
+            size = 0
+        }
+    }
+
+
+    operator fun get(index: Int) = Dual(values.map { it[index] })
+    operator fun set(index: Int, dual: Dual) = values.forEachIndexed { iDual, arr -> arr[index] = dual[iDual] }
+
+    fun toArrayList(): ArrayList<Dual> = ArrayList<Dual>(size).also {
+        for (i in 0 until size) {
+            it.add(this[i])
+        }
+    }
+
+    fun toMutableList(): MutableList<Dual> = toArrayList()
+    fun toList(): List<Dual> = toArrayList()
+
+    companion object {
+        fun ofZeros(cArr: Int, cDual: Int) = DualArray(
+            ArrayList<DoubleArray>(cDual).apply {
+                repeat(cDual) {
+                    this.add(DoubleArray(cArr))
+                }
+            }
+        )
+    }
+}
