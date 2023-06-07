@@ -2,9 +2,9 @@ package org.eln2.mc.sim
 
 import org.eln2.mc.Eln2
 import org.eln2.mc.mathematics.*
-import org.eln2.mc.utility.CsvLoader
-import org.eln2.mc.utility.CsvNumeric
-import org.eln2.mc.utility.ResourceReader
+import org.eln2.mc.data.CsvLoader
+import org.eln2.mc.data.CsvNumeric
+import org.eln2.mc.getResourceString
 
 object Datasets {
     val AIR_THERMAL_CONDUCTIVITY = loadCsvSpline("air_thermal_conductivity/ds.csv", 0, 2)
@@ -12,7 +12,7 @@ object Datasets {
     val LEAD_ACID_12V_WET = loadCsvGrid2("lead_acid_12v/ds_wet.csv")
 
     private fun getCsv(name: String): CsvNumeric {
-        return CsvLoader.loadNumericData(ResourceReader.getResourceString(Eln2.resource("datasets/$name")))
+        return CsvLoader.loadNumericData(getResourceString(Eln2.resource("datasets/$name")))
     }
 
     private fun loadCsvSpline(name: String, keyIndex: Int, valueIndex: Int): Spline1d {

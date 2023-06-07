@@ -48,7 +48,7 @@ class GridInterpolator(val grid: KDGridD) {
 
         val lower = coordinates.floored()
 
-        val neighborValues = ArrayList<Double>(pow2I(grid.dimensions))
+        val neighborValues = ArrayList<Double>(pow2i(grid.dimensions))
 
         neighborOffsets.forEach { offset ->
             neighborValues.add(getClamped(lower + offset))
@@ -107,7 +107,7 @@ class GridInterpolator(val grid: KDGridD) {
             t: KDVectorD,
             function: Interpolator,
         ): Double {
-            return kdInterpolate(dims - 1, i + pow2I(dims - 1), values, t, function)
+            return kdInterpolate(dims - 1, i + pow2i(dims - 1), values, t, function)
         }
     }
 }

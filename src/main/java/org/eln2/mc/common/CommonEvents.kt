@@ -20,7 +20,7 @@ import org.eln2.mc.common.blocks.foundation.GhostLightBlock
 import org.eln2.mc.common.cells.foundation.CellGraphManager
 import org.eln2.mc.common.events.EventScheduler
 import org.eln2.mc.utility.AnalyticsAcknowledgementsData
-import org.eln2.mc.utility.AveragingList
+import org.eln2.mc.data.AveragingList
 import java.io.IOException
 
 @Mod.EventBusSubscriber

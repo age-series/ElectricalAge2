@@ -92,7 +92,7 @@ class HeaterHeatPortCell(ci: CellCI) : Cell(ci) {
     }
 }
 
-class HeaterPowerPortCell(ci: CellCI, val onResistance: Double = 1.0, val offResistance: Double = 10e10) : Cell(ci) {
+class HeaterPowerPortCell(ci: CellCI, val onResistance: Double = 1.0, val offResistance: Double = 10e8) : Cell(ci) {
     override val dataNode = DataNode().also {
         it.data.withField(PowerField {
             portObj.power.absoluteValue
@@ -251,4 +251,3 @@ class HeaterCtrlBlockEntity(pos: BlockPos, state: BlockState) : BlockEntity(Cont
         )
     }
 }
-

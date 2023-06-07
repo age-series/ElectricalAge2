@@ -17,10 +17,7 @@ import org.eln2.mc.Eln2.LOGGER
 import org.eln2.mc.common.cells.CellRegistry
 import org.eln2.mc.common.configs.Configuration
 import org.eln2.mc.common.space.*
-import org.eln2.mc.data.DataNode
-import org.eln2.mc.data.DataEntity
-import org.eln2.mc.data.DataFieldMap
-import org.eln2.mc.data.ObjectField
+import org.eln2.mc.data.*
 import org.eln2.mc.integration.WailaEntity
 import org.eln2.mc.sim.BiomeEnvironments
 import org.eln2.mc.utility.*
@@ -894,7 +891,7 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
             stage = UpdateStep.UpdateSubsPre
             subscribers.update(elapsed, SubscriberPhase.Pre)
 
-            lastTickTime = Time.toSeconds(measureNanoTime {
+            lastTickTime = !Duration.from(measureNanoTime {
                 isElectricalSuccessful = true
 
                 stage = UpdateStep.UpdateElectricalSims
@@ -912,7 +909,7 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
                 thermalSims.forEach {
                     it.step(elapsed)
                 }
-            })
+            }.toDouble(), TimeUnits.NANOSECOND)
 
             stage = UpdateStep.UpdateSubsPost
             subscribers.update(elapsed, SubscriberPhase.Post)
@@ -1344,7 +1341,7 @@ class CellGraphManager(val level: ServerLevel) : SavedData() {
     private val statisticsWatch = Stopwatch()
 
     fun sampleTickRate(): Double {
-        val elapsedSeconds = statisticsWatch.sample()
+        val elapsedSeconds = !statisticsWatch.sample()
 
         return graphs.values.sumOf { it.sampleElapsedUpdates() } / elapsedSeconds
     }

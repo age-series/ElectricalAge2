@@ -623,6 +623,12 @@ data class Matrix3x3Dual(val c0: Vector3dDual, val c1: Vector3dDual, val c2: Vec
     val r1 get() = Vector3dDual(c0.y, c1.y, c2.y)
     val r2 get() = Vector3dDual(c0.z, c1.z, c2.z)
 
+    val size get() = c0.size
+    val isReal get() = size == 1
+    val value = Matrix3x3(c0.value, c1.value, c2.value)
+    fun head(n: Int) = Matrix3x3Dual(c0.head(n), c1.head(n), c2.head(n))
+    fun tail(n: Int) = Matrix3x3Dual(c0.tail(n), c1.tail(n), c2.tail(n))
+
     val transpose get() = Matrix3x3Dual(r0, r1, r2)
     val trace get() = c0.x + c1.y + c2.z
     val normFrobeniusSqr get() = c0.normSqr + c1.normSqr + c2.normSqr
@@ -643,6 +649,7 @@ data class Matrix3x3Dual(val c0: Vector3dDual, val c1: Vector3dDual, val c2: Vec
     operator fun times(v: Vector3d) = c0 * v.x + c1 * v.y + c2 * v.z
     operator fun times(m: Matrix3x3Dual) = Matrix3x3Dual(this * m.c0, this * m.c1, this * m.c2)
     operator fun times(m: Matrix3x3) = Matrix3x3Dual(this * m.c0, this * m.c1, this * m.c2)
+    operator fun get(n: Int) = Matrix3x3(c0[n], c1[n], c2[n])
 
     companion object {
         fun const(v: Matrix3x3, n: Int = 1) = Matrix3x3Dual(
@@ -701,7 +708,7 @@ data class Matrix4x4(val c0: Vector4d, val c1: Vector4d, val c2: Vector4d, val c
         return Matrix3x3(values)
     }
     fun minor(c: Int, r: Int) = eliminate(c, r).determinant
-    fun cofactor(c: Int, r: Int) = minor(c, r) * powI(-1, c + r)
+    fun cofactor(c: Int, r: Int) = minor(c, r) * powi(-1, c + r)
     val cofactorMatrix get() = Matrix4x4(
         cofactor(0, 0), cofactor(1, 0), cofactor(2, 0), cofactor(3, 0),
         cofactor(0, 1), cofactor(1, 1), cofactor(2, 1), cofactor(3, 1),
@@ -766,6 +773,10 @@ data class Matrix4x4Dual(val c0: Vector4dDual, val c1: Vector4dDual, val c2: Vec
     }
 
     val size get() = c0.size
+    val isReal get() = size == 1
+    val value = Matrix4x4(c0.value, c1.value, c2.value, c3.value)
+    fun head(n: Int) = Matrix4x4Dual(c0.head(n), c1.head(n), c2.head(n), c3.head(n))
+    fun tail(n: Int) = Matrix4x4Dual(c0.tail(n), c1.tail(n), c2.tail(n), c3.tail(n))
 
     val r0 get() = Vector4dDual(c0.x, c1.x, c2.x, c3.x)
     val r1 get() = Vector4dDual(c0.y, c1.y, c2.y, c3.y)
@@ -807,7 +818,7 @@ data class Matrix4x4Dual(val c0: Vector4dDual, val c1: Vector4dDual, val c2: Vec
         return Matrix3x3Dual(values)
     }
     fun minor(c: Int, r: Int) = eliminate(c, r).determinant
-    fun cofactor(c: Int, r: Int) = minor(c, r) * powI(-1, c + r).toDouble()
+    fun cofactor(c: Int, r: Int) = minor(c, r) * powi(-1, c + r).toDouble()
     val cofactorMatrix get() = Matrix4x4Dual(
         cofactor(0, 0), cofactor(1, 0), cofactor(2, 0), cofactor(3, 0),
         cofactor(0, 1), cofactor(1, 1), cofactor(2, 1), cofactor(3, 1),
@@ -823,6 +834,7 @@ data class Matrix4x4Dual(val c0: Vector4dDual, val c1: Vector4dDual, val c2: Vec
     operator fun times(v: Vector4d) = c0 * v.x + c1 * v.y + c2 * v.z + c3 * v.w
     operator fun times(m: Matrix4x4Dual) = Matrix4x4Dual(this * m.c0, this * m.c1, this * m.c2, this * m.c3)
     operator fun times(m: Matrix4x4) = Matrix4x4Dual(this * m.c0, this * m.c1, this * m.c2, this * m.c3)
+    operator fun get(n: Int) = Matrix4x4(c0[n], c1[n], c2[n], c3[n])
 
     fun getColumn(c: Int) = when(c) {
         0 -> c0
@@ -1098,6 +1110,13 @@ data class Pose2dDual(val translation: Vector2dDual, val rotation: Rotation2dDua
     companion object {
         fun const(v: Pose2d, n: Int = 1) = Pose2dDual(Vector2dDual.const(v.translation, n), Rotation2dDual.const(v.rotation, n))
     }
+}
+
+data class Vector3di(val x: Int, val y: Int, val z: Int) {
+    operator fun unaryPlus() = this
+    operator fun unaryMinus() = Vector3di(-x, -y, -z)
+    operator fun plus(b: Vector3di) = Vector3di(x + b.x, y + b.y, z + b.z)
+    operator fun minus(b: Vector3di) = Vector3di(x - b.x, y - b.y, z - b.z)
 }
 
 data class Vector3d(val x: Double, val y: Double, val z: Double) {
@@ -1570,7 +1589,7 @@ data class Pose3d(val translation: Vector3d, val rotation: Rotation3d) {
 
     fun approxEq(other: Pose3d, eps: Double = GEO_COMPARE_EPS) = translation.approxEq(other.translation) && rotation.approxEq(other.rotation)
 
-    fun tma() = rotation().let { (rc0, rc1, rc2) ->
+    operator fun invoke() = rotation().let { (rc0, rc1, rc2) ->
         Matrix4x4(
             rc0.x, rc1.x, rc2.x, translation.x,
             rc0.y, rc1.y, rc2.y, translation.y,
@@ -1578,8 +1597,6 @@ data class Pose3d(val translation: Vector3d, val rotation: Rotation3d) {
             0.0, 0.0, 0.0, 1.0
         )
     }
-
-    operator fun invoke() = tma()
 
     companion object {
         fun exp(incr: Twist3dIncr): Pose3d {

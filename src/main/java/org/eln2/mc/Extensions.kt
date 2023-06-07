@@ -1,10 +1,7 @@
 package org.eln2.mc
 
 import com.jozufozu.flywheel.core.materials.model.ModelData
-import com.mojang.math.Matrix4f
-import com.mojang.math.Quaternion
-import com.mojang.math.Vector3f
-import com.mojang.math.Vector4f
+import com.mojang.math.*
 import mcp.mobius.waila.api.IPluginConfig
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
@@ -57,14 +54,17 @@ import org.eln2.mc.common.parts.foundation.Part
 import org.eln2.mc.common.parts.foundation.PartUpdateType
 import org.eln2.mc.common.space.LocationDescriptor
 import org.eln2.mc.common.space.RelativeDir
-import org.eln2.mc.data.DataEntity
-import org.eln2.mc.data.DataNode
+import org.eln2.mc.data.*
 import org.eln2.mc.integration.WailaTooltipBuilder
+import org.eln2.mc.mathematics.Matrix3x3
+import org.eln2.mc.mathematics.Matrix4x4
+import org.eln2.mc.mathematics.Pose3d
 import org.eln2.mc.mathematics.Vector3d
 import org.eln2.mc.sim.EnvironmentInformation
 import org.eln2.mc.sim.MaterialMapping
 import org.eln2.mc.sim.ThermalBody
 import org.eln2.mc.utility.Vectors
+import java.nio.FloatBuffer
 import java.util.*
 import kotlin.collections.ArrayList
 import kotlin.math.abs
@@ -858,3 +858,56 @@ fun<T> MutableList<T>.swapi(i: Int, j: Int) {
 
 fun Entity.moveTo(v: Vector3d) = this.moveTo(v.x, v.y, v.z)
 fun Vector3d.toVec3() = Vec3(this.x, this.y, this.z)
+
+fun Matrix4f.loadMatrix(m: Matrix4x4) {
+    this.loadTransposed(
+        FloatBuffer.allocate(16).apply {
+            put(m.c0.x.toFloat())
+            put(m.c0.y.toFloat())
+            put(m.c0.z.toFloat())
+            put(m.c0.w.toFloat())
+            put(m.c1.x.toFloat())
+            put(m.c1.y.toFloat())
+            put(m.c1.z.toFloat())
+            put(m.c1.w.toFloat())
+            put(m.c2.x.toFloat())
+            put(m.c2.y.toFloat())
+            put(m.c2.z.toFloat())
+            put(m.c2.w.toFloat())
+            put(m.c3.x.toFloat())
+            put(m.c3.y.toFloat())
+            put(m.c3.z.toFloat())
+            put(m.c3.w.toFloat())
+        }
+    )
+}
+
+fun Matrix3f.loadMatrix(m: Matrix3x3) {
+    this.loadTransposed(
+        FloatBuffer.allocate(9).apply {
+            put(m.c0.x.toFloat())
+            put(m.c0.y.toFloat())
+            put(m.c0.z.toFloat())
+            put(m.c1.x.toFloat())
+            put(m.c1.y.toFloat())
+            put(m.c1.z.toFloat())
+            put(m.c2.x.toFloat())
+            put(m.c2.y.toFloat())
+            put(m.c2.z.toFloat())
+        }
+    )
+}
+
+fun ModelData.loadPose(p: Pose3d): ModelData {
+    this.model.loadMatrix(p())
+    this.normal.loadMatrix(p.rotation())
+
+    return this
+}
+
+fun CompoundTag.putEnergy(key: String, e: Energy) = this.putDouble(key, !e)
+fun CompoundTag.getEnergy(key: String) = Energy(this.getDouble(key))
+fun CompoundTag.putDuration(key: String, t: Duration) = this.putDouble(key, !t)
+fun CompoundTag.getDuration(key: String) = Duration(this.getDouble(key))
+fun CompoundTag.putDistance(key: String, s: Distance) = this.putDouble(key, !s)
+fun CompoundTag.getDistance(key: String) = Distance(this.getDouble(key))

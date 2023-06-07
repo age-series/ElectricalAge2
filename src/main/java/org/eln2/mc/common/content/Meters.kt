@@ -8,12 +8,8 @@ import net.minecraft.world.entity.player.Player
 import net.minecraft.world.item.Item
 import net.minecraft.world.item.context.UseOnContext
 import org.eln2.mc.common.items.eln2Tab
-import org.eln2.mc.data.CurrentField
-import org.eln2.mc.data.TemperatureField
-import org.eln2.mc.data.VoltageField
+import org.eln2.mc.data.*
 import org.eln2.mc.getDataAccess
-import org.eln2.mc.utility.UnitType
-import org.eln2.mc.utility.valueText
 
 abstract class MeterItem : Item(Properties().tab(eln2Tab).stacksTo(1)) {
     override fun useOn(pContext: UseOnContext): InteractionResult {

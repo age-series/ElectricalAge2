@@ -266,5 +266,5 @@ class SimulationObjectSet(objects: List<SimulationObject>) {
 
 enum class SimulationObjectType(id: Int, name: String) {
     Electrical(1, "electrical"),
-    Thermal(2, "thermal")
+    Thermal(2, "thermal"),
 }

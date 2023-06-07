@@ -6,8 +6,7 @@ import net.minecraft.resources.ResourceLocation
 import org.ageseries.libage.sim.Material
 import org.ageseries.libage.sim.thermal.Temperature
 import org.ageseries.libage.sim.thermal.ThermalMass
-import org.eln2.mc.CrossThreadAccess
-import org.eln2.mc.Eln2
+import org.eln2.mc.*
 import org.eln2.mc.client.render.PartialModels
 import org.eln2.mc.client.render.foundation.BasicPartRenderer
 import org.eln2.mc.common.cells.foundation.*
@@ -15,9 +14,8 @@ import org.eln2.mc.common.events.AtomicUpdate
 import org.eln2.mc.common.parts.foundation.*
 import org.eln2.mc.common.space.DirectionMask
 import org.eln2.mc.common.space.withDirectionActualRule
-import org.eln2.mc.formatted
-import org.eln2.mc.formattedPercentN
-import org.eln2.mc.useSubTagIfPreset
+import org.eln2.mc.data.Energy
+import org.eln2.mc.data.abs
 import org.eln2.mc.integration.WailaTooltipBuilder
 import org.eln2.mc.mathematics.bbVec
 import org.eln2.mc.mathematics.evaluate
@@ -32,12 +30,12 @@ interface BatteryView {
     /**
      * Gets the total energy stored in the battery/
      * */
-    val energy: Double
+    val energy: Energy
 
     /**
      * Gets the total energy exchanged by this battery.
      * */
-    val energyIo: Double
+    val energyIo: Energy
 
     /**
      * Gets the battery current. This value's sign depends on the direction of flow.
@@ -158,7 +156,7 @@ data class BatteryModel(
     /**
      * The energy capacity of the battery. This is the total energy that can be stored.
      * */
-    val energyCapacity: Double,
+    val energyCapacity: Energy,
 
     /**
      * The charge percentage where, if the battery continues to discharge, it should start receiving damage.
@@ -169,7 +167,7 @@ data class BatteryModel(
     val mass: Double,
     val surfaceArea: Double)
 
-data class BatteryState(val energy: Double, val life: Double, val energyIo: Double)
+data class BatteryState(val energy: Energy, val life: Double, val energyIo: Energy)
 
 class BatteryCell(ci: CellCI, override val model: BatteryModel) : Cell(ci), BatteryView {
     companion object {
@@ -202,9 +200,9 @@ class BatteryCell(ci: CellCI, override val model: BatteryModel) : Cell(ci), Batt
         }
     }
 
-    override var energy = 0.0
+    override var energy = Energy(0.0)
 
-    override var energyIo = 0.0
+    override var energyIo = Energy(0.0)
         private set
 
     override var life = 1.0
@@ -246,9 +244,9 @@ class BatteryCell(ci: CellCI, override val model: BatteryModel) : Cell(ci), Batt
     fun deserializeNbt(tag: CompoundTag) {
         stateUpdate.setLatest(
             BatteryState(
-                tag.getDouble(ENERGY),
+                tag.getEnergy(ENERGY),
                 tag.getDouble(LIFE),
-                tag.getDouble(ENERGY_IO)
+                tag.getEnergy(ENERGY_IO)
             )
         )
     }
@@ -257,9 +255,9 @@ class BatteryCell(ci: CellCI, override val model: BatteryModel) : Cell(ci), Batt
     fun serializeNbt(): CompoundTag {
         val tag = CompoundTag()
 
-        tag.putDouble(ENERGY, energy)
+        tag.putDouble(ENERGY, !energy)
         tag.putDouble(LIFE, life)
-        tag.putDouble(ENERGY_IO, energyIo)
+        tag.putDouble(ENERGY_IO, !energyIo)
 
         return tag
     }
@@ -292,7 +290,7 @@ class BatteryCell(ci: CellCI, override val model: BatteryModel) : Cell(ci), Batt
 
     private fun simulateEnergyFlow(elapsed: Double) {
         // Get energy transfer:
-        val transfer = generatorObj.generatorPower * elapsed
+        val transfer = Energy(generatorObj.generatorPower * elapsed)
 
         // Update total IO:
         energyIo += abs(transfer)
@@ -301,10 +299,10 @@ class BatteryCell(ci: CellCI, override val model: BatteryModel) : Cell(ci), Batt
 
         val capacity = adjustedEnergyCapacity
 
-        if(energy < 0){
+        if(energy < 0.0){
             Eln2.LOGGER.error("Negative battery energy $pos")
 
-            energy = 0.0
+            energy = Energy(0.0)
         }
         else if(energy > capacity) {
             val extraEnergy = energy - capacity
@@ -312,7 +310,7 @@ class BatteryCell(ci: CellCI, override val model: BatteryModel) : Cell(ci), Batt
             energy -= extraEnergy
 
             // Conserve energy by increasing temperature:
-            thermalWireObj.body.energy += extraEnergy
+            thermalWireObj.body.energy += !extraEnergy
         }
     }
 
@@ -340,7 +338,7 @@ class BatteryCell(ci: CellCI, override val model: BatteryModel) : Cell(ci), Batt
         builder.text("Life", life.formattedPercentN())
         builder.text("Cycles", cycles.formatted())
         builder.text("Capacity", capacityCoefficient.formattedPercentN())
-        builder.energy(energy)
+        builder.energy(!energy)
     }
 }
 

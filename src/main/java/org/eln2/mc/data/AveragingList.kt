@@ -1,4 +1,4 @@
-package org.eln2.mc.utility
+package org.eln2.mc.data
 
 class AveragingList(private val sampleCount: Int) {
     init {
