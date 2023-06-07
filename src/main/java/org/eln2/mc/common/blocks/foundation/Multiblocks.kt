@@ -29,7 +29,7 @@ import net.minecraft.world.phys.AABB
 import org.eln2.mc.*
 import org.eln2.mc.Eln2.LOGGER
 import org.eln2.mc.common.events.EventScheduler
-import org.eln2.mc.utility.ResourceReader
+import org.eln2.mc.getResourceString
 import kotlin.math.ceil
 
 data class MultiblockDefinition(val requiredBlocksId: Map<BlockPos, ResourceLocation>) {
@@ -48,7 +48,7 @@ data class MultiblockDefinition(val requiredBlocksId: Map<BlockPos, ResourceLoca
 
     companion object {
         fun load(name: String): MultiblockDefinition {
-            val json = Gson().fromJson(ResourceReader.getResourceString(Eln2.resource("multiblocks/$name.json")), JsonMultiblock::class.java)
+            val json = Gson().fromJson(getResourceString(Eln2.resource("multiblocks/$name.json")), JsonMultiblock::class.java)
 
             return MultiblockDefinition(
                 json.blocks.associate {

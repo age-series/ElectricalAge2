@@ -6,7 +6,6 @@ import com.jozufozu.flywheel.core.materials.FlatLit
 import com.jozufozu.flywheel.core.materials.model.ModelData
 import com.jozufozu.flywheel.util.Color
 import net.minecraft.resources.ResourceLocation
-import org.eln2.mc.Eln2.LOGGER
 import org.eln2.mc.mathematics.bbVec
 import org.eln2.mc.ClientOnly
 import org.eln2.mc.ServerOnly
@@ -15,10 +14,8 @@ import org.eln2.mc.client.render.PartialModels
 import org.eln2.mc.client.render.foundation.colorF
 import org.eln2.mc.client.render.foundation.colorLerp
 import org.eln2.mc.client.render.foundation.applyBlockBenchTransform
-import org.eln2.mc.common.blocks.foundation.GhostLight
 import org.eln2.mc.common.cells.foundation.*
 import org.eln2.mc.common.events.*
-import org.eln2.mc.common.network.serverToClient.getArray
 import org.eln2.mc.common.network.serverToClient.with
 import org.eln2.mc.common.parts.foundation.CellPart
 import org.eln2.mc.common.parts.foundation.PartRenderer
@@ -26,7 +23,6 @@ import org.eln2.mc.common.parts.foundation.PartPlacementInfo
 import org.eln2.mc.common.space.DirectionMask
 import org.eln2.mc.common.space.RelativeDir
 import org.eln2.mc.common.space.withDirectionActualRule
-import org.eln2.mc.data.DataNode
 import org.eln2.mc.data.TooltipField
 import org.eln2.mc.mathematics.approxEq
 import org.eln2.mc.utility.Stopwatch
@@ -94,7 +90,7 @@ class LightCell(
     private fun simulationTick(elapsed: Double, phase: SubscriberPhase){
         rawBr = model.brightnessFunction(resistorObj.power)
 
-        if(renderBrSw.total >= RENDER_SYNC_INTERVAL) {
+        if(!renderBrSw.total >= RENDER_SYNC_INTERVAL) {
             renderBrSw.resetTotal()
 
             if(!rawBr.approxEq(trackedRenderBr, RENDER_EPS)) {

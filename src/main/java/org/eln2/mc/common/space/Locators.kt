@@ -18,7 +18,7 @@ data class IdentityDirectionLocator(val forwardWorld: Direction): Locator<SO3>
 data class BlockFaceLocator(val faceWorld: Direction) : Locator<SO3>
 
 // Got lost in the type system, for now we are using Any:
-interface ILocatorSerializer {
+interface LocatorSerializer {
     fun toNbt(obj: Any): CompoundTag
     fun fromNbt(tag: CompoundTag): Any
 }
@@ -37,8 +37,8 @@ val locatorClassNames: ImmutableBiMapView<String, Class<*>> = biMapOf(
     locatorId(SO3::class.java, BlockFaceLocator::class.java) to BlockFaceLocator::class.java
 )
 
-val locatorSerializers: ImmutableBiMapView<Class<*>, ILocatorSerializer> = biMapOf(
-    BlockPosLocator::class.java to object: ILocatorSerializer {
+val locatorSerializers: ImmutableBiMapView<Class<*>, LocatorSerializer> = biMapOf(
+    BlockPosLocator::class.java to object: LocatorSerializer {
         override fun toNbt(obj: Any): CompoundTag =
             CompoundTag().apply {  putBlockPos("Pos", (obj as BlockPosLocator).pos) }
 
@@ -46,7 +46,7 @@ val locatorSerializers: ImmutableBiMapView<Class<*>, ILocatorSerializer> = biMap
             BlockPosLocator(tag.getBlockPos("Pos"))
     },
 
-    IdentityDirectionLocator::class.java to object: ILocatorSerializer {
+    IdentityDirectionLocator::class.java to object: LocatorSerializer {
         override fun toNbt(obj: Any): CompoundTag =
             CompoundTag().apply { putDirection("Forward", (obj as IdentityDirectionLocator).forwardWorld) }
 
@@ -54,7 +54,7 @@ val locatorSerializers: ImmutableBiMapView<Class<*>, ILocatorSerializer> = biMap
             IdentityDirectionLocator(tag.getDirection("Forward"))
     },
 
-    BlockFaceLocator::class.java to object: ILocatorSerializer {
+    BlockFaceLocator::class.java to object: LocatorSerializer {
         override fun toNbt(obj: Any): CompoundTag =
             CompoundTag().apply { putDirection("Face", (obj as BlockFaceLocator).faceWorld) }
 
@@ -68,7 +68,7 @@ val locatorSetFactories: ImmutableBiMapView<Class<*>, Supplier<LocatorSet<*>>> =
     SO3::class.java to Supplier { LocatorSet<SO3>() }
 )
 
-fun getLocatorSerializer(locatorClass: Class<*>): ILocatorSerializer {
+fun getLocatorSerializer(locatorClass: Class<*>): LocatorSerializer {
     return locatorSerializers.forward[locatorClass]
         ?: error("Failed to find serializer definition for $locatorClass")
 }

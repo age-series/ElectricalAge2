@@ -41,6 +41,8 @@ import org.eln2.mc.common.blocks.foundation.CellBlock
 import org.eln2.mc.common.blocks.foundation.CellBlockEntity
 import org.eln2.mc.common.cells.foundation.*
 import org.eln2.mc.common.events.runPre
+import org.eln2.mc.data.Distance
+import org.eln2.mc.data.DistanceUnits
 import org.eln2.mc.mathematics.*
 import kotlin.collections.ArrayList
 import kotlin.math.PI
@@ -393,6 +395,9 @@ class GridConnectionInstanceFlw(materialManager: MaterialManager, entity: GridCo
 
             val catenarySupports = listOf(a, b).sortedBy { it.z }
             val targetLength = (a..b) * 1.1
+
+            val l = Distance.from(targetLength, DistanceUnits.METER)
+            LOGGER.info("Target length: ${(l .. DistanceUnits.FOOTBALL_FIELDS).rounded(2)} football fields (${(l .. DistanceUnits.LIGHT_NANORELS).rounded(4)} light nanorels)")
 
             val path = Spline3d(
                 splineSegmentMapOf(

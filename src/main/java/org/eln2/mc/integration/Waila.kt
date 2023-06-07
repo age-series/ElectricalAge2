@@ -10,10 +10,11 @@ import net.minecraft.world.level.block.entity.BlockEntity
 import org.ageseries.libage.sim.electrical.mna.component.Pin
 import org.eln2.mc.Eln2
 import org.eln2.mc.data.DataEntity
+import org.eln2.mc.data.Energy
 import org.eln2.mc.integration.WailaTooltipEntryType.Companion.getTooltipEntryType
 import org.eln2.mc.integration.WailaTooltipEntryType.Companion.putTooltipEntryType
-import org.eln2.mc.utility.UnitType
-import org.eln2.mc.utility.valueText
+import org.eln2.mc.data.UnitType
+import org.eln2.mc.data.valueText
 
 @WailaPlugin(id = "${Eln2.MODID}:waila_plugin")
 class Eln2WailaPlugin : IWailaPlugin {

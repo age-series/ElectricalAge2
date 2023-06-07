@@ -28,7 +28,7 @@ fun lerp(from: Float, to: Float, factor: Float): Float {
  * Optimized cases:
  *  - -1
  * */
-fun powI(base: Int, exponent: Int): Int {
+fun powi(base: Int, exponent: Int): Int {
     if(base == -1) {
         return 1 * snzi(-exponent % 2)
     }
@@ -51,11 +51,13 @@ fun powI(base: Int, exponent: Int): Int {
     return result
 }
 
+fun Int.pow(exponent: Int) = powi(this, exponent)
+
 /**
- * Computes 2 to the specified power [exponent]. Calls [powI] with a base of 2.
+ * Computes 2 to the specified power [exponent]. Calls [pow] with a base of 2.
  * */
-fun pow2I(exponent: Int): Int {
-    return powI(2, exponent)
+fun pow2i(exponent: Int): Int {
+    return powi(2, exponent)
 }
 
 /**

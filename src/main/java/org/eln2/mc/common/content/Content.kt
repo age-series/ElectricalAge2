@@ -3,7 +3,6 @@
 package org.eln2.mc.common.content
 
 import net.minecraft.client.gui.screens.MenuScreens
-import net.minecraft.world.entity.EntityType
 import net.minecraft.world.entity.MobCategory
 import net.minecraft.world.phys.Vec3
 import net.minecraftforge.eventbus.api.SubscribeEvent
@@ -26,7 +25,6 @@ import org.eln2.mc.common.cells.CellRegistry.cell
 import org.eln2.mc.common.cells.CellRegistry.injCell
 import org.eln2.mc.common.cells.foundation.BasicCellProvider
 import org.eln2.mc.common.containers.ContainerRegistry.menu
-import org.eln2.mc.common.entities.EntityRegistry
 import org.eln2.mc.common.entities.EntityRegistry.entity
 import org.eln2.mc.common.items.ItemRegistry.item
 import org.eln2.mc.common.parts.PartRegistry
@@ -37,8 +35,9 @@ import org.eln2.mc.common.parts.foundation.BasicPartProvider
 import org.eln2.mc.common.space.DirectionMask
 import org.eln2.mc.common.space.RelativeDir
 import org.eln2.mc.common.space.withDirectionActualRule
+import org.eln2.mc.data.Energy
+import org.eln2.mc.data.EnergyUnits
 import org.eln2.mc.mathematics.bbSize
-import org.eln2.mc.utility.UnitConversions.kwHoursInJ
 import kotlin.math.abs
 
 /**
@@ -128,7 +127,7 @@ object Content {
 
                 1 + lifeTerm + cyclesTerm
             },
-            energyCapacity = kwHoursInJ(2.2),
+            energyCapacity = Energy.from(2.2, EnergyUnits.KW_HOURS),
             0.5,
             BatteryMaterials.PB_ACID_TEST,
             20.0,

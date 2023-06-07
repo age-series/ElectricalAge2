@@ -85,14 +85,14 @@ object PartGeometry {
      * */
     fun modelBoundingBox(sizeActual: Vec3, facingWorld: Direction, faceWorld: Direction): AABB =
         BoundingBox.fromSize(sizeActual)
-            .transformed(txFacing(facingWorld))
+            .transformed(facingRotation(facingWorld))
             .transformed(faceWorld.rotation)
-            .move(txFace(sizeActual, faceWorld))
+            .move(faceOffset(sizeActual, faceWorld))
 
     /**
      * @see Part.txFacing
      * */
-    fun txFacing(facingWorld: Direction): Quaternion =
+    fun facingRotation(facingWorld: Direction): Quaternion =
         Vector3f.YP.rotation(
             when (facingWorld) {
                 Direction.NORTH -> 0.0
@@ -103,10 +103,7 @@ object PartGeometry {
             }.toFloat()
         )
 
-    /**
-     * @see Part.offset
-     * */
-    fun txFace(sizeActual: Vec3, faceWorld: Direction): Vec3 {
+    fun faceOffset(sizeActual: Vec3, faceWorld: Direction): Vec3 {
         val halfSize = sizeActual / 2.0
 
         val positiveOffset = halfSize.y
@@ -135,21 +132,12 @@ object PartGeometry {
         }
     }
 
-    /**
-     * @see Part.gridBoundingBox
-     * */
     fun gridBoundingBox(sizeActual: Vec3, facingWorld: Direction, faceWorld: Direction, posWorld: BlockPos): AABB =
         modelBoundingBox(sizeActual, facingWorld, faceWorld).move(posWorld)
 
-    /**
-     * @see Part.worldBoundingBox
-     * */
     fun worldBoundingBox(sizeActual: Vec3, facingWorld: Direction, faceWorld: Direction, posWorld: BlockPos): AABB =
         gridBoundingBox(sizeActual, facingWorld, faceWorld, posWorld).move(Vec3(-0.5, 0.0, -0.5))
 
-    /**
-     * @see Part.getDirectionActual
-     * */
     fun getDirectionActual(actualFacingActual: Direction, faceWorld: Direction, dirWorld: Direction): RelativeDir =
         RelativeDir.fromForwardUp(
             actualFacingActual,
@@ -242,12 +230,12 @@ abstract class Part<Renderer : PartRenderer>(val id: ResourceLocation, val place
      * @return The local Y rotation due to facing.
      * */
     val txFacing: Quaternion
-        get() = PartGeometry.txFacing(placement.horizontalFacing)
+        get() = PartGeometry.facingRotation(placement.horizontalFacing)
 
     /**
      * @return The offset towards the placement face, calculated using the base size.
      * */
-    private val txFace: Vec3 get() = PartGeometry.txFace(sizeActual, placement.face)
+    private val txFace: Vec3 get() = PartGeometry.faceOffset(sizeActual, placement.face)
 
     /**
      * This is the bounding box of the part, in its block position.

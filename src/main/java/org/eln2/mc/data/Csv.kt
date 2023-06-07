@@ -1,7 +1,6 @@
-package org.eln2.mc.utility
+package org.eln2.mc.data
 
 import org.eln2.mc.mathematics.ArrayKDVectorD
-
 
 data class CsvNumeric(val headers: ArrayList<String>, val entries: ArrayList<ArrayKDVectorD>)
 

@@ -1,6 +1,8 @@
 package org.eln2.mc
 
+import net.minecraft.client.Minecraft
 import net.minecraft.resources.ResourceLocation
+import net.minecraft.server.packs.resources.Resource
 import net.minecraftforge.api.distmarker.Dist
 import net.minecraftforge.fml.common.Mod
 import net.minecraftforge.fml.loading.FMLEnvironment
@@ -22,6 +24,8 @@ import org.eln2.mc.common.parts.PartRegistry
 import org.eln2.mc.mathematics.kdVectorDOf
 import org.eln2.mc.sim.Datasets
 import thedarkcolour.kotlinforforge.forge.MOD_BUS
+import java.io.InputStream
+import java.nio.charset.Charset
 
 @Mod(Eln2.MODID)
 object Eln2 {
@@ -64,4 +68,18 @@ object Eln2 {
     fun resource(path: String): ResourceLocation {
         return ResourceLocation(MODID, path)
     }
+}
+
+fun getResource(location: ResourceLocation): Resource {
+    val manager = Minecraft.getInstance().resourceManager
+
+    return manager.getResource(location)
+}
+
+fun getResourceStream(location: ResourceLocation): InputStream {
+    return getResource(location).inputStream
+}
+
+fun getResourceString(location: ResourceLocation): String{
+    return getResourceStream(location).readAllBytes().toString(Charset.defaultCharset())
 }
