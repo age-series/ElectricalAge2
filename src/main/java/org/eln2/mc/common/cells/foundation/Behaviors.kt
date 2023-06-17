@@ -6,9 +6,9 @@ import org.ageseries.libage.sim.thermal.Temperature
 import org.ageseries.libage.sim.thermal.ThermalUnits
 import org.eln2.mc.common.blocks.foundation.MultipartBlockEntity
 import org.eln2.mc.common.events.EventScheduler
-import org.eln2.mc.common.space.BlockFaceLocator
-import org.eln2.mc.common.space.SO3
-import org.eln2.mc.common.space.requireLocator
+import org.eln2.mc.data.BlockFaceLocator
+import org.eln2.mc.data.SO3
+import org.eln2.mc.data.requireLocator
 import org.eln2.mc.data.DataNode
 import org.eln2.mc.data.DataEntity
 import org.eln2.mc.data.PowerField

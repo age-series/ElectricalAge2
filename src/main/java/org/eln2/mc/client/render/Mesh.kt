@@ -220,7 +220,7 @@ fun extrudeSketch(sketch: Sketch, spline: Spline3d, samples: List<Double>): Mesh
                 t.mappedTo(
                     samples.first(),
                     samples.last(),
-                    snzEps(0.0),
+                    snzE(0.0),
                     1.0
                 )
             )

@@ -23,6 +23,7 @@ import net.minecraft.world.entity.player.Inventory
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.inventory.AbstractContainerMenu
 import net.minecraft.world.inventory.Slot
+import net.minecraft.world.level.ChunkPos
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.HorizontalDirectionalBlock
@@ -33,8 +34,11 @@ import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
 import net.minecraftforge.items.ItemStackHandler
 import net.minecraftforge.network.NetworkHooks
+import org.ageseries.libage.data.BiMap
 import org.ageseries.libage.data.MutableSetMapMultiMap
+import org.ageseries.libage.data.mutableBiMapOf
 import org.ageseries.libage.sim.Material
+import org.ageseries.libage.sim.Scale
 import org.ageseries.libage.sim.electrical.mna.Circuit
 import org.ageseries.libage.sim.electrical.mna.component.Resistor
 import org.ageseries.libage.sim.electrical.mna.component.VoltageSource
@@ -52,21 +56,21 @@ import org.eln2.mc.common.cells.foundation.ComponentHolder
 import org.eln2.mc.common.cells.foundation.ElectricalComponentInfo
 import org.eln2.mc.common.parts.foundation.Part
 import org.eln2.mc.common.parts.foundation.PartUpdateType
-import org.eln2.mc.common.space.LocationDescriptor
-import org.eln2.mc.common.space.RelativeDir
+import org.eln2.mc.data.LocationDescriptor
+import org.eln2.mc.mathematics.RelativeDir
 import org.eln2.mc.data.*
 import org.eln2.mc.integration.WailaTooltipBuilder
-import org.eln2.mc.mathematics.Matrix3x3
-import org.eln2.mc.mathematics.Matrix4x4
-import org.eln2.mc.mathematics.Pose3d
+import org.eln2.mc.mathematics.*
 import org.eln2.mc.mathematics.Vector3d
 import org.eln2.mc.sim.EnvironmentInformation
 import org.eln2.mc.sim.MaterialMapping
 import org.eln2.mc.sim.ThermalBody
 import org.eln2.mc.utility.Vectors
+import java.nio.ByteBuffer
 import java.nio.FloatBuffer
 import java.util.*
 import kotlin.collections.ArrayList
+import kotlin.collections.HashMap
 import kotlin.math.abs
 
 fun AABB.viewClip(entity: LivingEntity): Optional<Vec3> {
@@ -172,7 +176,8 @@ fun Direction.isHorizontal(): Boolean {
     return !isVertical()
 }
 
-val Direction.alias: RelativeDir get() = when (this) {
+val Direction.alias: RelativeDir
+    get() = when (this) {
     Direction.DOWN -> RelativeDir.Down
     Direction.UP -> RelativeDir.Up
     Direction.NORTH -> RelativeDir.Front
@@ -835,6 +840,7 @@ fun Vec3.toVector4f(w: Float): Vector4f {
 
 fun Vector3f.toVector3d() = Vector3d(this.x().toDouble(), this.y().toDouble(), this.z().toDouble())
 fun BlockPos.toVector3d() = Vector3d(this.x.toDouble(), this.y.toDouble(), this.z.toDouble())
+fun BlockPos.toVector3di() = Vector3di(this.x, this.y, this.z)
 
 fun BlockEntity.sendClientUpdate() = this.level!!.sendBlockUpdated(this.blockPos, this.blockState, this.blockState, Block.UPDATE_CLIENTS)
 
@@ -849,6 +855,8 @@ fun<K, V> MutableSetMapMultiMap<K, V>.bind(): MutableSetMapMultiMap<K, V> {
 }
 
 fun<T> ArrayList<T>.bind() = ArrayList<T>(this.size).also { it.addAll(this) }
+@Suppress("UNCHECKED_CAST")
+fun<K, V> HashMap<K, V>.bind() = this.clone() as HashMap<K, V>
 
 fun<T> MutableList<T>.swapi(i: Int, j: Int) {
     val tmp = this[i]
@@ -905,9 +913,44 @@ fun ModelData.loadPose(p: Pose3d): ModelData {
     return this
 }
 
-fun CompoundTag.putEnergy(key: String, e: Energy) = this.putDouble(key, !e)
-fun CompoundTag.getEnergy(key: String) = Energy(this.getDouble(key))
-fun CompoundTag.putDuration(key: String, t: Duration) = this.putDouble(key, !t)
-fun CompoundTag.getDuration(key: String) = Duration(this.getDouble(key))
-fun CompoundTag.putDistance(key: String, s: Distance) = this.putDouble(key, !s)
-fun CompoundTag.getDistance(key: String) = Distance(this.getDouble(key))
+fun<U> CompoundTag.putQuantity(key: String, e: Quantity<U>) = this.putDouble(key, !e)
+fun<U> CompoundTag.getQuantity(key: String) = Quantity<U>(this.getDouble(key))
+
+inline fun <K, V> Iterable<K>.associateWithBi(valueSelector: (K) -> V): BiMap<K, V> {
+    val result = mutableBiMapOf<K, V>()
+
+    this.forEach { k ->
+        result.add(k, valueSelector(k))
+    }
+
+    return result
+}
+
+fun ByteBuffer.putVector3di(v: Vector3di) {
+    this.putInt(v.x)
+    this.putInt(v.y)
+    this.putInt(v.z)
+}
+
+fun ByteBuffer.getVector3di() = Vector3di(
+    this.int,
+    this.int,
+    this.int
+)
+
+fun Direction.valueHashCode() = this.normal.hashCode()
+
+fun Vector3di.toBlockPos() = BlockPos(this.x, this.y, this.z)
+fun Vec3.toVector3d() = Vector3d(this.x, this.y, this.z)
+
+fun Scale.map(u: Dual) = factor * u + base
+fun Scale.unmap(u: Dual) = (u - base) / factor
+
+fun ChunkPos.toVector2d() = Vector2d(this.x.toDouble(), this.z.toDouble())
+
+fun<T> List<T>.averageOf(valueSelector: (T) -> Double): Double = this.sumOf(valueSelector) / this.size
+fun<T> Collection<T>.sumOfDual(n: Int, dualSelector: (T) -> Dual): Dual {
+    var result = Dual.const(0.0, n)
+    this.forEach { result += dualSelector(it) }
+    return result
+}

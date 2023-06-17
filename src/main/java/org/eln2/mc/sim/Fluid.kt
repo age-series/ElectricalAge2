@@ -1,57 +1,259 @@
 package org.eln2.mc.sim
 
-import org.eln2.mc.mathematics.pow2i
+import org.eln2.mc.data.GridCursor3d
+import org.eln2.mc.data.SubGridKey
+import org.eln2.mc.data.reduceLocal
+import org.eln2.mc.mathematics.Vector3di
+import org.eln2.mc.mathematics.exp2i
 import org.eln2.mc.mathematics.powi
 import org.eln2.mc.mathematics.pow
+import org.eln2.mc.utility.all
+import java.nio.file.Files
+import kotlin.io.path.Path
 import kotlin.math.*
-import kotlin.system.measureNanoTime
 
+class VoxelPatchModule(val size: Int) {
+    val innerCells = HashSet<Vector3di>()
 
-fun main() {
-    val grid = ClusterGrid3dSparseFluid(3)
+    val offset get() = -size / 2
+    val offsetVec get() = -Vector3di(size / 2)
 
-    val simulator = DRAGONS(
-        grid,
-        DRAGONSFluidOptions()
-    )
+    val innerRangePatch get() = 1 until size - 1
+    val passRangeMinPatch get() = 0 until 1
+    val passRangeMaxPatch get() = (size - 1) until size
 
-    grid.addDensityIncrTile(0, 0, 0, 1000f)
+    val innerRangeInner get() = (1 + offset) until (size - 1 + offset)
+    val passRangeMinInner get() = (0 + offset) until (1 + offset)
+    val passRangeMaxInner get() = (size - 1 + offset) until (size + offset)
 
-    grid.setObstacleTile(1, 0, 0, true)
-    grid.setObstacleTile(-1, 0, 0, true)
-    grid.setObstacleTile(0, 1, 0, true)
-    grid.setObstacleTile(0, -1, 0, true)
-    grid.setObstacleTile(0, 0, 1, true)
-    grid.setObstacleTile(0, 0, -1, true)
+    fun innerScanInner(user: (Vector3di) -> Unit) {
+        for (x in innerRangeInner) {
+            for(y in innerRangeInner) {
+                for(z in innerRangeInner) {
+                    user(Vector3di(x, y, z))
+                }
+            }
+        }
+    }
 
+    fun open(p: Vector3di) = innerCells.add(p)
 
-    var i = 0
+    fun carve(xRange: IntRange, yRange: IntRange, zRange: IntRange) {
+        for (x in xRange) {
+            for(y in yRange) {
+                for (z in zRange) {
+                    open(Vector3di(x, y, z) + offsetVec)
+                }
+            }
+        }
+    }
 
-    while (true) {
-        val nano = measureNanoTime {
-            simulator.step()
-        }.toDouble()
+    fun carveInterior() = carve(innerRangePatch, innerRangePatch, innerRangePatch)
 
-        println("Cell nanos: ${round(nano / simulator.activeFluidCells.toDouble())}, active ${simulator.activeFluidCells}, i: ${i++}")
-        println("Active grids: ${grid.activeGrids.size}")
-        println("Active clusters: ${simulator.activeClusters}")
+    fun carveFace(face: VoxelPatchDirection) = when(face) {
+        VoxelPatchDirection.Left -> carve(passRangeMinPatch, innerRangePatch, innerRangePatch)
+        VoxelPatchDirection.Right -> carve(passRangeMaxPatch, innerRangePatch, innerRangePatch)
+        VoxelPatchDirection.Front -> carve(innerRangePatch, innerRangePatch, passRangeMaxPatch)
+        VoxelPatchDirection.Back -> carve(innerRangePatch, innerRangePatch, passRangeMinPatch)
+        VoxelPatchDirection.Up -> carve(innerRangePatch, passRangeMaxPatch, innerRangePatch)
+        VoxelPatchDirection.Down -> carve(innerRangePatch, passRangeMinPatch, innerRangePatch)
+    }
+
+    fun openTube(a: VoxelPatchDirection, b: VoxelPatchDirection) {
+        if(a == b) {
+            error("Cannot open tube between $a and $b")
+        }
+
+        carveInterior()
+        listOf(a, b).forEach(::carveFace)
     }
 }
 
-private fun reduceLocal(world: Int, size: Int, log: Int): Int {
-    var v = world - size * (world shr log)
+// Don't get tricked by the relative-sounding directions, they are world directions
+// It would probably be better to call them North, South, ...
+enum class VoxelPatchDirection(val offset: Vector3di) {
+    Left(Vector3di(-1, 0, 0)),
+    Right(Vector3di(1, 0, 0)),
+    Front(Vector3di(0, 0, 1)),
+    Back(Vector3di(0, 0, -1)),
+    Up(Vector3di(0, 1, 0)),
+    Down(Vector3di(0, -1, 0));
 
-    if (v < 0) {
-        v = -v
+    val opposite get() = when(this) {
+        Left -> Right
+        Right -> Left
+        Front -> Back
+        Back -> Front
+        Up -> Down
+        Down -> Up
     }
 
-    return v
+    companion object {
+        fun areParallel(a: VoxelPatchDirection, b: VoxelPatchDirection) = a == b || a == b.opposite
+    }
+}
+
+data class VoxelPatchEdge(
+    val patchNode: VoxelPatchNode,
+    val direction: VoxelPatchDirection
+)
+
+data class VoxelPatchNode(val patch: VoxelPatchModule) {
+    val connections = ArrayList<VoxelPatchEdge>()
+}
+
+data class RealizedVoxelPatchNode(
+    val node: VoxelPatchNode,
+    val patchPosition: Vector3di,
+) {
+    val boundsGrid get() = getPatchBoundsGrid(patchPosition, node.patch.size)
+
+    fun mapTileGrid(tilePatch: Vector3di): Vector3di {
+        val (min, max) = boundsGrid
+
+        return (min + tilePatch + (max - min) / 2)
+    }
+
+    fun isTileGridWithinPatchBounds(tileGrid: Vector3di): Boolean {
+        val (min, max) = boundsGrid
+
+        return tileGrid.x >= min.x &&
+            tileGrid.y >= min.y &&
+            tileGrid.z >= min.z &&
+            tileGrid.x < max.x &&
+            tileGrid.y < max.y &&
+            tileGrid.z < max.z
+    }
+}
+
+fun getPatchBoundsGrid(patchPosition: Vector3di, size: Int): Pair<Vector3di, Vector3di> {
+    val min = patchPosition * size
+    val max = (patchPosition + Vector3di.one) * size
+
+    return Pair(min, max)
+}
+
+data class VoxelVolumetricScan(val root: VoxelPatchNode, val size: Int) {
+    data class VolumetricScanResult(
+        val hullClosed: Boolean,
+    )
+
+    /**
+     * Voxelizes the patch network to the [grid], by placing walls along the hull of the network shape.
+     * @return True if the hull is completely closed. Otherwise, false.
+     * */
+    fun voxelizeHull(grid: SparseGrid3dFluid, realized: MutableMap<VoxelPatchNode, RealizedVoxelPatchNode>): VolumetricScanResult {
+        val queue = ArrayDeque<RealizedVoxelPatchNode>().apply {
+            add(
+                RealizedVoxelPatchNode(
+                    root,
+                    Vector3di.zero
+                )
+            )
+        }
+
+        val traversedPatches = HashSet<RealizedVoxelPatchNode>()
+
+        var innerVolumeMax = 0
+        var openAnchor: Vector3di? = null
+
+        while (queue.isNotEmpty()) {
+            val front = queue.removeFirst()
+
+            if(!traversedPatches.add(front)) {
+                continue
+            }
+
+            realized[front.node] = front
+
+            if(front.node.patch.size != size) {
+                error("Invalid patch size ${front.node.patch.size} for scan of size $size")
+            }
+
+            val (min, max) = front.boundsGrid
+
+            for (x in min.x until max.x) {
+                for (y in min.y until max.y) {
+                    for(z in min.z until max.z) {
+                        grid.setObstacleTile(x, y, z, true)
+                        innerVolumeMax++
+                    }
+                }
+            }
+
+            front.node.patch.innerCells.forEach { cellPatch ->
+                val cellGrid = front.mapTileGrid(cellPatch)
+
+                if(!front.isTileGridWithinPatchBounds(cellGrid)) {
+                    error("patch pos $cellGrid ($cellPatch) out of bounds")
+                }
+
+                grid.setObstacleTile(
+                    cellGrid.x,
+                    cellGrid.y,
+                    cellGrid.z,
+                    false
+                )
+
+                if(openAnchor == null) {
+                    openAnchor = cellGrid
+                }
+            }
+
+            front.node.connections.forEach { (nbrNode, nbrDir) ->
+                queue.add(
+                    RealizedVoxelPatchNode(
+                        nbrNode,
+                        front.patchPosition + nbrDir.offset
+                    )
+                )
+            }
+        }
+
+        return VolumetricScanResult(
+            if(openAnchor != null) {
+                isClosed(grid, openAnchor!!, innerVolumeMax)
+            } else true
+        )
+    }
+
+    private fun isClosed(grid: SparseGrid3dFluid, innerAnchor: Vector3di, innerVolumeMax: Int): Boolean {
+        val offsets = VoxelPatchDirection.values().map { it.offset }
+
+        val traversedVoxels = HashSet<Vector3di>()
+        val voxelQueue = ArrayDeque<Vector3di>().apply { add(innerAnchor) }
+
+        var actualVolume = 0
+
+        while (voxelQueue.isNotEmpty()) {
+            val front = voxelQueue.removeFirst()
+
+            if(!traversedVoxels.add(front)) {
+                continue
+            }
+
+            actualVolume++
+
+            if(actualVolume > innerVolumeMax) {
+                return false
+            }
+
+            offsets.forEach {
+                val target = front + it
+                if(!grid.getOrCreateTile(target).wallGrid[target.x, target.y, target.z]) {
+                    voxelQueue.add(target)
+                }
+            }
+        }
+
+        return true
+    }
 }
 
 class Grid3df(val storage: FloatArray, val log: Int) {
-    constructor(log: Int) : this(FloatArray(powi(pow2i(log), 3)), log)
+    constructor(log: Int) : this(FloatArray(powi(exp2i(log), 3)), log)
 
-    val edgeSize = pow2i(log)
+    val edgeSize = exp2i(log)
 
     init { require(log >= 1) }
 
@@ -69,13 +271,14 @@ class Grid3df(val storage: FloatArray, val log: Int) {
     operator fun get(i: Int) = storage[i]
     operator fun set(i: Int, v: Float) { storage[i] = v }
     operator fun get(xWorld: Int, yWorld: Int, zWorld: Int) = get(ixGrid(xWorld, yWorld, zWorld))
+    operator fun get(vWorld: Vector3di) = get(vWorld.x, vWorld.y, vWorld.z)
     operator fun set(xWorld: Int, yWorld: Int, zWorld: Int, v: Float) = set(ixGrid(xWorld, yWorld, zWorld), v)
 }
 
 class Grid3db(val storage: BooleanArray, val log: Int) {
-    constructor(log: Int) : this(BooleanArray(powi(pow2i(log), 3)), log)
+    constructor(log: Int) : this(BooleanArray(powi(exp2i(log), 3)), log)
 
-    val edgeSize = pow2i(log)
+    val edgeSize = exp2i(log)
 
     init { require(log >= 1) }
 
@@ -93,44 +296,8 @@ class Grid3db(val storage: BooleanArray, val log: Int) {
     operator fun get(i: Int) = storage[i]
     operator fun set(i: Int, v: Boolean) { storage[i] = v }
     operator fun get(xWorld: Int, yWorld: Int, zWorld: Int) = get(ixGrid(xWorld, yWorld, zWorld))
+    operator fun get(vWorld: Vector3di) = get(vWorld.x, vWorld.y, vWorld.z)
     operator fun set(xWorld: Int, yWorld: Int, zWorld: Int, v: Boolean) = set(ixGrid(xWorld, yWorld, zWorld), v)
-}
-
-data class SubGridKey(val x: Int, val y: Int, val z: Int) {
-    fun toTile(size: Int) = SubGridKey(x * size, y * size, z * size)
-
-    companion object {
-        fun fromTile(tileX: Int, tileY: Int, tileZ: Int, size: Int): SubGridKey {
-            return SubGridKey(
-                rxAxis(tileX, size),
-                rxAxis(tileY, size),
-                rxAxis(tileZ, size)
-            )
-        }
-
-        private fun rxAxis(tileCoordinate: Int, size: Int) = floor(tileCoordinate / size.toDouble()).toInt()
-    }
-}
-
-data class CellCursor(val edgeSize: Int) {
-    var x = 0
-    var y = 0
-    var z = 0
-    var tileX = 0
-    var tileY = 0
-    var tileZ = 0
-
-    fun loadGrid(grid: Grid3dFluid) {
-        tileX = grid.tileX
-        tileY = grid.tileY
-        tileZ = grid.tileZ
-    }
-
-    fun loadIndex(i: Int) {
-        x = i % edgeSize + tileX
-        y = (i / edgeSize) % edgeSize + tileY
-        z = i / edgeSize / edgeSize + tileZ
-    }
 }
 
 class Grid3dFluid(
@@ -179,7 +346,7 @@ class Grid3dFluid(
         cellCount = wallGrid.edgeSize.pow(3)
 
         require(
-            listOf(
+            all(
                 wallGrid.edgeSize,
                 densities.edgeSize,
                 newDensities.edgeSize,
@@ -187,7 +354,7 @@ class Grid3dFluid(
                 velocitiesY.edgeSize,
                 newVelocitiesX.edgeSize,
                 newVelocitiesY.edgeSize
-            ).all { it == edgeSize }
+            ) { it == edgeSize }
         )
 
         val t = key.toTile(edgeSize)
@@ -224,11 +391,11 @@ class Grid3dFluid(
     }
 }
 
-class ClusterGrid3dSparseFluid(val log: Int) {
-    val edgeSize = pow2i(log)
+class SparseGrid3dFluid(val log: Int) {
+    val edgeSize = exp2i(log)
     val gridCellCount = edgeSize.pow(3)
 
-    fun createCursor() = CellCursor(edgeSize)
+    fun createCursor() = GridCursor3d(edgeSize)
 
     val windowRange = 0 until gridCellCount
 
@@ -293,15 +460,25 @@ class ClusterGrid3dSparseFluid(val log: Int) {
     }
 
     fun getOrCreateTile(tileX: Int, tileY: Int, tileZ: Int) = getOrCreateGrid(SubGridKey.fromTile(tileX, tileY, tileZ, edgeSize))
+    fun getOrCreateTile(tile: Vector3di) = getOrCreateTile(tile.x, tile.y, tile.z)
     fun getOrCreateGrid(key: SubGridKey) = subGrids.getOrPut(key) { Grid3dFluid(key, log) }
-
-    fun readDensity(tileX: Int, tileY: Int, tileZ: Int) = getOrCreateTile(tileX, tileY, tileZ).densities[tileX, tileY, tileZ]
 
     fun addDensityIncrTile(tileX: Int, tileY: Int, tileZ: Int, densityIncr: Float, activate: Boolean = true) {
         val grid = getOrCreateTile(tileX, tileY, tileZ)
 
         grid.densities[tileX, tileY, tileZ] += densityIncr
         grid.newDensities[tileX, tileY, tileZ] += densityIncr
+
+        if(activate) {
+            activeGrids.add(grid)
+        }
+    }
+
+    fun setDensityTile(tileX: Int, tileY: Int, tileZ: Int, density: Float, activate: Boolean) {
+        val grid = getOrCreateTile(tileX, tileY, tileZ)
+
+        grid.densities[tileX, tileY, tileZ] = density
+        grid.newDensities[tileX, tileY, tileZ] = density
 
         if(activate) {
             activeGrids.add(grid)
@@ -317,26 +494,55 @@ class ClusterGrid3dSparseFluid(val log: Int) {
             activeGrids.add(grid)
         }
     }
+
+    fun activate(tileX: Int, tileY: Int, tileZ: Int) {
+        val grid = getOrCreateTile(tileX, tileY, tileZ)
+
+        activeGrids.add(grid)
+    }
+
+    fun exportForInspection() {
+        val sb = StringBuilder()
+
+        val cursor = createCursor()
+
+        subGrids.values.forEach {
+            cursor.loadg(it)
+
+            for (i in windowRange) {
+                cursor.loadi(i)
+
+                val pos = cursor.vector
+
+                if(it.wallGrid[pos]) {
+                    sb.appendLine("${pos.x} ${pos.y} ${pos.z}")
+                }
+            }
+        }
+
+        Files.writeString(Path("inspection.txt"), sb.toString())
+    }
 }
 
-data class DRAGONSFluidOptions(
+data class DiffusionFluidOptions(
     val pressureThreshold: Float = 0f,
     val pressureCoefficient: Float = 60f,
     val dampening: Float = 0.01f,
     val diffusionRadius: Float = 0.7f,
     val diffusionThreshold: Float = 0f,
-    val diffusionRate: Float = 0.01f,
-    val densityThreshold: Float = 10e-10f,
-    val activateThreshold: Float = 10e-10f,
+    val diffusionRate: Float = 0.06f,
+    val densityThreshold: Float = 10e-4f,
+    val activateThreshold: Float = 10e-4f,
     val velocityRange: Float = 30f,
     val gridDeleteThreshold: Float = 0.01f,
-    val clusterSleepThreshold: Float = 0.00f
+    val clusterSleepThreshold: Float = 0.00f,
+    val substeps: Int = 1
 )
 
 /**
  * Diffusion-Reaction-Advection Grid for Optimized Non-physical Simulations
  * */
-class DRAGONS(val sparseGrid: ClusterGrid3dSparseFluid, val options: DRAGONSFluidOptions) {
+class DiffusionSimulation(val sparseGrid: SparseGrid3dFluid, val options: DiffusionFluidOptions) {
     var totalDensity = 0f
         private set
 
@@ -346,7 +552,9 @@ class DRAGONS(val sparseGrid: ClusterGrid3dSparseFluid, val options: DRAGONSFlui
     var activeFluidCells = 0
         private set
 
-    private fun rxTargetGrid(x: Int, y: Int, z: Int, current: Grid3dFluid): Grid3dFluid {
+    val isActive get() = activeClusters > 0
+
+    private fun getTargetGrid(x: Int, y: Int, z: Int, current: Grid3dFluid): Grid3dFluid {
         // can be made branch-less using an indexing system
         return if (x == current.tileX - 1) current.left!!
         else if (x == current.tileRight) current.right!!
@@ -372,10 +580,12 @@ class DRAGONS(val sparseGrid: ClusterGrid3dSparseFluid, val options: DRAGONSFlui
     }
 
     private fun velocityPass(dt: Float) {
+        // All the groundwork is laid in to implement a velocity field. Currently, the velocity grid isn't useful (the value is always re-calculated)
+
         val cursor = sparseGrid.createCursor()
 
         sparseGrid.activeGrids.forEach { grid ->
-            cursor.loadGrid(grid)
+            cursor.loadg(grid)
 
             val densityEps = options.densityThreshold
             val velocityRange = options.velocityRange
@@ -383,7 +593,7 @@ class DRAGONS(val sparseGrid: ClusterGrid3dSparseFluid, val options: DRAGONSFlui
             val pressureCoefficient = options.pressureCoefficient
 
             for (i in sparseGrid.windowRange) {
-                cursor.loadIndex(i)
+                cursor.loadi(i)
 
                 val x = cursor.x
                 val y = cursor.y
@@ -395,12 +605,12 @@ class DRAGONS(val sparseGrid: ClusterGrid3dSparseFluid, val options: DRAGONSFlui
                     continue
                 }
 
-                val lGrid = rxTargetGrid(x - 1, y, z, grid)
-                val rGrid = rxTargetGrid(x + 1, y, z, grid)
-                val uGrid = rxTargetGrid(x, y + 1, z, grid)
-                val dGrid = rxTargetGrid(x, y - 1, z, grid)
-                val bGrid = rxTargetGrid(x, y, z - 1, grid)
-                val fGrid = rxTargetGrid(x, y, z + 1, grid)
+                val lGrid = getTargetGrid(x - 1, y, z, grid)
+                val rGrid = getTargetGrid(x + 1, y, z, grid)
+                val uGrid = getTargetGrid(x, y + 1, z, grid)
+                val dGrid = getTargetGrid(x, y - 1, z, grid)
+                val bGrid = getTargetGrid(x, y, z - 1, grid)
+                val fGrid = getTargetGrid(x, y, z + 1, grid)
 
                 var fx = 0f
                 var fy = 0f
@@ -434,7 +644,7 @@ class DRAGONS(val sparseGrid: ClusterGrid3dSparseFluid, val options: DRAGONSFlui
                     if(!fGrid.wallGrid[x, y, z + 1]) fz += dxDensF * pressureCoefficient
                 }
 
-                // Integrate in time:
+                // Integrate in time. A velocity field would accumulate them
                 grid.velocitiesX[actualIndex] = ((fx / actualDensity) * dt).coerceIn(-velocityRange, velocityRange)
                 grid.velocitiesY[actualIndex] = ((fy / actualDensity) * dt).coerceIn(-velocityRange, velocityRange)
                 grid.velocitiesZ[actualIndex] = ((fz / actualDensity) * dt).coerceIn(-velocityRange, velocityRange)
@@ -458,12 +668,12 @@ class DRAGONS(val sparseGrid: ClusterGrid3dSparseFluid, val options: DRAGONSFlui
         activeFluidCells = 0
 
         sparseGrid.activeGrids.forEach { grid ->
-            cursor.loadGrid(grid)
+            cursor.loadg(grid)
 
             val densityEps = options.densityThreshold
 
             for (i in sparseGrid.windowRange) {
-                cursor.loadIndex(i)
+                cursor.loadi(i)
 
                 val x = cursor.x
                 val y = cursor.y
@@ -477,12 +687,12 @@ class DRAGONS(val sparseGrid: ClusterGrid3dSparseFluid, val options: DRAGONSFlui
 
                 activeFluidCells++
 
-                val lGrid = rxTargetGrid(x - 1, y, z, grid)
-                val rGrid = rxTargetGrid(x + 1, y, z, grid)
-                val uGrid = rxTargetGrid(x, y + 1, z, grid)
-                val dGrid = rxTargetGrid(x, y - 1, z, grid)
-                val fGrid = rxTargetGrid(x, y, z + 1, grid)
-                val bGrid = rxTargetGrid(x, y, z - 1, grid)
+                val lGrid = getTargetGrid(x - 1, y, z, grid)
+                val rGrid = getTargetGrid(x + 1, y, z, grid)
+                val uGrid = getTargetGrid(x, y + 1, z, grid)
+                val dGrid = getTargetGrid(x, y - 1, z, grid)
+                val fGrid = getTargetGrid(x, y, z + 1, grid)
+                val bGrid = getTargetGrid(x, y, z - 1, grid)
 
                 val velX = grid.velocitiesX[actualIndex]
                 val velY = grid.velocitiesY[actualIndex]
@@ -509,13 +719,13 @@ class DRAGONS(val sparseGrid: ClusterGrid3dSparseFluid, val options: DRAGONSFlui
                     depth = diffusionDiameter
                 )
 
-                val sVolume = volumetricScan(diffusionBox, rxDiffusionBox, xf, yf, zf)
-                val lVolume = volumetricScan(diffusionBox, rxDiffusionBox, xf - 1f, yf, zf)
-                val rVolume = volumetricScan(diffusionBox, rxDiffusionBox, xf + 1f, yf, zf)
-                val uVolume = volumetricScan(diffusionBox, rxDiffusionBox, xf, yf + 1f, zf)
-                val dVolume = volumetricScan(diffusionBox, rxDiffusionBox, xf, yf - 1f, zf)
-                val bVolume = volumetricScan(diffusionBox, rxDiffusionBox, xf, yf, zf - 1f)
-                val fVolume = volumetricScan(diffusionBox, rxDiffusionBox, xf, yf, zf + 1f)
+                val sVolume = intersectionScan(diffusionBox, rxDiffusionBox, xf, yf, zf)
+                val lVolume = intersectionScan(diffusionBox, rxDiffusionBox, xf - 1f, yf, zf)
+                val rVolume = intersectionScan(diffusionBox, rxDiffusionBox, xf + 1f, yf, zf)
+                val uVolume = intersectionScan(diffusionBox, rxDiffusionBox, xf, yf + 1f, zf)
+                val dVolume = intersectionScan(diffusionBox, rxDiffusionBox, xf, yf - 1f, zf)
+                val bVolume = intersectionScan(diffusionBox, rxDiffusionBox, xf, yf, zf - 1f)
+                val fVolume = intersectionScan(diffusionBox, rxDiffusionBox, xf, yf, zf + 1f)
 
                 val totalVolume = sVolume + lVolume + rVolume + uVolume + dVolume + bVolume + fVolume
                 val normalizeRecip = 1f / (totalVolume / grid.densities[actualIndex])
@@ -562,7 +772,7 @@ class DRAGONS(val sparseGrid: ClusterGrid3dSparseFluid, val options: DRAGONSFlui
         neighborGrid.rxAmount += amount
     }
 
-    private fun volumetricScan(srcBox: Box, neighborBox: Box, x: Float, y: Float, z: Float): Float {
+    private fun intersectionScan(srcBox: Box, neighborBox: Box, x: Float, y: Float, z: Float): Float {
         neighborBox.load(x, y, z, 1f, 1f, 1f)
 
         return Box.intersectVolume(srcBox, neighborBox)
@@ -578,10 +788,10 @@ class DRAGONS(val sparseGrid: ClusterGrid3dSparseFluid, val options: DRAGONSFlui
             var gridTotal = 0f
             var hasWalls = false
 
-            cursor.loadGrid(grid)
+            cursor.loadg(grid)
 
             for (i in sparseGrid.windowRange) {
-                cursor.loadIndex(i)
+                cursor.loadi(i)
                 val actualIndex = grid.ixGrid(cursor.x, cursor.y, cursor.z)
 
                 hasWalls = hasWalls || grid.wallGrid[actualIndex]
@@ -627,17 +837,23 @@ class DRAGONS(val sparseGrid: ClusterGrid3dSparseFluid, val options: DRAGONSFlui
         }
     }
 
-    fun step() {
-        val dt = options.diffusionRate
-
-        loadSimulationGraphs()
-
-        velocityPass(dt)
-        volumetricPass(dt)
-
+    private fun loadResults() {
         sparseGrid.applyActivation()
         applyChangesAndRefitClusters()
         sparseGrid.applyInactivation()
+    }
+
+    fun step() {
+        val dt = options.diffusionRate
+
+        repeat(options.substeps) {
+            loadSimulationGraphs()
+
+            velocityPass(dt)
+            volumetricPass(dt)
+
+            loadResults()
+        }
     }
 
     private class Box {

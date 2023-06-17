@@ -3,24 +3,41 @@ package org.eln2.mc.mathematics
 import com.mojang.math.Vector4f
 import net.minecraft.core.Vec3i
 import net.minecraft.world.phys.Vec3
+import java.math.BigDecimal
+import java.math.MathContext
 import kotlin.math.*
 
-object Geometry {
-    /**
-     * Computes the surface area of a cylinder with specified [length] and [radius].
-     * */
-    fun cylinderSurfaceArea(length: Double, radius: Double): Double {
-        return 2 * PI * radius * length + 2 * PI * radius * radius
-    }
-}
-
-//#region Interpolations
 fun lerp(from: Double, to: Double, factor: Double): Double {
     return (1.0 - factor) * from + factor * to
 }
 
 fun lerp(from: Float, to: Float, factor: Float): Float {
     return (1f - factor) * from + factor * to
+}
+
+fun lerp(from: Double, to: Double, factor: Dual): Dual {
+    return (1.0 - factor) * from + factor * to
+}
+
+fun lerp(from: Dual, to: Dual, factor: Dual): Dual {
+    return (1.0 - factor) * from + factor * to
+}
+
+fun log2i(x: Int): Int {
+    var v = x
+    var r = 0xFFFF - v shr 31 and 0x10
+    v = v shr r
+    var fnz = 0xFF - v shr 31 and 0x8
+    v = v shr fnz
+    r = r or fnz
+    fnz = 0xF - v shr 31 and 0x4
+    v = v shr fnz
+    r = r or fnz
+    fnz = 0x3 - v shr 31 and 0x2
+    v = v shr fnz
+    r = r or fnz
+    r = r or (v shr 1)
+    return r
 }
 
 /**
@@ -56,7 +73,7 @@ fun Int.pow(exponent: Int) = powi(this, exponent)
 /**
  * Computes 2 to the specified power [exponent]. Calls [pow] with a base of 2.
  * */
-fun pow2i(exponent: Int): Int {
+fun exp2i(exponent: Int): Int {
     return powi(2, exponent)
 }
 
@@ -362,42 +379,81 @@ fun Double.rounded(decimals: Int = 3): Double {
 fun Double.minWith(other: Double) = min(this, other)
 fun Double.maxWith(other: Double) = max(this, other)
 
+const val SNZE_EPSILON = 2.2e-15
+const val SNZE_EPSILONf = 1.2e-6f
+
 /**
  * Epsilon Sign-Non-Zero function from the [SymForce](https://arxiv.org/abs/2204.07889) paper.
  * */
-fun snzEps(a: Double): Double {
-    if (a >= 0.0) {
-        return 2.2e-15
-    }
-
-    return -2.2e-15
+fun snzE(a: Double): Double {
+    return if (a >= 0.0) SNZE_EPSILON
+    else -SNZE_EPSILON
 }
 
-fun Double.nz() = this + snzEps(this)
+fun nsnzE(a: Double): Double {
+    return if (a <= 0.0) -SNZE_EPSILON
+    else SNZE_EPSILON
+}
+
+fun Double.nz() = this + snzE(this)
+fun Double.nnz() = this + nsnzE(this)
 
 fun snz(a: Double): Double {
-    if (a >= 0.0) {
-        return 1.0
-    }
+    return if (a >= 0.0) 1.0
+    else -1.0
+}
 
-    return -1.0
+fun nsnz(a: Double): Double {
+    return if (a <= 0.0) {
+        -1.0
+    }
+    else 1.0
 }
 
 fun snzi(a: Double): Int {
-    if (a >= 0.0) {
-        return 1
-    }
-
-    return -1
+    return if (a >= 0.0) 1
+    else -1
 }
 
 fun snzi(a: Int): Int {
-    if (a >= 0) {
-        return 1
-    }
+    return if (a >= 0) 1
 
-    return -1
+    else -1
 }
+
+fun nsnzi(a: Double): Int {
+    return if (a <= 0.0) -1
+    else 1
+}
+
+fun nsnzi(a: Int): Int {
+    return if (a <= 0) -1
+    else 1
+}
+
+fun snzE(a: Float): Float {
+    return if (a >= 0f) SNZE_EPSILONf
+    else -SNZE_EPSILONf
+}
+
+fun nsnzE(a: Float): Float {
+    return if (a <= 0f) -SNZE_EPSILONf
+    else SNZE_EPSILONf
+}
+
+fun matchSigni(a: Int, targetSign: Int): Int {
+    return if(a.sign == targetSign) 1
+    else 0
+}
+
+fun matchSnzi(a: Int, snz: Int): Int {
+    return if(snzi(a) == snz) 1
+    else 0
+}
+
+fun Float.nz() = this + snzE(this)
+fun Float.nnz() = this + nsnzE(this)
+
 
 private const val ADAPTLOB_ALPHA = 0.816496580927726
 private const val ADAPTLOB_BETA = 0.447213595499958
@@ -626,6 +682,7 @@ fun sqrt(d: Dual): Dual = d.function({ sqrt(it) }) { (Dual.const(1.0, d.size) / 
 fun sinh(d: Dual): Dual = d.function({ sinh(it) }) { cosh(it) }
 fun cosh(d: Dual): Dual = d.function({ cosh(it) }) { sinh(it) }
 fun ln(d: Dual): Dual = d.function({ ln(it) }) { Dual.const(1.0, d.size) / it }
+fun exp(d: Dual): Dual = d.function({ exp(it) }) { exp(it) }
 fun coth(x: Dual) = cosh(x) / sinh(x)
 
 data class DualArray(val values: List<DoubleArray>) {
@@ -663,4 +720,35 @@ data class DualArray(val values: List<DoubleArray>) {
             }
         )
     }
+}
+
+/**
+ * Computes the surface area of a cylinder with specified [length] and [radius].
+ * */
+fun cylinderSurfaceArea(length: Double, radius: Double): Double {
+    return 2 * PI * radius * length + 2 * PI * radius * radius
+}
+
+fun ln(x: BigDecimal, ctx: MathContext, iterations: Long = 4096): BigDecimal {
+    var a: BigDecimal = x
+
+    if (a == BigDecimal.ONE) {
+        return BigDecimal.ZERO
+    }
+
+    a -= BigDecimal.ONE
+
+    var result = BigDecimal(iterations + 1)
+
+    for (i in iterations downTo 0) {
+        var term: BigDecimal = BigDecimal(i / 2 + 1).pow(2)
+        term = term.multiply(a, ctx)
+        result = term.divide(result, ctx)
+        term = BigDecimal(i + 1)
+        result = result.add(term, ctx)
+    }
+
+    result = a.divide(result, ctx)
+
+    return result
 }

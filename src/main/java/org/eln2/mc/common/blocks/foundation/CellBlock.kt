@@ -27,10 +27,10 @@ import org.eln2.mc.ServerOnly
 import org.eln2.mc.common.blocks.BlockRegistry
 import org.eln2.mc.common.cells.CellRegistry
 import org.eln2.mc.common.cells.foundation.*
-import org.eln2.mc.common.space.BlockFaceLocator
-import org.eln2.mc.common.space.BlockPosLocator
-import org.eln2.mc.common.space.IdentityDirectionLocator
-import org.eln2.mc.common.space.LocationDescriptor
+import org.eln2.mc.data.BlockFaceLocator
+import org.eln2.mc.data.BlockPosLocator
+import org.eln2.mc.data.IdentityDirectionLocator
+import org.eln2.mc.data.LocationDescriptor
 import org.eln2.mc.data.DataNode
 import org.eln2.mc.data.DataEntity
 import org.eln2.mc.isHorizontal

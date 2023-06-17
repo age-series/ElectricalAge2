@@ -40,10 +40,10 @@ import org.eln2.mc.common.blocks.BlockRegistry
 import org.eln2.mc.common.cells.foundation.*
 import org.eln2.mc.common.parts.PartRegistry
 import org.eln2.mc.common.parts.foundation.*
-import org.eln2.mc.common.space.BlockFaceLocator
-import org.eln2.mc.common.space.DirectionMask
-import org.eln2.mc.common.space.SO3
-import org.eln2.mc.common.space.requireLocator
+import org.eln2.mc.data.BlockFaceLocator
+import org.eln2.mc.mathematics.DirectionMask
+import org.eln2.mc.data.SO3
+import org.eln2.mc.data.requireLocator
 import org.eln2.mc.data.DataNode
 import org.eln2.mc.data.DataEntity
 import org.eln2.mc.integration.WailaEntity

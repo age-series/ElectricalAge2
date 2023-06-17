@@ -3,8 +3,8 @@ package org.eln2.mc.common.cells.foundation
 import org.ageseries.libage.sim.electrical.mna.Circuit
 import org.ageseries.libage.sim.electrical.mna.component.Component
 import org.ageseries.libage.sim.electrical.mna.component.Resistor
-import org.eln2.mc.common.space.*
 import org.eln2.mc.connect
+import org.eln2.mc.data.*
 import kotlin.math.abs
 
 class ComponentHolder<T : Component>(private val factory: () -> T) {

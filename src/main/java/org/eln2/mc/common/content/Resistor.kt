@@ -11,9 +11,9 @@ import org.eln2.mc.client.render.foundation.BasicPartRenderer
 import org.eln2.mc.common.cells.foundation.*
 import org.eln2.mc.common.parts.foundation.CellPart
 import org.eln2.mc.common.parts.foundation.PartPlacementInfo
-import org.eln2.mc.common.space.DirectionMask
-import org.eln2.mc.common.space.RelativeDir
-import org.eln2.mc.common.space.withDirectionActualRule
+import org.eln2.mc.mathematics.DirectionMask
+import org.eln2.mc.mathematics.RelativeDir
+import org.eln2.mc.data.withDirectionActualRule
 import org.eln2.mc.resistor
 import org.eln2.mc.integration.WailaEntity
 import org.eln2.mc.integration.WailaTooltipBuilder
@@ -76,7 +76,7 @@ class ResistorObject(cell: Cell, val dir1: RelativeDir = RelativeDir.Front, val 
     }
 }
 
-class ResistorCell(ci: CellCI) : Cell(ci) {
+class ResistorCell(ci: CellCreateInfo) : Cell(ci) {
     @SimObject
     val resistorObj = ResistorObject(this)
 

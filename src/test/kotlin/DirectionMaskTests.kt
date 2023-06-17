@@ -1,6 +1,6 @@
 import net.minecraft.core.Direction
-import org.eln2.mc.common.space.DirectionMask
-import org.eln2.mc.common.space.RelativeDir
+import org.eln2.mc.mathematics.DirectionMask
+import org.eln2.mc.mathematics.RelativeDir
 import org.eln2.mc.isHorizontal
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.fail

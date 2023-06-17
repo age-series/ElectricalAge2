@@ -19,7 +19,6 @@ import org.ageseries.libage.sim.thermal.*
 import net.minecraft.core.BlockPos
 import org.eln2.mc.*
 import org.eln2.mc.Eln2.LOGGER
-import org.eln2.mc.mathematics.bbVec
 import org.eln2.mc.client.render.foundation.MultipartBlockEntityInstance
 import org.eln2.mc.client.render.PartialModels
 import org.eln2.mc.client.render.foundation.defaultRadiantBodyColor
@@ -29,12 +28,10 @@ import org.eln2.mc.common.events.AtomicUpdate
 import org.eln2.mc.common.events.EventScheduler
 import org.eln2.mc.common.network.serverToClient.PacketHandlerBuilder
 import org.eln2.mc.common.parts.foundation.*
-import org.eln2.mc.common.space.*
 import org.eln2.mc.data.*
 import org.eln2.mc.integration.WailaEntity
-import org.eln2.mc.mathematics.lerp
-import org.eln2.mc.mathematics.map
-import org.eln2.mc.mathematics.Geometry.cylinderSurfaceArea
+import org.eln2.mc.mathematics.*
+import org.eln2.mc.mathematics.cylinderSurfaceArea
 import org.eln2.mc.sim.*
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.math.absoluteValue
@@ -157,7 +154,7 @@ class WireModel {
     var damageThreshold = Temperature.from(500.0, ThermalUnits.CELSIUS)
 }
 
-class WireCell(ci: CellCI, val model: WireModel) : Cell(ci) {
+class WireCell(ci: CellCreateInfo, val model: WireModel) : Cell(ci) {
     override val dataNode = data {
         if(model.isElectrical) {
             it.withField(ResistanceField {

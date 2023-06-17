@@ -5,6 +5,7 @@ import net.minecraftforge.eventbus.api.SubscribeEvent
 import net.minecraftforge.fml.common.Mod
 import org.eln2.mc.Eln2.LOGGER
 import org.eln2.mc.CrossThreadAccess
+import org.eln2.mc.common.events.EventScheduler.scheduledWorkPre
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.PriorityBlockingQueue
@@ -64,6 +65,24 @@ object EventScheduler {
     @CrossThreadAccess
     fun scheduleWorkPost(countdown: Int, item: WorkItem){
         scheduledWorkPost.add(SynchronousWork(timeStamp + countdown, item))
+    }
+
+    @CrossThreadAccess
+    fun schedulePeriodicPre(interval: Int, body: () -> Boolean) {
+        fun run() {
+            if(body()) scheduleWorkPre(interval, ::run)
+        }
+
+        scheduleWorkPre(interval, ::run)
+    }
+
+    @CrossThreadAccess
+    fun schedulePeriodicPost(interval: Int, body: () -> Boolean) {
+        fun run() {
+            if(body()) scheduleWorkPost(interval, ::run)
+        }
+
+        scheduleWorkPost(interval, ::run)
     }
 
     /**

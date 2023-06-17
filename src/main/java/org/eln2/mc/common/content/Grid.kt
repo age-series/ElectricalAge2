@@ -41,8 +41,6 @@ import org.eln2.mc.common.blocks.foundation.CellBlock
 import org.eln2.mc.common.blocks.foundation.CellBlockEntity
 import org.eln2.mc.common.cells.foundation.*
 import org.eln2.mc.common.events.runPre
-import org.eln2.mc.data.Distance
-import org.eln2.mc.data.DistanceUnits
 import org.eln2.mc.mathematics.*
 import kotlin.collections.ArrayList
 import kotlin.math.PI
@@ -65,7 +63,7 @@ class GridElectricalObject(cell: GridCell) : ElectricalObject(cell) {
     }
 }
 
-class GridCell(ci: CellCI) : Cell(ci) {
+class GridCell(ci: CellCreateInfo) : Cell(ci) {
     @SimObject
     val electricalObj = GridElectricalObject(this)
 }
@@ -396,9 +394,6 @@ class GridConnectionInstanceFlw(materialManager: MaterialManager, entity: GridCo
             val catenarySupports = listOf(a, b).sortedBy { it.z }
             val targetLength = (a..b) * 1.1
 
-            val l = Distance.from(targetLength, DistanceUnits.METER)
-            LOGGER.info("Target length: ${(l .. DistanceUnits.FOOTBALL_FIELDS).rounded(2)} football fields (${(l .. DistanceUnits.LIGHT_NANORELS).rounded(4)} light nanorels)")
-
             val path = Spline3d(
                 splineSegmentMapOf(
                     listOf(
@@ -417,7 +412,7 @@ class GridConnectionInstanceFlw(materialManager: MaterialManager, entity: GridCo
                 0.0,
                 1.0,
                 0.1,
-                condition = diffCondition3d(
+                condition = differenceCondition3d(
                     distMax = 0.5,
                     rotIncrMax = PI / 16.0
                 )

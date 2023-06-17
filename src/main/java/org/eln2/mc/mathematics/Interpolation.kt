@@ -48,7 +48,7 @@ class GridInterpolator(val grid: KDGridD) {
 
         val lower = coordinates.floored()
 
-        val neighborValues = ArrayList<Double>(pow2i(grid.dimensions))
+        val neighborValues = ArrayList<Double>(exp2i(grid.dimensions))
 
         neighborOffsets.forEach { offset ->
             neighborValues.add(getClamped(lower + offset))
@@ -107,7 +107,7 @@ class GridInterpolator(val grid: KDGridD) {
             t: KDVectorD,
             function: Interpolator,
         ): Double {
-            return kdInterpolate(dims - 1, i + pow2i(dims - 1), values, t, function)
+            return kdInterpolate(dims - 1, i + exp2i(dims - 1), values, t, function)
         }
     }
 }
@@ -333,10 +333,6 @@ data class ArcReparamCatenary2dDual(
     }
 }
 
-fun main() {
-    ArcReparamCatenary2dDual.parametricScan(10.0, 2.0, 3.0)
-}
-
 data class ArcReparamCatenary2dRFUProjection3dDual(
     val p0: Vector3d,
     val p1: Vector3d,
@@ -408,6 +404,18 @@ data class CubicHermiteSplineSegment1d(
     override fun evaluateDual(tActual: Dual) = hermiteCubicDual(p0, v0, v1, p1, tActual)
 }
 
+data class LinearSplineSegment1d(
+    override val t0: Double,
+    override val t1: Double,
+    val p0: Double,
+    val p1: Double,
+) : SplineSegment1d {
+    override val y0 = Dual.of(p0)
+    override val y1 = Dual.of(p1)
+    override fun evaluate(tActual: Double) = lerp(p0, p1, tActual)
+    override fun evaluateDual(tActual: Dual) = lerp(p0, p1, tActual)
+}
+
 data class QuinticHermiteSplineSegment1d(
     override val t0: Double,
     override val t1: Double,
@@ -448,26 +456,62 @@ data class QuinticHermiteSplineSegment3d(
     )
 }
 
-data class Spline1d(val segments: SplineSegmentMap<SplineSegment1d>) {
-    fun evaluate(t: Double) = segments[t].let {
+interface InterpolationFunction<P, V> {
+    fun evaluate(t: P): V
+}
+
+interface InterpolationFunctionDual<P, V, VD> : InterpolationFunction<P, V> {
+    fun evaluateDual(t: P, n: Int = 1): VD
+}
+
+data class Spline1d(val map: SplineSegmentMap<SplineSegment1d>) : InterpolationFunctionDual<Double, Double, Dual> {
+    override fun evaluate(t: Double) = map[t].let {
         it.evaluate(it.reparamSplineActual(t))
     }
 
-    fun evaluateDual(t: Double, n: Int = 1) = segments[t].let {
+    override fun evaluateDual(t: Double, n: Int) = map[t].let {
         it.evaluateDual(Dual.variable(it.reparamSplineActual(t), n))
     }
 
-    fun arclengthScan(a: Double, b: Double, eps: Double = 1e-15) = integralScan(a, b, eps) { this.evaluateDual(it, 2)[1] }
+    fun arclengthScan(a: Double, b: Double, eps: Double) = integralScan(a, b, eps) { this.evaluateDual(it, 2)[1] }
+}
+
+fun<P, V, VD> InterpolationFunctionDual<P, V, VD>.reparamV(f: (P) -> P) = this.let { original ->
+    object: InterpolationFunctionDual<P, V, VD> {
+        override fun evaluate(t: P) = original.evaluate(f(t))
+        override fun evaluateDual(t: P, n: Int) = original.evaluateDual(f(t), n)
+    }
+}
+
+fun<P, V, VD> InterpolationFunctionDual<P, V, VD>.reordV(f: (V) -> V, fd: (VD) -> VD) = this.let { original ->
+    object: InterpolationFunctionDual<P, V, VD> {
+        override fun evaluate(t: P) = f(original.evaluate(t))
+        override fun evaluateDual(t: P, n: Int) = fd(original.evaluateDual(t, n))
+    }
+}
+
+fun <P0, P1, V, VD> InterpolationFunctionDual<P0, V, VD>.reparamU(f: (P1) -> P0) = this.let { original ->
+    object: InterpolationFunctionDual<P1, V, VD> {
+        override fun evaluate(t: P1) = original.evaluate(f(t))
+        override fun evaluateDual(t: P1, n: Int) = original.evaluateDual(f(t), n)
+    }
+}
+
+fun<P, V0, VD0, V, VD> InterpolationFunctionDual<P, V0, VD0>.reordU(f: (V0) -> V, fd: (VD0) -> VD) = this.let { original ->
+    object: InterpolationFunctionDual<P, V, VD> {
+        override fun evaluate(t: P) = f(original.evaluate(t))
+        override fun evaluateDual(t: P, n: Int) = fd(original.evaluateDual(t))
+    }
 }
 
 data class Pose3dParametric(val value: Pose3d, val param: Double)
 
-data class Spline3d(val segments: SplineSegmentMap<SplineSegment3d>) {
-    fun evaluate(t: Double) = segments[t].let { it.evaluate(it.reparamSplineActual(t)) }
-    fun evaluateDual(t: Double, n: Int = 1) = segments[t].let { it.evaluateDual(Dual.variable(it.reparamSplineActual(t), n)) }
+data class Spline3d(val segments: SplineSegmentMap<SplineSegment3d>) : InterpolationFunctionDual<Double, Vector3d, Vector3dDual> {
+    override fun evaluate(t: Double) = segments[t].let { it.evaluate(it.reparamSplineActual(t)) }
+    override fun evaluateDual(t: Double, n: Int) = segments[t].let { it.evaluateDual(Dual.variable(it.reparamSplineActual(t), n)) }
     fun tangent(t: Double) = evaluateDual(t, 2)[1].normalized()
     fun evaluatePoseFrenet(t: Double) = Pose3d(evaluate(t), Rotation3d.rma(frenet(t)))
-    fun arclengthScan(a: Double, b: Double, eps: Double = 1e-15) = integralScan(a, b, eps) { this.evaluateDual(it, 2)[1].norm }
+    fun arclengthScan(a: Double, b: Double, eps: Double) = integralScan(a, b, eps) { this.evaluateDual(it, 2)[1].norm }
     fun paramSpeed(t: Double) = evaluateDual(t, 2)[1].norm
     fun curvature(t: Double) = evaluateDual(t, 3).let { (it[1] x it[2]).norm / it[1].norm.pow(3) }
     fun torsion(t: Double) = evaluateDual(t, 4).let { ((it[1] x it[2]) o it[3]) / (it[1] x it[2]).norm.pow(2) }
@@ -493,7 +537,9 @@ class InterpolatorBuilder {
         return this
     }
 
-    fun buildCubicKB(t: Double = 0.0, b: Double = 0.0, c: Double = 0.0): Spline1d {
+    fun with(p: Pair<Double, Double>) = with(p.first, p.second)
+
+    fun buildCubic(t: Double = 0.0, b: Double = 0.0, c: Double = 0.0): Spline1d {
         require(points.size >= 2) { "Cannot build spline with ${points.size} points"}
 
         val segments = ArrayList<CubicHermiteSplineSegment1d>()
@@ -512,6 +558,26 @@ class InterpolatorBuilder {
                     `pᵢ₊₁`.y,
                     dy0KochanekBartels(t, b, c, `pᵢ₋₁`.y, `pᵢ`.y, `pᵢ₊₁`.y),
                     dy1KochanekBartels(t, b, c, `pᵢ`.y, `pᵢ₊₁`.y, `pᵢ₊₂`.y)
+                )
+            )
+        }
+
+        return Spline1d(TreeSplineSegmentMap(segments))
+    }
+
+    fun buildLinear(): Spline1d {
+        val segments = ArrayList<LinearSplineSegment1d>()
+
+        for (i in 1 until points.size) {
+            val l = points[i - 1]
+            val r = points[i]
+
+            segments.add(
+                LinearSplineSegment1d(
+                    l.t,
+                    r.t,
+                    l.y,
+                    r.y
                 )
             )
         }
@@ -561,28 +627,28 @@ class PathBuilder3d {
     }
 }
 
-fun interface Adaptscan3dCondition {
-    fun splits(s: Spline3d, t0: Double, t1: Double): Boolean
+fun interface AdaptscanCondition<T> {
+    fun splits(s: T, t0: Double, t1: Double): Boolean
 }
 
-fun chordNormCondition3d(distMax: Double) : Adaptscan3dCondition {
+fun chordNormCondition3d(distMax: Double) : AdaptscanCondition<Spline3d> {
     require(distMax > 0.0)
 
     val distMaxSqr = distMax * distMax
 
-    return Adaptscan3dCondition { s, t0, t1 ->
+    return AdaptscanCondition { s, t0, t1 ->
         s.evaluate(t0) distToSqr s.evaluate(t1) > distMaxSqr
     }
 }
 
-fun diffCondition3d(distMax: Double, rotIncrMax: Double) : Adaptscan3dCondition {
+fun differenceCondition3d(distMax: Double, rotIncrMax: Double) : AdaptscanCondition<Spline3d> {
     require(distMax > 0.0)
     require(rotIncrMax > 0.0)
 
     val distMaxSqr = distMax * distMax
     val c = cos(rotIncrMax)
 
-    return Adaptscan3dCondition { s, t0, t1 ->
+    return AdaptscanCondition { s, t0, t1 ->
         val r0 = s.evaluateDual(t0, 2)
         val r1 = s.evaluateDual(t1, 2)
 
@@ -590,15 +656,23 @@ fun diffCondition3d(distMax: Double, rotIncrMax: Double) : Adaptscan3dCondition 
     }
 }
 
+fun differenceCondition1d(valDiffMax: Double, derivDiffMax: Double) : AdaptscanCondition<InterpolationFunctionDual<Double, Double, Dual>> =
+    AdaptscanCondition<InterpolationFunctionDual<Double, Double, Dual>> { s, t0, t1 ->
+        val v0 = s.evaluateDual(t0, 2)
+        val v1 = s.evaluateDual(t1, 2)
+
+        abs(v0[0] - v1[0]) > valDiffMax || abs(v0[1] - v1[1]) > derivDiffMax
+    }
+
 private data class AdaptscanFrame(val t0: Double, val t1: Double)
 
-fun Spline3d.adaptscan(
+fun<T> T.adaptscan(
     rxT: MutableList<Double>,
     t0: Double,
     t1: Double,
     tIncrMax: Double,
     iMax: Int = Int.MAX_VALUE,
-    condition: Adaptscan3dCondition
+    condition: AdaptscanCondition<T>
 ): Boolean {
     require(t0 < t1)
     require(tIncrMax > 0.0)
@@ -631,12 +705,12 @@ fun Spline3d.adaptscan(
     return true
 }
 
-fun Spline3d.adaptscan(
+fun<T> T.adaptscan(
     t0: Double,
     t1: Double,
     tIncrMax: Double,
     iMax: Int = Int.MAX_VALUE,
-    condition: Adaptscan3dCondition
+    condition: AdaptscanCondition<T>
 ): ArrayList<Double>? {
     val results = ArrayList<Double>()
     return if(this.adaptscan(results, t0, t1, tIncrMax, iMax, condition)) results else null

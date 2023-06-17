@@ -16,11 +16,13 @@ import org.eln2.mc.*
 import org.eln2.mc.Eln2.LOGGER
 import org.eln2.mc.common.cells.CellRegistry
 import org.eln2.mc.common.configs.Configuration
-import org.eln2.mc.common.space.*
 import org.eln2.mc.data.*
 import org.eln2.mc.integration.WailaEntity
-import org.eln2.mc.sim.BiomeEnvironments
+import org.eln2.mc.mathematics.Vector3di
+import org.eln2.mc.mathematics.rounded
+import org.eln2.mc.sim.*
 import org.eln2.mc.utility.*
+import java.nio.ByteBuffer
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
@@ -31,7 +33,6 @@ import java.util.concurrent.locks.ReentrantLock
 import kotlin.collections.ArrayDeque
 import kotlin.collections.ArrayList
 import kotlin.collections.HashSet
-import kotlin.system.measureNanoTime
 
 data class CellPos(val descriptor: LocationDescriptor)
 
@@ -56,7 +57,7 @@ class TrackedSubscriberCollection(val underlying: SubscriberCollection) : Subscr
     private data class Sub(val parameters: SubscriberOptions, val subscriber: Subscriber)
 }
 
-data class CellCI(
+data class CellCreateInfo(
     val pos: CellPos,
     val id: ResourceLocation,
     val envFm: DataFieldMap
@@ -75,7 +76,7 @@ annotation class Behavior
  * Cells create connections with other cells, and objects create connections with other objects of the same simulation type.
  * */
 abstract class Cell(val pos: CellPos, val id: ResourceLocation, val envFldMap: DataFieldMap) : WailaEntity, DataEntity {
-    constructor(ci: CellCI) : this(ci.pos, ci.id, ci.envFm)
+    constructor(ci: CellCreateInfo) : this(ci.pos, ci.id, ci.envFm)
 
     override val dataNode = DataNode().also { root ->
         root.withChild {
@@ -378,7 +379,7 @@ abstract class Cell(val pos: CellPos, val id: ResourceLocation, val envFldMap: D
     fun recordObjectConnections() {
         objSet.process { localObj ->
             connections.forEach { remoteCell ->
-                if(!localObj.acceptsRemote(remoteCell.pos.descriptor)) {
+                if(!localObj.acceptsRemoteLocation(remoteCell.pos.descriptor)) {
                     return@forEach
                 }
 
@@ -390,7 +391,7 @@ abstract class Cell(val pos: CellPos, val id: ResourceLocation, val envFldMap: D
 
                 require(remoteCell.connections.contains(this)) { "Mismatched connection set" }
 
-                if(!remoteObj.acceptsRemote(pos.descriptor)) {
+                if(!remoteObj.acceptsRemoteLocation(pos.descriptor)) {
                     return@forEach
                 }
 
@@ -407,6 +408,19 @@ abstract class Cell(val pos: CellPos, val id: ResourceLocation, val envFldMap: D
                         (localObj as ThermalObject).addConnection(
                             remoteCell.objSet.thermalObject
                         )
+                    }
+
+                    SimulationObjectType.Diffusion -> {
+                        localObj as DiffusionObject
+                        remoteObj as DiffusionObject
+
+                        require(localObj.isCompatibleWith(remoteObj) == remoteObj.isCompatibleWith(localObj)) {
+                            "Compatibility conclusion conflict for DRAGONS $localObj $remoteObj"
+                        }
+
+                        if(localObj.isCompatibleWith(remoteObj)) {
+                            localObj.addConnection(remoteObj)
+                        }
                     }
                 }
             }
@@ -787,6 +801,13 @@ fun wrappedCellScan(level: Level, actualCell: Cell, searchDirectionTarget: Direc
         }
 }
 
+fun hashLocationDescriptorSet(v: Collection<LocationDescriptor>): Int {
+    val cache = IntArray(v.size)
+    v.forEachIndexed { index, it -> cache[index] = it.hashCode() }
+    cache.sort()
+    return cache.contentHashCode()
+}
+
 interface CellContainer {
     fun getCells(): ArrayList<Cell>
     fun neighborScan(actualCell: Cell): List<CellNeighborInfo>
@@ -815,6 +836,7 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
 
     private val electricalSims = ArrayList<Circuit>()
     private val thermalSims = ArrayList<Simulator>()
+    private val diffusionSims = ArrayList<VoxelizedDiffusionSimulation>()
 
     private val simStopLock = ReentrantLock()
 
@@ -873,6 +895,7 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
         UpdateSubsPre,
         UpdateElectricalSims,
         UpdateThermalSims,
+        UpdateDiffusionSims,
         UpdateSubsPost
     }
 
@@ -886,33 +909,51 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
         var stage = UpdateStep.Start
 
         try {
-            val elapsed = 1.0 / 100.0
+            val fixedDt = 1.0 / 100.0
 
             stage = UpdateStep.UpdateSubsPre
-            subscribers.update(elapsed, SubscriberPhase.Pre)
+            subscribers.update(fixedDt, SubscriberPhase.Pre)
 
-            lastTickTime = !Duration.from(measureNanoTime {
+            lastTickTime = !measureDuration {
                 isElectricalSuccessful = true
 
                 stage = UpdateStep.UpdateElectricalSims
-                electricalSims.forEach {
-                    val success = it.step(elapsed)
+                val electricalTime = measureDuration {
+                    electricalSims.forEach {
+                        val success = it.step(fixedDt)
 
-                    isElectricalSuccessful = isElectricalSuccessful && success
+                        isElectricalSuccessful = isElectricalSuccessful && success
 
-                    if (!success && !it.isFloating) {
-                        LOGGER.error("Failed to update non-floating circuit!")
+                        if (!success && !it.isFloating) {
+                            LOGGER.error("Failed to update non-floating circuit!")
+                        }
                     }
                 }
 
                 stage = UpdateStep.UpdateThermalSims
-                thermalSims.forEach {
-                    it.step(elapsed)
+                val thermalTime = measureDuration {
+                    thermalSims.forEach {
+                        it.step(fixedDt)
+                    }
                 }
-            }.toDouble(), TimeUnits.NANOSECOND)
+
+                stage = UpdateStep.UpdateDiffusionSims
+                val diffusionTime = measureDuration {
+                    diffusionSims.forEach {
+                        it.simulation.step() // controlled by Diffusion Rate
+
+                        if(it.simulation.isActive) {
+                            setChanged()
+                            println("a/C: ${it.simulation.activeClusters}, a/c: ${it.simulation.activeFluidCells}, a/g: ${it.simulation.sparseGrid.activeGrids.size}, t/g: ${it.simulation.sparseGrid.subGrids.size}")
+                        }
+                    }
+                }
+
+                println("diff time: ${(diffusionTime..MILLISECONDS).rounded()} ms")
+            }
 
             stage = UpdateStep.UpdateSubsPost
-            subscribers.update(elapsed, SubscriberPhase.Post)
+            subscribers.update(fixedDt, SubscriberPhase.Post)
 
             updates++
 
@@ -923,6 +964,92 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
         finally {
             // Maybe blow up the game instead of just allowing this to go on?
             simStopLock.unlock()
+        }
+    }
+
+    fun saveSimulationData(): CompoundTag {
+        return CompoundTag().also {
+            it.putSubTag(NBT_DIFFUSION_DATA) { diffusionTag ->
+                val simList = ListTag()
+
+                diffusionSims.forEach { (code, sim) ->
+                    val simTag = CompoundTag()
+
+                    simTag.putInt(NBT_DIFFUSION_HULL_CODE, code)
+
+                    // Serialize more efficiently using binary serialization
+                    val sparse = sim.sparseGrid
+                    val cursor = sparse.createCursor()
+
+                    val serializedCells = ArrayList<Pair<Vector3di, Float>>()
+
+                    sparse.subGrids.values.forEach { grid ->
+                        cursor.loadg(grid)
+
+                        for (i in sparse.windowRange) {
+                            cursor.loadi(i)
+
+                            val actualIndex = grid.ixGrid(cursor.x, cursor.y, cursor.z)
+
+                            if(!grid.wallGrid[actualIndex] && grid.densities[actualIndex] > 0f) {
+                                serializedCells.add(Pair(
+                                    cursor.vector,
+                                    grid.densities[actualIndex]
+                                ))
+                            }
+                        }
+                    }
+
+                    val buffer = ByteBuffer.allocate(1 * 4 + serializedCells.size * (3 * 4 + 1 * 4))
+
+                    buffer.putInt(serializedCells.size)
+                    serializedCells.forEach { (pos, density) ->
+                        buffer.putVector3di(pos)
+                        buffer.putFloat(density)
+                    }
+
+                    simTag.putByteArray(NBT_DENSE_SET, buffer.array())
+
+                    simList.add(simTag)
+                }
+
+                diffusionTag.put(NBT_DIFFUSION_SIMS_LIST, simList)
+            }
+        }
+    }
+
+    fun loadSimulationData(tag: CompoundTag) {
+        tag.useSubTagIfPreset(NBT_DIFFUSION_DATA) { diffusionTag ->
+            val simList = diffusionTag.get(NBT_DIFFUSION_SIMS_LIST) as ListTag
+
+            simList.map { it as CompoundTag }.forEach { simTag ->
+                val hullCode = simTag.getInt(NBT_DIFFUSION_HULL_CODE)
+
+                val sim = diffusionSims.firstOrNull { it.code == hullCode }
+
+                if(sim == null) {
+                    LOGGER.error("Failed to resolve diffusion simulation with hull code $hullCode")
+                    return@forEach
+                }
+
+                val sparse = sim.simulation.sparseGrid
+
+                val buffer = ByteBuffer.wrap(simTag.getByteArray(NBT_DENSE_SET))
+                val count = buffer.int
+
+                repeat(count) {
+                    val pos = buffer.getVector3di()
+                    val density = buffer.float
+
+                    sparse.setDensityTile(
+                        pos.x, pos.y, pos.z,
+                        density,
+                        true
+                    )
+                }
+
+                println("Loaded $count tiles")
+            }
         }
     }
 
@@ -939,6 +1066,7 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
 
         realizeElectrical()
         realizeThermal()
+        realizeDiffusion()
 
         cells.forEach { it.build() }
         electricalSims.forEach { postProcessCircuit(it) }
@@ -950,20 +1078,142 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
     private fun realizeElectrical() {
         electricalSims.clear()
 
-        realizeComponents(SimulationObjectType.Electrical) { set ->
+        realizeComponents(SimulationObjectType.Electrical, factory = { set ->
             val circuit = Circuit()
             set.forEach { it.objSet.electricalObject.setNewCircuit(circuit) }
             electricalSims.add(circuit)
-        }
+        })
     }
 
     private fun realizeThermal() {
         thermalSims.clear()
 
-        realizeComponents(SimulationObjectType.Thermal) { set ->
+        realizeComponents(SimulationObjectType.Thermal, factory = { set ->
             val simulation = Simulator()
             set.forEach { it.objSet.thermalObject.setNewSimulation(simulation) }
             thermalSims.add(simulation)
+        })
+    }
+
+    private fun realizeDiffusion() {
+        diffusionSims.clear()
+
+        realizeComponents(SimulationObjectType.Diffusion, factory = { set ->
+            if(set.isEmpty()) {
+                return@realizeComponents
+            }
+
+            val diffusionObjects = set.map { it.objSet.diffusionObject }
+
+            // Build volumetric graph:
+            val mapNodes = diffusionObjects.associateWithBi {
+                VoxelPatchNode(it.createPatchModule())
+            }
+
+            mapNodes.forward.forEach { (obj, node) ->
+                obj.actualConnections.forEach { (connObj, connDir) ->
+                    node.connections.add(
+                        VoxelPatchEdge(
+                            patchNode = mapNodes.forward[connObj]!!,
+                            direction = connDir
+                        )
+                    )
+                }
+            }
+
+            val scan = VoxelVolumetricScan(
+                // Ensure it gets replicated on loading (so the subspace matches the stored data):
+                mapNodes.forward[
+                    mapNodes.backward.values.minByOrNull {
+                        it.cell.posDescr.hashCode()
+                    }!!
+                ]!!,
+                mapNodes.forward.keys.first().size
+            )
+
+            val grid = SparseGrid3dFluid(FLUID_GRID_SIZE_LOG)
+            val realized = HashMap<VoxelPatchNode, RealizedVoxelPatchNode>()
+
+            val scanResult = scan.voxelizeHull(grid, realized)
+
+            if(!scanResult.hullClosed){
+                grid.exportForInspection()
+
+                error("Open hull, check file\n${grid.subGrids}")
+            }
+
+            grid.exportForInspection() // todo remove in "production"
+
+            val simulation = DiffusionSimulation(
+                grid,
+                mapNodes.forward.keys.first().def.simulationOptions
+            )
+
+            val code = hashLocationDescriptorSet(
+                diffusionObjects.map { it.cell.posDescr }
+            )
+
+            diffusionSims.add(
+                VoxelizedDiffusionSimulation(
+                    code,
+                    simulation
+                )
+            )
+
+            realized.values.forEach { realizedNode ->
+                mapNodes.backward[realizedNode.node]!!.bindAccessor(
+                    DiffusionAccessorImpl(
+                        simulation,
+                        realizedNode
+                    )
+                )
+            }
+        }, extraCondition = { a, b ->
+            a as DiffusionObject
+            b as DiffusionObject
+
+            a.isCompatibleWith(b)
+        })
+    }
+
+    private data class VoxelizedDiffusionSimulation(
+        val code: Int,
+        val simulation: DiffusionSimulation
+    )
+
+    private class DiffusionAccessorImpl(val simulation: DiffusionSimulation, override val realizedNode: RealizedVoxelPatchNode) : DiffusionAccessor {
+        private val grid get() = simulation.sparseGrid
+
+        private fun getTileGrid(tilePatch: Vector3di): Vector3di {
+            val tileGrid = realizedNode.mapTileGrid(tilePatch)
+
+            if(!realizedNode.isTileGridWithinPatchBounds(tileGrid)) {
+                error("Tried to access tile outside of patch $realizedNode $tileGrid $tilePatch")
+            }
+
+            return tileGrid
+        }
+
+        override fun readDensity(tilePatch: Vector3di): Float {
+            val tileGrid = getTileGrid(tilePatch)
+            val target = grid.getOrCreateTile(tileGrid)
+
+            return target.densities[tileGrid]
+        }
+
+        override fun addDensityIncr(tilePatch: Vector3di, incr: Float, activate: Boolean) {
+            val tileGrid = getTileGrid(tilePatch)
+            grid.addDensityIncrTile(tileGrid.x, tileGrid.y, tileGrid.z, incr, activate)
+        }
+
+        override fun setDensity(tilePatch: Vector3di, amount: Float, activate: Boolean) {
+            val tileGrid = getTileGrid(tilePatch)
+            grid.setDensityTile(tileGrid.x, tileGrid.y, tileGrid.z, amount, activate)
+        }
+
+        override fun activate(tilePatch: Vector3di) {
+            val tileGrid = getTileGrid(tilePatch)
+            grid.activate(tileGrid.x, tileGrid.y, tileGrid.z)
         }
     }
 
@@ -984,14 +1234,18 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
      * @param type The simulation type to search for.
      * @param factory A factory method to generate the subset from the discovered cells.
      * */
-    private fun <TComponent> realizeComponents(type: SimulationObjectType, factory: ((java.util.HashSet<Cell>) -> TComponent)) {
+    private fun <TComponent> realizeComponents(
+        type: SimulationObjectType,
+        factory: ((HashSet<Cell>) -> TComponent),
+        extraCondition: ((SimulationObject, SimulationObject) -> Boolean)? = null
+    ) {
         val pending = HashSet(cells.filter { it.hasObject(type) })
         val queue = ArrayDeque<Cell>()
 
         // todo: can we use pending instead?
-        val visited = java.util.HashSet<Cell>()
+        val visited = HashSet<Cell>()
 
-        val results = java.util.ArrayList<TComponent>()
+        val results = ArrayList<TComponent>()
 
         while (pending.size > 0) {
             assert(queue.size == 0)
@@ -1011,6 +1265,10 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
 
                 cell.connections.forEach { connectedCell ->
                     if (connectedCell.hasObject(type)) {
+                        if(extraCondition != null && !extraCondition(cell.objSet[type], connectedCell.objSet[type])) {
+                            return@forEach
+                        }
+
                         queue.add(connectedCell)
                     }
                 }
@@ -1166,37 +1424,37 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
     fun toNbt(): CompoundTag {
         val circuitCompound = CompoundTag()
 
-        runSuspended {
-            circuitCompound.putUUID(ID, id)
+        require(!isSimRunning)
 
-            val cellListTag = ListTag()
+        circuitCompound.putUUID(NBT_ID, id)
 
-            cells.forEach { cell ->
-                val cellTag = CompoundTag()
-                val connectionsTag = ListTag()
+        val cellListTag = ListTag()
 
-                cell.connections.forEach { conn ->
-                    val connectionCompound = CompoundTag()
-                    connectionCompound.putCellPos(POSITION, conn.pos)
-                    connectionsTag.add(connectionCompound)
-                }
+        cells.forEach { cell ->
+            val cellTag = CompoundTag()
+            val connectionsTag = ListTag()
 
-                cellTag.putCellPos(POSITION, cell.pos)
-                cellTag.putString(ID, cell.id.toString())
-                cellTag.put(CONNECTIONS, connectionsTag)
-
-                try{
-                    cellTag.put(CELL_DATA, cell.createTag())
-                }
-                catch (t: Throwable) {
-                    LOGGER.error("Cell save error: $t")
-                }
-
-                cellListTag.add(cellTag)
+            cell.connections.forEach { conn ->
+                val connectionCompound = CompoundTag()
+                connectionCompound.putCellPos(NBT_POSITION, conn.pos)
+                connectionsTag.add(connectionCompound)
             }
 
-            circuitCompound.put(CELLS, cellListTag)
+            cellTag.putCellPos(NBT_POSITION, cell.pos)
+            cellTag.putString(NBT_ID, cell.id.toString())
+            cellTag.put(NBT_CONNECTIONS, connectionsTag)
+
+            try{
+                cellTag.put(NBT_CELL_DATA, cell.createTag())
+            }
+            catch (t: Throwable) {
+                LOGGER.error("Cell save error: $t")
+            }
+
+            cellListTag.add(cellTag)
         }
+
+        circuitCompound.put(NBT_CELLS, cellListTag)
 
         return circuitCompound
     }
@@ -1208,11 +1466,17 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
     }
 
     companion object {
-        private const val CELL_DATA = "data"
-        private const val ID = "id"
-        private const val CELLS = "cells"
-        private const val POSITION = "pos"
-        private const val CONNECTIONS = "connections"
+        private const val NBT_CELL_DATA = "data"
+        private const val NBT_ID = "id"
+        private const val NBT_CELLS = "cells"
+        private const val NBT_POSITION = "pos"
+        private const val NBT_CONNECTIONS = "connections"
+        private const val NBT_DIFFUSION_DATA = "diffusionData"
+        private const val NBT_DIFFUSION_SIMS_LIST = "diffusionSimList"
+        private const val NBT_DIFFUSION_HULL_CODE = "hullCode"
+        private const val NBT_DENSE_SET = "denseSet"
+
+        const val FLUID_GRID_SIZE_LOG = 3
 
         init {
             // We do get an exception from thread pool creation, but explicit handling is better here.
@@ -1244,10 +1508,10 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
         )
 
         fun fromNbt(graphCompound: CompoundTag, manager: CellGraphManager, level: ServerLevel): CellGraph {
-            val id = graphCompound.getUUID(ID)
+            val id = graphCompound.getUUID(NBT_ID)
             val result = CellGraph(id, manager, level)
 
-            val cellListTag = graphCompound.get(CELLS) as ListTag?
+            val cellListTag = graphCompound.get(NBT_CELLS) as ListTag?
                 ?: // No cells are available
                 return result
 
@@ -1259,15 +1523,15 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
 
             cellListTag.forEach { cellNbt ->
                 val cellCompound = cellNbt as CompoundTag
-                val pos = cellCompound.getCellPos(POSITION)
-                val cellId = ResourceLocation.tryParse(cellCompound.getString(ID))!!
+                val pos = cellCompound.getCellPos(NBT_POSITION)
+                val cellId = ResourceLocation.tryParse(cellCompound.getString(NBT_ID))!!
 
                 val connectionPositions = java.util.ArrayList<CellPos>()
-                val connectionsTag = cellCompound.get(CONNECTIONS) as ListTag
+                val connectionsTag = cellCompound.get(NBT_CONNECTIONS) as ListTag
 
                 connectionsTag.forEach {
                     val connectionCompound = it as CompoundTag
-                    val connectionPos = connectionCompound.getCellPos(POSITION)
+                    val connectionPos = connectionCompound.getCellPos(NBT_POSITION)
                     connectionPositions.add(connectionPos)
                 }
 
@@ -1280,7 +1544,7 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
 
                 result.addCell(cell)
 
-                cellData[cell] = cellCompound.getCompound(CELL_DATA)
+                cellData[cell] = cellCompound.getCompound(NBT_CELL_DATA)
             }
 
             // Now assign all connections and the graph to the cells:
@@ -1388,7 +1652,11 @@ class CellGraphManager(val level: ServerLevel) : SavedData() {
         val graphListTag = ListTag()
 
         graphs.values.forEach { graph ->
-            graphListTag.add(graph.toNbt())
+            graph.runSuspended {
+                graphListTag.add(graph.toNbt().also {
+                    it.put(SIM_DATA, graph.saveSimulationData())
+                })
+            }
         }
 
         tag.put("Graphs", graphListTag)
@@ -1408,6 +1676,8 @@ class CellGraphManager(val level: ServerLevel) : SavedData() {
     }
 
     companion object {
+        private const val SIM_DATA = "SimData"
+
         private fun load(tag: CompoundTag, level: ServerLevel): CellGraphManager {
             val manager = CellGraphManager(level)
 
@@ -1418,9 +1688,16 @@ class CellGraphManager(val level: ServerLevel) : SavedData() {
                 return manager
             }
 
+            val simData = HashMap<CellGraph, CompoundTag>()
+
             graphListTag.forEach { circuitNbt ->
                 val graphCompound = circuitNbt as CompoundTag
                 val graph = CellGraph.fromNbt(graphCompound, manager, level)
+
+                graphCompound.useSubTagIfPreset(SIM_DATA) {
+                    simData[graph] = it
+                }
+
                 if (graph.cells.isEmpty()) {
                     LOGGER.error("Loaded circuit with no cells!")
                     return@forEach
@@ -1436,6 +1713,10 @@ class CellGraphManager(val level: ServerLevel) : SavedData() {
             }
 
             manager.graphs.values.forEach { it.buildSolver() }
+
+            simData.keys.forEach { k ->
+                k.loadSimulationData(simData[k]!!)
+            }
 
             manager.graphs.values.forEach {
                 it.cells.forEach { cell -> cell.onWorldLoadedPostSolver() }
@@ -1457,13 +1738,11 @@ class CellGraphManager(val level: ServerLevel) : SavedData() {
         /**
          * Gets or creates a graph manager for the specified level.
          * */
-        fun getFor(level: ServerLevel): CellGraphManager {
-            return level.dataStorage.computeIfAbsent(
-                { load(it, level) },
-                { CellGraphManager(level) },
-                "CellManager")
-
-        }
+        fun getFor(level: ServerLevel): CellGraphManager = level.dataStorage.computeIfAbsent(
+            { load(it, level) },
+            { CellGraphManager(level) },
+            "CellManager"
+        )
     }
 }
 
@@ -1473,14 +1752,14 @@ class CellGraphManager(val level: ServerLevel) : SavedData() {
 abstract class CellProvider : ForgeRegistryEntry<CellProvider>() {
     val id: ResourceLocation get() = this.registryName ?: error("ID not available in CellProvider")
 
-    protected abstract fun createInstance(ci: CellCI): Cell
+    protected abstract fun createInstance(ci: CellCreateInfo): Cell
 
     /**
      * Creates a new Cell, at the specified position.
      * */
     fun create(pos: CellPos, envNode: DataFieldMap): Cell {
         return createInstance(
-            CellCI(
+            CellCreateInfo(
                 pos,
                 id,
                 envNode
@@ -1494,18 +1773,18 @@ abstract class CellProvider : ForgeRegistryEntry<CellProvider>() {
  * Usually, the constructor of the cell can be passed as factory.
  * */
 fun interface CellFactory {
-    fun create(ci: CellCI): Cell
+    fun create(ci: CellCreateInfo): Cell
 }
 
 class BasicCellProvider(private val factory: CellFactory) : CellProvider() {
-    override fun createInstance(ci: CellCI) = factory.create(ci)
+    override fun createInstance(ci: CellCreateInfo) = factory.create(ci)
 }
 
 class InjectCellProvider<T : Cell>(val c: Class<T>, val extraParams: List<Any>) : CellProvider() {
     constructor(c: Class<T>) : this(c, listOf())
 
     @Suppress("UNCHECKED_CAST")
-    override fun createInstance(ci: CellCI) =
+    override fun createInstance(ci: CellCreateInfo) =
         ServiceCollection()
             .withSingleton { ci }
             .withSingleton { this }

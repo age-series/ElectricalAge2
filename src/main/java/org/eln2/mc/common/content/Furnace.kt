@@ -49,9 +49,9 @@ import org.eln2.mc.common.blocks.foundation.CellBlockEntity
 import org.eln2.mc.common.cells.foundation.*
 import org.eln2.mc.common.events.AtomicUpdate
 import org.eln2.mc.common.events.EventScheduler
-import org.eln2.mc.common.space.DirectionMask
-import org.eln2.mc.common.space.RelativeDir
-import org.eln2.mc.common.space.withDirectionActualRule
+import org.eln2.mc.mathematics.DirectionMask
+import org.eln2.mc.mathematics.RelativeDir
+import org.eln2.mc.data.withDirectionActualRule
 import org.eln2.mc.integration.WailaTooltipBuilder
 import org.eln2.mc.mathematics.*
 import org.eln2.mc.mathematics.map
@@ -121,7 +121,7 @@ data class FurnaceOptions(
     }
 }
 
-class FurnaceCell(ci: CellCI, val dir1: RelativeDir = RelativeDir.Left, val dir2: RelativeDir = RelativeDir.Right) : Cell(ci) {
+class FurnaceCell(ci: CellCreateInfo, val dir1: RelativeDir = RelativeDir.Left, val dir2: RelativeDir = RelativeDir.Right) : Cell(ci) {
     companion object {
         private const val OPTIONS = "options"
         private const val RESISTOR_THERMAL_MASS = "resistorThermalMass"

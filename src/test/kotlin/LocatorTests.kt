@@ -1,7 +1,7 @@
 import org.junit.jupiter.api.Test
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
-import org.eln2.mc.common.space.*
+import org.eln2.mc.data.*
 import org.junit.jupiter.api.fail
 
 class LocatorTests {

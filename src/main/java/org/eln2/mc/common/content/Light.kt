@@ -20,9 +20,9 @@ import org.eln2.mc.common.network.serverToClient.with
 import org.eln2.mc.common.parts.foundation.CellPart
 import org.eln2.mc.common.parts.foundation.PartRenderer
 import org.eln2.mc.common.parts.foundation.PartPlacementInfo
-import org.eln2.mc.common.space.DirectionMask
-import org.eln2.mc.common.space.RelativeDir
-import org.eln2.mc.common.space.withDirectionActualRule
+import org.eln2.mc.mathematics.DirectionMask
+import org.eln2.mc.mathematics.RelativeDir
+import org.eln2.mc.data.withDirectionActualRule
 import org.eln2.mc.data.TooltipField
 import org.eln2.mc.mathematics.approxEq
 import org.eln2.mc.utility.Stopwatch
@@ -40,7 +40,7 @@ fun interface RenderBrightnessConsumer {
 }
 
 class LightCell(
-    ci: CellCI,
+    ci: CellCreateInfo,
     val model: LightModel,
     // Probably doesn't make sense to use maps here:
     dir1: RelativeDir = RelativeDir.Left,

@@ -1,4 +1,4 @@
-package org.eln2.mc.common.space
+package org.eln2.mc.data
 
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
@@ -7,6 +7,8 @@ import net.minecraft.nbt.ListTag
 import org.ageseries.libage.data.ImmutableBiMapView
 import org.ageseries.libage.data.biMapOf
 import org.eln2.mc.*
+import org.eln2.mc.mathematics.DirectionMask
+import org.eln2.mc.mathematics.RelativeDir
 import java.util.function.Supplier
 
 interface Locator<Param>
@@ -14,8 +16,32 @@ interface R3
 interface SO3
 
 data class BlockPosLocator(val pos: BlockPos) : Locator<R3>
-data class IdentityDirectionLocator(val forwardWorld: Direction): Locator<SO3>
-data class BlockFaceLocator(val faceWorld: Direction) : Locator<SO3>
+data class IdentityDirectionLocator(val forwardWorld: Direction): Locator<SO3> {
+    override fun hashCode() = forwardWorld.valueHashCode()
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as IdentityDirectionLocator
+
+        if (forwardWorld != other.forwardWorld) return false
+
+        return true
+    }
+}
+data class BlockFaceLocator(val faceWorld: Direction) : Locator<SO3> {
+    override fun hashCode() = faceWorld.valueHashCode()
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as BlockFaceLocator
+
+        if (faceWorld != other.faceWorld) return false
+
+        return true
+    }
+}
 
 // Got lost in the type system, for now we are using Any:
 interface LocatorSerializer {
@@ -74,22 +100,23 @@ fun getLocatorSerializer(locatorClass: Class<*>): LocatorSerializer {
 }
 
 class LocatorSet<Param> {
-    private val locators = HashMap<Class<*>, Locator<Param>>()
+    private val locatorMap = HashMap<Class<*>, Locator<Param>>()
 
     fun copy(): LocatorSet<Param> {
         val result = LocatorSet<Param>()
 
-        locators.forEach { (k, v) ->
+        locatorMap.forEach { (k, v) ->
             result.add(k, v)
         }
 
         return result
     }
 
-    fun getLocators(): HashMap<Class<*>, Locator<Param>> = locators.clone() as HashMap<Class<*>, Locator<Param>>
+    val locators: Collection<Locator<Param>> get() = locatorMap.values
+    fun bindLocators(): HashMap<Class<*>, Locator<Param>> = locatorMap.bind()
 
     fun<T : Locator<Param>> withLocator(c: Class<T>, l : T): LocatorSet<Param> {
-        if(locators.put(c, l) != null) {
+        if(locatorMap.put(c, l) != null) {
             error("Duplicate locator $c $l")
         }
 
@@ -97,13 +124,13 @@ class LocatorSet<Param> {
     }
 
     fun add(c: Class<*>, instance: Locator<*>) {
-        if(locators.put(c, instance as Locator<Param>) != null) {
+        if(locatorMap.put(c, instance as Locator<Param>) != null) {
             error("Duplicate locator $c")
         }
     }
 
     inline fun<reified T : Locator<Param>> withLocator(l: T): LocatorSet<Param> = withLocator(T::class.java, l)
-    fun <T : Locator<Param>> get(c: Class<T>): T? = locators[c] as? T
+    fun <T : Locator<Param>> get(c: Class<T>): T? = locatorMap[c] as? T
     inline fun<reified T : Locator<Param>> get(): T? = get(T::class.java)
     fun <T : Locator<Param>> has(c: Class<T>): Boolean = get(c) != null
     inline fun <reified T : Locator<Param>> has(): Boolean = has(T::class.java)
@@ -119,15 +146,15 @@ class LocatorSet<Param> {
 
         other as LocatorSet<*>
 
-        if(locators.size != other.locators.size) {
+        if(locatorMap.size != other.locatorMap.size) {
             return false
         }
 
-        for(c in locators.keys) {
-            val otherValue = other.locators[c]
+        for(c in locatorMap.keys) {
+            val otherValue = other.locatorMap[c]
                 ?: return false
 
-            if(otherValue != locators[c]!!){
+            if(otherValue != locatorMap[c]!!){
                 return false
             }
         }
@@ -136,7 +163,7 @@ class LocatorSet<Param> {
     }
 
     override fun hashCode(): Int {
-        return locators.hashCode()
+        return locatorMap.hashCode()
     }
 }
 
@@ -219,7 +246,15 @@ class LocationDescriptor {
     }
 
     override fun hashCode(): Int {
-        return locatorSets.hashCode()
+        var h = 0
+
+        locatorSets.values.forEach { ls ->
+            ls.locators.forEach { locator ->
+                h += locator.hashCode()
+            }
+        }
+
+        return h
     }
 
     fun toNbt(): CompoundTag {
@@ -238,7 +273,7 @@ class LocationDescriptor {
 
             val locatorList = ListTag()
 
-            locatorSet.getLocators().forEach { (locatorClass, locatorInst) ->
+            locatorSet.bindLocators().forEach { (locatorClass, locatorInst) ->
                 val locatorCompound = CompoundTag()
 
                 locatorCompound.putString(
