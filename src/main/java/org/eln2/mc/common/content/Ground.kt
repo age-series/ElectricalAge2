@@ -8,10 +8,9 @@ import org.eln2.mc.client.render.PartialModels.bbOffset
 import org.eln2.mc.client.render.foundation.BasicPartRenderer
 import org.eln2.mc.common.cells.foundation.*
 import org.eln2.mc.common.parts.foundation.CellPart
-import org.eln2.mc.common.parts.foundation.PartRenderer
 import org.eln2.mc.common.parts.foundation.PartPlacementInfo
-import org.eln2.mc.common.space.DirectionMask
-import org.eln2.mc.common.space.withDirectionActualRule
+import org.eln2.mc.mathematics.DirectionMask
+import org.eln2.mc.data.withDirectionActualRule
 
 /**
  * The ground object is simply a bundle of resistors, with one grounded pin.
@@ -46,7 +45,7 @@ class GroundObject(cell: Cell) : ElectricalObject(cell) {
     }
 }
 
-class GroundCell(ci: CellCI) : Cell(ci) {
+class GroundCell(ci: CellCreateInfo) : Cell(ci) {
     @SimObject
     val groundObj = GroundObject(this)
 

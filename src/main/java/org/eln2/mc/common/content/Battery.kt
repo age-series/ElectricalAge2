@@ -12,9 +12,10 @@ import org.eln2.mc.client.render.foundation.BasicPartRenderer
 import org.eln2.mc.common.cells.foundation.*
 import org.eln2.mc.common.events.AtomicUpdate
 import org.eln2.mc.common.parts.foundation.*
-import org.eln2.mc.common.space.DirectionMask
-import org.eln2.mc.common.space.withDirectionActualRule
+import org.eln2.mc.mathematics.DirectionMask
+import org.eln2.mc.data.withDirectionActualRule
 import org.eln2.mc.data.Energy
+import org.eln2.mc.data.Quantity
 import org.eln2.mc.data.abs
 import org.eln2.mc.integration.WailaTooltipBuilder
 import org.eln2.mc.mathematics.bbVec
@@ -23,19 +24,18 @@ import org.eln2.mc.mathematics.lerp
 import org.eln2.mc.mathematics.map
 import org.eln2.mc.sim.Datasets
 import org.eln2.mc.sim.ThermalBody
-import kotlin.math.abs
 
 interface BatteryView {
     val model: BatteryModel
     /**
      * Gets the total energy stored in the battery/
      * */
-    val energy: Energy
+    val energy: Quantity<Energy>
 
     /**
      * Gets the total energy exchanged by this battery.
      * */
-    val energyIo: Energy
+    val energyIo: Quantity<Energy>
 
     /**
      * Gets the battery current. This value's sign depends on the direction of flow.
@@ -156,7 +156,7 @@ data class BatteryModel(
     /**
      * The energy capacity of the battery. This is the total energy that can be stored.
      * */
-    val energyCapacity: Energy,
+    val energyCapacity: Quantity<Energy>,
 
     /**
      * The charge percentage where, if the battery continues to discharge, it should start receiving damage.
@@ -167,9 +167,9 @@ data class BatteryModel(
     val mass: Double,
     val surfaceArea: Double)
 
-data class BatteryState(val energy: Energy, val life: Double, val energyIo: Energy)
+data class BatteryState(val energy: Quantity<Energy>, val life: Double, val energyIo: Quantity<Energy>)
 
-class BatteryCell(ci: CellCI, override val model: BatteryModel) : Cell(ci), BatteryView {
+class BatteryCell(ci: CellCreateInfo, override val model: BatteryModel) : Cell(ci), BatteryView {
     companion object {
         private const val ENERGY = "energy"
         private const val LIFE = "life"
@@ -200,9 +200,9 @@ class BatteryCell(ci: CellCI, override val model: BatteryModel) : Cell(ci), Batt
         }
     }
 
-    override var energy = Energy(0.0)
+    override var energy = Quantity<Energy>(0.0)
 
-    override var energyIo = Energy(0.0)
+    override var energyIo = Quantity<Energy>(0.0)
         private set
 
     override var life = 1.0
@@ -244,9 +244,9 @@ class BatteryCell(ci: CellCI, override val model: BatteryModel) : Cell(ci), Batt
     fun deserializeNbt(tag: CompoundTag) {
         stateUpdate.setLatest(
             BatteryState(
-                tag.getEnergy(ENERGY),
+                tag.getQuantity<Energy>(ENERGY),
                 tag.getDouble(LIFE),
-                tag.getEnergy(ENERGY_IO)
+                tag.getQuantity<Energy>(ENERGY_IO)
             )
         )
     }
@@ -290,7 +290,7 @@ class BatteryCell(ci: CellCI, override val model: BatteryModel) : Cell(ci), Batt
 
     private fun simulateEnergyFlow(elapsed: Double) {
         // Get energy transfer:
-        val transfer = Energy(generatorObj.generatorPower * elapsed)
+        val transfer = Quantity<Energy>(generatorObj.generatorPower * elapsed)
 
         // Update total IO:
         energyIo += abs(transfer)
@@ -302,7 +302,7 @@ class BatteryCell(ci: CellCI, override val model: BatteryModel) : Cell(ci), Batt
         if(energy < 0.0){
             Eln2.LOGGER.error("Negative battery energy $pos")
 
-            energy = Energy(0.0)
+            energy = Quantity(0.0)
         }
         else if(energy > capacity) {
             val extraEnergy = energy - capacity

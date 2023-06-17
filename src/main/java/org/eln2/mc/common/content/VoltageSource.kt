@@ -11,8 +11,8 @@ import org.eln2.mc.client.render.foundation.BasicPartRenderer
 import org.eln2.mc.common.cells.foundation.*
 import org.eln2.mc.common.parts.foundation.CellPart
 import org.eln2.mc.common.parts.foundation.PartPlacementInfo
-import org.eln2.mc.common.space.DirectionMask
-import org.eln2.mc.common.space.withDirectionActualRule
+import org.eln2.mc.mathematics.DirectionMask
+import org.eln2.mc.data.withDirectionActualRule
 import org.eln2.mc.data.DataNode
 import org.eln2.mc.data.DataEntity
 import org.eln2.mc.data.VoltageField
@@ -84,7 +84,7 @@ class VoltageSourceObject(cell: Cell) : ElectricalObject(cell), WailaEntity, Dat
     }
 }
 
-class VoltageSourceCell(ci: CellCI) : Cell(ci) {
+class VoltageSourceCell(ci: CellCreateInfo) : Cell(ci) {
     @SimObject
     val voltageSourceObj = VoltageSourceObject(this)
 

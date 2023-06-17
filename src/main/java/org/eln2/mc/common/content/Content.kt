@@ -32,11 +32,12 @@ import org.eln2.mc.common.parts.PartRegistry.part
 import org.eln2.mc.common.parts.foundation.BasicCellPart
 import org.eln2.mc.common.parts.foundation.basicPartRenderer
 import org.eln2.mc.common.parts.foundation.BasicPartProvider
-import org.eln2.mc.common.space.DirectionMask
-import org.eln2.mc.common.space.RelativeDir
-import org.eln2.mc.common.space.withDirectionActualRule
+import org.eln2.mc.mathematics.DirectionMask
+import org.eln2.mc.mathematics.RelativeDir
+import org.eln2.mc.data.withDirectionActualRule
 import org.eln2.mc.data.Energy
-import org.eln2.mc.data.EnergyUnits
+import org.eln2.mc.data.KW_HOURS
+import org.eln2.mc.data.Quantity
 import org.eln2.mc.mathematics.bbSize
 import kotlin.math.abs
 
@@ -127,7 +128,7 @@ object Content {
 
                 1 + lifeTerm + cyclesTerm
             },
-            energyCapacity = Energy.from(2.2, EnergyUnits.KW_HOURS),
+            energyCapacity = Quantity(2.2, KW_HOURS),
             0.5,
             BatteryMaterials.PB_ACID_TEST,
             20.0,
@@ -208,6 +209,14 @@ object Content {
     val GRID_TEST_BLOCK_ENTITY = blockEntity("grid_test_block_entity", ::GridCellBlockEntity) { GRID_TEST_BLOCK.block.get() }
     val GRID_CONNECT_ITEM = item("grid_connect_item", ::GridConnectItem)
     val GRID_CONNECTION_ENTITY = entity("grid_connection_entity", MobCategory.MISC, ::GridConnectionEntity)
+
+    val DRAGONS_TEST_CELL = injCell<DiffusionConduitCell>("dragons_test_cell")
+    val DRAGONS_TEST_BLOCK = block("dragons_test_block") { BasicCellBlock(DRAGONS_TEST_CELL) }
+    val DRAGONS_TEST_SRC_CELL = injCell<DRAGONSTestSrcCell>("dragons_test_src_cell")
+    val DRAGONS_TEST_SRC_BLOCK = block("dragons_test_src_block") { BasicCellBlock(DRAGONS_TEST_SRC_CELL) }
+
+    val RAD_TEST_BLOCK = block("rad_test_block") { RadioactiveBlockTest() }
+    val RAD_TEST_METER_ITEM = item("rad_test_meter_item") { RadiationMeterItem() }
 
     @Mod.EventBusSubscriber
     object ClientSetup {

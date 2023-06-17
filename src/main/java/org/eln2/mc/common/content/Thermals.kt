@@ -21,8 +21,8 @@ import org.eln2.mc.common.parts.foundation.CellPart
 import org.eln2.mc.common.parts.foundation.PartRenderer
 import org.eln2.mc.common.parts.foundation.Part
 import org.eln2.mc.common.parts.foundation.PartPlacementInfo
-import org.eln2.mc.common.space.DirectionMask
-import org.eln2.mc.common.space.withDirectionActualRule
+import org.eln2.mc.mathematics.DirectionMask
+import org.eln2.mc.data.withDirectionActualRule
 import org.eln2.mc.sim.ThermalBody
 
 data class RadiatorModel(
@@ -32,7 +32,7 @@ data class RadiatorModel(
     val mass: Double
 )
 
-class ThermalRadiatorCell(ci: CellCI, val model: RadiatorModel): Cell(ci) {
+class ThermalRadiatorCell(ci: CellCreateInfo, val model: RadiatorModel): Cell(ci) {
     @SimObject
     val thermalWireObj = ThermalWireObject(this).also {
         it.body = ThermalBody(ThermalMass(model.material, it.body.energy, model.mass), model.surfaceArea)

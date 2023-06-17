@@ -15,7 +15,7 @@ class HermiteSplineTests {
 
         points.forEach { builder.with(it.first, it.second) }
 
-        val spline1 = builder.buildCubicKB()
+        val spline1 = builder.buildCubic()
 
         points.forEach { (k, v) ->
             assert(spline1.evaluate(k) approxEq v)

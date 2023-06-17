@@ -1,5 +1,7 @@
 import org.eln2.mc.common.events.EventManager
 import org.eln2.mc.common.events.Event
+import org.eln2.mc.common.events.registerHandler
+import org.eln2.mc.common.events.unregisterHandler
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.fail
 import java.util.concurrent.ConcurrentLinkedQueue

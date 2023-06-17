@@ -5,7 +5,8 @@ package org.eln2.mc.mathematics
 import kotlin.math.*
 
 
-const val GEO_COMPARE_EPS = 10e-8
+const val GEO_COMPARE_EPS = 1e-8
+const val GEO_NORMALIZED_EPS = 1e-6
 
 interface KDVector<T> {
     val size: Int
@@ -913,6 +914,9 @@ data class Vector2d(val x: Double, val y: Double) {
     }
 }
 
+fun min(a: Vector2d, b: Vector2d) = Vector2d(min(a.x, b.x), min(a.y, b.y))
+fun max(a: Vector2d, b: Vector2d) = Vector2d(max(a.x, b.x), max(a.y, b.y))
+
 data class Vector2dDual(val x: Dual, val y: Dual) {
     constructor(value: Dual): this(value, value)
     constructor(values: List<Vector2d>) : this(
@@ -1113,10 +1117,22 @@ data class Pose2dDual(val translation: Vector2dDual, val rotation: Rotation2dDua
 }
 
 data class Vector3di(val x: Int, val y: Int, val z: Int) {
+    constructor(value: Int) : this(value, value, value)
+
     operator fun unaryPlus() = this
     operator fun unaryMinus() = Vector3di(-x, -y, -z)
-    operator fun plus(b: Vector3di) = Vector3di(x + b.x, y + b.y, z + b.z)
+    operator fun times(b: Int) = Vector3di(x * b, y * b, z * b)
+    operator fun div(b: Int) = Vector3di(x / b, y / b, z / b)
     operator fun minus(b: Vector3di) = Vector3di(x - b.x, y - b.y, z - b.z)
+    operator fun plus(b: Vector3di) = Vector3di(x + b.x, y + b.y, z + b.z)
+
+    companion object {
+        val zero = Vector3di(0, 0, 0)
+        val one = Vector3di(1, 1, 1)
+        val unitX = Vector3di(1, 0, 0)
+        val unitY = Vector3di(0, 1, 0)
+        val unitZ = Vector3di(0, 0, 1)
+    }
 }
 
 data class Vector3d(val x: Double, val y: Double, val z: Double) {
@@ -1125,6 +1141,7 @@ data class Vector3d(val x: Double, val y: Double, val z: Double) {
     infix fun o(b: Vector3d) = x * b.x + y * b.y + z * b.z
     val normSqr get() = this o this
     val norm get() = sqrt(normSqr)
+    val isUnit get() = normSqr.approxEq(1.0, GEO_NORMALIZED_EPS)
     infix fun distTo(b: Vector3d) = (this - b).norm
     infix fun distToSqr(b: Vector3d) = (this - b).normSqr
     infix fun cosAngle(b: Vector3d) = (this o b) / (this.norm * b.norm)
@@ -1160,12 +1177,19 @@ data class Vector3d(val x: Double, val y: Double, val z: Double) {
     fun projectOnPlane(n: Vector3d) = this - n * ((this o n) / n.normSqr)
     fun projectOnVector(v: Vector3d) = if (this == zero || v == zero) zero else v * (this o v) / v.normSqr
 
+    val floor get() = Vector3di(floor(this.x).toInt(), floor(this.y).toInt(), floor(this.z).toInt())
+    val ceiling get() = Vector3di(ceil(this.x).toInt(), ceil(this.y).toInt(), ceil(this.z).toInt())
+    val frac get() = Vector3d(frac(this.x), frac(this.y), frac(this.z))
+    fun intCast() = Vector3di(x.toInt(), y.toInt(), z.toInt())
+
     companion object {
         val zero = Vector3d(0.0, 0.0, 0.0)
         val one = Vector3d(1.0, 1.0, 1.0)
         val unitX = Vector3d(1.0, 0.0, 0.0)
         val unitY = Vector3d(0.0, 1.0, 0.0)
         val unitZ = Vector3d(0.0, 0.0, 1.0)
+
+        val oneN = one.normalized()
 
         fun lerp(a: Vector3d, b: Vector3d, t: Double) = Vector3d(
             lerp(a.x, b.x, t),
@@ -1174,6 +1198,12 @@ data class Vector3d(val x: Double, val y: Double, val z: Double) {
         )
     }
 }
+
+fun min(a: Vector3d, b: Vector3d) = Vector3d(min(a.x, b.x), min(a.y, b.y), min(a.z, b.z))
+fun max(a: Vector3d, b: Vector3d) = Vector3d(max(a.x, b.x), max(a.y, b.y), max(a.z, b.z))
+infix fun Vector3d.directionTo(b: Vector3d) = (b - this).normalized()
+infix fun Vector3d.directionToNz(b: Vector3d) = (b - this).normalizedNz()
+
 
 data class Vector3dDual(val x: Dual, val y: Dual, val z: Dual) {
     constructor(value: Dual): this(value, value, value)
@@ -1666,5 +1696,398 @@ data class CoordinateSystem(val transform: Matrix3x3) {
             Vector3d.unitZ,
             Vector3d.unitY
         ))
+    }
+}
+
+enum class ContainmentMode {
+    Disjoint,
+    Intersected,
+    ContainedFully
+}
+
+interface BoundingBox<Self : BoundingBox<Self>> {
+    val capacity: Double
+    val surface: Double
+
+    infix fun u(b: Self): Self
+    infix fun intersectsWith(b: Self): Boolean
+    fun inflatedBy(percent: Double): Self
+    fun evaluateContainment(b: Self): ContainmentMode
+}
+
+data class BoundingBox2d(val min: Vector2d, val max: Vector2d) : BoundingBox<BoundingBox2d> {
+    constructor(minX: Double, minY: Double, width: Double, height: Double) : this(
+        Vector2d(minX, minY),
+        Vector2d(minX + width, minY + height)
+    )
+
+    val center = (min + max) / 2.0
+    val width get() = max.x - min.x
+    val height get() = max.y - min.y
+    override val capacity get() = width * height
+    override val surface get() = width * height
+
+    infix fun intersectionWith(b: BoundingBox2d): BoundingBox2d {
+        val result = BoundingBox2d(
+            Vector2d(max(this.min.x, b.min.x), max(this.min.y, b.min.y)),
+            Vector2d(java.lang.Double.min(this.max.x, b.max.x), java.lang.Double.min(this.max.y, b.max.y))
+        )
+
+        return if (result.max.x < result.min.x || result.max.y < result.min.y) {
+            zero
+        } else result
+    }
+
+    override infix fun intersectsWith(b: BoundingBox2d) =
+        b.min.x < this.max.x && this.min.x < b.max.x &&
+        b.min.y < this.max.y && this.min.y < b.max.y
+
+    override infix fun u(b: BoundingBox2d) = BoundingBox2d(
+        Vector2d(java.lang.Double.min(this.min.x, b.min.x), java.lang.Double.min(this.min.y, b.min.y)),
+        Vector2d(max(this.max.x, b.max.x), max(this.max.y, b.max.y))
+    )
+
+    fun inflated(amountX: Double, amountY: Double) = BoundingBox2d(
+        Vector2d(this.min.x - amountX, this.min.y - amountY),
+        Vector2d(this.max.x + amountX, this.max.y + amountY)
+    )
+
+    fun inflated(amount: Vector2d) = inflated(amount.x, amount.y)
+    fun inflated(amount: Double) = inflated(amount, amount)
+    override fun inflatedBy(percent: Double) = inflated(width * percent, height * percent)
+
+    override fun evaluateContainment(b: BoundingBox2d): ContainmentMode {
+        if (!this.intersectsWith(b)) {
+            return ContainmentMode.Disjoint
+        }
+
+        val test = this.min.x > b.min.x || b.max.x > this.max.x ||
+            this.min.y > b.min.y || b.max.y > this.max.y
+
+        return if (test) ContainmentMode.Intersected
+        else ContainmentMode.ContainedFully
+    }
+
+    fun contains(point: Vector2d) =
+        this.min.x < point.x && this.min.y < point.y &&
+        this.max.x > point.x && this.max.y > point.y
+
+    companion object {
+        val zero = BoundingBox2d(Vector2d.zero, Vector2d.zero)
+
+        fun centerSize(center: Vector2d, size: Vector2d) = BoundingBox2d(
+            center - size / 2.0,
+            size
+        )
+
+        fun centerSize(center: Vector2d, size: Double) = BoundingBox2d(
+            center.x - size / 2.0,
+            center.y - size / 2.0,
+            size, size
+        )
+    }
+}
+
+data class BoundingBox3d(val min: Vector3d, val max: Vector3d) : BoundingBox<BoundingBox3d> {
+    constructor(minX: Double, minY: Double, minZ: Double, width: Double, height: Double, depth: Double) : this(
+        Vector3d(minX, minY, minZ),
+        Vector3d(minX + width, minY + height, minZ + depth)
+    )
+
+    constructor(sphere: BoundingSphere) : this(sphere.origin - Vector3d(sphere.radius), sphere.origin + Vector3d(sphere.radius))
+
+    val center = (min + max) / 2.0
+    val width get() = max.x - min.x
+    val height get() = max.y - min.y
+    val depth get() = max.z - min.z
+    override val capacity get() = width * height * depth
+    override val surface get() = 2.0 * (width * height + depth * height + width * depth)
+
+    infix fun intersectionWith(b: BoundingBox3d): BoundingBox3d {
+        val result = BoundingBox3d(
+            Vector3d(
+                max(this.min.x, b.min.x),
+                max(this.min.y, b.min.y),
+                max(this.min.z, b.min.z)
+            ),
+            Vector3d(
+                min(this.max.x, b.max.x),
+                min(this.max.y, b.max.y),
+                min(this.max.z, b.max.z)
+            )
+        )
+
+        return if (result.max.x < result.min.x || result.max.y < result.min.y || result.max.z < result.min.z) {
+            zero
+        } else result
+    }
+
+    override infix fun intersectsWith(b: BoundingBox3d) =
+        b.min.x < this.max.x && this.min.x < b.max.x &&
+        b.min.y < this.max.y && this.min.y < b.max.y &&
+        b.min.z < this.max.z && this.min.z < b.max.z
+
+    override infix fun u(b: BoundingBox3d) = BoundingBox3d(
+        Vector3d(
+            java.lang.Double.min(this.min.x, b.min.x),
+            java.lang.Double.min(this.min.y, b.min.y),
+            java.lang.Double.min(this.min.z, b.min.z)
+        ),
+        Vector3d(max(this.max.x, b.max.x), max(this.max.y, b.max.y), max(this.max.z, b.max.z))
+    )
+
+    fun inflated(amountX: Double, amountY: Double, amountZ: Double) = BoundingBox3d(
+        Vector3d(this.min.x - amountX, this.min.y - amountY, this.min.z - amountZ),
+        Vector3d(this.max.x + amountX, this.max.y + amountY, this.max.z + amountZ)
+    )
+
+    fun inflated(amount: Vector3d) = inflated(amount.x, amount.y, amount.z)
+    fun inflated(amount: Double) = inflated(amount, amount, amount)
+    override fun inflatedBy(percent: Double) = inflated(width * percent, height * percent, depth * percent)
+
+    override fun evaluateContainment(b: BoundingBox3d): ContainmentMode {
+        if (!this.intersectsWith(b)) {
+            return ContainmentMode.Disjoint
+        }
+
+        val test = this.min.x > b.min.x || b.max.x > this.max.x ||
+            this.min.y > b.min.y || b.max.y > this.max.y ||
+            this.min.z > b.min.z || b.max.z > this.max.z
+
+        return if (test) ContainmentMode.Intersected
+        else ContainmentMode.ContainedFully
+    }
+
+    fun contains(point: Vector3d) =
+        this.min.x < point.x && this.min.y < point.y && this.min.z < point.z &&
+        this.max.x > point.x && this.max.y > point.y && this.max.z > point.z
+
+    companion object {
+        val zero = BoundingBox3d(Vector3d.zero, Vector3d.zero)
+
+        fun centerSize(center: Vector3d, size: Vector3d) = BoundingBox3d(
+            center - size / 2.0,
+            size
+        )
+
+        fun centerSize(center: Vector3d, size: Double) = BoundingBox3d(
+            center.x - size / 2.0,
+            center.y - size / 2.0,
+            center.z - size / 2.0,
+            size, size, size
+        )
+    }
+}
+
+data class IntersectionParametricBi(
+    val entry: Double,
+    val exit: Double,
+)
+
+data class Ray3d(val origin: Vector3d, val direction: Vector3d) {
+    init {
+        require(direction.isUnit) {
+            "Cannot create ray with non-unit $direction (${direction.norm})"
+        }
+    }
+
+    fun evaluate(t: Double) = origin + direction * t
+
+    infix fun intersectionWith(b: BoundingBox3d): IntersectionParametricBi? {
+        var tmin = Double.NEGATIVE_INFINITY
+        var tmax = Double.POSITIVE_INFINITY
+
+        if (this.direction.x != 0.0) {
+            val tx1 = (b.min.x - this.origin.x) / this.direction.x
+            val tx2 = (b.max.x - this.origin.x) / this.direction.x
+            tmin = max(tmin, min(tx1, tx2))
+            tmax = min(tmax, max(tx1, tx2))
+        }
+
+        if (this.direction.y != 0.0) {
+            val ty1 = (b.min.y - this.origin.y) / this.direction.y
+            val ty2 = (b.max.y - this.origin.y) / this.direction.y
+            tmin = max(tmin, min(ty1, ty2))
+            tmax = min(tmax, max(ty1, ty2))
+        }
+
+        if (this.direction.z != 0.0) {
+            val tz1 = (b.min.z - this.origin.z) / this.direction.z
+            val tz2 = (b.max.z - this.origin.z) / this.direction.z
+            tmin = max(tmin, min(tz1, tz2))
+            tmax = min(tmax, max(tz1, tz2))
+        }
+
+        return if(tmax >= tmin) IntersectionParametricBi(tmin, tmax)
+        else null
+    }
+}
+
+data class BoundingSphere(val origin: Vector3d, val radius: Double) {
+    constructor(box: BoundingBox3d) : this(box.center, box.center..box.max)
+
+    infix fun u(b: BoundingSphere): BoundingSphere {
+        val dxAB = b.origin - this.origin
+
+        val rdxAB = dxAB.norm
+
+        if (radius + b.radius >= rdxAB) {
+            if (radius - b.radius >= rdxAB) {
+                return this
+            } else if (b.radius - radius >= rdxAB) {
+                return b
+            }
+        }
+
+        val nxAB = dxAB / rdxAB
+        val a = min(-radius, rdxAB - b.radius)
+        val r = (max(radius, rdxAB + b.radius) - a) / 2.0
+
+        return BoundingSphere(this.origin + nxAB * (r + a), r)
+    }
+
+    fun contains(point: Vector3d) = origin..point < radius
+}
+fun bresenham(startX: Int, startY: Int, startZ: Int, endX: Int, endY: Int, endZ: Int, user: (Int, Int, Int) -> Boolean) {
+    var x = startX
+    var y = startY
+    var z = startZ
+
+    if(!user(x, y, z)) {
+        return
+    }
+
+    val dx = abs(endX - x)
+    val dy = abs(endY - y)
+    val dz = abs(endZ - z)
+    val sx = nsnzi(dx)
+    val sy = nsnzi(dy)
+    val sz = nsnzi(dz)
+
+    if (dx >= dy && dx >= dz) {
+        var a = 2 * dy - dx
+        var b = 2 * dz - dx
+
+        while (x != endX) {
+            x += sx
+
+            if (a >= 0) {
+                y += sy
+                a -= 2 * dx
+            }
+
+            if (b >= 0) {
+                z += sz
+                b -= 2 * dx
+            }
+
+            a += 2 * dy
+            b += 2 * dz
+
+            if(!user(x, y, z)) {
+                return
+            }
+        }
+    } else if (dy >= dx && dy >= dz) {
+        var a = 2 * dx - dy
+        var b = 2 * dz - dy
+
+        while (y != endY) {
+            y += sy
+
+            if (a >= 0) {
+                x += sx
+                a -= 2 * dy
+            }
+
+            if (b >= 0) {
+                z += sz
+                b -= 2 * dy
+            }
+
+            a += 2 * dx
+            b += 2 * dz
+
+            if(!user(x, y, z)) {
+                return
+            }
+        }
+    } else {
+        var a = 2 * dy - dz
+        var b = 2 * dx - dz
+
+        while (z != endZ) {
+            z += sz
+
+            if (a >= 0) {
+                y += sy
+                a -= 2 * dz
+            }
+
+            if (b >= 0) {
+                x += sx
+                b -= 2 * dz
+            }
+
+            a += 2 * dy
+            b += 2 * dx
+
+            if(!user(x, y, z)) {
+                return
+            }
+        }
+    }
+}
+
+fun dda(ray: Ray3d, distance: Double, user: (Int, Int, Int) -> Boolean) {
+    var x = floor(ray.origin.x).toInt()
+    var y = floor(ray.origin.y).toInt()
+    var z = floor(ray.origin.z).toInt()
+
+    val sx = snzi(ray.direction.x)
+    val sy = snzi(ray.direction.y)
+    val sz = snzi(ray.direction.z)
+
+    val nextBX = x + sx + matchSigni(sx, -1)
+    val nextBY = y + sy + matchSigni(sy, -1)
+    val nextBZ = z + sz + matchSigni(sz, -1)
+
+    var tmx = if (ray.direction.x != 0.0) (nextBX - ray.origin.x) / ray.direction.x else Double.MAX_VALUE
+    var tmy = if (ray.direction.y != 0.0) (nextBY - ray.origin.y) / ray.direction.y else Double.MAX_VALUE
+    var tmz = if (ray.direction.z != 0.0) (nextBZ - ray.origin.z) / ray.direction.z else Double.MAX_VALUE
+    val tdx = if (ray.direction.x != 0.0) 1.0 / ray.direction.x * sx else Double.MAX_VALUE
+    val tdy = if (ray.direction.y != 0.0) 1.0 / ray.direction.y * sy else Double.MAX_VALUE
+    val tdz = if (ray.direction.z != 0.0) 1.0 / ray.direction.z * sz else Double.MAX_VALUE
+
+    val distanceSqr = distance * distance
+
+    fun dispatch() = user(x, y, z) && (Vector3d(x.toDouble(), y.toDouble(), z.toDouble()) distToSqr ray.origin) < distanceSqr
+
+    if(!dispatch()) {
+        return
+    }
+
+    while(true) {
+        if (tmx < tmy) {
+            if (tmx < tmz) {
+                x += sx
+                tmx += tdx
+            } else {
+                z += sz
+                tmz += tdz
+            }
+        } else {
+            if (tmy < tmz) {
+                y += sy
+                tmy += tdy
+            } else {
+                z += sz
+                tmz += tdz
+            }
+        }
+
+        if(!dispatch()) {
+            return
+        }
     }
 }

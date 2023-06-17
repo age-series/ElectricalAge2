@@ -5,9 +5,9 @@ import net.minecraft.world.level.biome.Biome
 import org.ageseries.libage.sim.thermal.Temperature
 import org.ageseries.libage.sim.thermal.ThermalUnits
 import org.eln2.mc.common.cells.foundation.CellPos
-import org.eln2.mc.common.space.BlockPosLocator
-import org.eln2.mc.common.space.R3
-import org.eln2.mc.common.space.requireLocator
+import org.eln2.mc.data.BlockPosLocator
+import org.eln2.mc.data.R3
+import org.eln2.mc.data.requireLocator
 import org.eln2.mc.data.DataFieldMap
 import java.util.concurrent.ConcurrentHashMap
 

@@ -1,4 +1,4 @@
-package org.eln2.mc.common.space
+package org.eln2.mc.mathematics
 
 import com.mojang.math.Matrix4f
 import net.minecraft.core.Direction

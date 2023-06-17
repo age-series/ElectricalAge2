@@ -27,11 +27,11 @@ import org.eln2.mc.common.blocks.foundation.MultipartBlockEntity
 import org.eln2.mc.common.cells.foundation.*
 import org.eln2.mc.common.network.serverToClient.*
 import org.eln2.mc.common.parts.PartRegistry
-import org.eln2.mc.common.space.*
-import org.eln2.mc.data.DataNode
-import org.eln2.mc.data.DataEntity
+import org.eln2.mc.data.*
 import org.eln2.mc.integration.WailaEntity
 import org.eln2.mc.integration.WailaTooltipBuilder
+import org.eln2.mc.mathematics.DirectionMask
+import org.eln2.mc.mathematics.RelativeDir
 import org.eln2.mc.sim.BiomeEnvironments
 import org.eln2.mc.utility.BoundingBox
 import java.util.*

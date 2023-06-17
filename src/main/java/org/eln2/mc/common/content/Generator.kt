@@ -48,7 +48,6 @@ import org.eln2.mc.common.cells.foundation.*
 import org.eln2.mc.common.cells.foundation.ThermalBodyAccessor
 import org.eln2.mc.common.network.serverToClient.PacketHandlerBuilder
 import org.eln2.mc.common.parts.foundation.*
-import org.eln2.mc.common.space.*
 import org.eln2.mc.control.pid
 import org.eln2.mc.data.*
 import org.eln2.mc.integration.WailaEntity
@@ -263,7 +262,7 @@ class ThermocoupleBehavior(
     }
 }
 
-class ThermocoupleCell(ci: CellCI, electricalMap: PoleMap, thermalMap: PoleMap) : Cell(ci) {
+class ThermocoupleCell(ci: CellCreateInfo, electricalMap: PoleMap, thermalMap: PoleMap) : Cell(ci) {
     @SimObject
     val generatorObj = VRGeneratorObject(this, electricalMap)
 
@@ -479,7 +478,7 @@ class FuelBurnerBehavior(val cell: Cell, val bodyGetter: ThermalBodyAccessor): C
     }
 }
 
-class HeatGeneratorCell(ci: CellCI) : Cell(ci) {
+class HeatGeneratorCell(ci: CellCreateInfo) : Cell(ci) {
     companion object {
         const val BURNER_BEHAVIOR = "burner"
     }
@@ -758,7 +757,7 @@ object PhotovoltaicModels {
         .with(0.0, 1.0)
         .with(0.95, 0.8)
         .with(1.0, 0.0)
-        .buildCubicKB()
+        .buildCubic()
 
     private fun voltageTest(maximumVoltage: Double): PVFunction {
         return PVFunction { view ->
@@ -817,7 +816,7 @@ class PhotovoltaicBehavior(val cell: Cell, val generator: VRGeneratorObject, val
     override val normal: Direction get() = cell.posDescr.requireBlockFaceLoc { "Photovoltaic behavior requires a face locator" }
 }
 
-class PhotovoltaicGeneratorCell(ci: CellCI, model: PhotovoltaicModel) : Cell(ci) {
+class PhotovoltaicGeneratorCell(ci: CellCreateInfo, model: PhotovoltaicModel) : Cell(ci) {
     @SimObject
     val generatorObj = VRGeneratorObject(this, dirActualMap()).also {
         it.ruleSet.withDirectionActualRule(DirectionMask.FRONT + DirectionMask.BACK)
