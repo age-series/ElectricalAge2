@@ -1,4 +1,4 @@
-package org.eln2.mc.sim
+package org.eln2.mc.scientific
 
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.biome.Biome

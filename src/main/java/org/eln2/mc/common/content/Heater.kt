@@ -18,7 +18,7 @@ import org.eln2.mc.common.cells.foundation.*
 import org.eln2.mc.data.DataNode
 import org.eln2.mc.data.PowerField
 import org.eln2.mc.integration.WailaTooltipBuilder
-import org.eln2.mc.sim.ThermalBody
+import org.eln2.mc.scientific.ThermalBody
 import kotlin.math.absoluteValue
 
 class HeaterHeatPortCell(ci: CellCreateInfo) : Cell(ci) {

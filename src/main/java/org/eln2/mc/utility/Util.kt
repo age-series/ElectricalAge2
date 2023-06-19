@@ -1,9 +1,15 @@
 package org.eln2.mc.utility
 
+import net.minecraft.core.BlockPos
 import net.minecraft.world.level.ChunkPos
+import net.minecraft.world.level.Level
+import net.minecraft.world.level.block.entity.BlockEntity
+import net.minecraft.world.level.block.entity.BlockEntityTicker
+import net.minecraft.world.level.block.state.BlockState
 import org.ageseries.libage.data.MultiMap
 import org.ageseries.libage.data.MutableSetMapMultiMap
 import org.ageseries.libage.data.mutableMultiMapOf
+import org.eln2.mc.common.content.FermentationBarrelBlockEntity
 import org.eln2.mc.data.NANOSECONDS
 import org.eln2.mc.data.Quantity
 import org.eln2.mc.toBlockPos
@@ -67,4 +73,9 @@ inline fun <T, K> Collection<T>.associateByMulti(keySelector: (T) -> K): MultiMa
     val result = MutableSetMapMultiMap<K, T>()
     this.forEach { value -> result[keySelector(value)].add(value) }
     return result
+}
+
+@Suppress("UNCHECKED_CAST")
+fun <T : BlockEntity?, U> ticker(f: (pLevel: Level, pPos: BlockPos, pState: BlockState, pBlockEntity: U) -> Unit) = BlockEntityTicker<T> { level, pos, state, e ->
+    f(level, pos, state, e as U)
 }

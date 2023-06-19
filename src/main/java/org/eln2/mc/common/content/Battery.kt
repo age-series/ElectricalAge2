@@ -22,8 +22,8 @@ import org.eln2.mc.mathematics.bbVec
 import org.eln2.mc.mathematics.evaluate
 import org.eln2.mc.mathematics.lerp
 import org.eln2.mc.mathematics.map
-import org.eln2.mc.sim.Datasets
-import org.eln2.mc.sim.ThermalBody
+import org.eln2.mc.scientific.Datasets
+import org.eln2.mc.scientific.ThermalBody
 
 interface BatteryView {
     val model: BatteryModel

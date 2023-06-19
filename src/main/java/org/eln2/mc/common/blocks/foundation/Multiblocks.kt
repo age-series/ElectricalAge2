@@ -28,7 +28,9 @@ import net.minecraft.world.level.material.Material
 import net.minecraft.world.phys.AABB
 import org.eln2.mc.*
 import org.eln2.mc.Eln2.LOGGER
-import org.eln2.mc.common.events.EventScheduler
+import org.eln2.mc.common.events.Scheduler
+import org.eln2.mc.common.events.runPost
+import org.eln2.mc.common.events.schedulePost
 import org.eln2.mc.getResourceString
 import kotlin.math.ceil
 
@@ -121,9 +123,9 @@ class MultiblockManager(val ctrlPosWorld: BlockPos, val ctrlFacingWorld: Directi
             return
         }
 
-        EventScheduler.scheduleWorkPost(0) {
+        runPost {
             val user = level.getBlockEntity(ctrlPosWorld) as? MultiblockUser
-                ?: return@scheduleWorkPost
+                ?: return@runPost
 
             getVariant(level)?.also { user.onMultiblockFormed(it) }
         }

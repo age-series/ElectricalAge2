@@ -55,8 +55,8 @@ import org.eln2.mc.integration.WailaTooltipBuilder
 import org.eln2.mc.mathematics.*
 import org.eln2.mc.mathematics.map
 import org.eln2.mc.mathematics.vec4fOne
-import org.eln2.mc.sim.EnvTemperatureField
-import org.eln2.mc.sim.ThermalBody
+import org.eln2.mc.scientific.EnvTemperatureField
+import org.eln2.mc.scientific.ThermalBody
 import kotlin.math.*
 
 enum class Pole {

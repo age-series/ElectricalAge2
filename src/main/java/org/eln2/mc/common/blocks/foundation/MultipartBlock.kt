@@ -569,6 +569,10 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
             return false
         }
 
+        if(!provider.canPlace(placementContext)) {
+            return false
+        }
+
         val part = provider.create(placementContext)
 
         addPart(face, part)

@@ -1,4 +1,4 @@
-package org.eln2.mc.sim
+package org.eln2.mc.scientific
 
 import org.ageseries.libage.data.biMapOf
 import org.ageseries.libage.sim.Material

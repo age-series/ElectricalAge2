@@ -48,7 +48,7 @@ import org.eln2.mc.common.blocks.foundation.CellBlock
 import org.eln2.mc.common.blocks.foundation.CellBlockEntity
 import org.eln2.mc.common.cells.foundation.*
 import org.eln2.mc.common.events.AtomicUpdate
-import org.eln2.mc.common.events.EventScheduler
+import org.eln2.mc.common.events.runPre
 import org.eln2.mc.mathematics.DirectionMask
 import org.eln2.mc.mathematics.RelativeDir
 import org.eln2.mc.data.withDirectionActualRule
@@ -58,7 +58,7 @@ import org.eln2.mc.mathematics.map
 import org.eln2.mc.mathematics.mapNormalizedDoubleShort
 import org.eln2.mc.mathematics.unmapNormalizedDoubleShort
 import org.eln2.mc.mathematics.vec4fOne
-import org.eln2.mc.sim.ThermalBody
+import org.eln2.mc.scientific.ThermalBody
 import org.eln2.mc.utility.McColors
 import java.util.*
 
@@ -497,7 +497,7 @@ class FurnaceBlockEntity(pos: BlockPos, state: BlockState) :
 
     fun inputChanged() {
         if(!isBurning){
-            EventScheduler.scheduleWorkPre(0) {
+            runPre {
                 if(!isRemoved) {
                     loadBurningItem()
                 }

@@ -1,15 +1,18 @@
 @file:Suppress("ObjectPropertyName")
 
-package org.eln2.mc.sim
+package org.eln2.mc.scientific
 
 import org.ageseries.libage.data.multiMapOf
+import org.eln2.mc.addIncr
 import org.eln2.mc.data.*
 import org.eln2.mc.formattedPercentN
 import org.eln2.mc.mathematics.approxEq
 import org.eln2.mc.utility.*
 import java.util.*
 import kotlin.collections.ArrayList
+import kotlin.collections.HashMap
 import kotlin.collections.LinkedHashMap
+import kotlin.math.min
 import kotlin.math.pow
 
 // Dream on!
@@ -227,19 +230,20 @@ val isotopes = multiMapOf<ChemicalElement, IsotopeInformation>()
 private val mapElementSymbolElement = ChemicalElement.values().associateBy { it.symbol }
 fun getChemicalElement(symbol: String) = mapElementSymbolElement[symbol]
 
-private enum class FormulaSymbolType { Group, Parenthesis }
-private class FormulaSymbol(val type: FormulaSymbolType) {
+private enum class MolecularFormulaSymbolType { Group, Parenthesis }
+
+private class MolecularFormulaSymbol(val type: MolecularFormulaSymbolType) {
     val composition = LinkedHashMap<ChemicalElement, Int>()
 
     fun insert(e: ChemicalElement, count: Int) =
         if(composition.containsKey(e)) composition[e] = composition[e]!! + count
         else composition[e] = count
 
-    fun insert(b: FormulaSymbol) = b.composition.forEach { (k, v) -> this.insert(k, v) }
+    fun insert(b: MolecularFormulaSymbol) = b.composition.forEach { (k, v) -> this.insert(k, v) }
     fun fold(f: Int) = composition.forEach { (k, v) -> composition[k] = v * f }
 }
 
-private enum class TokenType {
+private enum class MolecularFormulaTokenType {
     LeftParenthesis,
     RightParenthesis,
     Element,
@@ -247,23 +251,23 @@ private enum class TokenType {
     Eof
 }
 
-private data class Token(val type: TokenType, val data: Any?)
+private data class MolecularFormulaToken(val type: MolecularFormulaTokenType, val data: Any?)
 
-private data class Lexer(val formula: String) {
+private data class MolecularFormulaLexer(val formula: String) {
     var index = 0
         private set
 
     val eof get() = index >= formula.length
 
-    fun fetch(): Token {
-        if (eof) return Token(TokenType.Eof, null)
+    fun fetch(): MolecularFormulaToken {
+        if (eof) return MolecularFormulaToken(MolecularFormulaTokenType.Eof, null)
 
         val char = formula[index++]
 
-        if (char.isLetter) return Token(TokenType.Element, parseElement(char))
-        else if (char.isDigitOrSubscriptDigit) return Token(TokenType.Multiplier, parseNumber(char))
-        else if (char == '(' || char == '[') return Token(TokenType.LeftParenthesis, null)
-        else if (char == ')' || char == ']') return Token(TokenType.RightParenthesis, null)
+        if (char.isLetter) return MolecularFormulaToken(MolecularFormulaTokenType.Element, parseElement(char))
+        else if (char.isDigitOrSubscriptDigit) return MolecularFormulaToken(MolecularFormulaTokenType.Multiplier, parseNumber(char))
+        else if (char == '(' || char == '[') return MolecularFormulaToken(MolecularFormulaTokenType.LeftParenthesis, null)
+        else if (char == ')' || char == ']') return MolecularFormulaToken(MolecularFormulaTokenType.RightParenthesis, null)
         error("Unexpected $char at $index")
     }
 
@@ -299,7 +303,12 @@ private data class Lexer(val formula: String) {
     }
 }
 
-data class MolecularComposition(val components: Map<ChemicalElement, Int>) {
+data class MolecularComposition(val components: Map<ChemicalElement, Int>, val label: String?) {
+    constructor(components: Map<ChemicalElement, Int>) : this(components, null)
+
+    val hash = components.hashCode()
+    override fun hashCode() = hash
+
     val molecularWeight = components.keys.sumOf { it.A * components[it]!! }
 
     val effectiveZRough = let {
@@ -337,10 +346,14 @@ data class MolecularComposition(val components: Map<ChemicalElement, Int>) {
         }
     )
 
-    operator fun not() = MassMixture(mapOf(this to 1.0))
+    operator fun not() = MolecularMassMixture(mapOf(this to 1.0))
     operator fun rangeTo(k: Double) = !this..k
 
     override fun toString(): String {
+        if(label != null) {
+            return label
+        }
+
         val sb = StringBuilder()
 
         components.forEach { (element, count) ->
@@ -353,6 +366,17 @@ data class MolecularComposition(val components: Map<ChemicalElement, Int>) {
 
         return sb.toString()
     }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as MolecularComposition
+
+        if (components != other.components) return false
+
+        return true
+    }
 }
 
 infix fun MolecularComposition.x(n: Int) = MolecularComposition(components.mapValues { (_, count) -> count * n })
@@ -362,7 +386,7 @@ enum class ConstituentAnalysisType {
     MolecularMassContribution
 }
 
-data class MassMixture(val massComposition: Map<MolecularComposition, Double>) {
+data class MolecularMassMixture(val massComposition: Map<MolecularComposition, Double>) {
     init {
         require(massComposition.isNotEmpty()) {
             "Empty weight composition"
@@ -448,10 +472,10 @@ data class MassMixture(val massComposition: Map<MolecularComposition, Double>) {
     }
 }
 
-operator fun Double.rangeTo(m: MassMixture) = m..this
+operator fun Double.rangeTo(m: MolecularMassMixture) = m..this
 operator fun Double.rangeTo(m: MolecularComposition) = !m..this
 
-fun createSolution(components: List<Pair<MassMixture, Double>>, normalize: Boolean = true): MassMixture {
+fun createSolution(components: List<Pair<MolecularMassMixture, Double>>, normalize: Boolean = true): MolecularMassMixture {
     var map = LinkedHashMap<MolecularComposition, Double>()
 
     components.forEach { (xq, xqWeight) ->
@@ -462,37 +486,37 @@ fun createSolution(components: List<Pair<MassMixture, Double>>, normalize: Boole
     }
 
     if(normalize) {
-       map = MassMixture.normalize(map)
+       map = MolecularMassMixture.normalize(map)
     }
 
-    return MassMixture(map)
+    return MolecularMassMixture(map)
 }
 
-fun solutionOf(vararg components: Pair<MassMixture, Double>, normalize: Boolean = true) = createSolution(components.asList(), normalize)
+fun solutionOf(vararg components: Pair<MolecularMassMixture, Double>, normalize: Boolean = true) = createSolution(components.asList(), normalize)
 
-fun percentageSolutionOf(vararg components: Pair<MassMixture, Double>, normalize: Boolean = true) = createSolution(
+fun percentageSolutionOf(vararg components: Pair<MolecularMassMixture, Double>, normalize: Boolean = true) = createSolution(
     components.asList().map { (a, b) -> a to (b / 100.0) }, normalize
 )
 
 fun molecular(formula: String): MolecularComposition {
-    val lexer = Lexer(formula)
-    val stack = ArrayList<FormulaSymbol>()
+    val lexer = MolecularFormulaLexer(formula)
+    val stack = ArrayList<MolecularFormulaSymbol>()
 
     while (true) {
         val token = lexer.fetch()
 
         when(token.type) {
-            TokenType.LeftParenthesis -> {
-                stack.add(FormulaSymbol(FormulaSymbolType.Parenthesis))
+            MolecularFormulaTokenType.LeftParenthesis -> {
+                stack.add(MolecularFormulaSymbol(MolecularFormulaSymbolType.Parenthesis))
             }
-            TokenType.RightParenthesis -> {
-                val item = FormulaSymbol(FormulaSymbolType.Group)
+            MolecularFormulaTokenType.RightParenthesis -> {
+                val item = MolecularFormulaSymbol(MolecularFormulaSymbolType.Group)
 
-                while(stack.last().type == FormulaSymbolType.Group) {
+                while(stack.last().type == MolecularFormulaSymbolType.Group) {
                     item.insert(stack.removeLast())
                 }
 
-                require(stack.removeLastOrNull()?.type == FormulaSymbolType.Parenthesis) {
+                require(stack.removeLastOrNull()?.type == MolecularFormulaSymbolType.Parenthesis) {
                     error("Unexpected parenthesis at ${lexer.index}")
                 }
 
@@ -502,14 +526,14 @@ fun molecular(formula: String): MolecularComposition {
 
                 stack.add(item)
             }
-            TokenType.Element -> {
-                stack.add(FormulaSymbol(FormulaSymbolType.Group).apply {
+            MolecularFormulaTokenType.Element -> {
+                stack.add(MolecularFormulaSymbol(MolecularFormulaSymbolType.Group).apply {
                     insert(token.data as ChemicalElement, 1)
                 })
             }
-            TokenType.Multiplier -> {
+            MolecularFormulaTokenType.Multiplier -> {
                 val last = stack.removeLast()
-                require(last.type == FormulaSymbolType.Group) { "Expected element group before ${lexer.index}" }
+                require(last.type == MolecularFormulaSymbolType.Group) { "Expected element group before ${lexer.index}" }
 
                 last.fold((token.data as Int).also {
                     require(it > 0) { "Cannot fold group by 0 elements" }
@@ -517,15 +541,15 @@ fun molecular(formula: String): MolecularComposition {
 
                 stack.add(last)
             }
-            TokenType.Eof -> break
+            MolecularFormulaTokenType.Eof -> break
         }
     }
 
-    val evaluation = FormulaSymbol(FormulaSymbolType.Group)
+    val evaluation = MolecularFormulaSymbol(MolecularFormulaSymbolType.Group)
 
     while (stack.isNotEmpty()) {
         val last = stack.removeLast()
-        require(last.type == FormulaSymbolType.Group) {
+        require(last.type == MolecularFormulaSymbolType.Group) {
             "Unexpected ${last.type}"
         }
         evaluation.insert(last)
@@ -539,8 +563,11 @@ fun molecular(formula: String): MolecularComposition {
         }
 
         ordered
-    })
+    }, formula)
 }
+
+val O2 = molecular("O₂")
+val N2 = molecular("N₂")
 
 val H2O = molecular("H₂O")
 val water = H2O
@@ -702,6 +729,16 @@ val glucomannoglycanUnit = C24H42O21
 val C21H33O19 = molecular("C₂₁H₃₃O₁₉")
 val glucuronoxylanDGlucuronate = C21H33O19
 
+val C6H12O = molecular("C₆H₁₂O₆")
+val glucose = C6H12O
+
+val C2H5OH = molecular("C₂H₅OH")
+val C2H6O = C2H5OH
+val ethanol = C2H5OH
+
+val CH3COOH = molecular("CH₃COOH")
+val aceticAcid = CH3COOH
+
 // ₁ ₂ ₃ ₄ ₅ ₆ ₇ ₈ ₉ ₁₀
 
 data class KnownPhysicalProperties(
@@ -715,6 +752,118 @@ private val knownProperties = mapOf(
 
 val MolecularComposition.properties get() = knownProperties[this]
     ?: error("Molecular composition $this does not have known properties")
+
+class MassContainer {
+    val content = HashMap<MolecularComposition, Quantity<Substance>>()
+
+    operator fun get(m: MolecularComposition) = content[m] ?: Quantity(0.0)
+    operator fun set(m: MolecularComposition, value: Quantity<Substance>) { content[m] = value }
+    fun getMass(m: MolecularComposition) = (this[m] * m.molecularWeight).reparam<Mass>()
+    fun addMass(m: MolecularComposition, value: Quantity<Mass>) { this[m] += (value / m.molecularWeight).reparam() }
+    fun removeMass(m: MolecularComposition, value: Quantity<Mass>) = addMass(m, -value)
+    fun setMass(m: MolecularComposition, value: Quantity<Mass>) { this[m] = (value / m.molecularWeight).reparam() }
+
+    override fun toString(): String {
+        val sb = StringBuilder()
+
+        content.keys.sortedByDescending { !content[it]!! }.forEach { composition ->
+            sb.append(composition).append(": ").appendLine(valueText(!content[composition]!!, UnitType.MOLE))
+        }
+
+        return sb.toString()
+    }
+}
+
+// What I really want is a proper physics simulation (actual reactions using datasets, real equations, molecular structure, simulations, etc.)
+// That is difficult to pull off. Maybe with external support, we'll get around to doing that.
+// Currently, we have a crude (rather trashy) system of representing molecules (we don't have any structural information, only molecular formulas)
+// This is probably enough for the game
+
+data class ChemicalEquationTermInfo(
+    val elementsIn: Map<ChemicalElement, Int>,
+    val elementsOut: Map<ChemicalElement, Int>,
+    val isBalanced: Boolean
+)
+
+// No quantity because just using integers as coefficients is easier than dealing with fractional terms
+data class ChemicalEquation(val lhs: Map<MolecularComposition, Int>, val rhs: Map<MolecularComposition, Int>) {
+    fun analyze(): ChemicalEquationTermInfo {
+        val elementsIn = HashMap<ChemicalElement, Int>()
+        val elementsOut = HashMap<ChemicalElement, Int>()
+
+        fun scan(m: HashMap<ChemicalElement, Int>, e: Map<MolecularComposition, Int>) {
+            e.forEach { (comp, c1) ->
+                comp.components.forEach { (element, c2) ->
+                    m.addIncr(element, c1 * c2)
+                }
+            }
+        }
+
+        scan(elementsIn, lhs)
+        scan(elementsOut, rhs)
+
+        return ChemicalEquationTermInfo(
+            elementsIn,
+            elementsOut,
+            elementsIn == elementsOut
+        )
+    }
+}
+
+fun reaction(equation: String): ChemicalEquation {
+    fun parseSide(side: String): LinkedHashMap<MolecularComposition, Int> {
+        val terms = side.split("+").map { it.trim() }
+        require(terms.isNotEmpty())
+
+        val results = LinkedHashMap<MolecularComposition, Int>()
+
+        terms.forEach {
+            require(!it.isEmpty())
+
+            var i = 0
+            val coefficientSb = StringBuilder()
+            while (i < it.length) {
+                val c = it[i]
+
+                if(!c.isDigit) {
+                    break
+                }
+
+                i++
+
+                coefficientSb.append(c)
+            }
+
+            require(i < it.length)
+
+            val coefficient = if(coefficientSb.isEmpty()) 1 else coefficientSb.toString().toInt()
+            val comp = molecular(it.substring(i).trim())
+
+            require(results.put(comp, coefficient) == null)
+        }
+
+        return results
+    }
+
+    val s = equation.split("->")
+    require(s.size == 2)
+
+    return ChemicalEquation(
+        parseSide(s[0]),
+        parseSide(s[1])
+    )
+}
+
+fun MassContainer.applyReaction(equation: ChemicalEquation, rate: Double) {
+    var u = rate
+
+    equation.lhs.forEach { (composition, count) -> u = min(u, !this[composition] / count.toDouble()) }
+    equation.lhs.forEach { (c, x) -> this[c] -= Quantity(u * x) }
+    equation.rhs.forEach { (c, x) -> this[c] += Quantity(u * x) }
+}
+
+val glucoseFermentationReaction = reaction("C₆H₁₂O₆ -> 2 C₂H₅OH + 2 CO₂")
+val aceticFermentationReaction = reaction("C₂H₅OH + O₂ -> CH₃COOH + H₂O")
 
 val airMix = percentageSolutionOf(
     75.52 .. !!ChemicalElement.Nitrogen,
@@ -810,3 +959,23 @@ val obsidianSpecimenMix = percentageSolutionOf(
     0.1 .. TiO2,
     2.87 .. Fe2O3
 )
+
+enum class MolecularBondType {
+    None,
+    S,
+    D,
+    T,
+    Q,
+    Aromatic
+}
+
+data class MolecularBond(
+    val type: MolecularBondType
+)
+
+data class MolecularGraphNode(
+    val atom: ChemicalElement,
+    val index: Int
+)
+
+data class MolecularGraph(val graph: Graph<MolecularGraphNode, MolecularBond>)

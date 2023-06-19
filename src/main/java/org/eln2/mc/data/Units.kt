@@ -139,12 +139,16 @@ interface ArealDensity
 interface ReciprocalDistance
 interface ReciprocalArealDensity
 interface Density
+interface Substance
+interface Volume
 
 @JvmInline
 value class Quantity<Unit>(val value: Double) : Comparable<Quantity<Unit>> {
     constructor(quantity: Double, s: QuantityScale<Unit>) : this(s.scale.unmap(quantity))
 
     operator fun not() = value
+    operator fun unaryMinus() = Quantity<Unit>(-value)
+    operator fun unaryPlus() = Quantity<Unit>(+value)
     operator fun plus(b: Quantity<Unit>) = Quantity<Unit>(this.value + b.value)
     operator fun minus(b: Quantity<Unit>) = Quantity<Unit>(this.value - b.value)
     operator fun times(scalar: Double) = Quantity<Unit>(this.value * scalar)
@@ -260,6 +264,12 @@ val CM2_PER_G = M2_PER_KG / 10.0
 
 val M_PER_S = standard<Velocity>()
 val KM_PER_S = +M_PER_S
+
+val MOLE = standard<Substance>()
+
+val M3 = standard<Volume>()
+val LITERS = M3 / 1000.0
+val MILLILITERS = -LITERS
 
 operator fun<U> Quantity<U>.rangeTo(other: Quantity<U>) = ClosedQuantityRange(this, other)
 

@@ -1,4 +1,4 @@
-package org.eln2.mc.sim
+package org.eln2.mc.scientific
 
 import java.math.BigDecimal
 import java.math.MathContext

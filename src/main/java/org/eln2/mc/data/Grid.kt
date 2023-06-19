@@ -3,7 +3,7 @@ package org.eln2.mc.data
 import org.eln2.mc.mathematics.Vector3di
 import org.eln2.mc.mathematics.exp2i
 import org.eln2.mc.mathematics.pow
-import org.eln2.mc.sim.Grid3dFluid
+import org.eln2.mc.scientific.Grid3dFluid
 import kotlin.math.floor
 
 data class SubGridKey(val x: Int, val y: Int, val z: Int) {

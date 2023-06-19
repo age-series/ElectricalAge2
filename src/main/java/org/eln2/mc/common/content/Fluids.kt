@@ -4,9 +4,9 @@ import org.eln2.mc.common.cells.foundation.*
 import org.eln2.mc.data.DataEntity
 import org.eln2.mc.data.TooltipField
 import org.eln2.mc.data.data
-import org.eln2.mc.sim.DiffusionFluidOptions
-import org.eln2.mc.sim.VoxelPatchDirection
-import org.eln2.mc.sim.VoxelPatchModule
+import org.eln2.mc.scientific.DiffusionFluidOptions
+import org.eln2.mc.scientific.VoxelPatchDirection
+import org.eln2.mc.scientific.VoxelPatchModule
 import kotlin.math.min
 
 private val testDef = DiffusionDef(

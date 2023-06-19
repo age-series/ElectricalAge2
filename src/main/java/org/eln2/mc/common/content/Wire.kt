@@ -25,14 +25,14 @@ import org.eln2.mc.client.render.foundation.defaultRadiantBodyColor
 import org.eln2.mc.common.cells.foundation.*
 import org.eln2.mc.common.cells.foundation.CellProvider
 import org.eln2.mc.common.events.AtomicUpdate
-import org.eln2.mc.common.events.EventScheduler
+import org.eln2.mc.common.events.schedulePre
 import org.eln2.mc.common.network.serverToClient.PacketHandlerBuilder
 import org.eln2.mc.common.parts.foundation.*
 import org.eln2.mc.data.*
 import org.eln2.mc.integration.WailaEntity
 import org.eln2.mc.mathematics.*
 import org.eln2.mc.mathematics.cylinderSurfaceArea
-import org.eln2.mc.sim.*
+import org.eln2.mc.scientific.*
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.math.absoluteValue
 
@@ -395,7 +395,7 @@ class WirePart(
 
         updateLight()
 
-        EventScheduler.scheduleWorkPre(20, this::startGameLightUpdates)
+        schedulePre(20, this::startGameLightUpdates)
     }
 
     override fun registerPackets(builder: PacketHandlerBuilder) {

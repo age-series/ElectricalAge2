@@ -12,7 +12,7 @@ import org.eln2.mc.data.requireBlockPosLoc
 import org.eln2.mc.directionTo
 import org.eln2.mc.mathematics.Vector3di
 import org.eln2.mc.mathematics.exp2i
-import org.eln2.mc.sim.*
+import org.eln2.mc.scientific.*
 
 /**
  * Represents a discrete simulation unit that participates in one simulation type.

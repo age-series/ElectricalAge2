@@ -1,6 +1,6 @@
 @file:Suppress("LocalVariableName", "LocalVariableName", "NonAsciiCharacters")
 
-package org.eln2.mc.sim
+package org.eln2.mc.scientific
 
 import net.minecraft.core.BlockPos
 import net.minecraft.server.level.ServerLevel
@@ -84,7 +84,7 @@ fun massAttenuationMaterial(
 // I didn't have this before. At 70K VPS, it was using up ~70% of the CPU time. With this, it uses 3.3% :Fish_Amaze:
 // At 200K VPS, it uses around 5% (which means there is some overhead associated with setting up the traversal, because the increase only happened due to larger scans / measurement)
 private val radiationCastCache = ConcurrentHashMap<Triple<Int, Quantity<Density>, Quantity<Energy>>, Quantity<ReciprocalDistance>>()
-private fun MassMixture.radiationCast(ro: Quantity<Density>) = RadiationShieldingMaterial(ro) { e ->
+private fun MolecularMassMixture.radiationCast(ro: Quantity<Density>) = RadiationShieldingMaterial(ro) { e ->
     radiationCastCache.getOrPut(Triple(this.hash, ro, e)) {
         computeLinearAttenuation(this, e, ro)
     }

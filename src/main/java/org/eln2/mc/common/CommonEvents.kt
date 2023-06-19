@@ -19,9 +19,9 @@ import org.eln2.mc.Eln2
 import org.eln2.mc.Eln2.LOGGER
 import org.eln2.mc.common.blocks.foundation.GhostLightBlock
 import org.eln2.mc.common.cells.foundation.CellGraphManager
-import org.eln2.mc.common.events.EventScheduler
+import org.eln2.mc.common.events.Scheduler
+import org.eln2.mc.common.events.schedulePost
 import org.eln2.mc.data.AveragingList
-import org.eln2.mc.sim.VoxelDDAThreadedRadiationSystem
 import org.eln2.mc.utility.AnalyticsAcknowledgementsData
 import java.io.IOException
 
@@ -187,7 +187,7 @@ object CommonEvents {
             return
         }
 
-        EventScheduler.scheduleWorkPost(1){
+        schedulePost(1){
             GhostLightBlock.refreshGhost(event.world as ServerLevel, event.pos)
         }
     }

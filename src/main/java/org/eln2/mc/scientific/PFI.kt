@@ -1,4 +1,4 @@
-package org.eln2.mc.sim
+package org.eln2.mc.scientific
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
@@ -185,7 +185,7 @@ fun computePhotonCrossSectionBarnsDual(element: ChemicalElement, e: Quantity<Ene
 
 private const val NA = 0.60221367
 
-fun computeMassAttenuation(solution: MassMixture, e: Quantity<Energy>): Quantity<ReciprocalArealDensity> {
+fun computeMassAttenuation(solution: MolecularMassMixture, e: Quantity<Energy>): Quantity<ReciprocalArealDensity> {
     val composition = solution.atomicConstituentAnalysis(ConstituentAnalysisType.MolecularMassContribution)
     return Quantity(
         composition.keys.sumOf {
@@ -195,7 +195,7 @@ fun computeMassAttenuation(solution: MassMixture, e: Quantity<Energy>): Quantity
     )
 }
 
-fun computeMassAttenuationDual(solution: MassMixture, e: Quantity<Energy>, n: Int = 1): QuantityDual<ReciprocalArealDensity> {
+fun computeMassAttenuationDual(solution: MolecularMassMixture, e: Quantity<Energy>, n: Int = 1): QuantityDual<ReciprocalArealDensity> {
     val composition = solution.atomicConstituentAnalysis(ConstituentAnalysisType.MolecularMassContribution)
     return QuantityDual(
         composition.keys.sumOfDual(n) {
@@ -205,8 +205,8 @@ fun computeMassAttenuationDual(solution: MassMixture, e: Quantity<Energy>, n: In
     )
 }
 
-fun computeLinearAttenuation(solution: MassMixture, e: Quantity<Energy>, ro: Quantity<Density>) =
+fun computeLinearAttenuation(solution: MolecularMassMixture, e: Quantity<Energy>, ro: Quantity<Density>) =
     Quantity(!computeMassAttenuation(solution, e) * !ro, RECIP_METER)
 
-fun computeLinearAttenuationDual(solution: MassMixture, e: Quantity<Energy>, ro: Quantity<Density>, n: Int = 1) =
+fun computeLinearAttenuationDual(solution: MolecularMassMixture, e: Quantity<Energy>, ro: Quantity<Density>, n: Int = 1) =
     QuantityDual(!computeMassAttenuationDual(solution, e, n) * !ro, RECIP_METER)
