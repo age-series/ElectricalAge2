@@ -20,7 +20,7 @@ import org.eln2.mc.data.*
 import org.eln2.mc.integration.WailaEntity
 import org.eln2.mc.mathematics.Vector3di
 import org.eln2.mc.mathematics.rounded
-import org.eln2.mc.sim.*
+import org.eln2.mc.scientific.*
 import org.eln2.mc.utility.*
 import java.nio.ByteBuffer
 import java.util.*

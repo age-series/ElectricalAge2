@@ -215,10 +215,10 @@ class LightPart(id: ResourceLocation, placementContext: PartPlacementInfo, cellP
 
     @ServerOnly
     override fun onCellAcquired() {
-        EventScheduler.register(this).registerHandler(this::onLightUpdate)
+        Scheduler.register(this).registerHandler(this::onLightUpdate)
 
         lightCell.bind(
-            serverThreadAccess = EventScheduler.getEventAccess(this),
+            serverThreadAccess = Scheduler.getEventAccess(this),
             renderBrightnessConsumer = ::sendRenderBrBulk
         )
     }
@@ -242,7 +242,7 @@ class LightPart(id: ResourceLocation, placementContext: PartPlacementInfo, cellP
 
     override fun onCellReleased() {
         lightCell.unbind()
-        EventScheduler.remove(this)
+        Scheduler.remove(this)
     }
 
     private val lightCell get() = cell as LightCell

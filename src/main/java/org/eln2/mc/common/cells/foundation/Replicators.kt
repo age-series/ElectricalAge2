@@ -1,7 +1,7 @@
 package org.eln2.mc.common.cells.foundation
 
 import org.eln2.mc.mathematics.approxEq
-import org.eln2.mc.sim.ThermalBody
+import org.eln2.mc.scientific.ThermalBody
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.reflect.KClass
 import kotlin.reflect.full.*

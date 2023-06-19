@@ -23,7 +23,7 @@ import org.eln2.mc.common.parts.foundation.Part
 import org.eln2.mc.common.parts.foundation.PartPlacementInfo
 import org.eln2.mc.mathematics.DirectionMask
 import org.eln2.mc.data.withDirectionActualRule
-import org.eln2.mc.sim.ThermalBody
+import org.eln2.mc.scientific.ThermalBody
 
 data class RadiatorModel(
     val destructionTemperature: Double,

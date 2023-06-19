@@ -1,10 +1,9 @@
-package org.eln2.mc.sim
+package org.eln2.mc.scientific
 
 import mcp.mobius.waila.api.IPluginConfig
 import org.ageseries.libage.sim.Material
 import org.ageseries.libage.sim.thermal.Temperature
 import org.ageseries.libage.sim.thermal.ThermalMass
-import org.ageseries.libage.sim.thermal.ThermalUnits
 import org.eln2.mc.data.DataFieldMap
 import org.eln2.mc.appendBody
 import org.eln2.mc.integration.WailaEntity

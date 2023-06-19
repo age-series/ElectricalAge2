@@ -218,6 +218,12 @@ object Content {
     val RAD_TEST_BLOCK = block("rad_test_block") { RadioactiveBlockTest() }
     val RAD_TEST_METER_ITEM = item("rad_test_meter_item") { RadiationMeterItem() }
 
+    val FERMENTATION_BARREL_BLOCK = block("fermentation_barrel_block") { FermentationBarrelBlock() }
+    val FERMENTATION_BARREL_BLOCK_ENTITY = blockEntity("fermentation_barrel_block_entity", ::FermentationBarrelBlockEntity) { FERMENTATION_BARREL_BLOCK.block.get() }
+
+    val TREE_TAP_PART = part("tree_tap_part", TreeTapPartProvider())
+    val LATEX_SAP = item("latex_sap") { LatexSapItem() }
+
     @Mod.EventBusSubscriber
     object ClientSetup {
         @SubscribeEvent

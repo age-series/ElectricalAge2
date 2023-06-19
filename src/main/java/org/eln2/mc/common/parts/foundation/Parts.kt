@@ -32,7 +32,7 @@ import org.eln2.mc.integration.WailaEntity
 import org.eln2.mc.integration.WailaTooltipBuilder
 import org.eln2.mc.mathematics.DirectionMask
 import org.eln2.mc.mathematics.RelativeDir
-import org.eln2.mc.sim.BiomeEnvironments
+import org.eln2.mc.scientific.BiomeEnvironments
 import org.eln2.mc.utility.BoundingBox
 import java.util.*
 import kotlin.math.PI
@@ -455,6 +455,8 @@ abstract class PartProvider : ForgeRegistryEntry<PartProvider>() {
      * you can implement a visual placement margin here.
      * */
     abstract val placementCollisionSize: Vec3
+
+    open fun canPlace(context: PartPlacementInfo): Boolean = true
 }
 
 /**

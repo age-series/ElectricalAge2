@@ -22,11 +22,6 @@ import org.eln2.mc.common.items.ItemRegistry
 import org.eln2.mc.common.network.ModStatistics
 import org.eln2.mc.common.network.Networking
 import org.eln2.mc.common.parts.PartRegistry
-import org.eln2.mc.mathematics.kdVectorDOf
-import org.eln2.mc.sim.ChemicalElement
-import org.eln2.mc.sim.Datasets
-import org.eln2.mc.sim.RADIATION_SYSTEM_CUTOFF
-import org.eln2.mc.sim.xcomDataset
 import thedarkcolour.kotlinforforge.forge.MOD_BUS
 import java.io.InputStream
 import java.nio.charset.Charset

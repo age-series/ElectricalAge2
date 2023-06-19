@@ -5,7 +5,8 @@ import net.minecraft.server.level.ServerLevel
 import org.ageseries.libage.sim.thermal.Temperature
 import org.ageseries.libage.sim.thermal.ThermalUnits
 import org.eln2.mc.common.blocks.foundation.MultipartBlockEntity
-import org.eln2.mc.common.events.EventScheduler
+import org.eln2.mc.common.events.Scheduler
+import org.eln2.mc.common.events.schedulePre
 import org.eln2.mc.data.BlockFaceLocator
 import org.eln2.mc.data.SO3
 import org.eln2.mc.data.requireLocator
@@ -17,7 +18,7 @@ import org.eln2.mc.destroyPart
 import org.eln2.mc.formattedPercentN
 import org.eln2.mc.integration.WailaEntity
 import org.eln2.mc.integration.WailaTooltipBuilder
-import org.eln2.mc.sim.ThermalBody
+import org.eln2.mc.scientific.ThermalBody
 import org.eln2.mc.utility.Inj
 
 interface CellBehavior {
@@ -209,7 +210,7 @@ data class TemperatureExplosionBehaviorOptions(
  * above a threshold for a certain time period, as specified in [TemperatureExplosionBehaviorOptions]
  * A **score** is used to determine if the object should blow up. The score is increased when the temperature is above threshold
  * and decreased when the temperature is under threshold. Once a score of 1 is reached, the part explosion is enqueued
- * using the [EventScheduler]
+ * using the [Scheduler]
  * */
 class TemperatureExplosionBehavior(
     val temperatureAccessor: TemperatureAccessor,
@@ -265,7 +266,7 @@ class TemperatureExplosionBehavior(
         if(!enqueued) {
             enqueued = true
 
-            EventScheduler.scheduleWorkPre(1) {
+            schedulePre(1) {
                 consumer.explode()
             }
         }

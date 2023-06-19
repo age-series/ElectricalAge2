@@ -16,12 +16,12 @@ import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.level.material.Material
 import org.eln2.mc.Eln2.LOGGER
-import org.eln2.mc.common.events.EventScheduler
+import org.eln2.mc.common.events.schedulePre
 import org.eln2.mc.common.getLevelDataStorage
 import org.eln2.mc.data.*
 import org.eln2.mc.formatted
 import org.eln2.mc.mathematics.Vector3d
-import org.eln2.mc.sim.*
+import org.eln2.mc.scientific.*
 import org.eln2.mc.toVector3d
 
 val testMaterial = RadioactiveMaterial(
@@ -100,7 +100,7 @@ class RadiationMeterItem : Item(Properties()) {
                 position = pPlayer.position().toVector3d()
             }.measureAsync()
 
-            EventScheduler.schedulePeriodicPre(1) {
+            schedulePre(1) {
                 if(readTask.isDone) {
                     val result = readTask.get()
 

@@ -1,7 +1,5 @@
 package org.eln2.mc.common.events
 
-import org.eln2.mc.utility.all
-import org.eln2.mc.utility.nu
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.reflect.KClass
@@ -94,6 +92,6 @@ fun interface EventHandler<T : Event> {
 
 /**
  * Event Listeners are implemented by game objects.
- * @see EventScheduler.register
+ * @see Scheduler.register
  * */
 interface EventListener

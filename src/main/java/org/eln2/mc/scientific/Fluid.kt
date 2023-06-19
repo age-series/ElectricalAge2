@@ -1,4 +1,4 @@
-package org.eln2.mc.sim
+package org.eln2.mc.scientific
 
 import org.eln2.mc.data.GridCursor3d
 import org.eln2.mc.data.SubGridKey

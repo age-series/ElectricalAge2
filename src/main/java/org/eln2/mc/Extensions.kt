@@ -8,6 +8,8 @@ import net.minecraft.core.Direction
 import net.minecraft.core.Vec3i
 import net.minecraft.core.particles.ParticleOptions
 import net.minecraft.nbt.CompoundTag
+import net.minecraft.nbt.ListTag
+import net.minecraft.nbt.Tag
 import net.minecraft.network.chat.Component
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.level.ServerLevel
@@ -62,9 +64,7 @@ import org.eln2.mc.data.*
 import org.eln2.mc.integration.WailaTooltipBuilder
 import org.eln2.mc.mathematics.*
 import org.eln2.mc.mathematics.Vector3d
-import org.eln2.mc.sim.EnvironmentInformation
-import org.eln2.mc.sim.MaterialMapping
-import org.eln2.mc.sim.ThermalBody
+import org.eln2.mc.scientific.*
 import org.eln2.mc.utility.Vectors
 import java.nio.ByteBuffer
 import java.nio.FloatBuffer
@@ -953,4 +953,65 @@ fun<T> Collection<T>.sumOfDual(n: Int, dualSelector: (T) -> Dual): Dual {
     var result = Dual.const(0.0, n)
     this.forEach { result += dualSelector(it) }
     return result
+}
+
+fun CompoundTag.putElement(id: String, e: ChemicalElement) = this.putString(id, e.symbol)
+fun CompoundTag.getElement(id: String) = ChemicalElement.bySymbol[this.getString(id)] ?: error("Failed to get element")
+
+fun CompoundTag.putMolecularComposition(id: String, c: MolecularComposition): Tag? {
+    val atoms = ListTag()
+
+    c.components.forEach { (element, count) ->
+        atoms.add(CompoundTag().also { elementTag ->
+            elementTag.putElement("element", element)
+            elementTag.putInt("count", count)
+        })
+    }
+
+    return this.put(id, atoms)
+}
+
+fun CompoundTag.getMolecularComposition(id: String): MolecularComposition {
+    val results = LinkedHashMap<ChemicalElement, Int>()
+
+    (this.get(id) as ListTag).forEach { t ->
+        val elementTag = t as CompoundTag
+        results[elementTag.getElement("element")] = elementTag.getInt("count")
+    }
+
+    return MolecularComposition(results)
+}
+
+fun CompoundTag.putMassContainer(id: String, c: MassContainer): Tag? {
+    val components = ListTag()
+
+    c.content.forEach { (composition, quantity) ->
+        components.add(CompoundTag().also { componentTag ->
+            componentTag.putMolecularComposition("composition", composition)
+            componentTag.putQuantity("quantity", quantity)
+        })
+    }
+
+    return this.put(id, components)
+}
+
+fun CompoundTag.getMassContainer(id: String): MassContainer {
+    val result = MassContainer()
+
+    (this.get(id) as ListTag).forEach { t ->
+        val componentTag = t as CompoundTag
+        result[componentTag.getMolecularComposition("composition")] = componentTag.getQuantity("quantity")
+    }
+
+    return result
+}
+
+fun<K> MutableMap<K, Double>.addIncr(k: K, incr: Double) {
+    if(!this.containsKey(k)) this[k] = incr
+    else this[k] = this[k]!! + incr
+}
+
+fun<K> MutableMap<K, Int>.addIncr(k: K, incr: Int) {
+    if(!this.containsKey(k)) this[k] = incr
+    else this[k] = this[k]!! + incr
 }
