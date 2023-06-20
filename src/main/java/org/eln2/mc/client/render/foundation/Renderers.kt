@@ -8,7 +8,6 @@ import com.jozufozu.flywheel.core.PartialModel
 import com.jozufozu.flywheel.core.materials.FlatLit
 import com.jozufozu.flywheel.core.materials.model.ModelData
 import com.jozufozu.flywheel.util.Color
-import com.mojang.math.Vector3f
 import org.ageseries.libage.sim.thermal.STANDARD_TEMPERATURE
 import org.ageseries.libage.sim.thermal.Temperature
 import org.ageseries.libage.sim.thermal.ThermalUnits
@@ -18,6 +17,9 @@ import org.eln2.mc.common.parts.foundation.PartRenderer
 import org.eln2.mc.common.parts.foundation.Part
 import org.eln2.mc.common.parts.foundation.PartUpdateType
 import org.eln2.mc.mathematics.*
+import org.joml.AxisAngle4f
+import org.joml.Quaternionf
+import org.joml.Vector3f
 
 fun createPartInstance(multipart: MultipartBlockEntityInstance, model: PartialModel, part: Part<*>, downOffset: Double, yRotation: Float): ModelData {
     return multipart.materialManager
@@ -92,9 +94,17 @@ fun ModelData.applyBlockBenchTransform(part: Part<*>, downOffset: Double, yRotat
         .blockCenter()
         .translate(part.worldBoundingBox.center)
         .multiply(
-            part.placement.face.rotation *
-                part.txFacing *
-                Vector3f.YP.rotationDegrees(yRotation))
+            part.placement.face.rotation
+            .mul(part.facingRotation)
+            .mul(
+                Quaternionf(
+                    AxisAngle4f(
+                        yRotation,
+                        Vector3f(0.0f, 1.0f, 0.0f)
+                    )
+                )
+            )
+        )
         .zeroCenter()
 }
 

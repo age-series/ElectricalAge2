@@ -4,8 +4,7 @@ import mcp.mobius.waila.api.*
 import mcp.mobius.waila.api.component.PairComponent
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.nbt.ListTag
-import net.minecraft.network.chat.TextComponent
-import net.minecraft.network.chat.TranslatableComponent
+import net.minecraft.network.chat.Component
 import net.minecraft.world.level.block.entity.BlockEntity
 import org.ageseries.libage.sim.electrical.mna.component.Pin
 import org.eln2.mc.Eln2
@@ -141,19 +140,24 @@ data class WailaTooltipEntry(val key: String, val value: String, val type: Waila
         when (type) {
             WailaTooltipEntryType.TranslatableTranslatable -> tooltip.addLine(
                 PairComponent(
-                    TranslatableComponent(key),
-                    TranslatableComponent(value)
+                    Component.translatable(key),
+                    Component.translatable(value)
                 )
             )
 
             WailaTooltipEntryType.TranslatableText -> tooltip.addLine(
                 PairComponent(
-                    TranslatableComponent(key),
-                    TextComponent(value)
+                    Component.translatable(key),
+                    Component.literal(value)
                 )
             )
 
-            WailaTooltipEntryType.TextText -> tooltip.addLine(PairComponent(TextComponent(key), TextComponent(value)))
+            WailaTooltipEntryType.TextText -> tooltip.addLine(
+                PairComponent(
+                    Component.literal(key),
+                    Component.literal(value)
+                )
+            )
         }
     }
 }

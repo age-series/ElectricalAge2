@@ -181,7 +181,7 @@ object BulkMessages {
                         return@Runnable
                     }
 
-                    if(actualLevel.dimension().registryName.id() != bulkMsg.dim) {
+                    if(actualLevel.dimension().registry().id() != bulkMsg.dim) {
                         // Cheap check to make sure we don't get a badly timed packet
                         return@Runnable
                     }
@@ -230,7 +230,7 @@ object BulkMessages {
             }
 
             val message = BulkPartMessage(
-                level.dimension().registryName.id(),
+                level.dimension().registry().id(),
                 bulkPartMessageBuffer.toList()
             )
 

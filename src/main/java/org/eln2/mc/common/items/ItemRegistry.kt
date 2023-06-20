@@ -2,6 +2,7 @@
 
 package org.eln2.mc.common.items
 
+import net.minecraft.network.chat.Component
 import net.minecraft.world.item.CreativeModeTab
 import net.minecraft.world.item.Item
 import net.minecraft.world.item.ItemStack
@@ -36,8 +37,6 @@ object ItemRegistry {
     val MULTIBLOCK_SCAN_TOOL = item("multiblock_scan_tool", ::MultiblockScanTool)
 }
 
-val eln2Tab: CreativeModeTab = object : CreativeModeTab("Electrical_Age") {
-    override fun makeIcon(): ItemStack {
-        return ItemStack(Blocks.BARRIER.asItem())
-    }
+val eln2Tab: CreativeModeTab = object : CreativeModeTab(builder(Row.TOP, 0 /*todo what is this?*/).title(Component.literal("Electrical Age 2?"))) {
+    override fun getIconItem(): ItemStack = ItemStack(Blocks.BARRIER.asItem())
 }

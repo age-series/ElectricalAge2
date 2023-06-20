@@ -1,23 +1,22 @@
-package org.eln2.mc.common.configs
+package org.eln2.mc
 
 import com.charleskorn.kaml.Yaml
 import kotlinx.serialization.Serializable
 import org.eln2.mc.Eln2.LOGGER
 import java.io.File
-import java.util.*
 
 object Configuration {
     private val CONFIG_FILE: File = File("config/electrical_age.yaml")
-    var config: ElectricalAgeConfiguration = ElectricalAgeConfiguration()
+
+    var instance: ElnConfig = ElnConfig()
 
     fun loadConfig(configFile: File = CONFIG_FILE) {
         try {
             if (configFile.isFile) {
                 LOGGER.info("[Electrical Age] Reading config from ${configFile.absoluteFile}")
-                config =
-                    Yaml.default.decodeFromStream(ElectricalAgeConfiguration.serializer(), configFile.inputStream())
+                instance = Yaml.default.decodeFromStream(ElnConfig.serializer(), configFile.inputStream())
             } else {
-                config = ElectricalAgeConfiguration()
+                instance = ElnConfig()
                 saveConfig()
             }
         } catch (e: Exception) {
@@ -29,7 +28,7 @@ object Configuration {
     private fun saveConfig(configFile: File = CONFIG_FILE) {
         try {
             LOGGER.info("[Electrical Age] Writing config to ${configFile.absoluteFile}")
-            val configText = Yaml.default.encodeToString(ElectricalAgeConfiguration.serializer(), config)
+            val configText = Yaml.default.encodeToString(ElnConfig.serializer(), instance)
             if (!configFile.exists()) {
                 configFile.createNewFile()
             }
@@ -47,10 +46,6 @@ object Configuration {
  * They may be blank, but MUST be present. Thanks!
  */
 @Serializable
-data class ElectricalAgeConfiguration(
-    var enableAnalytics: Boolean = true,
-    // TODO: Replace with stats.age-series.org (but needs CAA certificates)
-    var analyticsEndpoint: String = "https://ingz5drycg.execute-api.us-east-1.amazonaws.com/",
-    var analyticsUuid: String = UUID.randomUUID().toString(),
+data class ElnConfig(
     var simulationThreads: Int = 8
 )

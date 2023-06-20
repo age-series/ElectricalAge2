@@ -1,8 +1,8 @@
 package org.eln2.mc.mathematics
 
-import com.mojang.math.Vector4f
 import net.minecraft.core.Vec3i
 import net.minecraft.world.phys.Vec3
+import org.joml.Vector4f
 import java.math.BigDecimal
 import java.math.MathContext
 import kotlin.math.*

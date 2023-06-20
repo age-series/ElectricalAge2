@@ -1,6 +1,6 @@
 package org.eln2.mc.utility
 
-import com.mojang.math.Vector3f
+import org.joml.Vector3f
 import kotlin.math.max
 import kotlin.math.min
 

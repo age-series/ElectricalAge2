@@ -11,7 +11,6 @@ import net.minecraft.core.particles.ParticleTypes
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.network.Connection
 import net.minecraft.network.chat.Component
-import net.minecraft.network.chat.TextComponent
 import net.minecraft.network.protocol.Packet
 import net.minecraft.network.protocol.game.ClientGamePacketListener
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket
@@ -34,8 +33,8 @@ import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.BlockHitResult
 import net.minecraft.world.phys.Vec3
 import net.minecraftforge.common.capabilities.Capability
+import net.minecraftforge.common.capabilities.ForgeCapabilities
 import net.minecraftforge.common.util.LazyOptional
-import net.minecraftforge.items.CapabilityItemHandler
 import net.minecraftforge.items.ItemStackHandler
 import net.minecraftforge.items.SlotItemHandler
 import org.ageseries.libage.sim.Material
@@ -461,7 +460,7 @@ class FurnaceBlockEntity(pos: BlockPos, state: BlockState) :
         private set
 
     override fun <T : Any?> getCapability(cap: Capability<T>, side: Direction?): LazyOptional<T> {
-        if(cap == CapabilityItemHandler.ITEM_HANDLER_CAPABILITY) {
+        if(cap == ForgeCapabilities.ITEM_HANDLER) {
             return inventoryHandlerLazy.cast()
         }
 
@@ -807,44 +806,6 @@ class FurnaceBlock : CellBlock() {
         return BlockEntityTicker(FurnaceBlockEntity::tick)
     }
 
-    override fun animateTick(blockState: BlockState, level: Level, pos: BlockPos, random: Random) {
-        val entity = level.getBlockEntity(pos) as? FurnaceBlockEntity
-            ?: return
-
-        if(!entity.clientBurning){
-            return
-        }
-
-        val sidePos = pos.toVec3() + Vec3(0.5, 0.0, 0.5)
-
-        if (random.nextDouble() < 0.1) {
-            level.playLocalSound(
-                sidePos,
-                SoundEvents.FURNACE_FIRE_CRACKLE,
-                SoundSource.BLOCKS,
-                1.0f,
-                1.0f,
-                false)
-        }
-
-        val facing = blockState.getValue(FACING)
-        val axis = facing.axis
-
-        repeat(4){
-            val randomOffset = random.nextDouble() * 0.6 - 0.3
-
-            val randomOffset3 = Vec3(
-                if (axis === Direction.Axis.X) facing.stepX.toDouble() * 0.52 else randomOffset,
-                random.nextDouble() * 6.0 / 16.0,
-                if (axis === Direction.Axis.Z) facing.stepZ.toDouble() * 0.52 else randomOffset)
-
-            val particlePos = sidePos + randomOffset3
-
-            level.addParticle(ParticleTypes.SMOKE, particlePos, 0.0, 0.0, 0.0)
-            level.addParticle(ParticleTypes.FLAME, particlePos, 0.0, 0.0, 0.0)
-        }
-    }
-
     @Deprecated("Deprecated in Java")
     override fun use(
         pState: BlockState,
@@ -854,6 +815,6 @@ class FurnaceBlock : CellBlock() {
         pHand: InteractionHand,
         pHit: BlockHitResult
     ): InteractionResult {
-        return pLevel.constructMenu(pPos, pPlayer, { TextComponent("Test") }, FurnaceMenu::create)
+        return pLevel.constructMenu(pPos, pPlayer, { Component.literal("Test") }, FurnaceMenu::create)
     }
 }

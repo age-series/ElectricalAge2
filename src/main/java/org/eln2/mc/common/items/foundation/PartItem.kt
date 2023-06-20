@@ -18,7 +18,8 @@ import org.eln2.mc.plus
  * */
 class PartItem(private val provider: PartProvider, tab: CreativeModeTab) : BlockItem(
     BlockRegistry.MULTIPART_BLOCK.block.get(),
-    Properties().tab(tab)) {
+    Properties())
+{
 
     override fun useOn(pContext: UseOnContext): InteractionResult {
         if (pContext.level.isClientSide) {
@@ -76,9 +77,11 @@ class PartItem(private val provider: PartProvider, tab: CreativeModeTab) : Block
         return orCreateDescriptionId
     }
 
-    override fun fillItemCategory(pGroup: CreativeModeTab, pItems: NonNullList<ItemStack>) {
+// todo
+
+/*    override fun fillItemCategory(pGroup: CreativeModeTab, pItems: NonNullList<ItemStack>) {
         if (allowdedIn(pGroup)) {
             pItems.add(ItemStack(this))
         }
-    }
+    }*/
 }

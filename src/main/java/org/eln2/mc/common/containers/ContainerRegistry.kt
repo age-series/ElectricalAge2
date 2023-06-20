@@ -12,7 +12,7 @@ import org.eln2.mc.Eln2
 object ContainerRegistry {
     @JvmStatic
     val CONTAINER_REGISTRY: DeferredRegister<MenuType<*>> = DeferredRegister.create(
-        ForgeRegistries.CONTAINERS,
+        ForgeRegistries.MENU_TYPES,
         Eln2.MODID
     )
 

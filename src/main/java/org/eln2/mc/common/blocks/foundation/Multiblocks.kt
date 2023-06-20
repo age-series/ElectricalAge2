@@ -5,6 +5,7 @@ import com.google.gson.GsonBuilder
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
 import net.minecraft.resources.ResourceLocation
+import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.InteractionResult
 import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.player.Player
@@ -26,6 +27,8 @@ import net.minecraft.world.level.gameevent.GameEventListener
 import net.minecraft.world.level.material.FluidState
 import net.minecraft.world.level.material.Material
 import net.minecraft.world.phys.AABB
+import net.minecraft.world.phys.Vec3
+import net.minecraftforge.registries.ForgeRegistries
 import org.eln2.mc.*
 import org.eln2.mc.Eln2.LOGGER
 import org.eln2.mc.common.events.Scheduler
@@ -112,7 +115,7 @@ class MultiblockManager(val ctrlPosWorld: BlockPos, val ctrlFacingWorld: Directi
     fun getVariant(level: Level): MultiblockDefinition? = defs.firstOrNull {
         MultiblockScan(
             it,
-            { p -> level.getBlockState(p).block.registryName!! },
+            { p -> ForgeRegistries.BLOCKS.getKey(level.getBlockState(p).block) ?: error("Failed to resolve id") },
             ctrlPosWorld,
             ctrlFacingWorld
         ).scanMissing().isEmpty()
@@ -131,12 +134,18 @@ class MultiblockManager(val ctrlPosWorld: BlockPos, val ctrlFacingWorld: Directi
         }
     }
 
-    override fun handleGameEvent(pLevel: Level, pEvent: GameEvent, pEntity: Entity?, targetPosWorld: BlockPos): Boolean {
-        if(pEvent != GameEvent.BLOCK_PLACE && pEvent != GameEvent.BLOCK_DESTROY) {
+    override fun handleGameEvent(
+        pLevel: ServerLevel,
+        pGameEvent: GameEvent,
+        pContext: GameEvent.Context,
+        pPos: Vec3
+    ): Boolean {
+        if(pGameEvent != GameEvent.BLOCK_PLACE && pGameEvent != GameEvent.BLOCK_DESTROY) {
             // Don't do unnecessary scans.
             return false
         }
 
+        val targetPosWorld = BlockPos(pPos)
         if(targetPosWorld == ctrlPosWorld) {
             // Event gets dispatched when the controller itself gets placed, we'll ignore it.
             return false
@@ -151,12 +160,12 @@ class MultiblockManager(val ctrlPosWorld: BlockPos, val ctrlFacingWorld: Directi
             val scan = MultiblockScan(
                 def,
                 { p ->
-                    if(pEvent == GameEvent.BLOCK_DESTROY && p == targetPosWorld) {
+                    if(pGameEvent == GameEvent.BLOCK_DESTROY && p == targetPosWorld) {
                         // Needed because the world returns the state of the block being broken
-                        Blocks.AIR.registryName!!
+                        ForgeRegistries.BLOCKS.getKey(Blocks.AIR)!!
                     }
                     else {
-                        pLevel.getBlockState(p).block.registryName!!
+                        ForgeRegistries.BLOCKS.getKey(pLevel.getBlockState(p).block)!!
                     }
                 },
                 ctrlPosWorld,
@@ -164,13 +173,13 @@ class MultiblockManager(val ctrlPosWorld: BlockPos, val ctrlFacingWorld: Directi
             )
 
             if(scan.definition.requiredBlocksId.containsKey(targetPosId)) {
-                if(pEvent == GameEvent.BLOCK_PLACE) {
+                if(pGameEvent == GameEvent.BLOCK_PLACE) {
                     if(scan.scanMissing().isEmpty()) {
                         user.onMultiblockFormed(scan.definition)
                         return true
                     }
                 }
-                else if(pEvent == GameEvent.BLOCK_DESTROY) {
+                else if(pGameEvent == GameEvent.BLOCK_DESTROY) {
                     val destroyedVariant = getVariant(pLevel)
                     if(destroyedVariant != null) {
                         // We exploit the fact that the event is sent before the BlockState is
@@ -228,7 +237,7 @@ class MultiblockScanTool : Item(Properties().stacksTo(1)) {
                     resultsWorld.map {
                         JsonMultiblockEntry(
                             rot(pContext.horizontalDirection).inverse() * (it - originWorld),
-                            pContext.level.getBlockState(it).block.registryName!!.toString()
+                            ForgeRegistries.BLOCKS.getKey(pContext.level.getBlockState(it).block)?.toString()!!
                         )
                     },
                 )
@@ -270,10 +279,8 @@ abstract class MBControllerBlock<BE>(properties: Properties? = null) : Horizonta
     final override fun newBlockEntity(pPos: BlockPos, pState: BlockState) =
         createBlockEntity(pPos, pState)
 
-    final override fun <T : BlockEntity?> getListener(pLevel: Level, pBlockEntity: T): GameEventListener? {
-        if(pLevel.isClientSide) {
-            return null
-        }
+    override fun <T : BlockEntity?> getListener(pLevel: ServerLevel, pBlockEntity: T): GameEventListener? {
+        require(!pLevel.isClientSide)
 
         if(pBlockEntity is MultiblockControllerEntity) {
             return pBlockEntity.manager

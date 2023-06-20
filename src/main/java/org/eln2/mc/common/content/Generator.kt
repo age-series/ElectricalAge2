@@ -8,7 +8,6 @@ import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.network.chat.Component
-import net.minecraft.network.chat.TextComponent
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.InteractionHand
@@ -26,8 +25,8 @@ import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.BlockHitResult
 import net.minecraft.world.phys.Vec3
 import net.minecraftforge.common.capabilities.Capability
+import net.minecraftforge.common.capabilities.ForgeCapabilities
 import net.minecraftforge.common.util.LazyOptional
-import net.minecraftforge.items.CapabilityItemHandler
 import net.minecraftforge.items.ItemStackHandler
 import net.minecraftforge.items.SlotItemHandler
 import org.ageseries.libage.sim.electrical.mna.Circuit
@@ -549,7 +548,7 @@ class HeatGeneratorBlockEntity(pos: BlockPos, state: BlockState): CellBlockEntit
     private val inventoryHandlerLazy = LazyOptional.of { inventoryHandler }
 
     override fun <T : Any?> getCapability(cap: Capability<T>, side: Direction?): LazyOptional<T> {
-        if(cap == CapabilityItemHandler.ITEM_HANDLER_CAPABILITY) {
+        if(cap == ForgeCapabilities.ITEM_HANDLER) {
             return inventoryHandlerLazy.cast()
         }
 
@@ -704,7 +703,7 @@ class HeatGeneratorBlock : CellBlock() {
         pHand: InteractionHand,
         pHit: BlockHitResult
     ): InteractionResult {
-        return pLevel.constructMenu(pPos, pPlayer, { TextComponent("Test") }, HeatGeneratorMenu::create)
+        return pLevel.constructMenu(pPos, pPlayer, { Component.literal("Test") }, HeatGeneratorMenu::create)
     }
 }
 

@@ -323,25 +323,3 @@ class PackedVertexList(vertices: List<VertPositionColorNormalUv>) : VertexList {
 
     override fun getVertexCount() = count
 }
-
-fun createIndexBuffer(arru32Idx: List<Int>): ElementBuffer {
-    val pGlBuf = GlBuffer.requestPersistent(GlBufferType.ELEMENT_ARRAY_BUFFER)
-
-    val cbArr = arru32Idx.size * 4
-
-    pGlBuf.bind()
-    pGlBuf.ensureCapacity(cbArr.toLong())
-
-    ByteBuffer.allocate(cbArr).also {
-        arru32Idx.forEach(it::putInt)
-        pGlBuf.upload(it)
-    }
-
-    pGlBuf.unbind()
-
-    return ElementBuffer(
-        pGlBuf,
-        arru32Idx.size,
-        GlNumericType.UINT
-    )
-}

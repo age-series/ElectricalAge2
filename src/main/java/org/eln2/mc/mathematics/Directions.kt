@@ -1,11 +1,12 @@
 package org.eln2.mc.mathematics
 
-import com.mojang.math.Matrix4f
 import net.minecraft.core.Direction
 import org.eln2.mc.alias
 import org.eln2.mc.index
 import org.eln2.mc.isHorizontal
 import org.eln2.mc.isVertical
+import org.joml.Matrix4f
+import java.nio.FloatBuffer
 
 /**
  * The Relative Rotation Direction represents a direction relative to an object's frame.
@@ -62,7 +63,8 @@ enum class RelativeDir(val id: Int) {
                 return Down
             }
 
-            val adjustedFacing = Direction.rotate(Matrix4f(normal.rotation), facing)
+            val adjustedFacing = Direction.rotate((Matrix4f(FloatBuffer.allocate(16).apply {
+                normal.rotation.getAsMatrix4f(this) })), facing)
 
             var result = when (direction) {
                 adjustedFacing -> Front

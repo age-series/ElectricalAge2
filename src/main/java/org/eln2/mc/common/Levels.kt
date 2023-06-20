@@ -2,21 +2,18 @@ package org.eln2.mc.common
 
 import net.minecraft.core.BlockPos
 import net.minecraft.world.level.ChunkPos
-import net.minecraft.world.level.LevelAccessor
 import net.minecraft.world.level.LevelReader
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraftforge.event.TickEvent.ServerTickEvent
-import net.minecraftforge.event.world.BlockEvent
+import net.minecraftforge.event.level.BlockEvent
 import net.minecraftforge.eventbus.api.SubscribeEvent
 import net.minecraftforge.fml.common.Mod
 import net.minecraftforge.server.ServerLifecycleHooks
 import org.ageseries.libage.data.MutableSetMapMultiMap
-import org.eln2.mc.Eln2.LOGGER
 import org.eln2.mc.common.events.Event
 import org.eln2.mc.common.events.EventHandlerManager
 import org.eln2.mc.common.events.EventManager
-import org.eln2.mc.utility.nu
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicBoolean
@@ -160,13 +157,13 @@ object BlockStreamEvents {
 
     @SubscribeEvent
     fun onPlace(event: BlockEvent.EntityPlaceEvent){
-        if(event.world.isClientSide) {
+        if(event.level.isClientSide) {
             return
         }
 
         println("Dispatching EntityPlaceEvent $event")
 
-        event.world.getEventSourceProvider().also { provider ->
+        event.level.getEventSourceProvider().also { provider ->
             provider.gtDispatchEvent(
                 pos = event.pos,
                 oldState = null,
@@ -178,11 +175,11 @@ object BlockStreamEvents {
 
     @SubscribeEvent
     fun onFluidCreate(event: BlockEvent.CreateFluidSourceEvent){
-        if(event.world.isClientSide) {
+        if(event.level.isClientSide) {
             return
         }
 
-        event.world.getEventSourceProvider().also { provider ->
+        event.level.getEventSourceProvider().also { provider ->
             provider.gtDispatchEvent(
                 pos = event.pos,
                 oldState = null,
@@ -194,13 +191,13 @@ object BlockStreamEvents {
 
     @SubscribeEvent
     fun onBreak(event: BlockEvent.BreakEvent){
-        if(event.world.isClientSide) {
+        if(event.level.isClientSide) {
             return
         }
 
         println("Dispatching BreakEvent $event")
 
-        event.world.getEventSourceProvider().also { provider ->
+        event.level.getEventSourceProvider().also { provider ->
             provider.gtDispatchEvent(
                 pos = event.pos,
                 oldState = event.state,
