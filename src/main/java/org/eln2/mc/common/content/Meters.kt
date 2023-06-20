@@ -2,7 +2,6 @@ package org.eln2.mc.common.content
 
 import net.minecraft.Util
 import net.minecraft.network.chat.Component
-import net.minecraft.network.chat.TextComponent
 import net.minecraft.world.InteractionResult
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.item.Item
@@ -11,7 +10,7 @@ import org.eln2.mc.common.items.eln2Tab
 import org.eln2.mc.data.*
 import org.eln2.mc.getDataAccess
 
-abstract class MeterItem : Item(Properties().tab(eln2Tab).stacksTo(1)) {
+abstract class MeterItem : Item(Properties().stacksTo(1)) {
     override fun useOn(pContext: UseOnContext): InteractionResult {
         if(pContext.level.isClientSide) {
             return InteractionResult.PASS
@@ -19,7 +18,7 @@ abstract class MeterItem : Item(Properties().tab(eln2Tab).stacksTo(1)) {
 
         val player = pContext.player ?: return InteractionResult.FAIL
 
-        player.sendMessage(read(pContext, player) ?: return InteractionResult.FAIL, Util.NIL_UUID)
+        player.sendSystemMessage(read(pContext, player) ?: return InteractionResult.FAIL)
 
         return InteractionResult.SUCCESS
     }
@@ -59,7 +58,7 @@ class UniversalMeter(
         }
 
         return if(readings.isEmpty()) null
-        else TextComponent(readings.joinToString(", ") { reading ->
+        else Component.literal(readings.joinToString(", ") { reading ->
             "${reading.label}: ${reading.printout}"
         })
     }

@@ -14,7 +14,7 @@ displayURL="https://age-series.org/"
 # A file name (in the root of the mod JAR) containing a logo for display
 logoFile=""
 credits="The Age Series Team"
-authors="jrddunbr, Caeleron, Grissess, Baughn, empireu, DarthSidiousPalpatine, AlanFletes, bloxgate"
+authors="jrddunbr, Caeleron, Grissess, Baughn, DarthSidiousPalpatine, AlanFletes, bloxgate"
 
 description='''
 Electrical Age 2 - Electricity, in your base!
@@ -33,7 +33,7 @@ These are some Age Series mods in development!
 [[dependencies.eln2]]
     modId="forge"
     mandatory=true
-    versionRange="[39,)"
+    versionRange="[41,)"
     # An ordering relationship for the dependency - BEFORE or AFTER required if the relationship is not mandatory
     ordering="NONE"
     # Side this dependency is applied on - BOTH, CLIENT or SERVER
@@ -42,6 +42,6 @@ These are some Age Series mods in development!
     modId="minecraft"
     mandatory=true
 # This version range declares a minimum of the current minecraft version up to but not including the next major version
-    versionRange="[1.18.2,1.19)"
+    versionRange="[1.19,1.20)"
     ordering="NONE"
     side="BOTH"

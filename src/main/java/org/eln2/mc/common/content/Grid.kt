@@ -1,17 +1,20 @@
 package org.eln2.mc.common.content
 
 import com.jozufozu.flywheel.api.MaterialManager
+import com.jozufozu.flywheel.api.vertex.VertexType
 import com.jozufozu.flywheel.backend.instancing.entity.EntityInstance
+import com.jozufozu.flywheel.core.Formats
 import com.jozufozu.flywheel.core.Materials
 import com.jozufozu.flywheel.core.materials.model.ModelData
 import com.jozufozu.flywheel.core.model.Model
+import com.jozufozu.flywheel.core.vertex.BlockVertex
 import com.jozufozu.flywheel.util.Color
 import net.minecraft.Util
 import net.minecraft.core.BlockPos
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.nbt.ListTag
 import net.minecraft.network.Connection
-import net.minecraft.network.chat.TextComponent
+import net.minecraft.network.chat.Component
 import net.minecraft.network.protocol.Packet
 import net.minecraft.network.protocol.game.ClientboundAddEntityPacket
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket
@@ -304,7 +307,7 @@ class GridConnectionEntity(pEntityType: EntityType<*>, pLevel: Level) : Entity(p
         )
     }
 
-    override fun getAddEntityPacket(): Packet<*> = ClientboundAddEntityPacket(this)
+    override fun getAddEntityPacket() = ClientboundAddEntityPacket(this)
 
     override fun onSyncedDataUpdated(pKey: EntityDataAccessor<*>) {
         if(!level.isClientSide) {
@@ -472,6 +475,8 @@ class GridConnectionInstanceFlw(materialManager: MaterialManager, entity: GridCo
             override fun name() = "Wire"
             override fun getReader() = vertArray
             override fun vertexCount() = vertices.size
+            override fun getType(): BlockVertex = Formats.BLOCK
+            override fun delete() { }
         }
     }
 }
@@ -512,7 +517,7 @@ open class GridConnectItem : Item(Properties()) {
             gridEntity.connect(remoteEntity)
             actualStack.tag = null
 
-            pPlayer.sendMessage(TextComponent("Realized connection"), Util.NIL_UUID)
+            pPlayer.sendSystemMessage(Component.literal("Realized connection"))
 
             return success()
         }

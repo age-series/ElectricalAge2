@@ -16,7 +16,7 @@ import org.eln2.mc.common.blocks.foundation.*
 object BlockRegistry {
     private val BLOCK_REGISTRY = DeferredRegister.create(ForgeRegistries.BLOCKS, Eln2.MODID)!!
     private val BLOCK_ITEM_REGISTRY = DeferredRegister.create(ForgeRegistries.ITEMS, Eln2.MODID)!!
-    private val BLOCK_ENTITY_REGISTRY = DeferredRegister.create(ForgeRegistries.BLOCK_ENTITIES, Eln2.MODID)!!
+    private val BLOCK_ENTITY_REGISTRY = DeferredRegister.create(ForgeRegistries.BLOCK_ENTITY_TYPES, Eln2.MODID)!!
 
     fun <T : BlockEntity> blockEntity(
         name: String,
@@ -60,7 +60,7 @@ object BlockRegistry {
         val block: RegistryObject<Block>,
         val item: RegistryObject<BlockItem>
     ) {
-        val registryName get() = block.get().registryName ?: error("Invalid registry name")
+        val registryName get() = block.id ?: error("Invalid registry name")
     }
 
     private fun registerCellBlock(
@@ -72,7 +72,7 @@ object BlockRegistry {
         val item = BLOCK_ITEM_REGISTRY.register(name) {
             BlockItem(
                 block.get(),
-                Item.Properties().also { if (tab != null) it.tab(tab) })
+                Item.Properties().also { /*TODO where did tabs go?*/})
         }
 
         return CellBlockRegistryItem(name, block, item)
@@ -87,7 +87,7 @@ object BlockRegistry {
         val item = BLOCK_ITEM_REGISTRY.register(name) {
             BlockItem(
                 block.get(),
-                Item.Properties().also { if (tab != null) it.tab(tab) }
+                Item.Properties().also { /* TODO where did tabs go? */ }
             )
         }
 

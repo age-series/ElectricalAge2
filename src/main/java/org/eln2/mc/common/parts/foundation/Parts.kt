@@ -2,8 +2,6 @@ package org.eln2.mc.common.parts.foundation
 
 import com.jozufozu.flywheel.core.PartialModel
 import com.jozufozu.flywheel.core.materials.FlatLit
-import com.mojang.math.Quaternion
-import com.mojang.math.Vector3f
 import mcp.mobius.waila.api.IPluginConfig
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
@@ -19,7 +17,6 @@ import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
 import net.minecraft.world.phys.shapes.Shapes
 import net.minecraft.world.phys.shapes.VoxelShape
-import net.minecraftforge.registries.ForgeRegistryEntry
 import org.eln2.mc.*
 import org.eln2.mc.client.render.foundation.BasicPartRenderer
 import org.eln2.mc.client.render.foundation.MultipartBlockEntityInstance
@@ -32,8 +29,14 @@ import org.eln2.mc.integration.WailaEntity
 import org.eln2.mc.integration.WailaTooltipBuilder
 import org.eln2.mc.mathematics.DirectionMask
 import org.eln2.mc.mathematics.RelativeDir
+import org.eln2.mc.mathematics.Rotation3d
+import org.eln2.mc.mathematics.Vector3d
 import org.eln2.mc.scientific.BiomeEnvironments
 import org.eln2.mc.utility.BoundingBox
+import org.joml.AxisAngle4d
+import org.joml.AxisAngle4f
+import org.joml.Quaternionf
+import org.joml.Vector3f
 import java.util.*
 import kotlin.math.PI
 
@@ -90,18 +93,20 @@ object PartGeometry {
             .move(faceOffset(sizeActual, faceWorld))
 
     /**
-     * @see Part.txFacing
+     * @see Part.facingRotation
      * */
-    fun facingRotation(facingWorld: Direction): Quaternion =
-        Vector3f.YP.rotation(
+    fun facingRotation(facingWorld: Direction) = Quaternionf(
+        AxisAngle4f(
             when (facingWorld) {
                 Direction.NORTH -> 0.0
                 Direction.SOUTH -> PI
                 Direction.WEST -> PI / 2.0
                 Direction.EAST -> -PI / 2.0
                 else -> error("Invalid horizontal facing $facingWorld")
-            }.toFloat()
+            }.toFloat(),
+          Vector3f(0.0f, 1.0f, 0.0f)
         )
+    )
 
     fun faceOffset(sizeActual: Vec3, faceWorld: Direction): Vec3 {
         val halfSize = sizeActual / 2.0
@@ -229,8 +234,7 @@ abstract class Part<Renderer : PartRenderer>(val id: ResourceLocation, val place
     /**
      * @return The local Y rotation due to facing.
      * */
-    val txFacing: Quaternion
-        get() = PartGeometry.facingRotation(placement.horizontalFacing)
+    val facingRotation: Quaternionf get() = PartGeometry.facingRotation(placement.horizontalFacing)
 
     /**
      * @return The offset towards the placement face, calculated using the base size.
@@ -439,8 +443,8 @@ abstract class Part<Renderer : PartRenderer>(val id: ResourceLocation, val place
 /**
  * This is a factory for parts. It also has the size used to validate placement (part-part collisions).
  * */
-abstract class PartProvider : ForgeRegistryEntry<PartProvider>() {
-    val id: ResourceLocation get() = this.registryName ?: error("ID not available in PartProvider")
+abstract class PartProvider {
+    val id: ResourceLocation get() = PartRegistry.getId(this)
 
     /**
      * Used to create a new instance of the part. Called when the part is placed

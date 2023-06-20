@@ -13,7 +13,7 @@ import org.eln2.mc.Eln2
 import org.stringtemplate.v4.misc.Misc
 
 object EntityRegistry {
-    val ENTITY_REGISTRY = DeferredRegister.create(ForgeRegistries.ENTITIES, Eln2.MODID)!!
+    val ENTITY_REGISTRY = DeferredRegister.create(ForgeRegistries.ENTITY_TYPES, Eln2.MODID)!!
 
     fun setup(bus: IEventBus) {
         ENTITY_REGISTRY.register(bus)

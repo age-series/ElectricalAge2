@@ -10,7 +10,7 @@ import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.Blocks
 import net.minecraftforge.event.TickEvent
 import net.minecraftforge.event.TickEvent.ServerTickEvent
-import net.minecraftforge.event.entity.EntityLeaveWorldEvent
+import net.minecraftforge.event.entity.EntityLeaveLevelEvent
 import net.minecraftforge.event.server.ServerStoppingEvent
 import net.minecraftforge.eventbus.api.SubscribeEvent
 import net.minecraftforge.fml.common.Mod
@@ -687,7 +687,7 @@ object RadiationSystemEvents {
     }
 
     @SubscribeEvent
-    fun onEntityLeaveWorld(event: EntityLeaveWorldEvent) {
+    fun onEntityLeaveWorld(event: EntityLeaveLevelEvent) {
         if(event.entity is ServerPlayer) {
             readings.remove(event.entity)
         }

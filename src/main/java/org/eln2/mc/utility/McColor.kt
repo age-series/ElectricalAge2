@@ -1,7 +1,7 @@
 package org.eln2.mc.utility
 
-import com.mojang.math.Vector4f
 import net.minecraft.network.FriendlyByteBuf
+import org.joml.Vector4f
 
 fun mcColor(color: Vector4f): McColor {
     fun getByte(v: Float): UByte {

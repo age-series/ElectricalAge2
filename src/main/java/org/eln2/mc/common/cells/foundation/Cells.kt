@@ -7,7 +7,6 @@ import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.saveddata.SavedData
-import net.minecraftforge.registries.ForgeRegistryEntry
 import net.minecraftforge.server.ServerLifecycleHooks
 import org.ageseries.libage.sim.electrical.mna.Circuit
 import org.ageseries.libage.sim.electrical.mna.component.VoltageSource
@@ -15,7 +14,7 @@ import org.ageseries.libage.sim.thermal.Simulator
 import org.eln2.mc.*
 import org.eln2.mc.Eln2.LOGGER
 import org.eln2.mc.common.cells.CellRegistry
-import org.eln2.mc.common.configs.Configuration
+import org.eln2.mc.Configuration
 import org.eln2.mc.data.*
 import org.eln2.mc.integration.WailaEntity
 import org.eln2.mc.mathematics.Vector3di
@@ -1480,11 +1479,11 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
 
         init {
             // We do get an exception from thread pool creation, but explicit handling is better here.
-            if (Configuration.config.simulationThreads == 0) {
+            if (Configuration.instance.simulationThreads == 0) {
                 error("Simulation threads is 0")
             }
 
-            LOGGER.info("Using ${Configuration.config.simulationThreads} simulation threads")
+            LOGGER.info("Using ${Configuration.instance.simulationThreads} simulation threads")
         }
 
         private val threadNumber = AtomicInteger()
@@ -1504,7 +1503,7 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
         }
 
         private val pool = Executors.newScheduledThreadPool(
-            Configuration.config.simulationThreads, ::createThread
+            Configuration.instance.simulationThreads, ::createThread
         )
 
         fun fromNbt(graphCompound: CompoundTag, manager: CellGraphManager, level: ServerLevel): CellGraph {
@@ -1749,8 +1748,8 @@ class CellGraphManager(val level: ServerLevel) : SavedData() {
 /**
  * The Cell Provider is a factory of cells, and also has connection rules for cells.
  * */
-abstract class CellProvider : ForgeRegistryEntry<CellProvider>() {
-    val id: ResourceLocation get() = this.registryName ?: error("ID not available in CellProvider")
+abstract class CellProvider {
+    val id get() = CellRegistry.getId(this)
 
     protected abstract fun createInstance(ci: CellCreateInfo): Cell
 

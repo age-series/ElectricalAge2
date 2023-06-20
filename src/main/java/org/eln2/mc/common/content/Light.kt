@@ -124,7 +124,7 @@ class LightCell(
     }
 }
 
-class LightRenderer(private val part: LightPart, private val cage: PartialModel, private val emitter: PartialModel, ): PartRenderer {
+class LightRenderer(private val part: LightPart, private val cage: PartialModel, private val emitter: PartialModel): PartRenderer {
     companion object {
         val COLD_TINT = colorF(1f, 1f, 1f, 1f)
         val WARM_TINT = Color(254, 196, 127, 255)

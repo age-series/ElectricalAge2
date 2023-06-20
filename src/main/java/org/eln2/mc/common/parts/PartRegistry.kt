@@ -3,6 +3,7 @@ package org.eln2.mc.common.parts
 import net.minecraft.resources.ResourceLocation
 import net.minecraftforge.eventbus.api.IEventBus
 import net.minecraftforge.registries.*
+import org.ageseries.libage.data.mutableBiMapOf
 import org.eln2.mc.Eln2
 import org.eln2.mc.common.items.eln2Tab
 import org.eln2.mc.common.items.foundation.PartItem
@@ -16,7 +17,7 @@ object PartRegistry {
     private lateinit var partRegistry: Supplier<IForgeRegistry<PartProvider>>
 
     fun setup(bus: IEventBus) {
-        partRegistry = PARTS.makeRegistry(PartProvider::class.java) { RegistryBuilder() }
+        partRegistry = PARTS.makeRegistry() { RegistryBuilder() }
         PARTS.register(bus)
         PART_ITEMS.register(bus)
 
@@ -28,6 +29,10 @@ object PartRegistry {
         val part: RegistryObject<PartProvider>,
         val item: RegistryObject<PartItem>
     )
+
+    private val parts = mutableBiMapOf<PartProvider, ResourceLocation>()
+
+    fun getId(provider: PartProvider) = parts.forward[provider] ?: error("Failed to get part id $provider")
 
     /**
      * Registers everything needed to create a part.
@@ -41,6 +46,8 @@ object PartRegistry {
     fun part(name: String, provider: PartProvider): PartRegistryItem {
         val part = PARTS.register(name) { provider }
         val item = PART_ITEMS.register(name) { PartItem(provider, eln2Tab) }
+
+        parts.add(provider, part.id)
 
         return PartRegistryItem(name, part, item)
     }

@@ -6,8 +6,6 @@ import com.jozufozu.flywheel.core.Materials
 import com.jozufozu.flywheel.core.PartialModel
 import com.jozufozu.flywheel.core.materials.FlatLit
 import com.jozufozu.flywheel.core.materials.model.ModelData
-import com.mojang.math.Quaternion
-import com.mojang.math.Vector3f
 import kotlinx.serialization.Serializable
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.nbt.ListTag
@@ -33,7 +31,11 @@ import org.eln2.mc.integration.WailaEntity
 import org.eln2.mc.mathematics.*
 import org.eln2.mc.mathematics.cylinderSurfaceArea
 import org.eln2.mc.scientific.*
+import org.joml.AxisAngle4f
+import org.joml.Quaternionf
+import org.joml.Vector3f
 import java.util.concurrent.atomic.AtomicReference
+import kotlin.math.PI
 import kotlin.math.absoluteValue
 
 /**
@@ -490,7 +492,7 @@ class WirePartRenderer(
             if (match != -1) {
                 found = true
 
-                updateInstance(model, Vector3f.YP.rotationDegrees(90f * match))
+                updateInstance(model, Quaternionf(AxisAngle4f((PI / 2.0 * match).toFloat(), Vector3f(0.0f, 1.0f, 0.0f))))
 
                 return@forEach
             }
@@ -513,7 +515,7 @@ class WirePartRenderer(
         }
     }
 
-    private fun updateInstance(model: PartialModel, rotation: Quaternion) {
+    private fun updateInstance(model: PartialModel, rotation: Quaternionf) {
         modelInstance?.delete()
 
         val size = 1.5 / 16
@@ -527,7 +529,7 @@ class WirePartRenderer(
             .translate(part.placement.face.opposite.normal.toVec3() * Vec3(size, size, size))
             .blockCenter()
             .translate(part.worldBoundingBox.center)
-            .multiply(part.placement.face.rotation * part.txFacing * rotation)
+            .multiply(part.placement.face.rotation.mul(part.facingRotation).mul(rotation))
             .zeroCenter()
 
         multipartInstance.relightPart(part)

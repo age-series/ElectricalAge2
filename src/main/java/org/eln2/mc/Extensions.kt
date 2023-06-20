@@ -66,6 +66,11 @@ import org.eln2.mc.mathematics.*
 import org.eln2.mc.mathematics.Vector3d
 import org.eln2.mc.scientific.*
 import org.eln2.mc.utility.Vectors
+import org.joml.Matrix3f
+import org.joml.Matrix4f
+import org.joml.Quaternionf
+import org.joml.Vector3f
+import thedarkcolour.kotlinforforge.forge.vectorutil.v3d.toVec3
 import java.nio.ByteBuffer
 import java.nio.FloatBuffer
 import java.util.*
@@ -123,14 +128,12 @@ fun AABB.corners(): ArrayList<Vec3> {
  * Transforms the Axis Aligned Bounding Box by the given rotation.
  * This operation does not change the volume for axis aligned transformations.
  * */
-fun AABB.transformed(quaternion: Quaternion): AABB {
+fun AABB.transformed(quaternion: Quaternionf): AABB {
     var min = Vector3f(Float.MAX_VALUE, Float.MAX_VALUE, Float.MAX_VALUE)
     var max = Vector3f(Float.MIN_VALUE, Float.MIN_VALUE, Float.MIN_VALUE)
 
     this.corners().forEach {
-        val corner = it.toVector3f()
-
-        corner.transform(quaternion)
+        val corner = quaternion.transform(it.toVector3f())
 
         min = Vectors.componentMin(min, corner)
         max = Vectors.componentMax(max, corner)
@@ -315,7 +318,7 @@ inline fun<reified TEntity: BlockEntity> Level.constructMenu(
             }
         }
 
-        NetworkHooks.openGui(player as ServerPlayer, containerProvider, entity.blockPos)
+        NetworkHooks.openScreen(player as ServerPlayer, containerProvider, entity.blockPos)
         return InteractionResult.SUCCESS
     }
 
@@ -401,18 +404,6 @@ fun Simulator.connect(a: ThermalMass, environmentInformation: EnvironmentInforma
 
 fun Simulator.connect(a: ThermalBody, environmentInformation: EnvironmentInformation) {
     this.connect(a.thermal, environmentInformation)
-}
-
-operator fun Matrix4f.times(other: Matrix4f): Matrix4f {
-    val copy = this.copy()
-
-    copy.multiply(other)
-
-    return copy
-}
-
-operator fun Matrix4f.timesAssign(other: Matrix4f) {
-    this.multiply(other)
 }
 
 /**
@@ -717,18 +708,6 @@ fun Double.formattedPercentN(decimals: Int = 2): String {
     return "${(this * 100.0).formatted(decimals)}%"
 }
 
-operator fun Quaternion.times(other: Quaternion): Quaternion {
-    val copy = this.copy()
-
-    copy.mul(other)
-
-    return copy
-}
-
-operator fun Quaternion.timesAssign(other: Quaternion) {
-    this.mul(other)
-}
-
 fun Rotation.inverse() = when(this) {
     Rotation.NONE -> Rotation.NONE
     Rotation.CLOCKWISE_90 -> Rotation.COUNTERCLOCKWISE_90
@@ -822,23 +801,6 @@ fun Vec3i.toVec3(): Vec3 {
     return Vec3(this.x.toDouble(), this.y.toDouble(), this.z.toDouble())
 }
 
-fun Vector3f.toVec3(): Vec3 {
-    return Vec3(this.x().toDouble(), this.y().toDouble(), this.z().toDouble())
-}
-
-fun Vec3i.toVector3f(): Vector3f {
-    return Vector3f(this.x.toFloat(), this.y.toFloat(), this.z.toFloat())
-}
-
-fun Vec3.toVector3f(): Vector3f {
-    return Vector3f(this.x.toFloat(), this.y.toFloat(), this.z.toFloat())
-}
-
-fun Vec3.toVector4f(w: Float): Vector4f {
-    return Vector4f(this.x.toFloat(), this.y.toFloat(), this.z.toFloat(), w)
-}
-
-fun Vector3f.toVector3d() = Vector3d(this.x().toDouble(), this.y().toDouble(), this.z().toDouble())
 fun BlockPos.toVector3d() = Vector3d(this.x.toDouble(), this.y.toDouble(), this.z.toDouble())
 fun BlockPos.toVector3di() = Vector3di(this.x, this.y, this.z)
 
@@ -866,52 +828,6 @@ fun<T> MutableList<T>.swapi(i: Int, j: Int) {
 
 fun Entity.moveTo(v: Vector3d) = this.moveTo(v.x, v.y, v.z)
 fun Vector3d.toVec3() = Vec3(this.x, this.y, this.z)
-
-fun Matrix4f.loadMatrix(m: Matrix4x4) {
-    this.loadTransposed(
-        FloatBuffer.allocate(16).apply {
-            put(m.c0.x.toFloat())
-            put(m.c0.y.toFloat())
-            put(m.c0.z.toFloat())
-            put(m.c0.w.toFloat())
-            put(m.c1.x.toFloat())
-            put(m.c1.y.toFloat())
-            put(m.c1.z.toFloat())
-            put(m.c1.w.toFloat())
-            put(m.c2.x.toFloat())
-            put(m.c2.y.toFloat())
-            put(m.c2.z.toFloat())
-            put(m.c2.w.toFloat())
-            put(m.c3.x.toFloat())
-            put(m.c3.y.toFloat())
-            put(m.c3.z.toFloat())
-            put(m.c3.w.toFloat())
-        }
-    )
-}
-
-fun Matrix3f.loadMatrix(m: Matrix3x3) {
-    this.loadTransposed(
-        FloatBuffer.allocate(9).apply {
-            put(m.c0.x.toFloat())
-            put(m.c0.y.toFloat())
-            put(m.c0.z.toFloat())
-            put(m.c1.x.toFloat())
-            put(m.c1.y.toFloat())
-            put(m.c1.z.toFloat())
-            put(m.c2.x.toFloat())
-            put(m.c2.y.toFloat())
-            put(m.c2.z.toFloat())
-        }
-    )
-}
-
-fun ModelData.loadPose(p: Pose3d): ModelData {
-    this.model.loadMatrix(p())
-    this.normal.loadMatrix(p.rotation())
-
-    return this
-}
 
 fun<U> CompoundTag.putQuantity(key: String, e: Quantity<U>) = this.putDouble(key, !e)
 fun<U> CompoundTag.getQuantity(key: String) = Quantity<U>(this.getDouble(key))

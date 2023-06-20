@@ -2,8 +2,6 @@ package org.eln2.mc.client.render.foundation
 
 import com.mojang.blaze3d.systems.RenderSystem
 import com.mojang.blaze3d.vertex.*
-import com.mojang.math.Matrix4f
-import com.mojang.math.Vector4f
 import net.minecraft.client.gui.GuiComponent
 import net.minecraft.client.renderer.GameRenderer
 import net.minecraft.resources.ResourceLocation
@@ -13,6 +11,8 @@ import org.eln2.mc.mathematics.Vector2F
 import org.eln2.mc.mathematics.Vector2I
 import org.eln2.mc.utility.McColor
 import org.eln2.mc.utility.mcColor
+import org.joml.Matrix4f
+import org.joml.Vector4f
 
 fun renderTextured(
     texture: ResourceLocation,
@@ -113,7 +113,7 @@ private fun innerFill(
     bufferBuilder.vertex(pMatrix, maxX, minY, 0f).color(f, f1, f2, f3).endVertex()
     bufferBuilder.vertex(pMatrix, minX, minY, 0f).color(f, f1, f2, f3).endVertex()
     bufferBuilder.end()
-    BufferUploader.end(bufferBuilder)
+    BufferUploader.draw(bufferBuilder.end())
     RenderSystem.enableTexture()
     RenderSystem.disableBlend()
 }

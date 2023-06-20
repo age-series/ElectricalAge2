@@ -2,7 +2,7 @@ package org.eln2.mc.common.content
 
 import net.minecraft.Util
 import net.minecraft.core.BlockPos
-import net.minecraft.network.chat.TextComponent
+import net.minecraft.network.chat.Component
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.InteractionHand
 import net.minecraft.world.InteractionResultHolder
@@ -116,14 +116,14 @@ class RadiationMeterItem : Item(Properties()) {
                         )
                     }
 
-                    pPlayer.sendMessage(
-                        TextComponent(
+                    pPlayer.sendSystemMessage(
+                        Component.literal(
                             "Activity: ${
                                 result.received.joinToString(" ") {
                                     "${(it.intensity .. MICROCURIES).formatted(4)} µCi ${it.shardView.mode.quanta.symbol}" 
                                 }
                             }, Dose rate: (${valueText((doseRate * 3600.0), UnitType.GRAY)}/h)"
-                        ), Util.NIL_UUID)
+                        ))
 
                     false
                 }

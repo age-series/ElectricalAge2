@@ -102,4 +102,4 @@ class TreeTapPart(id: ResourceLocation, placement: PartPlacementInfo) : Part<Bas
     }
 }
 
-class LatexSapItem : Item(Properties().stacksTo(64).tab(eln2Tab))
+class LatexSapItem : Item(Properties().stacksTo(64))

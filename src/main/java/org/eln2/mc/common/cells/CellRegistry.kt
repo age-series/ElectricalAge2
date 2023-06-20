@@ -3,6 +3,7 @@ package org.eln2.mc.common.cells
 import net.minecraft.resources.ResourceLocation
 import net.minecraftforge.eventbus.api.IEventBus
 import net.minecraftforge.registries.*
+import org.ageseries.libage.data.mutableBiMapOf
 import org.eln2.mc.Eln2
 import org.eln2.mc.Eln2.LOGGER
 import org.eln2.mc.common.cells.foundation.Cell
@@ -16,11 +17,15 @@ object CellRegistry {
     private lateinit var cellRegistry: Supplier<IForgeRegistry<CellProvider>>
 
     fun setup(bus: IEventBus) {
-        cellRegistry = CELLS.makeRegistry(CellProvider::class.java) { RegistryBuilder() }
+        cellRegistry = CELLS.makeRegistry { RegistryBuilder() }
         CELLS.register(bus)
 
         LOGGER.info("Prepared cell registry.")
     }
+
+    private val cells = mutableBiMapOf<CellProvider, ResourceLocation>()
+
+    fun getId(provider: CellProvider) = cells.forward[provider] ?: error("Failed to get cell id $provider")
 
     /**
      * Registers a cell using the specified ID and Provider.
