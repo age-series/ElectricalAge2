@@ -1,5 +1,5 @@
-modLoader="kotlinforforge"
-loaderVersion="[3,)"
+modLoader="javafml"
+loaderVersion="[44,)"
 license="Code - MIT, Content - CC0 (unless otherwise specified)"
 issueTrackerURL="https://github.com/age-series/ElectricalAge2/issues"
 
