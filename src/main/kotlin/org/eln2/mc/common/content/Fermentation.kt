@@ -17,6 +17,7 @@ import net.minecraft.world.phys.BlockHitResult
 import org.eln2.mc.data.KILOGRAMS
 import org.eln2.mc.data.Quantity
 import org.eln2.mc.scientific.*
+import org.eln2.mc.scientific.chemistry.*
 import org.eln2.mc.ticker
 
 class FermentationBarrelBlock : Block(Properties.of(Material.WOOD)), EntityBlock {

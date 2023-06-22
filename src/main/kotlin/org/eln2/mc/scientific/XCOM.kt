@@ -8,6 +8,9 @@ import org.eln2.mc.data.*
 import org.eln2.mc.getResourceString
 import org.eln2.mc.mathematics.*
 import org.eln2.mc.resource
+import org.eln2.mc.scientific.chemistry.ChemicalElement
+import org.eln2.mc.scientific.chemistry.ConstituentAnalysisType
+import org.eln2.mc.scientific.chemistry.MolecularMassMixture
 import org.eln2.mc.sumOfDual
 import java.nio.file.Files
 import kotlin.io.path.Path
