@@ -62,6 +62,9 @@ import org.eln2.mc.data.*
 import org.eln2.mc.integration.WailaTooltipBuilder
 import org.eln2.mc.mathematics.*
 import org.eln2.mc.scientific.*
+import org.eln2.mc.scientific.chemistry.ChemicalElement
+import org.eln2.mc.scientific.chemistry.MassContainer
+import org.eln2.mc.scientific.chemistry.MolecularComposition
 import org.joml.Quaternionf
 import org.joml.Vector3f
 import java.nio.ByteBuffer

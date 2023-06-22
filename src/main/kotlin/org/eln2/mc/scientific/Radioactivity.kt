@@ -23,6 +23,7 @@ import org.eln2.mc.common.capabilities.RadiationCapabilityProvider
 import org.eln2.mc.common.events.registerHandler
 import org.eln2.mc.data.*
 import org.eln2.mc.mathematics.*
+import org.eln2.mc.scientific.chemistry.*
 import java.math.BigDecimal
 import java.util.concurrent.*
 import java.util.concurrent.atomic.AtomicInteger
