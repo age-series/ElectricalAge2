@@ -3,6 +3,7 @@
 buildscript {
     dependencies {
         classpath 'org.spongepowered:mixingradle:0.7.+'
+            classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:1.8.0"
     }
 }
 
@@ -11,7 +12,7 @@ plugins {
     id 'org.jetbrains.kotlin.jvm' version '1.8.0'
     id 'org.jetbrains.kotlin.plugin.serialization' version '1.8.0'
     id 'org.parchmentmc.librarian.forgegradle' version '1.+'
-    id 'com.github.johnrengelman.shadow' version '7.1.1'
+    id 'com.github.johnrengelman.shadow' version '7.1.2'
 }
 
 version = '2.0.0'
@@ -25,9 +26,9 @@ tasks.build.dependsOn shadowJar
 
 println(
     'Grissess Status - Java: ' + System.getProperty('java.version') +
-    ' JVM: ' + System.getProperty('java.vm.version') +
+        ' JVM: ' + System.getProperty('java.vm.version') +
         '(' + System.getProperty('java.vendor') + ') ' +
-    'Arch: ' + System.getProperty('os.arch')
+        'Arch: ' + System.getProperty('os.arch')
 )
 
 minecraft {
@@ -86,17 +87,6 @@ configurations {
     implementation.extendsFrom library
 }
 
-shadowJar {
-    configurations = [project.configurations.library]
-
-    relocate 'com.charleskorn.kaml', 'org.eln2.relocated.com.charleskorn.kaml'
-    relocate 'org.snakeyaml', 'org.eln2.relocated.org.snakeyaml'
-    relocate 'org.apache.commons', 'org.eln2.relocated.org.apache.commons'
-    relocate 'com.github.age-series', 'org.eln2.relocated.com.github.age-series'
-
-    classifier ''
-}
-
 reobf {
     shadowJar {
         // empty
@@ -140,8 +130,11 @@ repositories {
 
 dependencies {
     minecraft 'net.minecraftforge:forge:1.19.3-44.1.23'
-
-    implementation 'thedarkcolour:kotlinforforge:4.1.0'
+    library ("org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.0") {
+        exclude group: 'org.jetbrains', module: 'annotations'
+    }
+    library("org.jetbrains.kotlin:kotlin-reflect:1.8.0")
+    library("org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.0")
 
     compileOnly fg.deobf('mcp.mobius.waila:wthit-api:forge-6.4.2')
     runtimeOnly fg.deobf('mcp.mobius.waila:wthit:forge-6.4.2')
@@ -150,13 +143,29 @@ dependencies {
 
     library 'com.github.age-series:LibAge:8ed5950a0d'
     library 'org.apache.commons:commons-math3:3.6.1'
-    library('com.charleskorn.kaml:kaml:0.50.0') {
-        exclude group: 'org.jetbrains.kotlinx'
-        exclude group: 'org.jetbrains.kotlin'
-    }
+    library('com.charleskorn.kaml:kaml:0.50.0')
 
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.1'
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.1'
+}
+
+shadowJar {
+    archiveClassifier.set("")
+    configurations = [project.configurations.library]
+
+    def rlTarget = "${project.group}.relocated"
+
+    relocate 'kotlin', "${rlTarget}.kotlin"
+    relocate 'com.charleskorn', "${rlTarget}.charleskorn"
+    relocate 'org.snakeyaml', "${rlTarget}.snakeyaml"
+    relocate 'org.apache.commons', "${rlTarget}.apache.commons"
+    relocate 'org.ageseries', "${rlTarget}.ageseries"
+    relocate 'org.intellij', "${rlTarget}.intellij"
+    relocate 'jetbrains', "${rlTarget}.jetbrains"
+
+    afterEvaluate {
+        finalizedBy reobfShadowJar
+    }
 }
 
 jar {
@@ -185,17 +194,19 @@ minecraft.runs.configureEach {
             .resolve()
             .stream()
             .filter {
-               !classpathBlacklist.any { final blacklisted ->
-                   println(it)
-                   it.path.endsWith(blacklisted)
-               }
+                !classpathBlacklist.any { final blacklisted ->
+                    it.path.endsWith(blacklisted)
+                }
             }
             .collect { it.absolutePath }
             .join(File.pathSeparator)
     }
 }
 
-project.tasks.build.dependsOn shadowJar
+reobf {
+    jar { classpath.from(sourceSets.main.compileClasspath) }
+    shadowJar {}
+}
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
