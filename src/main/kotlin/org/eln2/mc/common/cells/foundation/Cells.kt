@@ -668,11 +668,7 @@ object CellConnections {
      * There is a case, though, that will complete in constant time: removing a cell that has zero or one neighbors.
      * Keep in mind that the simulation logic likely won't complete in constant time, in any case.
      * */
-    private fun rebuildTopologies(
-        neighborInfoList: List<CellNeighborInfo>,
-        removedCell: Cell,
-        manager: CellGraphManager,
-    ) {
+    private fun rebuildTopologies(neighborInfoList: List<CellNeighborInfo>, removedCell: Cell, manager: CellGraphManager) {
         /*
         * For now, we use this simple algorithm.:
         *   We enqueue all neighbors for visitation. We perform searches through their graphs,
@@ -748,10 +744,8 @@ object CellConnections {
 }
 
 fun planarCellScan(level: Level, actualCell: Cell, searchDirection: Direction, consumer: ((CellNeighborInfo) -> Unit)) {
-    val actualPosWorld =
-        actualCell.posDescr.requireLocator<R3, BlockPosLocator> { "Planar Scan requires a block position" }.pos
-    val actualFaceTarget =
-        actualCell.posDescr.requireLocator<SO3, BlockFaceLocator> { "Planar Scan requires a face" }.faceWorld
+    val actualPosWorld = actualCell.posDescr.requireLocator<Positional, BlockPosLocator> { "Planar Scan requires a block position" }.pos
+    val actualFaceTarget = actualCell.posDescr.requireLocator<Directional, BlockFaceLocator> { "Planar Scan requires a face" }.faceWorld
     val remoteContainer = level.getBlockEntity(actualPosWorld + searchDirection) as? CellContainer ?: return
 
     remoteContainer
@@ -760,10 +754,10 @@ fun planarCellScan(level: Level, actualCell: Cell, searchDirection: Direction, c
             // Select cells that we can search using this algorithm. Those cells are SE(3) parameterized, so we can search using the position and face rotation.
             val desc = it.pos.descriptor
 
-            desc.hasLocator<R3, BlockPosLocator>() && desc.hasLocator<SO3, BlockFaceLocator>()
+            desc.hasLocator<Positional, BlockPosLocator>() && desc.hasLocator<Directional, BlockFaceLocator>()
         }
         .forEach { targetCell ->
-            val targetFaceTarget = targetCell.pos.descriptor.requireLocator<SO3, BlockFaceLocator>().faceWorld
+            val targetFaceTarget = targetCell.pos.descriptor.requireLocator<Directional, BlockFaceLocator>().faceWorld
 
             if (targetFaceTarget == actualFaceTarget) {
                 if (actualCell.acceptsConnection(targetCell) && targetCell.acceptsConnection(actualCell)) {
@@ -773,16 +767,9 @@ fun planarCellScan(level: Level, actualCell: Cell, searchDirection: Direction, c
         }
 }
 
-fun wrappedCellScan(
-    level: Level,
-    actualCell: Cell,
-    searchDirectionTarget: Direction,
-    consumer: ((CellNeighborInfo) -> Unit),
-) {
-    val actualPosWorld =
-        actualCell.pos.descriptor.requireLocator<R3, BlockPosLocator> { "Wrapped Scan requires a block position" }.pos
-    val actualFaceActual =
-        actualCell.pos.descriptor.requireLocator<SO3, BlockFaceLocator> { "Wrapped Scan requires a face" }.faceWorld
+fun wrappedCellScan(level: Level, actualCell: Cell, searchDirectionTarget: Direction, consumer: ((CellNeighborInfo) -> Unit)) {
+    val actualPosWorld = actualCell.pos.descriptor.requireLocator<Positional, BlockPosLocator> { "Wrapped Scan requires a block position" }.pos
+    val actualFaceActual = actualCell.pos.descriptor.requireLocator<Directional, BlockFaceLocator> { "Wrapped Scan requires a face" }.faceWorld
     val wrapDirection = actualFaceActual.opposite
     val remoteContainer = level.getBlockEntity(actualPosWorld + searchDirectionTarget + wrapDirection) as? CellContainer
         ?: return
@@ -792,10 +779,10 @@ fun wrappedCellScan(
         .filter {
             // Select cells that we can search using this algorithm. Those cells are SE(3) parameterized, so we can search using the position and face rotation.
             val desc = it.pos.descriptor
-            desc.hasLocator<R3, BlockPosLocator>() && desc.hasLocator<SO3, BlockFaceLocator>()
+            desc.hasLocator<Positional, BlockPosLocator>() && desc.hasLocator<Directional, BlockFaceLocator>()
         }
         .forEach { targetCell ->
-            val targetFaceTarget = targetCell.pos.descriptor.requireLocator<SO3, BlockFaceLocator>().faceWorld
+            val targetFaceTarget = targetCell.pos.descriptor.requireLocator<Directional, BlockFaceLocator>().faceWorld
 
             if (targetFaceTarget == searchDirectionTarget) {
                 if (actualCell.acceptsConnection(targetCell) && targetCell.acceptsConnection(actualCell)) {
@@ -1785,7 +1772,7 @@ class BasicCellProvider(private val factory: CellFactory) : CellProvider() {
     override fun createInstance(ci: CellCreateInfo) = factory.create(ci)
 }
 
-class InjectCellProvider<T : Cell>(val c: Class<T>, val extraParams: List<Any>) : CellProvider() {
+class InjCellProvider<T : Cell>(val c: Class<T>, val extraParams: List<Any>) : CellProvider() {
     constructor(c: Class<T>) : this(c, listOf())
 
     @Suppress("UNCHECKED_CAST")
@@ -1797,19 +1784,12 @@ class InjectCellProvider<T : Cell>(val c: Class<T>, val extraParams: List<Any>) 
 }
 
 /**
- * These are some convention constants.
+ * Describes the pin exported to other Electrical Objects.
  * */
-object CellConvention {
-    /**
-     * Describes the pin exported to other Electrical Objects.
-     * */
-    const val EXTERNAL_PIN = 1
-    const val POSITIVE_PIN = EXTERNAL_PIN
-
-    /**
-     * Describes the pin used internally by Electrical Objects.
-     * */
-    const val INTERNAL_PIN = 0
-    const val NEGATIVE_PIN = INTERNAL_PIN
-}
-
+const val EXTERNAL_PIN: Int = 1
+/**
+ * Describes the pin used internally by Electrical Objects.
+ * */
+const val INTERNAL_PIN: Int = 0
+const val POSITIVE_PIN = EXTERNAL_PIN
+const val NEGATIVE_PIN = INTERNAL_PIN

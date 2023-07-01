@@ -23,10 +23,6 @@ class RadiationCapability {
 class RadiationCapabilityProvider : ICapabilitySerializable<CompoundTag> {
     private val lazy = LazyOptional.of(::RadiationCapability)
 
-    init {
-        println("created cap")
-    }
-
     override fun <T : Any?> getCapability(cap: Capability<T>, side: Direction?): LazyOptional<T> {
         return if (cap == CAPABILITY) lazy.cast()
         else LazyOptional.empty()

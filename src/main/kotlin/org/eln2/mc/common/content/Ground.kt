@@ -43,7 +43,7 @@ class GroundObject(cell: Cell) : ElectricalObject(cell) {
 
     override fun build() {
         resistors.connect(connections, this)
-        resistors.process { it.ground(CellConvention.INTERNAL_PIN) }
+        resistors.process { it.ground(INTERNAL_PIN) }
     }
 }
 

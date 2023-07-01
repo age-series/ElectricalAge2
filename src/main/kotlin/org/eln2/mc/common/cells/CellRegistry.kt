@@ -11,7 +11,7 @@ import org.eln2.mc.LOG
 import org.eln2.mc.MODID
 import org.eln2.mc.common.cells.foundation.Cell
 import org.eln2.mc.common.cells.foundation.CellProvider
-import org.eln2.mc.common.cells.foundation.InjectCellProvider
+import org.eln2.mc.common.cells.foundation.InjCellProvider
 import org.eln2.mc.resource
 import java.util.function.Supplier
 
@@ -43,7 +43,7 @@ object CellRegistry {
     }
 
     inline fun <reified T : Cell> injCell(id: String, vararg extraParams: Any): RegistryObject<CellProvider> =
-        cell(id, InjectCellProvider(T::class.java, extraParams.asList()))
+        cell(id, InjCellProvider(T::class.java, extraParams.asList()))
 
     /**
      * Gets the Cell Provider with the specified ID, or produces an error.

@@ -5,9 +5,16 @@ package org.eln2.mc.scientific.chemistry
 import org.eln2.mc.*
 import org.eln2.mc.data.*
 import org.eln2.mc.mathematics.approxEq
+import org.eln2.mc.mathematics.nanZero
+import org.eln2.mc.scientific.chemistry.data.ChemicalElement
+import org.eln2.mc.scientific.chemistry.data.getChemicalElement
 import java.util.*
+import kotlin.collections.ArrayList
+import kotlin.collections.LinkedHashMap
 import kotlin.math.min
 import kotlin.math.pow
+
+typealias CompoundContainer = MassContainer<StructuredMolecularCompound>
 
 private enum class MolecularFormulaSymbolType { Group, Parenthesis }
 
@@ -89,15 +96,47 @@ private data class MolecularFormulaLexer(val formula: String) {
     }
 }
 
-data class MolecularComposition(val components: Map<ChemicalElement, Int>, val label: String?) {
+interface AtomicComposite {
+    val components: Map<ChemicalElement, Int>
+}
+
+data class MolecularComposition(override val components: Map<ChemicalElement, Int>, val label: String?) : AtomicComposite {
     constructor(components: Map<ChemicalElement, Int>) : this(components, null)
 
     val hash = components.hashCode()
+
     override fun hashCode() = hash
 
     val molecularWeight = components.keys.sumOf { it.A * components[it]!! }
 
-    val effectiveZRough = let {
+    val formula = let {
+        if(label != null) {
+            label
+        }
+        else {
+            val components = this.components.toMutableMap()
+            val sb = StringBuilder()
+
+            fun appendElement(element: ChemicalElement, count: Int) {
+                sb.append(element.symbol)
+
+                if (count != 1) {
+                    sb.append(count.toStringSubscript())
+                }
+            }
+
+            components.remove(ChemicalElement.Carbon)?.also { c -> appendElement(ChemicalElement.Carbon, c) }
+            components.remove(ChemicalElement.Hydrogen)?.also { c -> appendElement(ChemicalElement.Hydrogen, c) }
+
+            components.keys.sortedBy { it.symbol }.forEach { element ->
+                appendElement(element, components[element]!!)
+            }
+
+            sb.toString()
+        }
+    }
+
+    val effectiveZApprox = let {
         val electrons = components.keys.sumOf { it.Z * components[it]!! }.toDouble()
         var dragon = 0.0
         components.forEach { (atom, count) ->
@@ -106,15 +145,8 @@ data class MolecularComposition(val components: Map<ChemicalElement, Int>, val l
         dragon.pow(1.0 / 2.94)
     }
 
-    fun thummel(e: Quantity<Energy>) =
-        Quantity(
-            15.2 * ((effectiveZRough.pow(3.0 / 4.0)) / molecularWeight) * (1.0 / (e..MeV).pow(1.485)),
-            CM2_PER_G
-        )
-
     fun constituentWeight(element: ChemicalElement): Double {
         val count = components[element] ?: error("Molecular composition does not have $element\n$this")
-
         return (count.toDouble() * element.A)
     }
 
@@ -137,37 +169,53 @@ data class MolecularComposition(val components: Map<ChemicalElement, Int>, val l
     operator fun not() = MolecularMassMixture(mapOf(this to 1.0))
     operator fun rangeTo(k: Double) = !this..k
 
-    override fun toString(): String {
-        if (label != null) {
-            return label
-        }
-
-        val sb = StringBuilder()
-
-        components.forEach { (element, count) ->
-            sb.append(element.symbol)
-
-            if (count != 1) {
-                sb.append(count.toStringSubscript())
-            }
-        }
-
-        return sb.toString()
-    }
+    override fun toString() = formula
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (javaClass != other?.javaClass) return false
-
         other as MolecularComposition
-
-        if (components != other.components) return false
-
-        return true
+        if (hash != other.hash) return false
+        return components == other.components
     }
 }
 
 infix fun MolecularComposition.x(n: Int) = MolecularComposition(components.mapValues { (_, count) -> count * n })
+
+data class CrystalComposition(val molecularComponents: Map<MolecularComposition, Int>) : AtomicComposite {
+    constructor(c: MolecularComposition) : this(mapOf(c to 1))
+
+    override val components = let {
+        val results = LinkedHashMap<ChemicalElement, Int>()
+
+        molecularComponents.forEach { (m, c1) ->
+            m.components.forEach { (e, c2) ->
+                results.addIncr(e, c1 * c2)
+            }
+        }
+
+        results
+    }
+
+    operator fun not(): MolecularMassMixture {
+        val weights = molecularComponents.mapValues { (comp, cnt) -> cnt * comp.molecularWeight }
+        val total = weights.values.sum()
+
+        val results = LinkedHashMap<MolecularComposition, Double>()
+
+        molecularComponents.keys.forEach { c ->
+            results[c] = weights[c]!! / total
+        }
+
+        return MolecularMassMixture(results)
+    }
+
+    companion object {
+        fun hydrate(c: MolecularComposition, n: Int) = CrystalComposition(
+            linkedMapOf(c to 1, H2O to n)
+        )
+    }
+}
 
 enum class ConstituentAnalysisType {
     MolecularMass,
@@ -263,10 +311,7 @@ data class MolecularMassMixture(val massComposition: Map<MolecularComposition, D
 operator fun Double.rangeTo(m: MolecularMassMixture) = m..this
 operator fun Double.rangeTo(m: MolecularComposition) = !m..this
 
-fun createSolution(
-    components: List<Pair<MolecularMassMixture, Double>>,
-    normalize: Boolean = true,
-): MolecularMassMixture {
+fun createSolution(components: List<Pair<MolecularMassMixture, Double>>, normalize: Boolean = true) : MolecularMassMixture {
     var map = LinkedHashMap<MolecularComposition, Double>()
 
     components.forEach { (xq, xqWeight) ->
@@ -363,210 +408,238 @@ fun molecular(formula: String): MolecularComposition {
     }, formula)
 }
 
-val O2 = molecular("O₂")
-val N2 = molecular("N₂")
+fun molecularCrystallographic(formula: String, tsp: Char = '·'): CrystalComposition {
+    val tokens = formula.split(tsp)
 
+    if(tokens.size > 2) error("Unhandled uniform molecular crystallographic formula $formula")
+    else if(tokens.size == 1) return CrystalComposition(molecular(tokens[0]))
+
+    val principled = molecular(tokens[0])
+
+    val coeffSb = StringBuilder()
+
+    var i = 0
+    val completedTk = tokens[1]
+    while (true) {
+        val c = completedTk[i]
+
+        if(!c.isDigit()) {
+            break
+        }
+
+        i++
+
+        coeffSb.append(c)
+    }
+
+    val coeff = if(coeffSb.isEmpty()) 1 else coeffSb.toString().toInt()
+
+    val completed = molecular(completedTk.drop(i))
+
+    return CrystalComposition(
+        mapOf(
+            principled to 1,
+            completed to coeff
+        )
+    )
+}
+
+// Molecular compositions that are sometimes useful in mixes (for the rad system):
 val H2O = molecular("H₂O")
-val water = H2O
-val dihydrogenMonoxide = H2O
 val CO = molecular("CO")
-val carbonMonoxide = CO
 val CO2 = molecular("CO₂")
-val carbonDioxide = CO2
 val N2O = molecular("N₂O")
-val dinitrogenMonoxide = N2O
-val nitrousOxide = N2O
 val NO = molecular("NO")
-val nitrogenMonoxide = NO
-val nitricOxide = NO
 val NO2 = molecular("NO₂")
-val nitrogenDioxide = NO2
 val N2O5 = molecular("N₂O₅")
-val dinitrogenPentaoxide = N2O5
 val P2O5 = molecular("P₂O₅")
-val phosphorusPentaoxide = P2O5
 val SO2 = molecular("SO₂")
-val sulfurDioxide = SO2
-val sulfurousOxide = SO2
 val SO3 = molecular("SO₃")
-val sulfurTrioxide = SO3
-val sulfuricOxide = SO3
 val CaO = molecular("CaO")
-val calciumOxide = CaO
-val lime = CaO
 val MgO = molecular("MgO")
-val magnesiumOxide = MgO
 val K2O = molecular("K₂O")
-val potassiumOxide = K2O
 val Na2O = molecular("Na₂O")
-val sodiumOxide = Na2O
 val Al2O3 = molecular("Al₂O₃")
-val aluminiumOxide = Al2O3
-val alumina = Al2O3
 val SiO2 = molecular("SiO₂")
-val siliconDioxide = SiO2
-val silica = SiO2
 val ZnO = molecular("ZnO")
-val zincOxide = ZnO
 val Cu2O = molecular("Cu₂O")
-val `Copper (I) Oxide` = Cu2O
-val cuprousOxide = Cu2O
 val CuO = molecular("CuO")
-val `Copper (II) Oxide` = CuO
-val cupricOxide = CuO
 val FeO = molecular("FeO")
-val `Iron (II) Oxide` = FeO
-val ferrousOxide = FeO
 val Fe2O3 = molecular("Fe₂O₃")
-val `Iron (III) Oxide` = Fe2O3
-val ferricOxide = Fe2O3
 val CrO3 = molecular("CrO₃")
-val chromiumTrioxide = CrO3
-val `Chromium (VI) Oxide` = CrO3
 val MnO2 = molecular("MnO₂")
-val manganeseDioxide = MnO2
-val `Manganese (IV) Oxide` = MnO2
 val Mn2O7 = molecular("Mn₂O₇")
-val dimanganeseHeptoxide = Mn2O7
-val manganeseHeptoxide = Mn2O7
-val `Manganese (VII) Oxide` = Mn2O7
 val TiO2 = molecular("TiO₂")
-val titaniumDioxide = TiO2
 val H2O2 = molecular("H₂O₂")
-val hydrogenPeroxide = H2O2
-
 val NaOH = molecular("NaOH")
-val sodiumHydroxide = NaOH
 val KOH = molecular("KOH")
-val potassiumHydroxide = KOH
 val `Ca(OH)2` = molecular("Ca(OH)₂")
-val calciumHydroxide = `Ca(OH)2`
 val `Ba(OH)2` = molecular("Ba(OH)₂")
-val bariumHydroxide = `Ba(OH)2`
 val `Al(OH)3` = molecular("Al(OH)₃")
-val aluminiumHydroxide = `Al(OH)3`
 val `Fe(OH)2` = molecular("Fe(OH)₂")
-val `iron (II) Hydroxide` = `Fe(OH)2`
-val ferrousHydroxide = `Fe(OH)2`
 val `Fe(OH)3` = molecular("Fe(OH)₃")
-val `iron (III) Hydroxide` = `Fe(OH)3`
-val ferricHydroxide = `Fe(OH)3`
 val `Cu(OH)2` = molecular("Cu(OH)₂")
-val copperHydroxide = `Cu(OH)2`
 val NH4OH = molecular("NH₄OH")
-val ammoniumHydroxide = NH4OH
-val aqueousAmmonia = NH4OH
-
 val HF = molecular("HF")
-val hydrofluoricAcid = HF
-val hydrogenFluoride = HF
 val HCl = molecular("HCl")
-val hydrochloricAcid = HCl
-val hydrogenChloride = HCl
 val HBr = molecular("HBr")
-val hydrobromicAcid = HBr
-val hydrogenBromide = HBr
 val HI = molecular("HI")
-val hydroiodicAcid = HI
-val hydrogenIodide = HI
 val HCN = molecular("HCN")
-val hydrocyanicAcid = HCN
-val hydrogenCyanide = HCN
 val H2S = molecular("H₂S")
-val hydrosulfuricAcid = H2S
-val hydrogenSulfide = H2S
 val H3BO3 = molecular("H₃BO₃")
-val boricAcid = H3BO3
 val H2CO3 = molecular("H₂CO₃")
-val carbonicAcid = H2CO3
 val HOCN = molecular("HOCN")
-val cyanicAcid = HOCN
 val HSCN = molecular("HSCN")
-val thiocyanicAcid = HSCN
 val HNO2 = molecular("HNO₂")
-val nitrousAcid = HNO2
 val HNO3 = molecular("HNO₃")
-val nitricAcid = HNO3
 val H3PO4 = molecular("H₃PO₄")
-val phosphoricAcid = H3PO4
 val H2SO3 = molecular("H₂SO₃")
-val sulfurousAcid = H2SO3
 val H2SO4 = molecular("H₂SO₄")
-val sulfuricAcid = H2SO4
 val H2S2O3 = molecular("H₂S₂O₃")
-val thiosulfuricAcid = H2S2O3
 val HClO = molecular("HClO")
-val hypochlorousAcid = HClO
 val HClO2 = molecular("HClO₂")
-val chlorousAcid = HClO2
 val HClO3 = molecular("HClO₃")
-val chloricAcid = HClO3
 val HClO4 = molecular("HClO₄")
-val perchloricAcid = HClO4
 val H2CrO4 = molecular("H₂CrO₄")
-val chromicAcid = H2CrO4
 val H2Cr2O7 = molecular("H₂Cr₂O₇")
-val dichromicAcid = H2Cr2O7
 val HMnO4 = molecular("HMnO₄")
-val permanganicAcid = HMnO4
-
 val `Al2Si2O2(OH)2` = molecular("Al₂Si₂O₅(OH)₄")
-val kaolinite = `Al2Si2O2(OH)2`
-
 val C6H10O5 = molecular("C₆H₁₀O₅")
 val celluloseUnit = C6H10O5
-
 val C18H13N3Na2O8S2 = molecular("C₁₈H₁₃N₃Na₂O₈S₂")
 val ligninUnit = C18H13N3Na2O8S2
-
 val C24H42O21 = molecular("C₂₄H₄₂O₂₁")
-val glucomannanUnit = C24H42O21
-val glucomannoglycanUnit = C24H42O21
-
 val C21H33O19 = molecular("C₂₁H₃₃O₁₉")
-val glucuronoxylanDGlucuronate = C21H33O19
-
 val C6H12O = molecular("C₆H₁₂O₆")
-val glucose = C6H12O
-
 val C2H5OH = molecular("C₂H₅OH")
-val C2H6O = C2H5OH
-val ethanol = C2H5OH
-
 val CH3COOH = molecular("CH₃COOH")
-val aceticAcid = CH3COOH
+val CCl4 = molecular("CCl₄")
 
-// ₁ ₂ ₃ ₄ ₅ ₆ ₇ ₈ ₉ ₁₀
-
-data class KnownPhysicalProperties(
-    val density: Quantity<Density>,
+data class CompoundProperties(
+    val densitySTP: Quantity<Density>
 )
 
-private val knownProperties = mapOf(
-    H2O to KnownPhysicalProperties(Quantity(1.0, G_PER_CM3)),
-    SiO2 to KnownPhysicalProperties(Quantity(2.65, G_PER_CM3))
-)
+interface Compound {
+    val molecularWeight: Double
+    val properties: CompoundProperties
+}
 
-val MolecularComposition.properties
-    get() = knownProperties[this]
-        ?: error("Molecular composition $this does not have known properties")
+data class UnstructuredMolecularCompound(val composition: MolecularComposition, override val properties: CompoundProperties) : Compound, AtomicComposite {
+    override val molecularWeight by composition::molecularWeight
+    override val components by composition::components
+}
 
-class MassContainer {
-    val content = HashMap<MolecularComposition, Quantity<Substance>>()
+class MassContainer<C : Compound>(val content: HashMap<C, Quantity<Substance>>) {
+    constructor() : this(HashMap<C, Quantity<Substance>>())
 
-    operator fun get(m: MolecularComposition) = content[m] ?: Quantity(0.0)
-    operator fun set(m: MolecularComposition, value: Quantity<Substance>) {
+    val total get() = Quantity(content.values.sumOf { !it }, MOLE)
+
+    fun clear() = content.clear()
+
+    fun isEmpty() = content.isEmpty()
+    fun isNotEmpty() = content.isNotEmpty()
+
+    fun trim(c: C, eps: Double = 10e-8) {
+        if(this[c] < eps) {
+            content.remove(c)
+        }
+    }
+
+    operator fun get(m: C) = content[m] ?: Quantity(0.0)
+    operator fun set(m: C, value: Quantity<Substance>) {
         content[m] = value
     }
 
-    fun getMass(m: MolecularComposition) = (this[m] * m.molecularWeight).reparam<Mass>()
-    fun addMass(m: MolecularComposition, value: Quantity<Mass>) {
-        this[m] += (value / m.molecularWeight).reparam()
+    fun getMass(m: C) = (this[m] * m.molecularWeight).reparam<Mass>()
+    fun addMass(m: C, value: Quantity<Mass>) { this[m] += (value / m.molecularWeight).reparam() }
+    fun removeMass(m: C, value: Quantity<Mass>) = addMass(m, -value)
+    fun setMass(m: C, value: Quantity<Mass>) { this[m] = (value / m.molecularWeight).reparam() }
+    fun setVolumeSTP(m: C, value: Quantity<Volume>) = setMass(m, (m.properties.densitySTP * !value).reparam())
+    fun getVolumeSTP(m: C) = Quantity(!getMass(m) / !m.properties.densitySTP, M3)
+    val mass get() = Quantity(content.keys.sumOf { !getMass(it) }, KILOGRAMS)
+    val volumeSTP get() = Quantity(content.keys.sumOf { !getVolumeSTP(it) }, M3)
+    fun massConcentrationSTP(c: C) = Quantity(!getMass(c) / !this.volumeSTP, KG_PER_M3)
+    fun molarConcentrationSTP(c: C) = Quantity(!this[c] / !this.volumeSTP, MOLE_PER_M3)
+    fun volumeConcentrationSTP(c: C) = !getVolumeSTP(c) / !this.volumeSTP
+    fun molarFraction(c: C) = (get(c) / this.total).nanZero()
+    fun massFractionSTP(c: C) = getMass(c) / this.mass
+    fun bind() = MassContainer(content.bind())
+    fun trimAll() { content.keys.toList().forEach(::trim) }
+
+    fun normalizeMolar() {
+        if(this.isEmpty()) {
+            return
+        }
+
+        val q = content.values.sumOf { !it }
+
+        content.keys.forEach { k ->
+            this[k] = this[k] / q
+        }
     }
 
-    fun removeMass(m: MolecularComposition, value: Quantity<Mass>) = addMass(m, -value)
-    fun setMass(m: MolecularComposition, value: Quantity<Mass>) {
-        this[m] = (value / m.molecularWeight).reparam()
+    fun normalizeVolumeSTP() {
+        if(this.isEmpty()) {
+            return
+        }
+
+        val q = this.volumeSTP
+
+        content.keys.forEach { k ->
+            this.setMass(k, Quantity((getVolumeSTP(k) / q) * !k.properties.densitySTP))
+        }
+    }
+
+    fun add(c: MassContainer<C>) {
+        c.content.forEach { (m, q) ->
+            this[m] += q
+        }
+    }
+
+    fun remove(c: MassContainer<C>) {
+        c.content.forEach { (m, q) ->
+            this[m] -= q
+        }
+    }
+
+    operator fun plus(b: MassContainer<C>) = this.bind().apply { add(b) }
+    operator fun plusAssign(b: MassContainer<C>) { this.add(b) }
+
+    fun scaleMolar(scalar: Double) {
+        content.keys.forEach {
+            this[it] = this[it] * scalar
+        }
+    }
+
+    fun scaleVolumeSTP(scalar: Double) {
+        content.keys.forEach {
+            this.setVolumeSTP(it, this.getVolumeSTP(it) * scalar)
+        }
+    }
+
+    fun normalizedMolar() = this.bind().apply { normalizeMolar() }
+    fun normalizedVolume() = this.bind().apply { normalizeVolumeSTP() }
+
+    fun transferVolumeSTPFrom(source: MassContainer<C>, maxTransferV: Quantity<Volume>, removeFromSource: Boolean = true) {
+        if(source.content.isEmpty()) {
+            return
+        }
+
+        val v = min(maxTransferV, source.volumeSTP)
+
+        if((!v).approxEq(0.0)) {
+            return
+        }
+
+        val dx = source.normalizedVolume().apply {
+            scaleVolumeSTP(!v)
+        }
+
+        this.add(dx)
+
+        if(removeFromSource) {
+            source.remove(dx)
+        }
     }
 
     override fun toString(): String {
@@ -580,24 +653,36 @@ class MassContainer {
     }
 }
 
-// What I really want is a proper physics simulation (actual reactions using datasets, real equations, molecular structure, simulations, etc.)
-// That is difficult to pull off. Maybe with external support, we'll get around to doing that.
-// Currently, we have a crude (rather trashy) system of representing molecules (we don't have any structural information, only molecular formulas)
-// This is probably enough for the game
 
-data class ChemicalEquationTermInfo(
+
+fun<C : Compound> massContainerOf(values: List<Pair<C, Quantity<Substance>>>) = MassContainer<C>().apply {
+    values.forEach { (c, amt) ->
+        this[c] += amt
+    }
+}
+
+fun<C : Compound> massContainerOf(vararg values: Pair<C, Quantity<Substance>>) = massContainerOf(values.asList())
+fun<C : Compound> massContainerOfMass(vararg values: Pair<C, Quantity<Mass>>) = massContainerOf(
+    values.map { (c, mass) ->
+        c to (mass / c.molecularWeight).reparam()
+    }
+)
+
+data class ChemicalEquationInfo(
     val elementsIn: Map<ChemicalElement, Int>,
     val elementsOut: Map<ChemicalElement, Int>,
     val isBalanced: Boolean,
 )
 
-// No quantity because just using integers as coefficients is easier than dealing with fractional terms
-data class ChemicalEquation(val lhs: Map<MolecularComposition, Int>, val rhs: Map<MolecularComposition, Int>) {
-    fun analyze(): ChemicalEquationTermInfo {
+data class ChemicalEquation<U : AtomicComposite>(
+    val lhs: Map<U, Int>,
+    val rhs: Map<U, Int>
+) {
+    fun analyze(): ChemicalEquationInfo {
         val elementsIn = HashMap<ChemicalElement, Int>()
         val elementsOut = HashMap<ChemicalElement, Int>()
 
-        fun scan(m: HashMap<ChemicalElement, Int>, e: Map<MolecularComposition, Int>) {
+        fun scan(m: HashMap<ChemicalElement, Int>, e: Map<U, Int>) {
             e.forEach { (comp, c1) ->
                 comp.components.forEach { (element, c2) ->
                     m.addIncr(element, c1 * c2)
@@ -608,7 +693,7 @@ data class ChemicalEquation(val lhs: Map<MolecularComposition, Int>, val rhs: Ma
         scan(elementsIn, lhs)
         scan(elementsOut, rhs)
 
-        return ChemicalEquationTermInfo(
+        return ChemicalEquationInfo(
             elementsIn,
             elementsOut,
             elementsIn == elementsOut
@@ -616,15 +701,24 @@ data class ChemicalEquation(val lhs: Map<MolecularComposition, Int>, val rhs: Ma
     }
 }
 
-fun reaction(equation: String): ChemicalEquation {
-    fun parseSide(side: String): LinkedHashMap<MolecularComposition, Int> {
+data class MolecularCrystallographicEquation(
+    val lhs: Map<CrystalComposition, Int>,
+    val rhs: Map<CrystalComposition, Int>
+)
+
+fun compositionEquation(equation: String) : ChemicalEquation<MolecularComposition> = parseSubstituteEquation(equation, ::molecular).let { (a, b) -> ChemicalEquation(a, b) }
+fun crystallographicCompositionEquation(equation: String) = parseSubstituteEquation(equation, ::molecularCrystallographic).let { (a, b) -> MolecularCrystallographicEquation(a, b) }
+fun<T : AtomicComposite> substituteEquation(equation: String, parse: (String) -> T) = parseSubstituteEquation(equation, parse).let { ChemicalEquation(it.first, it.second) }
+fun <T : AtomicComposite> substituteEquation(equation: String, map: Map<String, T>) = parseSubstituteEquation(equation, map).let { ChemicalEquation(it.first, it.second) }
+fun<T> parseSubstituteEquation(equation: String, parse: (String) -> T): Pair<LinkedHashMap<T, Int>, LinkedHashMap<T, Int>> {
+    fun parseSide(side: String): LinkedHashMap<T, Int> {
         val terms = side.split("+").map { it.trim() }
         require(terms.isNotEmpty())
 
-        val results = LinkedHashMap<MolecularComposition, Int>()
+        val results = LinkedHashMap<T, Int>()
 
         terms.forEach {
-            require(!it.isEmpty())
+            require(it.isNotEmpty())
 
             var i = 0
             val coefficientSb = StringBuilder()
@@ -643,7 +737,7 @@ fun reaction(equation: String): ChemicalEquation {
             require(i < it.length)
 
             val coefficient = if (coefficientSb.isEmpty()) 1 else coefficientSb.toString().toInt()
-            val comp = molecular(it.substring(i).trim())
+            val comp = parse(it.substring(i).trim())
 
             require(results.put(comp, coefficient) == null)
         }
@@ -654,119 +748,122 @@ fun reaction(equation: String): ChemicalEquation {
     val s = equation.split("->")
     require(s.size == 2)
 
-    return ChemicalEquation(
+    return Pair(
         parseSide(s[0]),
         parseSide(s[1])
     )
 }
+fun<T> parseSubstituteEquation(equation: String, mapping: Map<String, T>): Pair<LinkedHashMap<T, Int>, LinkedHashMap<T, Int>> = parseSubstituteEquation(equation) { s -> mapping[s] ?: error("Failed to map $s") }
 
-fun MassContainer.applyReaction(equation: ChemicalEquation, rate: Double) {
+fun<C> MassContainer<C>.applyReaction(equation: ChemicalEquation<C>, rate: Double) where C : AtomicComposite, C : Compound {
     var u = rate
-
     equation.lhs.forEach { (composition, count) -> u = min(u, !this[composition] / count.toDouble()) }
     equation.lhs.forEach { (c, x) -> this[c] -= Quantity(u * x) }
     equation.rhs.forEach { (c, x) -> this[c] += Quantity(u * x) }
 }
 
-val glucoseFermentationReaction = reaction("C₆H₁₂O₆ -> 2 C₂H₅OH + 2 CO₂")
-val aceticFermentationReaction = reaction("C₂H₅OH + O₂ -> CH₃COOH + H₂O")
+enum class MolecularBondType { S, D, T, Q, A, Up, Down }
 
-val airMix = percentageSolutionOf(
-    75.52..!!ChemicalElement.Nitrogen,
-    23.14..!!ChemicalElement.Oxygen,
-    1.29..!!ChemicalElement.Argon,
-    0.051..CO2,
+data class MolecularGraphBond(
+    val targetIdx: Int,
+    val type: MolecularBondType
 )
 
-val clayMix = percentageSolutionOf(
-    41.9..SiO2,
-    22.3..Al2O3,
-    11.1..CaO,
-    8.0..Fe2O3,
-    4.1..K2O,
-    3.4..MgO,
-    2.8..SO3,
-    0.9..TiO2
+data class MolecularGraphNode(
+    val atom: ChemicalElement,
+    val isotope: Int,
+    val charge: Int,
+    // Specified instead of adjusting topology. We don't even use the graph data, so no need to invest time in that:
+    val chiralityClass: ChiralityClass?,
+    val chiralityValue: Int,
+    var isAromatic: Boolean,
+    val index: Int
 )
 
-val stoneMix = percentageSolutionOf(
-    72.04..SiO2,
-    14.42..Al2O3,
-    4.12..K2O,
-    3.69..Na2O,
-    1.82..CaO,
-    1.68..FeO,
-    1.22..Fe2O3,
-    0.71..MgO,
-    0.30..TiO2,
-    0.12..P2O5,
+data class MolecularGraph(val nodes: List<MolecularGraphNode>, val bonds: List<List<MolecularGraphBond>>) {
+    val composition = let {
+        val results = LinkedHashMap<ChemicalElement, Int>()
+        nodes.forEach { vert -> results.addIncr(vert.atom, 1) }
+        MolecularComposition(results)
+    }
+
+    val hash = let {
+        var result = nodes.hashCode()
+        result = 31 * result + bonds.hashCode()
+        result = 31 * result + composition.hashCode()
+        result
+    }
+
+    override fun hashCode() = hash
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as MolecularGraph
+
+        if(hash != other.hash) return false
+        if (composition != other.composition) return false
+        if (nodes != other.nodes) return false
+        if (bonds != other.bonds) return false
+
+        return true
+    }
+
+    operator fun not() = composition
+}
+
+data class MolecularCompoundIdentifier(
+    val preferredIUPACName: String,
+    val systematicIUPACName: String,
+    val trivialNames: List<String>,
+    val otherNames: List<String>,
+    val smiles: String?
 )
 
-val ktSoilMix = percentageSolutionOf(
-    46.35..SiO2,
-    20.85..Al2O3,
-    2.19..TiO2,
-    2.06..Fe2O3,
-    1.79..CaO,
-    1.79..K2O,
-    0.22..MgO,
-    1.97..percentageSolutionOf(
-        0.5..Na2O,
-        0.5..K2O
+interface Symbol<T> {
+    val symbol: T
+}
+
+data class StructuredMolecularCompound(
+    val graph: MolecularGraph,
+    override val properties: CompoundProperties,
+    override val symbol: Int,
+    val label: String,
+    val names: MolecularCompoundIdentifier
+) : Compound, AtomicComposite, Symbol<Int> {
+    override val molecularWeight by graph.composition::molecularWeight
+    override val components by graph.composition::components
+
+    private val simplified = UnstructuredMolecularCompound(
+        graph.composition,
+        properties
     )
-)
 
-// other polysaccharides and structure not covered (not worth it)
+    val hash = let {
+        var result = graph.hashCode()
+        result = 31 * result + properties.hashCode()
+        result = 31 * result + symbol
+        result
+    }
 
-val pinusSylvestrisMix = percentageSolutionOf(
-    40.0..celluloseUnit,
-    28.0..ligninUnit,
-    16.0..glucomannoglycanUnit,
-    9.0..glucuronoxylanDGlucuronate,
-)
+    override fun hashCode() = hash
 
-val piceaGlaucaMix = percentageSolutionOf(
-    39.5..celluloseUnit,
-    27.5..ligninUnit,
-    17.2..glucomannoglycanUnit,
-    10.4..glucuronoxylanDGlucuronate,
-)
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
 
-val betulaVerrucosaMix = percentageSolutionOf(
-    41.1..celluloseUnit,
-    22.0..ligninUnit,
-    2.3..glucomannoglycanUnit,
-    27.5..glucuronoxylanDGlucuronate,
-)
+        other as StructuredMolecularCompound
 
-val quercusFagaceaeMix = percentageSolutionOf(
-    46.1..celluloseUnit,
-    22.5..ligninUnit,
-    14.2..glucomannoglycanUnit,
-    12.4..glucuronoxylanDGlucuronate,
-)
+        if(hash != other.hash) return false
+        if (graph != other.graph) return false
+        if (properties != other.properties) return false
+        if (symbol != other.symbol) return false
 
-val sodaLimeGlassMix = percentageSolutionOf(
-    73.1..SiO2,
-    15.0..Na2O,
-    7.0..CaO,
-    4.1..MgO,
-    1.0..Al2O3
-)
+        return true
+    }
 
-val obsidianSpecimenMix = percentageSolutionOf(
-    75.48..SiO2,
-    11.75..Al2O3,
-    3.47..Na2O,
-    0.1..MgO,
-    0.05..P2O5,
-    5.41..K2O,
-    0.9..CaO,
-    0.1..TiO2,
-    2.87..Fe2O3
-)
-
-enum class MolecularBondType { Disjoint, S, D, T, Q, Aromatic }
-data class MolecularBond(val type: MolecularBondType)
-data class MolecularGraphNode(val atom: ChemicalElement, val index: Int)
-data class MolecularGraph(val graph: Graph<MolecularGraphNode, MolecularBond>)
+    // Label should always be available for registered compounds
+    override fun toString() = label
+    operator fun not() = simplified
+}

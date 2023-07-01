@@ -14,6 +14,7 @@ import net.minecraftforge.registries.RegistryObject
 import org.eln2.mc.LOG
 import org.eln2.mc.MODID
 import org.eln2.mc.common.blocks.foundation.MultiblockScanTool
+import org.eln2.mc.common.items.foundation.MassContainerItem
 
 object ItemRegistry {
     @Suppress("MemberVisibilityCanBePrivate") // Used for item registration and fetching
@@ -35,6 +36,7 @@ object ItemRegistry {
     }
 
     val MULTIBLOCK_SCAN_TOOL = item("multiblock_scan_tool", ::MultiblockScanTool)
+    val MASS_CONTAINER = item("mass_container_item", ::MassContainerItem)
 }
 
 val eln2Tab: CreativeModeTab =

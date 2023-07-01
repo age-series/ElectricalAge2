@@ -7,7 +7,7 @@ import org.junit.jupiter.api.fail
 class LocatorTests {
     @Test
     fun testLocatorSet() {
-        val set = LocatorSet<R3>()
+        val set = LocatorSet<Positional>()
 
         assert(!set.has<BlockPosLocator>())
         assert(set == set)
@@ -31,17 +31,17 @@ class LocatorTests {
     fun testLocationDescriptor() {
         val descriptor = LocationDescriptor()
 
-        assert(!descriptor.hasLocatorSet<R3>())
-        assert(!descriptor.hasLocatorSet<SO3>())
+        assert(!descriptor.hasLocatorSet<Positional>())
+        assert(!descriptor.hasLocatorSet<Directional>())
 
         val bpl = BlockPosLocator(BlockPos(3, 1, 4))
 
         descriptor.withLocator(bpl)
 
-        assert(descriptor.hasLocatorSet<R3>())
-        assert(!descriptor.hasLocatorSet<SO3>())
+        assert(descriptor.hasLocatorSet<Positional>())
+        assert(!descriptor.hasLocatorSet<Directional>())
 
-        assert(descriptor.getLocator<R3, BlockPosLocator>() == bpl)
+        assert(descriptor.getLocator<Positional, BlockPosLocator>() == bpl)
 
         try {
             descriptor.withLocator(BlockPosLocator(BlockPos.ZERO))
@@ -52,9 +52,9 @@ class LocatorTests {
         val fl = BlockFaceLocator(Direction.DOWN)
 
         descriptor.withLocator(fl)
-        assert(descriptor.hasLocatorSet<SO3>())
-        assert(descriptor.hasLocatorSet<R3>())
+        assert(descriptor.hasLocatorSet<Directional>())
+        assert(descriptor.hasLocatorSet<Positional>())
 
-        assert(descriptor.getLocator<SO3, BlockFaceLocator>() == fl)
+        assert(descriptor.getLocator<Directional, BlockFaceLocator>() == fl)
     }
 }

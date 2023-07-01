@@ -5,27 +5,18 @@ import kotlinx.serialization.Transient
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import org.eln2.mc.data.*
-import org.eln2.mc.getResourceString
+import org.eln2.mc.getResourceStringHelper
 import org.eln2.mc.mathematics.*
-import org.eln2.mc.resource
-import org.eln2.mc.scientific.chemistry.ChemicalElement
+import org.eln2.mc.scientific.chemistry.data.ChemicalElement
 import org.eln2.mc.scientific.chemistry.ConstituentAnalysisType
 import org.eln2.mc.scientific.chemistry.MolecularMassMixture
 import org.eln2.mc.sumOfDual
-import java.nio.file.Files
-import kotlin.io.path.Path
 import kotlin.math.exp
 import kotlin.math.ln
 import kotlin.math.pow
 
-// If you are using the data without the game running, set this to false
-private const val USE_GAME = true
-
 val xcomDataset = Json.decodeFromString<XCOMDataset>(
-    if (USE_GAME)
-        getResourceString(resource("datasets/xcom/pcs.json"))
-    else
-        Files.readString(Path("./src/main/resources/assets/eln2/datasets/xcom/pcs.json")),
+    getResourceStringHelper("datasets/xcom/pcs.json")
 )
 
 fun fetchElementNode(z: Int): ElementNode {

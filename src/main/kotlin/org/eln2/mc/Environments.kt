@@ -7,7 +7,7 @@ import org.ageseries.libage.sim.thermal.ThermalUnits
 import org.eln2.mc.common.cells.foundation.CellPos
 import org.eln2.mc.data.BlockPosLocator
 import org.eln2.mc.data.DataFieldMap
-import org.eln2.mc.data.R3
+import org.eln2.mc.data.Positional
 import org.eln2.mc.data.requireLocator
 import java.util.concurrent.ConcurrentHashMap
 
@@ -35,7 +35,7 @@ object BiomeEnvironments {
     private val MINECRAFT_TEMPERATURE_CELSIUS = loadCsvSpline("minecraft_temperature/ds.csv", 0, 1)
 
     fun cellEnv(level: Level, pos: CellPos): EnvironmentInformation {
-        val biome = level.getBiome(pos.descriptor.requireLocator<R3, BlockPosLocator> {
+        val biome = level.getBiome(pos.descriptor.requireLocator<Positional, BlockPosLocator> {
             "Biome Environments need a block pos locator"
         }.pos).value()
 

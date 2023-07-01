@@ -28,7 +28,7 @@ class ComponentHolder<T : Component>(private val factory: () -> T) {
     }
 
     fun connectInternal(component: Component, remotePin: Int) {
-        connect(CellConvention.INTERNAL_PIN, component, remotePin)
+        connect(INTERNAL_PIN, component, remotePin)
     }
 
     fun connectInternal(componentInfo: ElectricalComponentInfo) {
@@ -36,7 +36,7 @@ class ComponentHolder<T : Component>(private val factory: () -> T) {
     }
 
     fun connectExternal(component: Component, remotePin: Int) {
-        connect(CellConvention.EXTERNAL_PIN, component, remotePin)
+        connect(EXTERNAL_PIN, component, remotePin)
     }
 
     fun connectExternal(componentInfo: ElectricalComponentInfo) {
@@ -48,7 +48,7 @@ class ComponentHolder<T : Component>(private val factory: () -> T) {
     }
 
     fun connectPositive(component: Component, remotePin: Int) {
-        connect(CellConvention.POSITIVE_PIN, component, remotePin)
+        connect(POSITIVE_PIN, component, remotePin)
     }
 
     fun connectPositive(componentInfo: ElectricalComponentInfo) {
@@ -60,7 +60,7 @@ class ComponentHolder<T : Component>(private val factory: () -> T) {
     }
 
     fun connectNegative(component: Component, remotePin: Int) {
-        connect(CellConvention.NEGATIVE_PIN, component, remotePin)
+        connect(NEGATIVE_PIN, component, remotePin)
     }
 
     fun connectNegative(componentInfo: ElectricalComponentInfo) {
@@ -76,31 +76,31 @@ class ComponentHolder<T : Component>(private val factory: () -> T) {
     }
 
     fun groundInternal() {
-        ground(CellConvention.INTERNAL_PIN)
+        ground(INTERNAL_PIN)
     }
 
     fun groundNegative() {
-        ground(CellConvention.NEGATIVE_PIN)
+        ground(NEGATIVE_PIN)
     }
 
     fun groundExternal() {
-        ground(CellConvention.EXTERNAL_PIN)
+        ground(EXTERNAL_PIN)
     }
 
     fun offerInternal(): ElectricalComponentInfo {
-        return ElectricalComponentInfo(instance, CellConvention.INTERNAL_PIN)
+        return ElectricalComponentInfo(instance, INTERNAL_PIN)
     }
 
     fun offerExternal(): ElectricalComponentInfo {
-        return ElectricalComponentInfo(instance, CellConvention.EXTERNAL_PIN)
+        return ElectricalComponentInfo(instance, EXTERNAL_PIN)
     }
 
     fun offerPositive(): ElectricalComponentInfo {
-        return ElectricalComponentInfo(instance, CellConvention.POSITIVE_PIN)
+        return ElectricalComponentInfo(instance, POSITIVE_PIN)
     }
 
     fun offerNegative(): ElectricalComponentInfo {
-        return ElectricalComponentInfo(instance, CellConvention.NEGATIVE_PIN)
+        return ElectricalComponentInfo(instance, NEGATIVE_PIN)
     }
 
     fun clear() {
@@ -125,9 +125,9 @@ class ComponentHolder<T : Component>(private val factory: () -> T) {
  * */
 class ResistorBundle(var resistance: Double, obj: ElectricalObject) {
     init {
-        obj.cell.pos.descriptor.requireLocator<R3, BlockPosLocator>()
-        obj.cell.pos.descriptor.requireLocator<SO3, IdentityDirectionLocator>()
-        obj.cell.pos.descriptor.requireLocator<SO3, BlockFaceLocator>()
+        obj.cell.pos.descriptor.requireLocator<Positional, BlockPosLocator>()
+        obj.cell.pos.descriptor.requireLocator<Directional, IdentityDirectionLocator>()
+        obj.cell.pos.descriptor.requireLocator<Directional, BlockFaceLocator>()
     }
 
     private val resistors = HashMap<ElectricalObject, Resistor>()
@@ -164,7 +164,7 @@ class ResistorBundle(var resistance: Double, obj: ElectricalObject) {
         connections.forEach { remoteObj ->
             val resistor = getResistor(remoteObj)
             val offered = remoteObj.offerComponent(sender)
-            resistor.connect(CellConvention.EXTERNAL_PIN, offered.component, offered.index)
+            resistor.connect(EXTERNAL_PIN, offered.component, offered.index)
         }
     }
 
@@ -187,7 +187,7 @@ class ResistorBundle(var resistance: Double, obj: ElectricalObject) {
      * If a resistor is not initialized for *direction*, and the bundle was prepared by *register*, an error will be produced.
      * */
     fun getOfferedResistor(remote: ElectricalObject): ElectricalComponentInfo {
-        return ElectricalComponentInfo(getResistor(remote), CellConvention.EXTERNAL_PIN)
+        return ElectricalComponentInfo(getResistor(remote), EXTERNAL_PIN)
     }
 
     /**

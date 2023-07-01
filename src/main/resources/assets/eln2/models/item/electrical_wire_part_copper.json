@@ -1,6 +1,6 @@
 {
     "parent": "minecraft:item/generated",
     "textures": {
-        "layer0": "eln2:items/cables/copper/black_insulation_l"
+        "layer0": "eln2:item/cables/copper/black_insulation_l"
     }
 }

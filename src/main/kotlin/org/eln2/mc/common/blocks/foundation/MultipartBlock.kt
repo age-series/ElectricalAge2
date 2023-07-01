@@ -1119,7 +1119,7 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
     }
 
     override fun neighborScan(actualCell: Cell): ArrayList<CellNeighborInfo> {
-        val partFace = actualCell.pos.descriptor.requireLocator<SO3, BlockFaceLocator>().faceWorld
+        val partFace = actualCell.pos.descriptor.requireLocator<Directional, BlockFaceLocator>().faceWorld
 
         val part = parts[partFace]!!
 
@@ -1187,13 +1187,13 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
     }
 
     override fun onCellConnected(actualCell: Cell, remoteCell: Cell) {
-        val innerFace = actualCell.pos.descriptor.requireLocator<SO3, BlockFaceLocator>().faceWorld
+        val innerFace = actualCell.pos.descriptor.requireLocator<Directional, BlockFaceLocator>().faceWorld
         val part = parts[innerFace] as PartCellContainer
         part.onConnected(remoteCell)
     }
 
     override fun onCellDisconnected(actualCell: Cell, remoteCell: Cell) {
-        val part = parts[actualCell.posDescr.requireLocator<SO3, BlockFaceLocator>().faceWorld] as PartCellContainer
+        val part = parts[actualCell.posDescr.requireLocator<Directional, BlockFaceLocator>().faceWorld] as PartCellContainer
         part.onDisconnected(remoteCell)
     }
 

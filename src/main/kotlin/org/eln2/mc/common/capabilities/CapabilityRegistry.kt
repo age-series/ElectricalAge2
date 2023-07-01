@@ -22,6 +22,7 @@ object CapabilityRegistry {
 
     private fun registerCaps(event: RegisterCapabilitiesEvent) {
         event.register(RadiationCapability::class.java)
+        event.register(CompoundContainerCapability::class.java)
 
         LOG.info("Registered capabilities")
     }

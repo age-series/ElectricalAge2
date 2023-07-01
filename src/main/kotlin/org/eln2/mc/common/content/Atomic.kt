@@ -103,7 +103,7 @@ class RadiationMeterItem : Item(Properties()) {
                     val result = readTask.get()
 
                     val doseRate = result.received.sumOf {
-                        !it.shardView.mode.quanta.evaluateAbsorbedDose(
+                        !it.shardView.mode.qu.evaluateAbsorbedDose(
                             receiverIntensity = it.intensity,
                             interval = Quantity(1.0),
                             absorber = RadiationAbsorberInfo(
@@ -118,7 +118,7 @@ class RadiationMeterItem : Item(Properties()) {
                         Component.literal(
                             "Activity: ${
                                 result.received.joinToString(" ") {
-                                    "${(it.intensity..MICROCURIES).formatted(4)} µCi ${it.shardView.mode.quanta.symbol}"
+                                    "${(it.intensity..MICROCURIES).formatted(4)} µCi ${it.shardView.mode.qu.symbol}"
                                 }
                             }, Dose rate: (${valueText((doseRate * 3600.0), UnitType.GRAY)}/h)"
                         ))

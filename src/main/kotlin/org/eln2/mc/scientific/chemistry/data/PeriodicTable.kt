@@ -1,8 +1,8 @@
-package org.eln2.mc.scientific.chemistry
+package org.eln2.mc.scientific.chemistry.data
 
-import org.ageseries.libage.data.multiMapOf
 import org.eln2.mc.associateByMulti
 import org.eln2.mc.data.*
+import org.eln2.mc.scientific.chemistry.MolecularComposition
 
 enum class ChemicalMetallicSpeciesType {
     Metal,
@@ -3495,6 +3495,8 @@ enum class ChemicalElement(
     companion object {
         val byAtomicNumber = values().associateBy { it.Z }
         val bySymbol = values().associateBy { it.symbol }
+        val bySymbol1 = values().filter { it.symbol.length == 1 }.associateBy { it.symbol }
+        val bySymbol2 = values().filter { it.symbol.length == 2 }.associateBy { it.symbol }
         val byLabel = values().associateBy { it.label }
         val byLabelLower = values().associateBy { it.label.lowercase() }
         val byNeutronCount = values().associateByMulti { it.neutrons }
@@ -3513,10 +3515,4 @@ enum class ChemicalElement(
     }
 }
 
-data class IsotopeInformation(
-    val neutrons: Int,
-)
-
-val isotopes = multiMapOf<ChemicalElement, IsotopeInformation>()
-private val mapElementSymbolElement = ChemicalElement.values().associateBy { it.symbol }
-fun getChemicalElement(symbol: String) = mapElementSymbolElement[symbol]
+fun getChemicalElement(symbol: String) = ChemicalElement.bySymbol[symbol]

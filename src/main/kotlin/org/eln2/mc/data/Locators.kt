@@ -14,11 +14,11 @@ import org.eln2.mc.mathematics.RelativeDir
 import java.util.function.Supplier
 
 interface Locator<Param>
-interface R3
-interface SO3
+interface Positional
+interface Directional
 
-data class BlockPosLocator(val pos: BlockPos) : Locator<R3>
-data class IdentityDirectionLocator(val forwardWorld: Direction) : Locator<SO3> {
+data class BlockPosLocator(val pos: BlockPos) : Locator<Positional>
+data class IdentityDirectionLocator(val forwardWorld: Direction) : Locator<Directional> {
     override fun hashCode() = forwardWorld.valueHashCode()
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -32,7 +32,7 @@ data class IdentityDirectionLocator(val forwardWorld: Direction) : Locator<SO3> 
     }
 }
 
-data class BlockFaceLocator(val faceWorld: Direction) : Locator<SO3> {
+data class BlockFaceLocator(val faceWorld: Direction) : Locator<Directional> {
     override fun hashCode() = faceWorld.valueHashCode()
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -55,14 +55,14 @@ fun classId(c: Class<*>): String = c.canonicalName
 fun locatorId(param: Class<*>, loc: Class<*>): String = "${classId(param)}: ${classId(loc)}"
 
 val paramClassNames: ImmutableBiMapView<String, Class<*>> = biMapOf(
-    classId(R3::class.java) to R3::class.java,
-    classId(SO3::class.java) to SO3::class.java
+    classId(Positional::class.java) to Positional::class.java,
+    classId(Directional::class.java) to Directional::class.java
 )
 
 val locatorClassNames: ImmutableBiMapView<String, Class<*>> = biMapOf(
-    locatorId(R3::class.java, BlockPosLocator::class.java) to BlockPosLocator::class.java,
-    locatorId(SO3::class.java, IdentityDirectionLocator::class.java) to IdentityDirectionLocator::class.java,
-    locatorId(SO3::class.java, BlockFaceLocator::class.java) to BlockFaceLocator::class.java
+    locatorId(Positional::class.java, BlockPosLocator::class.java) to BlockPosLocator::class.java,
+    locatorId(Directional::class.java, IdentityDirectionLocator::class.java) to IdentityDirectionLocator::class.java,
+    locatorId(Directional::class.java, BlockFaceLocator::class.java) to BlockFaceLocator::class.java
 )
 
 val locatorSerializers: ImmutableBiMapView<Class<*>, LocatorSerializer> = biMapOf(
@@ -92,8 +92,8 @@ val locatorSerializers: ImmutableBiMapView<Class<*>, LocatorSerializer> = biMapO
 )
 
 val locatorSetFactories: ImmutableBiMapView<Class<*>, Supplier<LocatorSet<*>>> = biMapOf(
-    R3::class.java to Supplier { LocatorSet<R3>() },
-    SO3::class.java to Supplier { LocatorSet<SO3>() }
+    Positional::class.java to Supplier { LocatorSet<Positional>() },
+    Directional::class.java to Supplier { LocatorSet<Directional>() }
 )
 
 fun getLocatorSerializer(locatorClass: Class<*>): LocatorSerializer {
@@ -347,15 +347,15 @@ inline fun <reified Param, reified Loc : Locator<Param>> LocationDescriptor.requ
 // Wrappers:
 
 fun LocationDescriptor.requireBlockPosLoc(message: (() -> Any)? = null): BlockPos =
-    this.requireLocator<R3, BlockPosLocator>(message).pos
+    this.requireLocator<Positional, BlockPosLocator>(message).pos
 
 
 fun LocationDescriptor.requireBlockFaceLoc(message: (() -> Any)? = null): Direction =
-    this.requireLocator<SO3, BlockFaceLocator>(message).faceWorld
+    this.requireLocator<Directional, BlockFaceLocator>(message).faceWorld
 
 
 fun LocationDescriptor.requireIdentityDirLoc(message: (() -> Any)? = null): Direction =
-    this.requireLocator<SO3, IdentityDirectionLocator>(message).forwardWorld
+    this.requireLocator<Directional, IdentityDirectionLocator>(message).forwardWorld
 
 fun interface ILocationRelationshipRule {
     fun acceptsRelationship(descriptor: LocationDescriptor, target: LocationDescriptor): Boolean
@@ -381,10 +381,10 @@ fun LocatorRelationRuleSet.withDirectionActualRule(mask: DirectionMask): Locator
 }
 
 fun LocationDescriptor.findDirActualOrNull(other: LocationDescriptor): RelativeDir? {
-    val actualPosWorld = this.getLocator<R3, BlockPosLocator>() ?: return null
-    val actualIdWorld = this.getLocator<SO3, IdentityDirectionLocator>() ?: return null
-    val actualFaceWorld = this.getLocator<SO3, BlockFaceLocator>() ?: return null
-    val targetPosWorld = other.getLocator<R3, BlockPosLocator>() ?: return null
+    val actualPosWorld = this.getLocator<Positional, BlockPosLocator>() ?: return null
+    val actualIdWorld = this.getLocator<Directional, IdentityDirectionLocator>() ?: return null
+    val actualFaceWorld = this.getLocator<Directional, BlockFaceLocator>() ?: return null
+    val targetPosWorld = other.getLocator<Positional, BlockPosLocator>() ?: return null
 
     return RelativeDir.fromForwardUp(
         actualIdWorld.forwardWorld,
