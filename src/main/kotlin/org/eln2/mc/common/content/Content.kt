@@ -3,17 +3,30 @@
 package org.eln2.mc.common.content
 
 import net.minecraft.client.gui.screens.MenuScreens
+import net.minecraft.client.renderer.ItemBlockRenderTypes
+import net.minecraft.client.renderer.RenderType
 import net.minecraft.world.entity.MobCategory
+import net.minecraft.world.item.BucketItem
+import net.minecraft.world.item.Item
+import net.minecraft.world.item.Items.BUCKET
+import net.minecraft.world.level.block.Blocks
+import net.minecraft.world.level.block.LiquidBlock
+import net.minecraft.world.level.block.state.BlockBehaviour
+import net.minecraft.world.level.material.FlowingFluid
 import net.minecraft.world.phys.Vec3
 import net.minecraftforge.eventbus.api.SubscribeEvent
+import net.minecraftforge.fluids.FluidType
+import net.minecraftforge.fluids.ForgeFlowingFluid
 import net.minecraftforge.fml.common.Mod
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent
+import net.minecraftforge.registries.RegistryObject
 import org.ageseries.libage.sim.Material
 import org.ageseries.libage.sim.thermal.Temperature
 import org.ageseries.libage.sim.thermal.ThermalUnits
 import org.eln2.mc.LOG
 import org.eln2.mc.client.render.PartialModels
 import org.eln2.mc.client.render.PartialModels.bbOffset
+import org.eln2.mc.client.render.foundation.McColor
 import org.eln2.mc.common.blocks.BlockRegistry.block
 import org.eln2.mc.common.blocks.BlockRegistry.blockEntity
 import org.eln2.mc.common.blocks.foundation.BasicCellBlock
@@ -23,6 +36,11 @@ import org.eln2.mc.common.cells.CellRegistry.injCell
 import org.eln2.mc.common.cells.foundation.BasicCellProvider
 import org.eln2.mc.common.containers.ContainerRegistry.menu
 import org.eln2.mc.common.entities.EntityRegistry.entity
+import org.eln2.mc.common.fluids.FluidRegistry.FLUIDS
+import org.eln2.mc.common.fluids.FluidRegistry.FLUID_TYPES
+import org.eln2.mc.common.fluids.foundation.BasicFluidType
+import org.eln2.mc.common.fluids.foundation.WATER_FLOW_TEXTURE
+import org.eln2.mc.common.fluids.foundation.WATER_SOURCE_TEXTURE
 import org.eln2.mc.common.items.ItemRegistry.item
 import org.eln2.mc.common.parts.PartRegistry
 import org.eln2.mc.common.parts.PartRegistry.part
@@ -34,6 +52,7 @@ import org.eln2.mc.data.Quantity
 import org.eln2.mc.data.withDirectionActualRule
 import org.eln2.mc.mathematics.*
 import kotlin.math.abs
+
 
 /**
  * Joint registry for content classes.
@@ -231,13 +250,29 @@ object Content {
     val RAD_TEST_METER_ITEM = item("rad_test_meter_item") { RadiationMeterItem() }
 
     val FERMENTATION_BARREL_BLOCK = block("fermentation_barrel_block") { FermentationBarrelBlock() }
-    val FERMENTATION_BARREL_BLOCK_ENTITY = blockEntity(
-        "fermentation_barrel_block_entity",
-        ::FermentationBarrelBlockEntity
-    ) { FERMENTATION_BARREL_BLOCK.block.get() }
+    val FERMENTATION_BARREL_BLOCK_ENTITY = blockEntity("fermentation_barrel_block_entity", ::FermentationBarrelBlockEntity) { FERMENTATION_BARREL_BLOCK.block.get() }
 
     val TREE_TAP_PART = part("tree_tap_part", TreeTapPartProvider())
-    val LATEX_SAP = item("latex_sap") { LatexSapItem() }
+    val LATEX_SAP_FLUID_TYPE: RegistryObject<FluidType> = FLUID_TYPES.register("latex_sap_fluid_type") {
+        BasicFluidType(
+            properties = FluidType.Properties.create().viscosity(500),
+            source = WATER_SOURCE_TEXTURE,
+            flow = WATER_FLOW_TEXTURE,
+            tint = McColor(255, 255, 255)
+        )
+    }
+    val LATEX_SAP_SOURCE_FLUID: RegistryObject<ForgeFlowingFluid.Source> = FLUIDS.register("latex_sap_fluid_source") { ForgeFlowingFluid.Source(LATEX_SAP_FLUID_PROPERTIES) }
+    val LATEX_SAP_FLOW_FLUID: RegistryObject<FlowingFluid> = FLUIDS.register("latex_sap_fluid_flow") { ForgeFlowingFluid.Flowing(LATEX_SAP_FLUID_PROPERTIES) }
+    val LATEX_SAP_BUCKET = item("latex_sap_bucket_item") {
+        BucketItem(LATEX_SAP_SOURCE_FLUID, Item.Properties().craftRemainder(BUCKET).stacksTo(1))
+    }
+    val LATEX_SAP_FLUID_BLOCK = block("latex_sap_fluid_block") { LiquidBlock({ LATEX_SAP_SOURCE_FLUID.get()}, BlockBehaviour.Properties.of(net.minecraft.world.level.material.Material.WATER))}
+    val LATEX_SAP_FLUID_PROPERTIES: ForgeFlowingFluid.Properties = ForgeFlowingFluid.Properties(LATEX_SAP_FLUID_TYPE, LATEX_SAP_SOURCE_FLUID, LATEX_SAP_FLOW_FLUID)
+        .bucket { LATEX_SAP_BUCKET.item.get() }
+        .block { LATEX_SAP_FLUID_BLOCK.block.get() as LiquidBlock }
+    val RAW_NATURAL_RUBBER = item("raw_natural_rubber_item") { RawNaturalRubberItem() }
+    val LATEX_COAGULATION_BARREL_BLOCK = block("latex_coagulation_barrel_block") { LatexCoagulationBarrelBlock() }
+    val LATEX_COAGULATION_BARREL_BLOCK_ENTITY = blockEntity("latex_coagulation_barrel_block_entity", ::LatexCoagulationBarrelBlockEntity) { LATEX_COAGULATION_BARREL_BLOCK.block.get() }
 
     @Mod.EventBusSubscriber
     object ClientSetup {
@@ -253,6 +288,8 @@ object Content {
         private fun clientWork() {
             MenuScreens.register(FURNACE_MENU.get(), ::FurnaceScreen)
             MenuScreens.register(HEAT_GENERATOR_MENU.get(), ::HeatGeneratorScreen)
+            ItemBlockRenderTypes.setRenderLayer(LATEX_SAP_SOURCE_FLUID.get(), RenderType.translucent());
+            ItemBlockRenderTypes.setRenderLayer(LATEX_SAP_FLOW_FLUID.get(), RenderType.translucent());
         }
     }
 }

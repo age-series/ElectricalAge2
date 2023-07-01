@@ -742,10 +742,10 @@ data class CellPartConnectionInfo(
 )
 
 fun solveCellPartConnection(actualCell: Cell, remoteCell: Cell): CellPartConnectionInfo {
-    val actualPosWorld = actualCell.posDescr.requireLocator<R3, BlockPosLocator>().pos
-    val remotePosWorld = remoteCell.posDescr.requireLocator<R3, BlockPosLocator>().pos
-    val actualFaceWorld = actualCell.posDescr.requireLocator<SO3, BlockFaceLocator>().faceWorld
-    val remoteFaceWorld = remoteCell.posDescr.requireLocator<SO3, BlockFaceLocator>().faceWorld
+    val actualPosWorld = actualCell.posDescr.requireLocator<Positional, BlockPosLocator>().pos
+    val remotePosWorld = remoteCell.posDescr.requireLocator<Positional, BlockPosLocator>().pos
+    val actualFaceWorld = actualCell.posDescr.requireLocator<Directional, BlockFaceLocator>().faceWorld
+    val remoteFaceWorld = remoteCell.posDescr.requireLocator<Directional, BlockFaceLocator>().faceWorld
 
     val mode: CellPartConnectionMode
 
@@ -800,7 +800,7 @@ fun solveCellPartConnection(actualCell: Cell, remoteCell: Cell): CellPartConnect
     return CellPartConnectionInfo(
         mode,
         RelativeDir.fromForwardUp(
-            actualCell.posDescr.requireLocator<SO3, IdentityDirectionLocator>().forwardWorld,
+            actualCell.posDescr.requireLocator<Directional, IdentityDirectionLocator>().forwardWorld,
             actualFaceWorld,
             dirGlobal
         )

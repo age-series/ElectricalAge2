@@ -37,8 +37,7 @@ interface ReinsertDynamicBVH<D, B : BoundingBox<B>> : DynamicBVH<D, B> {
     val totalTreeUpdates: Int
 
     val treeUpdateProbability get() = totalTreeUpdates.toDouble() / totalObjectUpdates.toDouble().coerceAtLeast(1.0)
-    val adjustedTreeUpdateProbability
-        get() = totalTreeUpdates.toDouble() / totalObjectUpdatesDistinct.toDouble().coerceAtLeast(1.0)
+    val adjustedTreeUpdateProbability get() = totalTreeUpdates.toDouble() / totalObjectUpdatesDistinct.toDouble().coerceAtLeast(1.0)
 }
 
 fun <D, B : BoundingBox<B>> BVH<D, B>.queryAll(test: BVHTest<D, B>, user: (D) -> Unit) = query(test) {

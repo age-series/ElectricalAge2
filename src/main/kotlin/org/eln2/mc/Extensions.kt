@@ -62,11 +62,13 @@ import org.eln2.mc.data.*
 import org.eln2.mc.integration.WailaTooltipBuilder
 import org.eln2.mc.mathematics.*
 import org.eln2.mc.scientific.*
-import org.eln2.mc.scientific.chemistry.ChemicalElement
-import org.eln2.mc.scientific.chemistry.MassContainer
-import org.eln2.mc.scientific.chemistry.MolecularComposition
+import org.eln2.mc.scientific.chemistry.*
+import org.eln2.mc.scientific.chemistry.data.ChemicalElement
+import org.eln2.mc.scientific.chemistry.data.getStructure
 import org.joml.Quaternionf
 import org.joml.Vector3f
+import java.io.InputStream
+import java.io.OutputStream
 import java.nio.ByteBuffer
 import java.util.*
 import kotlin.math.abs
@@ -888,26 +890,44 @@ fun CompoundTag.putMolecularComposition(id: String, c: MolecularComposition): Ta
         })
     }
 
-    return this.put(id, atoms)
+    return this.put(id, CompoundTag().apply {
+        put("elements", atoms)
+        c.label?.also {
+            putString("label", it)
+        }
+    })
 }
 
 fun CompoundTag.getMolecularComposition(id: String): MolecularComposition {
     val results = LinkedHashMap<ChemicalElement, Int>()
 
-    (this.get(id) as ListTag).forEach { t ->
+    val tag = this.getCompound(id)
+
+    (tag.get("elements") as ListTag).forEach { t ->
         val elementTag = t as CompoundTag
         results[elementTag.getElement("element")] = elementTag.getInt("count")
     }
 
-    return MolecularComposition(results)
+    return MolecularComposition(results, if(tag.contains("label")) tag.getString("label") else null)
 }
 
-fun CompoundTag.putMassContainer(id: String, c: MassContainer): Tag? {
+fun CompoundTag.putCompoundProperties(id: String, p: CompoundProperties) = this.putSubTag(id) { tag ->
+    tag.putQuantity("roStp", p.densitySTP)
+}
+
+fun CompoundTag.getCompoundProperties(id: String): CompoundProperties = this.getCompound(id).let { tag ->
+    CompoundProperties(
+        tag.getQuantity("roStp")
+    )
+}
+
+fun CompoundTag.putUMCContainer(id: String, c: MassContainer<UnstructuredMolecularCompound>): Tag? {
     val components = ListTag()
 
-    c.content.forEach { (composition, quantity) ->
+    c.content.forEach { (c, quantity) ->
         components.add(CompoundTag().also { componentTag ->
-            componentTag.putMolecularComposition("composition", composition)
+            componentTag.putMolecularComposition("composition", c.composition)
+            componentTag.putCompoundProperties("properties", c.properties)
             componentTag.putQuantity("quantity", quantity)
         })
     }
@@ -915,16 +935,48 @@ fun CompoundTag.putMassContainer(id: String, c: MassContainer): Tag? {
     return this.put(id, components)
 }
 
-fun CompoundTag.getMassContainer(id: String): MassContainer {
-    val result = MassContainer()
+fun CompoundTag.getUMCContainer(id: String): MassContainer<UnstructuredMolecularCompound> {
+    val result = MassContainer<UnstructuredMolecularCompound>()
 
     (this.get(id) as ListTag).forEach { t ->
         val componentTag = t as CompoundTag
-        result[componentTag.getMolecularComposition("composition")] = componentTag.getQuantity("quantity")
+        val compound = UnstructuredMolecularCompound(
+            componentTag.getMolecularComposition("composition"),
+            componentTag.getCompoundProperties("properties")
+        )
+
+        result[compound] = componentTag.getQuantity("quantity")
     }
 
     return result
 }
+
+fun CompoundTag.putSymContainer(id: String, c: MassContainer<StructuredMolecularCompound>): Tag? {
+    val components = ListTag()
+
+    c.content.forEach { (c, quantity) ->
+        components.add(CompoundTag().also { componentTag ->
+            componentTag.putInt("sym", c.symbol)
+            componentTag.putQuantity("quantity", quantity)
+        })
+    }
+
+    return this.put(id, components)
+}
+
+fun CompoundTag.getSymContainer(id: String): MassContainer<StructuredMolecularCompound> {
+    val result = MassContainer<StructuredMolecularCompound>()
+
+    (this.get(id) as ListTag).forEach { t ->
+        val componentTag = t as CompoundTag
+        val compound = getStructure(componentTag.getInt("sym"))
+        result[compound] = componentTag.getQuantity("quantity")
+    }
+
+    return result
+}
+
+// This thing is so useful:
 
 fun <K> MutableMap<K, Double>.addIncr(k: K, incr: Double) {
     if (!this.containsKey(k)) this[k] = incr
@@ -935,3 +987,71 @@ fun <K> MutableMap<K, Int>.addIncr(k: K, incr: Int) {
     if (!this.containsKey(k)) this[k] = incr
     else this[k] = this[k]!! + incr
 }
+
+fun OutputStream.putIntPacked(i: Int) {
+    var value = i
+    do {
+        var b = (value and 0xFF).toByte()
+        if (value >= 0x80) {
+            b = (b.toInt() or 0x80).toByte()
+        }
+        this.write(b.toInt())
+        value = value shr 7
+    } while (value > 0)
+}
+fun OutputStream.putByteArray(arr: ByteArray) {
+    this.putIntPacked(arr.size)
+    if(arr.isNotEmpty()) this.write(arr)
+}
+fun OutputStream.putString(s: String) = this.putByteArray(s.encodeToByteArray())
+fun OutputStream.putBool(b: Boolean) = this.write(if(b) 1 else 0)
+fun OutputStream.putFloat(f: Float) = this.putIntPacked(f.toBits())
+fun<T> OutputStream.putNullable(t: T?, serialize: (OutputStream, T) -> Unit) {
+    this.putBool(t != null)
+    if(t != null) {
+        serialize(this, t)
+    }
+}
+fun<T> OutputStream.putList(s: List<T>, serialize: (OutputStream, T) -> Unit) {
+    this.putIntPacked(s.size)
+    s.forEach { serialize(this, it) }
+}
+fun OutputStream.putFloatList(s: List<Float>) = this.putList(s) { o, f -> o.putFloat(f) }
+fun OutputStream.putStringList(s: List<String>) = this.putList(s) { o, f -> o.putString(f) }
+fun InputStream.getIntPacked(): Int {
+    var grissess = true
+    var lsc = 0
+    var result = 0
+
+    while (grissess) {
+        var b = this.read()
+        if (b >= 0x80) {
+            grissess = true
+            b = (b xor 0x80)
+        } else {
+            grissess = false
+        }
+        result = result or (b shl lsc)
+        lsc += 7
+    }
+
+    return result
+}
+fun InputStream.getByteArray(): ByteArray {
+    val sz = this.getIntPacked()
+    if(sz == 0) return ByteArray(0)
+    return this.readNBytes(sz)
+}
+fun InputStream.getString() = this.getByteArray().decodeToString()
+fun InputStream.getBool() = this.read() == 1
+fun InputStream.getFloat() = Float.fromBits(this.getIntPacked())
+fun<T> InputStream.getNullable(deserialize: (InputStream) -> T) =
+    if(this.getBool()) deserialize(this)
+    else null
+fun<T> InputStream.getList(deserialize: (InputStream) -> T) = this.getIntPacked().let { sz ->
+    ArrayList<T>(sz).also { list ->
+        repeat(sz) { list.add(deserialize(this)) }
+    }
+}
+fun InputStream.getFloatList() = this.getList { it.getFloat() }
+fun InputStream.getStringList() = this.getList { it.getString() }

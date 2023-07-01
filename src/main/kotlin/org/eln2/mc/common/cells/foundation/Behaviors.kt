@@ -278,7 +278,7 @@ class TemperatureExplosionBehavior(
                     return
                 }
 
-                val part = container.getPart(cell.posDescr.requireLocator<SO3, BlockFaceLocator>().faceWorld)
+                val part = container.getPart(cell.posDescr.requireLocator<Directional, BlockFaceLocator>().faceWorld)
                     ?: return
 
                 val level = (part.placement.level as ServerLevel)
@@ -315,7 +315,7 @@ fun CellBehaviorContainer.withStandardExplosionBehavior(
                 return@withExplosionBehavior
             }
 
-            val part = container.getPart(cell.posDescr.requireLocator<SO3, BlockFaceLocator>().faceWorld)
+            val part = container.getPart(cell.posDescr.requireLocator<Directional, BlockFaceLocator>().faceWorld)
                 ?: return@withExplosionBehavior
 
             val level = (part.placement.level as ServerLevel)
@@ -355,7 +355,7 @@ fun standardBehavior(cell: Cell, power: ElectricalPowerAccessor, thermal: Therma
                     return@TemperatureExplosionBehavior
                 }
 
-                val part = container.getPart(cell.posDescr.requireLocator<SO3, BlockFaceLocator>().faceWorld)
+                val part = container.getPart(cell.posDescr.requireLocator<Directional, BlockFaceLocator>().faceWorld)
                     ?: return@TemperatureExplosionBehavior
 
                 val level = (part.placement.level as ServerLevel)

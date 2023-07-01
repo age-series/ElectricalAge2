@@ -3,11 +3,14 @@
 package org.eln2.mc.data
 
 import org.ageseries.libage.sim.Scale
+import org.ageseries.libage.sim.thermal.ThermalUnits
 import org.eln2.mc.formatted
 import org.eln2.mc.map
 import org.eln2.mc.mathematics.Dual
 import org.eln2.mc.unmap
 import kotlin.math.abs
+import kotlin.math.max
+import kotlin.math.min
 
 /**
  * @param unit The unit type (eg, for amps, A)
@@ -141,6 +144,8 @@ interface ReciprocalArealDensity
 interface Density
 interface Substance
 interface Volume
+interface Temp
+interface MolarConcentration
 
 @JvmInline
 value class Quantity<Unit>(val value: Double) : Comparable<Quantity<Unit>> {
@@ -190,6 +195,8 @@ data class QuantityDual<Unit>(val values: Dual) {
     operator fun get(n: Int) = values[n]
 }
 
+fun <U> min(a: Quantity<U>, b: Quantity<U>) = Quantity<U>(min(!a, !b))
+fun <U> max(a: Quantity<U>, b: Quantity<U>) = Quantity<U>(max(!a, !b))
 fun <U> abs(q: Quantity<U>) = Quantity<U>(abs(!q))
 
 private fun <U> standard(factor: Double = 1.0, base: Double = 0.0) = QuantityScale<U>(factor, base)
@@ -203,6 +210,7 @@ val MICROSECONDS = -MILLISECONDS
 val NANOSECONDS = -MICROSECONDS
 val MINUTES = SECOND * 60.0
 val HOURS = MINUTES * 60.0
+val DAYS = HOURS * 24.0
 
 val METER = standard<Distance>()
 val CENTIMETERS = METER / 100.0
@@ -258,6 +266,7 @@ val G_PER_CM2 = KG_PER_M2 * 10.0
 
 val KG_PER_M3 = standard<Density>()
 val G_PER_CM3 = KG_PER_M3 * 1000.0
+val G_PER_L = KG_PER_M3
 
 val M2_PER_KG = standard<ReciprocalArealDensity>()
 val CM2_PER_G = M2_PER_KG / 10.0
@@ -267,9 +276,14 @@ val KM_PER_S = +M_PER_S
 
 val MOLE = standard<Substance>()
 
+val MOLE_PER_M3 = standard<MolarConcentration>()
+
 val M3 = standard<Volume>()
 val LITERS = M3 / 1000.0
 val MILLILITERS = -LITERS
+
+val KELVIN = standard<Temp>()
+val CELSIUS = QuantityScale<Temp>(ThermalUnits.CELSIUS)
 
 operator fun <U> Quantity<U>.rangeTo(other: Quantity<U>) = ClosedQuantityRange(this, other)
 
@@ -285,3 +299,35 @@ val keV by ::KILO_ELECTRON_VOLT
 val MeV by ::MEGA_ELECTRON_VOLT
 val GeV by ::GIGA_ELECTRON_VOLT
 val TeV by ::TERA_ELECTRON_VOLT
+
+fun parseTimeUnitOrNull(unit: String) = when(unit) {
+    "days" -> DAYS
+    "day" -> DAYS
+    "d" -> DAYS
+    "hours" -> HOURS
+    "hour" -> HOURS
+    "hrs" -> HOURS
+    "hr" -> HOURS
+    "h" -> HOURS
+    "minutes" -> MINUTES
+    "minute" -> MINUTES
+    "min" -> MINUTES
+    "seconds" -> SECOND
+    "second" -> SECOND
+    "sec" -> SECOND
+    "s" -> SECOND
+    else -> null
+}
+
+fun parseTimeUnit(unit: String) = parseTimeUnitOrNull(unit) ?: error("Unrecognised time unit $unit")
+
+fun parseTempUnitOrNull(unit: String) = when(unit) {
+    "celsius" -> CELSIUS
+    "°C" -> CELSIUS
+    "C" -> CELSIUS
+    "kelvin" -> KELVIN
+    "K" -> KELVIN
+    else -> null
+}
+
+fun parseTempUnit(unit: String) = parseTempUnitOrNull(unit) ?: error("Unrecognised temp unit $unit")

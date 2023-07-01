@@ -24,6 +24,7 @@ import org.eln2.mc.common.events.registerHandler
 import org.eln2.mc.data.*
 import org.eln2.mc.mathematics.*
 import org.eln2.mc.scientific.chemistry.*
+import org.eln2.mc.scientific.chemistry.data.*
 import java.math.BigDecimal
 import java.util.concurrent.*
 import java.util.concurrent.atomic.AtomicInteger
@@ -38,7 +39,7 @@ fun interface ParametricLinearAttenuationFunction<Param> {
     fun evaluate(t: Quantity<Param>): Quantity<ReciprocalDistance>
 }
 
-interface ParametricIntensityFunction<Param> {
+interface IntensityFunction<Param> {
     fun evaluateIntensityFactor(t: Quantity<Param>): Double
     fun evaluateCutoff(maximalIntensity: Double): Quantity<Param>
 }
@@ -77,27 +78,19 @@ fun massAttenuationMaterial(
     }
 }
 
-// Optimization: caching the result. Its computation is very involved. Apart from countless virtual calls, every atom samples 5 splines and allocates a bunch of intermediary storage.
-// The stone solution has 10 atoms, so you can already see why caching is a super optimization.
-// I didn't have this before. At 70K VPS, it was using up ~70% of the CPU time. With this, it uses 3.3% :Fish_Amaze:
-// At 200K VPS, it uses around 5% (which means there is some overhead associated with setting up the traversal, because the increase only happened due to larger scans / measurement)
-private val radiationCastCache =
-    ConcurrentHashMap<Triple<Int, Quantity<Density>, Quantity<Energy>>, Quantity<ReciprocalDistance>>()
+private val materialCache = ConcurrentHashMap<Triple<Int, Quantity<Density>, Quantity<Energy>>, Quantity<ReciprocalDistance>>()
 
 private fun MolecularMassMixture.radiationCast(ro: Quantity<Density>) = RadiationShieldingMaterial(ro) { e ->
-    radiationCastCache.getOrPut(Triple(this.hash, ro, e)) {
+    materialCache.getOrPut(Triple(this.hash, ro, e)) {
         computeLinearAttenuation(this, e, ro)
     }
 }
 
 private fun MolecularComposition.radiationCast(ro: Quantity<Density>) = (!this).radiationCast(ro)
-
-private fun MolecularComposition.radiationCast() = this.radiationCast(this.properties.density)
-
 private fun ChemicalElement.radiationCast() = (!!this).radiationCast(this.density)
 
 val AIR = airMix.radiationCast(Quantity(1.293, KG_PER_M3))
-val WATER = H2O.radiationCast()
+val WATER = H2O.radiationCast(Quantity(1.0, G_PER_CM3))
 val ICE = H2O.radiationCast(Quantity(0.917, G_PER_CM3))
 val CLAY = clayMix.radiationCast(Quantity(1.3, G_PER_CM3))
 val STONE = stoneMix.radiationCast(Quantity(2.6, G_PER_CM3))
@@ -113,7 +106,7 @@ val COPPER = ChemicalElement.Copper.radiationCast()
 val SAND = SiO2.radiationCast(Quantity(1.52, G_PER_CM3))
 val SODA_LIME_GLASS = sodaLimeGlassMix.radiationCast(Quantity(2.51, G_PER_CM3))
 val SODA_LIME_GLASS_SUPER_THIN = sodaLimeGlassMix.radiationCast(Quantity(0.5, G_PER_CM3))
-val OBSIDIAN = obsidianSpecimenMix.radiationCast(Quantity(2.41, G_PER_CM3))
+val OBSIDIAN = obsidianMix.radiationCast(Quantity(2.41, G_PER_CM3))
 
 val BETULA_VERRUCOSA = betulaVerrucosaMix.radiationCast(Quantity(0.552, G_PER_CM3))
 val BETULA_VERRUCOSA_HALF = betulaVerrucosaMix.radiationCast(Quantity(0.25, G_PER_CM3))
@@ -175,16 +168,12 @@ interface RadiationQuanta {
     ): Quantity<RadiationDoseEquivalent>
 }
 
-data class RadiationEmissionMode(
-    val quanta: RadiationQuanta,
-    val emitterIntensity: Quantity<Radioactivity>,
-    val intensityFunction: ParametricIntensityFunction<Distance>,
-) {
-    val upperBound = intensityFunction.evaluateCutoff(!emitterIntensity)
+data class RadiationEmissionMode(val qu: RadiationQuanta, val i: Quantity<Radioactivity>, val iFunc: IntensityFunction<Distance>, ) {
+    val upperBound = iFunc.evaluateCutoff(!i)
 }
 
 fun exponentialSphereIntensityFunction(x: Double = 2.0, threshold: Quantity<Radioactivity> = RADIATION_SYSTEM_CUTOFF) =
-    object : ParametricIntensityFunction<Distance> {
+    object : IntensityFunction<Distance> {
         override fun evaluateIntensityFactor(t: Quantity<Distance>) =
             (1.0 / (4.0 * PI * (!t).pow(x))).coerceIn(0.0, 1.0)
 
@@ -217,15 +206,15 @@ data class RadiationStep(val mode: RadiationEmissionMode, val id: Int) {
     private var receiveProbability = 1.0
 
     fun crossBlockingMedium(crossedDistance: Quantity<Distance>, crossedMedium: RadiationShieldingMaterial) {
-        receiveProbability *= mode.quanta.evaluateTransactionProbability(
+        receiveProbability *= mode.qu.evaluateTransactionProbability(
             penetrationDepth = crossedDistance,
             medium = crossedMedium
         )
     }
 
     fun evaluateEffectiveIntensity(dxReceiverSource: Quantity<Distance>) =
-        mode.emitterIntensity *
-            mode.intensityFunction.evaluateIntensityFactor(dxReceiverSource) *
+        mode.i *
+            mode.iFunc.evaluateIntensityFactor(dxReceiverSource) *
             receiveProbability
 }
 
@@ -273,11 +262,6 @@ data class RadiationFrame(
     val received: List<ReceivedRadiationInfo>,
     val version: Int,
 )
-
-// Haven't decided if it is worth pursuing charged particles.
-// We'd have to add more things (e.g. tracking the mean quantum energy in radiation steps).
-// The charged particles also interact with matter in a big way (so, normal emissions of common isotopes will be dampened out super quickly in a block world, unlike the photons we currently have)
-// Neutrons would also be nice, but, it is a lot of work to put this together (and this is a dead project!)
 
 fun electronDensity(ρ: Double, Z: Double, A: Double): BigDecimal {
     val ro = BigDecimal(ρ, CONST_CONTEXT)
@@ -645,7 +629,7 @@ object RadiationSystemEvents {
 
                         totalAbsorptionRate += Quantity(
                             intensityReadings.averageOf { intensity ->
-                                !shard.mode.quanta.evaluateAbsorbedDose(
+                                !shard.mode.qu.evaluateAbsorbedDose(
                                     receiverIntensity = intensity,
                                     interval = Quantity(1.0, SECOND),
                                     absorber = PLAYER_ABSORBER
@@ -656,7 +640,7 @@ object RadiationSystemEvents {
 
                         totalEquivalentRate += Quantity(
                             intensityReadings.averageOf { intensity ->
-                                !shard.mode.quanta.evaluateDoseEquivalent(
+                                !shard.mode.qu.evaluateDoseEquivalent(
                                     receiverIntensity = intensity,
                                     interval = Quantity(1.0, SECOND),
                                     absorber = PLAYER_ABSORBER
@@ -669,13 +653,13 @@ object RadiationSystemEvents {
                     radiationStorage.absorbedDose += totalAbsorptionRate * dt
                     radiationStorage.equivalentDose += totalEquivalentRate * dt
 
-                    println(
-                        "${
-                            valueText(!totalEquivalentRate * !Quantity(1.0, HOURS), UnitType.SIEVERT)
-                        }/h (${
-                            valueText(!radiationStorage.equivalentDose, UnitType.SIEVERT)
-                        } total)"
-                    )
+                    //println(
+                    //    "${
+                    //        valueText(!totalEquivalentRate * !Quantity(1.0, HOURS), UnitType.SIEVERT)
+                    //    }/h (${
+                    //        valueText(!radiationStorage.equivalentDose, UnitType.SIEVERT)
+                    //    } total)"
+                    //)
                 }
             }
         }
@@ -1079,9 +1063,9 @@ class VoxelDDAThreadedRadiationSystem(val level: ServerLevel) : RadiationSystem 
         val timeSpent = Quantity(timeSpentFrame.getAndSet(0).toDouble(), NANOSECONDS)
         val tests = testsFrame.getAndSet(0)
 
-        println("Time spent: ${(timeSpent / dt).formattedPercentN()}")
-        println("VPS: ${(traversed.toDouble() / !dt).formatted()}")
-        println("TPS: ${(tests.toDouble() / !dt).formatted()}")
+        //println("Time spent: ${(timeSpent / dt).formattedPercentN()}")
+        //println("VPS: ${(traversed.toDouble() / !dt).formatted()}")
+        //println("TPS: ${(tests.toDouble() / !dt).formatted()}")
     }
 
     fun serverStop() {

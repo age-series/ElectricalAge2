@@ -20,16 +20,11 @@ data class SegmentRange(val start: Double, val end: Double) {
  * The [SegmentTreeNode] encompasses a [SegmentRange], may have an associated [data] value (if it is a leaf node), and may have two children nodes.
  * @param range The value range of this node.
  * @param data The data value associated with this node.
- * @param left The left child of this node. Its [SegmentTreeNode.range]'s lower boundary will be equal to this node's lower boundary.
- * @param right The right child of this node. Its [SegmentTreeNode.range]'s upper boundary will be equal to this node's upper boundary.
+ * @param l The left child of this node. Its [SegmentTreeNode.range]'s lower boundary will be equal to this node's lower boundary.
+ * @param r The right child of this node. Its [SegmentTreeNode.range]'s upper boundary will be equal to this node's upper boundary.
  * Continuity of the ranges is not verified here.
  * */
-data class SegmentTreeNode<T>(
-    val range: SegmentRange,
-    val data: T?,
-    private val left: SegmentTreeNode<T>?,
-    private val right: SegmentTreeNode<T>?,
-) {
+data class SegmentTreeNode<T>(val range: SegmentRange, val data: T?, private val l: SegmentTreeNode<T>?, private val r: SegmentTreeNode<T>?, ) {
     constructor(range: SegmentRange, segment: T?) : this(range, segment, null, null)
 
     /**
@@ -49,8 +44,8 @@ data class SegmentTreeNode<T>(
             error("Segment $range doesn't have $point")
         }
 
-        val left = left
-        val right = right
+        val left = l
+        val right = r
 
         if (left != null && left.contains(point)) {
             return left.query(point)
@@ -64,9 +59,6 @@ data class SegmentTreeNode<T>(
     }
 }
 
-/**
- * The [SegmentTree] wraps a root [SegmentTreeNode] and offers [query] functions.
- * */
 class SegmentTree<T>(private val root: SegmentTreeNode<T>) {
     fun queryOrNull(point: Double): T? {
         if (!root.contains(point)) {
@@ -142,8 +134,8 @@ class SegmentTreeBuilder<TSegment> {
         return SegmentTreeNode(
             SegmentRange(pending[leftIndex].range.start, pending[rightIndex].range.end),
             data = null,
-            left = buildSegment(leftIndex, mid),
-            right = buildSegment(mid + 1, rightIndex)
+            l = buildSegment(leftIndex, mid),
+            r = buildSegment(mid + 1, rightIndex)
         )
     }
 }

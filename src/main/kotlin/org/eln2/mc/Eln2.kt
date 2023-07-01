@@ -19,11 +19,14 @@ import org.eln2.mc.common.cells.CellRegistry
 import org.eln2.mc.common.containers.ContainerRegistry
 import org.eln2.mc.common.content.Content
 import org.eln2.mc.common.entities.EntityRegistry
+import org.eln2.mc.common.fluids.FluidRegistry
 import org.eln2.mc.common.items.ItemRegistry
 import org.eln2.mc.common.network.Networking
 import org.eln2.mc.common.parts.PartRegistry
 import java.io.InputStream
 import java.nio.charset.Charset
+import java.nio.file.Files
+import kotlin.io.path.Path
 
 val LOG: Logger = LogManager.getLogger()
 const val MODID = "eln2"
@@ -37,6 +40,7 @@ class Eln2 {
         EntityRegistry.setup(modEventBus)
         ItemRegistry.setup(modEventBus)
         ContainerRegistry.setup(modEventBus)
+        FluidRegistry.setup(modEventBus)
 
         if (Dist.CLIENT == FMLEnvironment.dist) {
             // Client-side setup
@@ -74,5 +78,15 @@ fun getResource(location: ResourceLocation): Resource =
     Minecraft.getInstance().resourceManager.getResource(location).orElseThrow()
 
 fun getResourceStream(location: ResourceLocation): InputStream = getResource(location).open()
+fun getResourceBinary(location: ResourceLocation) = getResourceStream(location).readAllBytes()
 fun getResourceString(location: ResourceLocation): String =
     getResourceStream(location).readAllBytes().toString(Charset.defaultCharset())
+
+val GAME = false
+
+fun getResourceStringHelper(s: String) =
+    if (GAME) getResourceString(resource(s))
+    else Files.readString(Path("./src/main/resources/assets/eln2/$s"))
+fun getResourceBinaryHelper(s: String) =
+    if (GAME) getResourceBinary(resource(s))
+    else Files.readAllBytes(Path("./src/main/resources/assets/eln2/$s"))

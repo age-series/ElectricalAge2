@@ -77,7 +77,7 @@ class ElectricalWireObject(cell: Cell) : ElectricalObject(cell) {
         resistors.process { a ->
             resistors.process { b ->
                 if (a != b) {
-                    a.connect(CellConvention.INTERNAL_PIN, b, CellConvention.INTERNAL_PIN)
+                    a.connect(INTERNAL_PIN, b, INTERNAL_PIN)
                 }
             }
         }
@@ -183,7 +183,7 @@ class WireCell(ci: CellCreateInfo, val model: WireModel) : Cell(ci) {
         } else null
 
     @Behavior
-    val electricalBehaviorObj =
+    val electricalBehavior =
         if (model.isElectrical)
             activate<ElectricalPowerConverterBehavior>() * activate<ElectricalHeatTransferBehavior>(thermalWireObj.body)
         else null
@@ -371,7 +371,7 @@ class WirePart(
             Connection(
                 connectionInfo.actualDirActualPlr,
                 connectionInfo.mode,
-                remoteCell.posDescr.requireLocator<R3, BlockPosLocator>().pos
+                remoteCell.posDescr.requireLocator<Positional, BlockPosLocator>().pos
             )
         )
 
@@ -380,7 +380,7 @@ class WirePart(
 
     override fun onDisconnected(remoteCell: Cell) {
         connectionsChanged = true
-        connectedDirections.removeIf { it.remotePosWorld == remoteCell.posDescr.requireLocator<R3, BlockPosLocator>().pos }
+        connectedDirections.removeIf { it.remotePosWorld == remoteCell.posDescr.requireLocator<Positional, BlockPosLocator>().pos }
         syncAndSave()
     }
 

@@ -14,6 +14,11 @@ import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
 
+// I dislike this whole idea.
+// It is the most raggedy system we currently have.
+// I think I'll replace it with a classical pipe system, similar to the other modded pipes (but still running as a simulation)
+// This is why I didn't invest time to transition it to the new grid we built in Grid.kt
+
 class VoxelPatchModule(val size: Int) {
     val innerCells = HashSet<Vector3di>()
 

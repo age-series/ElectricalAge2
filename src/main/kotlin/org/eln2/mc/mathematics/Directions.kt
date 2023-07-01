@@ -39,13 +39,6 @@ enum class RelativeDir(val id: Int) {
     val isVertical get() = this == Up || this == Down
 
     companion object {
-        /**
-         * Computes the Relative Rotation Direction from a global direction.
-         * @param facing The forward direction of the object.
-         * @param normal The up direction of the object.
-         * @param direction The global direction.
-         * @return The global direction, mapped to the relative direction, in the object's frame.
-         * */
         fun fromForwardUp(facing: Direction, normal: Direction, direction: Direction): RelativeDir {
             if (facing.isVertical()) {
                 error("Facing cannot be vertical")
@@ -93,12 +86,6 @@ enum class RelativeDir(val id: Int) {
     }
 }
 
-/**
- * The Direction Mask is used to manipulate up to 6 directions at the same time.
- *  - The Directions are stored in a Bit Mask.
- *  - All important operations are fully cached.
- *  - Support for *RelativeRotationDirection* and Minecraft *Direction*
- * */
 @JvmInline
 value class DirectionMask(val mask: Int) {
     companion object {
@@ -285,99 +272,25 @@ value class DirectionMask(val mask: Int) {
      * */
     val index get() = mask
 
-    /**
-     * Computes a mask that contains the horizontal components of this mask.
-     * This computation uses a single AND, so it is quite cheap.
-     * */
     val horizontalComponent get() = DirectionMask(mask and HORIZONTALS.mask)
-
-    /**
-     * Computes a mask that contains the vertical components of this mask.
-     * This computation uses a single AND, so it is quite cheap.
-     * */
     val verticalComponent get() = DirectionMask(mask and VERTICALS.mask)
-
-    //#region Checks
-
-    /**
-     * @return True if this mask is empty (no directions are stored in it). Otherwise, false.
-     * */
     val isEmpty get() = (mask == 0)
-
-    /**
-     * @return True if this mask has any directions stored in it. Otherwise, false.
-     * */
     val isNotEmpty get() = !isEmpty
+    fun hasFlag(direction: Direction) = (mask and getBit(direction)) > 0
+    fun hasFlag(direction: RelativeDir) = hasFlag(direction.alias)
+    fun hasAll(flags: DirectionMask) = (mask and flags.mask) == flags.mask
+    fun hasAny(flags: DirectionMask) = (mask and flags.mask) > 0
 
-    /**
-     * @return True if this mask has the specified direction stored in it. Otherwise, false.
-     * */
-    fun hasFlag(direction: Direction): Boolean {
-        return (mask and getBit(direction)) > 0
-    }
-
-    /**
-     * @return True if this mask has the specified direction stored in it. Otherwise, false.
-     * */
-    fun hasFlag(direction: RelativeDir): Boolean {
-        return hasFlag(direction.alias)
-    }
-
-    /**
-     * Checks if this mask contains all the directions in the specified mask.
-     * *This is not a check for equality!*
-     *
-     * @return True, if this mask contains all directions specified in the parameter. Otherwise, false.
-     * */
-    fun hasFlags(flags: DirectionMask): Boolean {
-        return (mask and flags.mask) == flags.mask
-    }
-
-    /**
-     * Checks if this mask contains any of the directions in the specified mask.
-     *
-     * @return True, if this mask contains at least one of the directions in the specified mask. Otherwise, false. Also, Empty masks will always return false.
-     * */
-    fun hasAnyFlags(flags: DirectionMask): Boolean {
-        return (mask and flags.mask) > 0
-    }
-
-    infix fun has(direction: Direction): Boolean {
-        return hasFlag(direction)
-    }
-
-    infix fun has(direction: RelativeDir): Boolean {
-        return hasFlag(direction)
-    }
-
-    infix fun has(flags: DirectionMask): Boolean {
-        return hasFlags(flags)
-    }
+    infix fun has(direction: Direction) = hasFlag(direction)
+    infix fun has(direction: RelativeDir) = hasFlag(direction)
+    infix fun has(flags: DirectionMask) = hasAll(flags)
 
     //#endregion
 
-    //#region Inlined checks
-
-    /**
-     * Checks if this mask contains any vertical directions.
-     * */
-    val hasVerticals get() = hasAnyFlags(VERTICALS)
-
-    /**
-     * Checks if this mask contains any horizontal directions.
-     * */
-    val hasHorizontals get() = hasAnyFlags(HORIZONTALS)
-
-    /**
-     * Checks if this mask contains **only** vertical directions. Empty masks will return false.
-     * */
+    val hasVerticals get() = hasAny(VERTICALS)
+    val hasHorizontals get() = hasAny(HORIZONTALS)
     val isVertical get() = hasVerticals && !hasHorizontals
-
-    /**
-     * Checks if this mask contains **only** horizontal directions. Empty masks will return false.
-     * */
     val isHorizontal get() = hasHorizontals && !hasVerticals
-
     val hasDown get() = hasFlag(Direction.DOWN)
     val hasUp get() = hasFlag(Direction.UP)
     val hasNorth get() = hasFlag(Direction.NORTH)
@@ -388,8 +301,6 @@ value class DirectionMask(val mask: Int) {
     val hasLeft get() = hasFlag(RelativeDir.Left)
     val hasEast get() = hasFlag(Direction.EAST)
     val hasRight get() = hasFlag(RelativeDir.Right)
-
-    //#endregion
 
     /**
      * Gets the cached list of directions in this mask.
@@ -536,37 +447,10 @@ value class DirectionMask(val mask: Int) {
         }
     }
 
-    /**
-     * Gets the number of directions in this mask, using a bit operation.
-     * @see Int.countOneBits
-     * */
     val count get() = mask.countOneBits()
 
-    /**
-     * Combines the directions of the two masks into one mask.
-     * */
-    operator fun plus(other: DirectionMask): DirectionMask {
-        return DirectionMask(this.mask or other.mask)
-    }
-
-    /**
-     * Combines the directions of the two masks into one mask.
-     * */
-    operator fun plus(direction: Direction): DirectionMask {
-        return DirectionMask(this.mask or getBit(direction))
-    }
-
-    /**
-     * Creates a mask without the specified directions.
-     * */
-    operator fun minus(direction: Direction): DirectionMask {
-        return DirectionMask(this.mask and getBit(direction).inv())
-    }
-
-    /**
-     * Creates a mask without the specified directions.
-     * */
-    operator fun minus(mask: DirectionMask): DirectionMask {
-        return DirectionMask(this.mask and mask.mask.inv())
-    }
+    operator fun plus(other: DirectionMask) = DirectionMask(this.mask or other.mask)
+    operator fun plus(direction: Direction) = DirectionMask(this.mask or getBit(direction))
+    operator fun minus(direction: Direction) = DirectionMask(this.mask and getBit(direction).inv())
+    operator fun minus(mask: DirectionMask) = DirectionMask(this.mask and mask.mask.inv())
 }
