@@ -1,4 +1,4 @@
-import org.eln2.mc.common.cells.foundation.SubscriberCollection
+import org.eln2.mc.common.cells.foundation.SubscriberPool
 import org.eln2.mc.common.cells.foundation.SubscriberOptions
 import org.eln2.mc.common.cells.foundation.SubscriberPhase
 import org.junit.jupiter.api.Test
@@ -7,7 +7,7 @@ import org.junit.jupiter.api.fail
 class SubscriberPoolTests {
     @Test
     fun testIntervalAddRemove(){
-        val collection = SubscriberCollection()
+        val collection = SubscriberPool()
 
         val instantParams = SubscriberOptions(0, SubscriberPhase.Pre)
         val slowParams = SubscriberOptions(10, SubscriberPhase.Pre)

@@ -1,13 +1,13 @@
 import net.minecraft.core.Direction
-import org.eln2.mc.common.space.DirectionMask
-import org.eln2.mc.common.space.RelativeDirection
-import org.eln2.mc.extensions.isHorizontal
+import org.eln2.mc.mathematics.DirectionMask
+import org.eln2.mc.mathematics.Base6Direction3d
+import org.eln2.mc.isHorizontal
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.fail
 
 class DirectionMaskTests {
-    private val horizontalDirectionList = RelativeDirection.values().filter { it.isHorizontal }
-    private val verticalDirectionList = RelativeDirection.values().filter { it.isVertical }
+    private val horizontalDirectionList = Base6Direction3d.values().filter { it.isHorizontal }
+    private val verticalDirectionList = Base6Direction3d.values().filter { it.isVertical }
 
     private val horizontalsMask = DirectionMask.ofRelatives(horizontalDirectionList)
     private val verticalsMask = DirectionMask.ofRelatives(verticalDirectionList)

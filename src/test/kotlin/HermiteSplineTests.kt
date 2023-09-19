@@ -1,11 +1,11 @@
+import org.eln2.mc.mathematics.InterpolatorBuilder
 import org.eln2.mc.mathematics.approxEq
-import org.eln2.mc.mathematics.hermiteMappedCubic
 import org.junit.jupiter.api.Test
 
 class HermiteSplineTests {
     @Test
     fun testInterpolation() {
-        val builder = hermiteMappedCubic()
+        val builder = InterpolatorBuilder()
 
         val points = ArrayList<Pair<Double, Double>>().also {
             for (i in 0..1000) {
@@ -13,14 +13,12 @@ class HermiteSplineTests {
             }
         }
 
-        points.forEach { builder.point(it.first, it.second) }
+        points.forEach { builder.with(it.first, it.second) }
 
-        val spline1 = builder.buildHermite()
-        val spline2 = builder.buildHermite2()
+        val spline1 = builder.buildCubic()
 
         points.forEach { (k, v) ->
             assert(spline1.evaluate(k) approxEq v)
-            assert(spline1.evaluate(k) == spline2.evaluate(k))
         }
     }
 }

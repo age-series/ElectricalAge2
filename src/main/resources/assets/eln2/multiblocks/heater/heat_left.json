@@ -1,0 +1,212 @@
+{
+    "blocks": [
+        {
+            "p": {
+                "x": 0,
+                "y": -1,
+                "z": -1
+            },
+            "id": "minecraft:bricks"
+        },
+        {
+            "p": {
+                "x": 0,
+                "y": -1,
+                "z": 0
+            },
+            "id": "minecraft:bricks"
+        },
+        {
+            "p": {
+                "x": 1,
+                "y": -1,
+                "z": -1
+            },
+            "id": "minecraft:bricks"
+        },
+        {
+            "p": {
+                "x": 0,
+                "y": -1,
+                "z": 1
+            },
+            "id": "minecraft:bricks"
+        },
+        {
+            "p": {
+                "x": 1,
+                "y": -1,
+                "z": 0
+            },
+            "id": "minecraft:bricks"
+        },
+        {
+            "p": {
+                "x": 0,
+                "y": 1,
+                "z": -1
+            },
+            "id": "minecraft:bricks"
+        },
+        {
+            "p": {
+                "x": 2,
+                "y": -1,
+                "z": -1
+            },
+            "id": "minecraft:bricks"
+        },
+        {
+            "p": {
+                "x": 0,
+                "y": 1,
+                "z": 0
+            },
+            "id": "minecraft:bricks"
+        },
+        {
+            "p": {
+                "x": 1,
+                "y": -1,
+                "z": 1
+            },
+            "id": "minecraft:bricks"
+        },
+        {
+            "p": {
+                "x": 2,
+                "y": -1,
+                "z": 0
+            },
+            "id": "minecraft:bricks"
+        },
+        {
+            "p": {
+                "x": 1,
+                "y": 1,
+                "z": -1
+            },
+            "id": "minecraft:bricks"
+        },
+        {
+            "p": {
+                "x": 0,
+                "y": 1,
+                "z": 1
+            },
+            "id": "minecraft:bricks"
+        },
+        {
+            "p": {
+                "x": 1,
+                "y": 1,
+                "z": 0
+            },
+            "id": "minecraft:bricks"
+        },
+        {
+            "p": {
+                "x": 2,
+                "y": -1,
+                "z": 1
+            },
+            "id": "minecraft:bricks"
+        },
+        {
+            "p": {
+                "x": 2,
+                "y": 1,
+                "z": -1
+            },
+            "id": "minecraft:bricks"
+        },
+        {
+            "p": {
+                "x": 1,
+                "y": 1,
+                "z": 1
+            },
+            "id": "minecraft:bricks"
+        },
+        {
+            "p": {
+                "x": 2,
+                "y": 1,
+                "z": 0
+            },
+            "id": "minecraft:bricks"
+        },
+        {
+            "p": {
+                "x": 2,
+                "y": 1,
+                "z": 1
+            },
+            "id": "minecraft:bricks"
+        },
+        {
+            "p": {
+                "x": 0,
+                "y": 0,
+                "z": -1
+            },
+            "id": "minecraft:bricks"
+        },
+        {
+            "p": {
+                "x": 1,
+                "y": 0,
+                "z": -1
+            },
+            "id": "eln2:heater_heat_port_block"
+        },
+        {
+            "p": {
+                "x": 0,
+                "y": 0,
+                "z": 1
+            },
+            "id": "minecraft:bricks"
+        },
+        {
+            "p": {
+                "x": 1,
+                "y": 0,
+                "z": 0
+            },
+            "id": "minecraft:coal_block"
+        },
+        {
+            "p": {
+                "x": 2,
+                "y": 0,
+                "z": -1
+            },
+            "id": "minecraft:bricks"
+        },
+        {
+            "p": {
+                "x": 1,
+                "y": 0,
+                "z": 1
+            },
+            "id": "eln2:heater_power_port_block"
+        },
+        {
+            "p": {
+                "x": 2,
+                "y": 0,
+                "z": 0
+            },
+            "id": "minecraft:bricks"
+        },
+        {
+            "p": {
+                "x": 2,
+                "y": 0,
+                "z": 1
+            },
+            "id": "minecraft:bricks"
+        }
+    ]
+}
