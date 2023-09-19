@@ -1,7 +1,15 @@
 package org.eln2.mc
 
 import net.minecraft.core.BlockPos
+import net.minecraft.sounds.SoundEvent
+import net.minecraft.sounds.SoundEvents
+import net.minecraft.sounds.SoundSource
+import net.minecraft.world.InteractionHand
 import net.minecraft.world.entity.LivingEntity
+import net.minecraft.world.entity.player.Player
+import net.minecraft.world.item.Item
+import net.minecraft.world.item.ItemStack
+import net.minecraft.world.item.ItemUtils
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.entity.BlockEntityTicker
@@ -246,4 +254,25 @@ fun loadCsvGrid2(name: String): MappedGridInterpolator {
     }
 
     return MappedGridInterpolator(grid.interpolator(), listOf(xMapping, yMapping))
+}
+
+fun prepareBucket(
+    bucketStack: ItemStack,
+    target: Item,
+    player: Player,
+    hand: InteractionHand,
+    pos: BlockPos,
+    sound: SoundEvent = SoundEvents.BUCKET_FILL,
+    source: SoundSource = SoundSource.BLOCKS,
+) {
+    player.setItemInHand(
+        hand,
+        ItemUtils.createFilledResult(
+            bucketStack,
+            player,
+            ItemStack(target, 1)
+        )
+    )
+
+    player.level.playSound(null, pos, sound, source, 1.0F, 1.0F);
 }

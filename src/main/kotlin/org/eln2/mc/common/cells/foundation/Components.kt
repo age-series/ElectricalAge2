@@ -4,7 +4,10 @@ import org.ageseries.libage.sim.electrical.mna.Circuit
 import org.ageseries.libage.sim.electrical.mna.component.Component
 import org.ageseries.libage.sim.electrical.mna.component.Resistor
 import org.eln2.mc.connect
-import org.eln2.mc.data.*
+import org.eln2.mc.data.BlockLocator
+import org.eln2.mc.data.FaceLocator
+import org.eln2.mc.data.FacingLocator
+import org.eln2.mc.data.requireLocator
 import kotlin.math.abs
 
 class ComponentHolder<T : Component>(private val factory: () -> T) {
@@ -125,9 +128,9 @@ class ComponentHolder<T : Component>(private val factory: () -> T) {
  * */
 class ResistorBundle(var resistance: Double, obj: ElectricalObject) {
     init {
-        obj.cell.pos.descriptor.requireLocator<Positional, BlockPosLocator>()
-        obj.cell.pos.descriptor.requireLocator<Directional, IdentityDirectionLocator>()
-        obj.cell.pos.descriptor.requireLocator<Directional, BlockFaceLocator>()
+        obj.cell.pos.requireLocator<BlockLocator>()
+        obj.cell.pos.requireLocator<FacingLocator>()
+        obj.cell.pos.requireLocator<FaceLocator>()
     }
 
     private val resistors = HashMap<ElectricalObject, Resistor>()

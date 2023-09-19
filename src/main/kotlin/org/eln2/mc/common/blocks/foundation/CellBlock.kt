@@ -113,6 +113,8 @@ open class CellBlockEntity(pos: BlockPos, state: BlockState, targetType: BlockEn
     DataEntity {
     constructor(pos: BlockPos, state: BlockState) : this(pos, state, BlockRegistry.CELL_BLOCK_ENTITY.get())
 
+    final override val dataNode: DataNode = DataNode()
+
     open val cellFace = Direction.UP
 
     private lateinit var graphManager: CellGraphManager
@@ -274,13 +276,10 @@ open class CellBlockEntity(pos: BlockPos, state: BlockState, targetType: BlockEn
 
     //#endregion
 
-    private fun getCellPos(): CellPos {
-        return CellPos(
-            LocationDescriptor()
-                .withLocator(BlockPosLocator(blockPos))
-                .withLocator(BlockFaceLocator(cellFace))
-                .withLocator(IdentityDirectionLocator(blockState.getValue(HorizontalDirectionalBlock.FACING)))
-        )
+    private fun getCellPos() = LocatorSet().apply {
+        withLocator(blockPos)
+        withLocator(cellFace)
+        withLocator(FacingLocator(blockState.getValue(HorizontalDirectionalBlock.FACING)))
     }
 
     override fun getCells(): ArrayList<Cell> {
@@ -317,13 +316,11 @@ open class CellBlockEntity(pos: BlockPos, state: BlockState, targetType: BlockEn
     override val manager: CellGraphManager
         get() = CellGraphManager.getFor(serverLevel)
 
-    override fun appendBody(builder: WailaTooltipBuilder, config: IPluginConfig?) {
+    override fun appendWaila(builder: WailaTooltipBuilder, config: IPluginConfig?) {
         val cell = this.cell
 
         if (cell is WailaEntity) {
-            cell.appendBody(builder, config)
+            cell.appendWaila(builder, config)
         }
     }
-
-    override val dataNode: DataNode = DataNode()
 }

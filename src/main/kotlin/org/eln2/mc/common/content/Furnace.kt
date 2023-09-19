@@ -111,8 +111,8 @@ data class FurnaceOptions(
 
 class FurnaceCell(
     ci: CellCreateInfo,
-    val dir1: RelativeDir = RelativeDir.Left,
-    val dir2: RelativeDir = RelativeDir.Right,
+    val dir1: Base6Direction3d = Base6Direction3d.Left,
+    val dir2: Base6Direction3d = Base6Direction3d.Right,
 ) : Cell(ci) {
     companion object {
         private const val OPTIONS = "options"
@@ -322,11 +322,11 @@ class FurnaceCell(
         applyControlSignal()
     }
 
-    override fun appendBody(builder: WailaTooltipBuilder, config: IPluginConfig?) {
-        resistorHeatBody.appendBody(builder, config)
-        knownSmeltingBody?.appendBody(builder, config)
+    override fun appendWaila(builder: WailaTooltipBuilder, config: IPluginConfig?) {
+        resistorHeatBody.appendWaila(builder, config)
+        knownSmeltingBody?.appendWaila(builder, config)
 
-        super.appendBody(builder, config)
+        super.appendWaila(builder, config)
     }
 }
 
@@ -431,7 +431,7 @@ class FurnaceBlockEntity(pos: BlockPos, state: BlockState) :
         val resistorTemperatureProgress: Double
             get() =
                 (resistorTemperature.toDouble() / resistorTargetTemperature.toDouble())
-                    .coerceIn(0.0, 1.0).definedOrZero()
+                    .coerceIn(0.0, 1.0).defined()
 
         var bodyTemperature: Int
             get() = this.get(BODY_TEMPERATURE)
@@ -448,7 +448,7 @@ class FurnaceBlockEntity(pos: BlockPos, state: BlockState) :
         val bodyTemperatureProgress: Double
             get() =
                 (bodyTemperature.toDouble() / bodyTargetTemperature.toDouble())
-                    .coerceIn(0.0, 1.0).definedOrZero()
+                    .coerceIn(0.0, 1.0).defined()
 
         var smeltProgress: Double
             get() = unmapNormalizedDoubleShort(this.get(SMELT_PROGRESS))

@@ -38,7 +38,7 @@ class ThermalRadiatorCell(ci: CellCreateInfo, val model: RadiatorModel) : Cell(c
     }
 
     init {
-        behaviorContainer.withStandardExplosionBehavior(
+        behaviors.withStandardExplosionBehavior(
             this,
             model.destructionTemperature
         ) { thermalWireObj.body.tempK }

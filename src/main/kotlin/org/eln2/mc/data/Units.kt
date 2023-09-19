@@ -7,6 +7,7 @@ import org.ageseries.libage.sim.thermal.ThermalUnits
 import org.eln2.mc.formatted
 import org.eln2.mc.map
 import org.eln2.mc.mathematics.Dual
+import org.eln2.mc.mathematics.approxEq
 import org.eln2.mc.unmap
 import kotlin.math.abs
 import kotlin.math.max
@@ -130,6 +131,7 @@ data class QuantityScale<Unit>(val scale: Scale) {
 }
 
 interface Mass
+interface MolecularWeight
 interface Time
 interface Distance
 interface Velocity
@@ -143,13 +145,21 @@ interface ReciprocalDistance
 interface ReciprocalArealDensity
 interface Density
 interface Substance
+interface Area
 interface Volume
 interface Temp
 interface MolarConcentration
+interface SpecificHeatCapacity
+interface HeatCapacity
+interface ThermalConductivity
+interface Pressure
 
 @JvmInline
 value class Quantity<Unit>(val value: Double) : Comparable<Quantity<Unit>> {
     constructor(quantity: Double, s: QuantityScale<Unit>) : this(s.scale.unmap(quantity))
+
+    val isZero get() = value == 0.0
+    val isApproxZero get() = value approxEq 0.0
 
     operator fun not() = value
     operator fun unaryMinus() = Quantity<Unit>(-value)
@@ -278,12 +288,29 @@ val MOLE = standard<Substance>()
 
 val MOLE_PER_M3 = standard<MolarConcentration>()
 
+val M2 = standard<Area>()
+
 val M3 = standard<Volume>()
 val LITERS = M3 / 1000.0
 val MILLILITERS = -LITERS
 
 val KELVIN = standard<Temp>()
 val CELSIUS = QuantityScale<Temp>(ThermalUnits.CELSIUS)
+
+val J_PER_KG_K = standard<SpecificHeatCapacity>()
+val J_PER_G_K = +J_PER_KG_K
+val KJ_PER_KG_K = +J_PER_KG_K
+
+val J_PER_K = standard<HeatCapacity>()
+
+val W_PER_M_K = standard<ThermalConductivity>()
+val mW_PER_M_K = -W_PER_M_K
+
+val KG_PER_MOLE = standard<MolecularWeight>()
+val G_PER_MOLE = -KG_PER_MOLE
+
+val PASCAL = standard<Pressure>()
+val ATMOSPHERES = PASCAL * 9.86923e-6
 
 operator fun <U> Quantity<U>.rangeTo(other: Quantity<U>) = ClosedQuantityRange(this, other)
 
@@ -294,13 +321,17 @@ data class ClosedQuantityRange<T>(override val start: Quantity<T>, override val 
     override fun isEmpty(): Boolean = valueRange.isEmpty()
 }
 
+val KG by ::KILOGRAMS
 val eV by ::ELECTRON_VOLT
 val keV by ::KILO_ELECTRON_VOLT
 val MeV by ::MEGA_ELECTRON_VOLT
 val GeV by ::GIGA_ELECTRON_VOLT
 val TeV by ::TERA_ELECTRON_VOLT
 
-fun parseTimeUnitOrNull(unit: String) = when(unit) {
+val Pa by ::PASCAL
+val Atm by ::ATMOSPHERES
+
+fun parseTimeUnitOrNull(unit: String) = when (unit) {
     "days" -> DAYS
     "day" -> DAYS
     "d" -> DAYS
@@ -321,7 +352,7 @@ fun parseTimeUnitOrNull(unit: String) = when(unit) {
 
 fun parseTimeUnit(unit: String) = parseTimeUnitOrNull(unit) ?: error("Unrecognised time unit $unit")
 
-fun parseTempUnitOrNull(unit: String) = when(unit) {
+fun parseTempUnitOrNull(unit: String) = when (unit) {
     "celsius" -> CELSIUS
     "°C" -> CELSIUS
     "C" -> CELSIUS

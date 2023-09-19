@@ -207,7 +207,7 @@ class MultipartBlockEntityInstance(val materialManager: MaterialManager, blockEn
      * */
     private fun handlePartUpdates() {
         while (true) {
-            val update = blockEntity.renderQueue.poll() ?: break
+            val update = blockEntity.renderUpdates.poll() ?: break
             val part = update.part
 
             when (update.type) {

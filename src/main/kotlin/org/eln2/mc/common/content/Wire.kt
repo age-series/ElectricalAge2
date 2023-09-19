@@ -27,7 +27,6 @@ import org.eln2.mc.common.parts.foundation.*
 import org.eln2.mc.data.*
 import org.eln2.mc.integration.WailaEntity
 import org.eln2.mc.mathematics.*
-import org.eln2.mc.scientific.*
 import org.joml.AxisAngle4f
 import org.joml.Quaternionf
 import org.joml.Vector3f
@@ -101,7 +100,7 @@ class ThermalWireObject(cell: Cell, def: ThermalBodyDef) : ThermalObject(cell), 
 
     var body = def.create().also { b ->
         if (def.energy == null) {
-            cell.envFldMap.read<EnvTemperatureField>()?.readTemperature()?.also {
+            cell.environmentData.get<EnvTemperatureField>()?.readTemperature()?.also {
                 b.temp = it
             }
         }
@@ -114,15 +113,16 @@ class ThermalWireObject(cell: Cell, def: ThermalBodyDef) : ThermalObject(cell), 
     override fun addComponents(simulator: Simulator) {
         simulator.add(body)
 
-        cell.envFldMap.readAll2<EnvTemperatureField, EnvThermalConductivityField>()?.also { (tempField, condField) ->
-            simulator.connect(
-                body,
-                EnvironmentInformation(
-                    tempField.readTemperature(),
-                    condField.readConductivity()
+        cell.environmentData.getPair<EnvTemperatureField, EnvThermalConductivityField>()
+            ?.also { (tempField, condField) ->
+                simulator.connect(
+                    body,
+                    EnvironmentInformation(
+                        tempField.readTemperature(),
+                        condField.readConductivity()
+                    )
                 )
-            )
-        }
+            }
     }
 
     override fun save(): CompoundTag {
@@ -155,18 +155,18 @@ class WireModel {
 }
 
 class WireCell(ci: CellCreateInfo, val model: WireModel) : Cell(ci) {
-    override val dataNode = data {
+    init {
         if (model.isElectrical) {
-            it.withField(ResistanceField {
+            data.withField(ResistanceField {
                 electricalWireObj!!.resistance
             })
 
-            it.withField(PowerField {
+            data.withField(PowerField {
                 electricalWireObj!!.power.absoluteValue
             })
         }
 
-        it.withField(TemperatureField(inspect = false) {
+        data.withField(TemperatureField(inspect = false) {
             thermalWireObj.body.temp
         })
     }
@@ -224,7 +224,7 @@ class WirePart(
     override val sizeActual = bbVec(8.0, 2.0, 8.0)
 
     private data class Connection(
-        val directionActual: RelativeDir,
+        val directionActual: Base6Direction3d,
         val mode: CellPartConnectionMode,
         val remotePosWorld: BlockPos,
     ) {
@@ -371,7 +371,7 @@ class WirePart(
             Connection(
                 connectionInfo.actualDirActualPlr,
                 connectionInfo.mode,
-                remoteCell.posDescr.requireLocator<Positional, BlockPosLocator>().pos
+                remoteCell.pos.requireLocator<BlockLocator>()
             )
         )
 
@@ -380,7 +380,7 @@ class WirePart(
 
     override fun onDisconnected(remoteCell: Cell) {
         connectionsChanged = true
-        connectedDirections.removeIf { it.remotePosWorld == remoteCell.posDescr.requireLocator<Positional, BlockPosLocator>().pos }
+        connectedDirections.removeIf { it.remotePosWorld == remoteCell.pos.requireLocator<BlockLocator>() }
         syncAndSave()
     }
 
@@ -453,7 +453,7 @@ class WirePartRenderer(
     private var modelInstance: ModelData? = null
 
     // Reset on every frame
-    private var latestDirections = AtomicReference<List<RelativeDir>>()
+    private var latestDirections = AtomicReference<List<Base6Direction3d>>()
 
     private val temperatureUpdate = AtomicUpdate<Double>()
 
@@ -461,7 +461,7 @@ class WirePartRenderer(
         temperatureUpdate.setLatest(value)
     }
 
-    fun applyDirections(directions: List<RelativeDir>) {
+    fun applyDirections(directions: List<Base6Direction3d>) {
         latestDirections.set(directions)
     }
 

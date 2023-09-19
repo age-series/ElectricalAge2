@@ -8,8 +8,6 @@ import net.minecraft.core.Direction
 import net.minecraft.core.Vec3i
 import net.minecraft.core.particles.ParticleOptions
 import net.minecraft.nbt.CompoundTag
-import net.minecraft.nbt.ListTag
-import net.minecraft.nbt.Tag
 import net.minecraft.network.chat.Component
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.level.ServerLevel
@@ -53,7 +51,6 @@ import org.eln2.mc.common.blocks.foundation.CellBlockEntity
 import org.eln2.mc.common.blocks.foundation.MultiblockManager
 import org.eln2.mc.common.blocks.foundation.MultipartBlockEntity
 import org.eln2.mc.common.cells.foundation.Cell
-import org.eln2.mc.common.cells.foundation.CellPos
 import org.eln2.mc.common.cells.foundation.ComponentHolder
 import org.eln2.mc.common.cells.foundation.ElectricalComponentInfo
 import org.eln2.mc.common.parts.foundation.Part
@@ -61,10 +58,6 @@ import org.eln2.mc.common.parts.foundation.PartUpdateType
 import org.eln2.mc.data.*
 import org.eln2.mc.integration.WailaTooltipBuilder
 import org.eln2.mc.mathematics.*
-import org.eln2.mc.scientific.*
-import org.eln2.mc.scientific.chemistry.*
-import org.eln2.mc.scientific.chemistry.data.ChemicalElement
-import org.eln2.mc.scientific.chemistry.data.getStructure
 import org.joml.Quaternionf
 import org.joml.Vector3f
 import java.io.InputStream
@@ -177,24 +170,24 @@ fun Direction.isHorizontal(): Boolean {
     return !isVertical()
 }
 
-val Direction.alias: RelativeDir
+val Direction.alias: Base6Direction3d
     get() = when (this) {
-        Direction.DOWN -> RelativeDir.Down
-        Direction.UP -> RelativeDir.Up
-        Direction.NORTH -> RelativeDir.Front
-        Direction.SOUTH -> RelativeDir.Back
-        Direction.WEST -> RelativeDir.Left
-        Direction.EAST -> RelativeDir.Right
+        Direction.DOWN -> Base6Direction3d.Down
+        Direction.UP -> Base6Direction3d.Up
+        Direction.NORTH -> Base6Direction3d.Front
+        Direction.SOUTH -> Base6Direction3d.Back
+        Direction.WEST -> Base6Direction3d.Left
+        Direction.EAST -> Base6Direction3d.Right
     }
 
-val RelativeDir.alias: Direction
+val Base6Direction3d.alias: Direction
     get() = when (this) {
-        RelativeDir.Front -> Direction.NORTH
-        RelativeDir.Back -> Direction.SOUTH
-        RelativeDir.Left -> Direction.WEST
-        RelativeDir.Right -> Direction.EAST
-        RelativeDir.Up -> Direction.UP
-        RelativeDir.Down -> Direction.DOWN
+        Base6Direction3d.Front -> Direction.NORTH
+        Base6Direction3d.Back -> Direction.SOUTH
+        Base6Direction3d.Left -> Direction.WEST
+        Base6Direction3d.Right -> Direction.EAST
+        Base6Direction3d.Up -> Direction.UP
+        Base6Direction3d.Down -> Direction.DOWN
     }
 
 fun Direction.index(): Int {
@@ -256,7 +249,7 @@ fun Level.addParticle(
 }
 
 @ServerOnly
-fun ServerLevel.destroyPart(part: Part<*>) {
+fun ServerLevel.destroyPart(part: Part<*>, dropPart: Boolean) {
     val pos = part.placement.pos
 
     val multipart = this.getBlockEntity(pos)
@@ -272,15 +265,17 @@ fun ServerLevel.destroyPart(part: Part<*>) {
 
     multipart.breakPart(part, saveTag)
 
-    val itemEntity = ItemEntity(
-        this,
-        pos.x.toDouble(),
-        pos.y.toDouble(),
-        pos.z.toDouble(),
-        Part.createPartDropStack(part.id, saveTag)
-    )
+    if(dropPart) {
+        val itemEntity = ItemEntity(
+            this,
+            pos.x.toDouble(),
+            pos.y.toDouble(),
+            pos.z.toDouble(),
+            Part.createPartDropStack(part.id, saveTag)
+        )
 
-    this.addFreshEntity(itemEntity)
+        this.addFreshEntity(itemEntity)
+    }
 
     if (multipart.isEmpty) {
         this.destroyBlock(pos, false)
@@ -443,24 +438,12 @@ fun CompoundTag.getBlockPos(key: String): BlockPos {
     return BlockPos(x, y, z)
 }
 
-fun CompoundTag.putLocationDescriptor(id: String, descriptor: LocationDescriptor) {
+fun CompoundTag.putLocatorSet(id: String, descriptor: LocatorSet) {
     this.put(id, descriptor.toNbt())
 }
 
-fun CompoundTag.getLocationDescriptor(id: String): LocationDescriptor {
-    return LocationDescriptor.fromNbt(this.getCompound(id))
-}
-
-fun CompoundTag.putCellPos(key: String, pos: CellPos) {
-    val dataTag = CompoundTag()
-    dataTag.putLocationDescriptor("Descriptor", pos.descriptor)
-    this.put(key, dataTag)
-}
-
-fun CompoundTag.getCellPos(key: String): CellPos {
-    val dataTag = this.get(key) as CompoundTag
-    val descriptor = dataTag.getLocationDescriptor("Descriptor")
-    return CellPos(descriptor)
+fun CompoundTag.getLocatorSet(id: String): LocatorSet {
+    return LocatorSet.fromNbt(this.getCompound(id))
 }
 
 fun CompoundTag.getStringList(key: String): List<String> {
@@ -518,16 +501,16 @@ fun CompoundTag.getDirection(key: String): Direction {
     return Direction.from3DDataValue(data3d)
 }
 
-fun CompoundTag.putRelativeDirection(key: String, direction: RelativeDir) {
+fun CompoundTag.putRelativeDirection(key: String, direction: Base6Direction3d) {
     val data = direction.id
 
     this.putInt(key, data)
 }
 
-fun CompoundTag.getDirectionActual(key: String): RelativeDir {
+fun CompoundTag.getDirectionActual(key: String): Base6Direction3d {
     val data = this.getInt(key)
 
-    return RelativeDir.fromId(data)
+    return Base6Direction3d.fromId(data)
 }
 
 fun CompoundTag.putPartUpdateType(key: String, type: PartUpdateType) {
@@ -877,113 +860,14 @@ fun <T> Collection<T>.sumOfDual(n: Int, dualSelector: (T) -> Dual): Dual {
     return result
 }
 
-fun CompoundTag.putElement(id: String, e: ChemicalElement) = this.putString(id, e.symbol)
-fun CompoundTag.getElement(id: String) = ChemicalElement.bySymbol[this.getString(id)] ?: error("Failed to get element")
-
-fun CompoundTag.putMolecularComposition(id: String, c: MolecularComposition): Tag? {
-    val atoms = ListTag()
-
-    c.components.forEach { (element, count) ->
-        atoms.add(CompoundTag().also { elementTag ->
-            elementTag.putElement("element", element)
-            elementTag.putInt("count", count)
-        })
-    }
-
-    return this.put(id, CompoundTag().apply {
-        put("elements", atoms)
-        c.label?.also {
-            putString("label", it)
-        }
-    })
-}
-
-fun CompoundTag.getMolecularComposition(id: String): MolecularComposition {
-    val results = LinkedHashMap<ChemicalElement, Int>()
-
-    val tag = this.getCompound(id)
-
-    (tag.get("elements") as ListTag).forEach { t ->
-        val elementTag = t as CompoundTag
-        results[elementTag.getElement("element")] = elementTag.getInt("count")
-    }
-
-    return MolecularComposition(results, if(tag.contains("label")) tag.getString("label") else null)
-}
-
-fun CompoundTag.putCompoundProperties(id: String, p: CompoundProperties) = this.putSubTag(id) { tag ->
-    tag.putQuantity("roStp", p.densitySTP)
-}
-
-fun CompoundTag.getCompoundProperties(id: String): CompoundProperties = this.getCompound(id).let { tag ->
-    CompoundProperties(
-        tag.getQuantity("roStp")
-    )
-}
-
-fun CompoundTag.putUMCContainer(id: String, c: MassContainer<UnstructuredMolecularCompound>): Tag? {
-    val components = ListTag()
-
-    c.content.forEach { (c, quantity) ->
-        components.add(CompoundTag().also { componentTag ->
-            componentTag.putMolecularComposition("composition", c.composition)
-            componentTag.putCompoundProperties("properties", c.properties)
-            componentTag.putQuantity("quantity", quantity)
-        })
-    }
-
-    return this.put(id, components)
-}
-
-fun CompoundTag.getUMCContainer(id: String): MassContainer<UnstructuredMolecularCompound> {
-    val result = MassContainer<UnstructuredMolecularCompound>()
-
-    (this.get(id) as ListTag).forEach { t ->
-        val componentTag = t as CompoundTag
-        val compound = UnstructuredMolecularCompound(
-            componentTag.getMolecularComposition("composition"),
-            componentTag.getCompoundProperties("properties")
-        )
-
-        result[compound] = componentTag.getQuantity("quantity")
-    }
-
-    return result
-}
-
-fun CompoundTag.putSymContainer(id: String, c: MassContainer<StructuredMolecularCompound>): Tag? {
-    val components = ListTag()
-
-    c.content.forEach { (c, quantity) ->
-        components.add(CompoundTag().also { componentTag ->
-            componentTag.putInt("sym", c.symbol)
-            componentTag.putQuantity("quantity", quantity)
-        })
-    }
-
-    return this.put(id, components)
-}
-
-fun CompoundTag.getSymContainer(id: String): MassContainer<StructuredMolecularCompound> {
-    val result = MassContainer<StructuredMolecularCompound>()
-
-    (this.get(id) as ListTag).forEach { t ->
-        val componentTag = t as CompoundTag
-        val compound = getStructure(componentTag.getInt("sym"))
-        result[compound] = componentTag.getQuantity("quantity")
-    }
-
-    return result
-}
-
 // This thing is so useful:
 
-fun <K> MutableMap<K, Double>.addIncr(k: K, incr: Double) {
+fun <K> MutableMap<K, Double>.increment(k: K, incr: Double) {
     if (!this.containsKey(k)) this[k] = incr
     else this[k] = this[k]!! + incr
 }
 
-fun <K> MutableMap<K, Int>.addIncr(k: K, incr: Int) {
+fun <K> MutableMap<K, Int>.increment(k: K, incr: Int) {
     if (!this.containsKey(k)) this[k] = incr
     else this[k] = this[k]!! + incr
 }
@@ -999,23 +883,27 @@ fun OutputStream.putIntPacked(i: Int) {
         value = value shr 7
     } while (value > 0)
 }
+
 fun OutputStream.putByteArray(arr: ByteArray) {
     this.putIntPacked(arr.size)
-    if(arr.isNotEmpty()) this.write(arr)
+    if (arr.isNotEmpty()) this.write(arr)
 }
+
 fun OutputStream.putString(s: String) = this.putByteArray(s.encodeToByteArray())
-fun OutputStream.putBool(b: Boolean) = this.write(if(b) 1 else 0)
+fun OutputStream.putBool(b: Boolean) = this.write(if (b) 1 else 0)
 fun OutputStream.putFloat(f: Float) = this.putIntPacked(f.toBits())
-fun<T> OutputStream.putNullable(t: T?, serialize: (OutputStream, T) -> Unit) {
+fun <T> OutputStream.putNullable(t: T?, serialize: (OutputStream, T) -> Unit) {
     this.putBool(t != null)
-    if(t != null) {
+    if (t != null) {
         serialize(this, t)
     }
 }
-fun<T> OutputStream.putList(s: List<T>, serialize: (OutputStream, T) -> Unit) {
+
+fun <T> OutputStream.putList(s: List<T>, serialize: (OutputStream, T) -> Unit) {
     this.putIntPacked(s.size)
     s.forEach { serialize(this, it) }
 }
+
 fun OutputStream.putFloatList(s: List<Float>) = this.putList(s) { o, f -> o.putFloat(f) }
 fun OutputStream.putStringList(s: List<String>) = this.putList(s) { o, f -> o.putString(f) }
 fun InputStream.getIntPacked(): Int {
@@ -1037,21 +925,25 @@ fun InputStream.getIntPacked(): Int {
 
     return result
 }
+
 fun InputStream.getByteArray(): ByteArray {
     val sz = this.getIntPacked()
-    if(sz == 0) return ByteArray(0)
+    if (sz == 0) return ByteArray(0)
     return this.readNBytes(sz)
 }
+
 fun InputStream.getString() = this.getByteArray().decodeToString()
 fun InputStream.getBool() = this.read() == 1
 fun InputStream.getFloat() = Float.fromBits(this.getIntPacked())
-fun<T> InputStream.getNullable(deserialize: (InputStream) -> T) =
-    if(this.getBool()) deserialize(this)
+fun <T> InputStream.getNullable(deserialize: (InputStream) -> T) =
+    if (this.getBool()) deserialize(this)
     else null
-fun<T> InputStream.getList(deserialize: (InputStream) -> T) = this.getIntPacked().let { sz ->
+
+fun <T> InputStream.getList(deserialize: (InputStream) -> T) = this.getIntPacked().let { sz ->
     ArrayList<T>(sz).also { list ->
         repeat(sz) { list.add(deserialize(this)) }
     }
 }
+
 fun InputStream.getFloatList() = this.getList { it.getFloat() }
 fun InputStream.getStringList() = this.getList { it.getString() }

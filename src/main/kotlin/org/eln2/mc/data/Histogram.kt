@@ -17,7 +17,9 @@ interface MutableHistogram<K> : Histogram<K> {
 
 class MutableMapHistogram<K>(val map: MutableMap<K, Int>) : MutableHistogram<K> {
     override fun get(k: K) = map[k] ?: 0
-    override fun set(k: K, n: Int) { map[k] = n }
+    override fun set(k: K, n: Int) {
+        map[k] = n
+    }
 
     override fun add(k: K, n: Int) {
         map[k] = get(k) + n
@@ -26,7 +28,7 @@ class MutableMapHistogram<K>(val map: MutableMap<K, Int>) : MutableHistogram<K> 
     override fun take(k: K, n: Int) {
         val result = get(k) - n
 
-        if(result < 0) {
+        if (result < 0) {
             error("Tried to remove more elements than were available")
         }
 
@@ -48,5 +50,5 @@ class MutableMapHistogram<K>(val map: MutableMap<K, Int>) : MutableHistogram<K> 
     fun removeMapping(k: K) = map.remove(k)
 }
 
-fun<K> HashMapHistogram() = MutableMapHistogram<K>(HashMap())
-fun<K> LinkedHashMapHistogram() = MutableMapHistogram<K>(LinkedHashMap())
+fun <K> HashMapHistogram() = MutableMapHistogram<K>(HashMap())
+fun <K> LinkedHashMapHistogram() = MutableMapHistogram<K>(LinkedHashMap())

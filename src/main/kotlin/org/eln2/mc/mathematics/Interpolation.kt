@@ -2,7 +2,7 @@
 
 package org.eln2.mc.mathematics
 
-import org.eln2.mc.data.SegmentRange
+import org.eln2.mc.data.ClosedInterval
 import org.eln2.mc.data.SegmentTree
 import org.eln2.mc.data.SegmentTreeBuilder
 import kotlin.math.abs
@@ -51,7 +51,7 @@ class GridInterpolator(val grid: KDGridD) {
 
         val lower = coordinates.floored()
 
-        val neighborValues = ArrayList<Double>(exp2i(grid.dimensions))
+        val neighborValues = ArrayList<Double>(1 shl grid.dimensions)
 
         neighborOffsets.forEach { offset ->
             neighborValues.add(getClamped(lower + offset))
@@ -110,7 +110,7 @@ class GridInterpolator(val grid: KDGridD) {
             t: KDVectorD,
             function: Interpolator,
         ): Double {
-            return kdInterpolate(dims - 1, i + exp2i(dims - 1), values, t, function)
+            return kdInterpolate(dims - 1, i + (1 shl (dims - 1)), values, t, function)
         }
     }
 }
@@ -202,7 +202,7 @@ interface SplineSegment3d : SplineSegmentParametric {
 class TreeSplineSegmentMap<S : SplineSegmentParametric>(segments: List<S>) : SplineSegmentMap<S>(segments) {
     private val segmentTree = SegmentTreeBuilder<Int>().also {
         segments.forEachIndexed { index, s ->
-            it.insert(index, SegmentRange(s.t0, s.t1))
+            it.insert(index, ClosedInterval(s.t0, s.t1))
         }
     }.build()
 

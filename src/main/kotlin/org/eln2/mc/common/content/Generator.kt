@@ -57,10 +57,13 @@ enum class Pole {
 }
 
 fun interface PoleMap {
-    fun eval(actualDescr: LocationDescriptor, targetDescr: LocationDescriptor): Pole
+    fun eval(actualDescr: LocatorSet, targetDescr: LocatorSet): Pole
 }
 
-fun dirActualMap(plusDir: RelativeDir = RelativeDir.Front, minusDir: RelativeDir = RelativeDir.Back): PoleMap {
+fun dirActualMap(
+    plusDir: Base6Direction3d = Base6Direction3d.Front,
+    minusDir: Base6Direction3d = Base6Direction3d.Back,
+): PoleMap {
     return PoleMap { actualDescr, targetDescr ->
         when (val dirActual = actualDescr.findDirActual(targetDescr)) {
             plusDir -> Pole.Plus
@@ -103,7 +106,7 @@ class VRGeneratorObject(cell: Cell, val map: PoleMap) : ElectricalObject(cell), 
     override val maxConnections = 2
 
     override fun offerComponent(neighbour: ElectricalObject): ElectricalComponentInfo =
-        when (map.eval(this.cell.posDescr, neighbour.cell.posDescr)) {
+        when (map.eval(this.cell.pos, neighbour.cell.pos)) {
             Pole.Plus -> resistor.offerExternal()
             Pole.Minus -> source.offerNegative()
         }
@@ -146,7 +149,7 @@ class ThermalBipoleObject(cell: Cell, val map: PoleMap) : ThermalObject(cell), D
     override var b2 = ThermalBody.createDefault()
 
     init {
-        cell.envFldMap.read<EnvTemperatureField>()?.readTemperature()?.also {
+        cell.environmentData.get<EnvTemperatureField>()?.readTemperature()?.also {
             b1.temp = it
             b2.temp = it
         }
@@ -154,7 +157,7 @@ class ThermalBipoleObject(cell: Cell, val map: PoleMap) : ThermalObject(cell), D
 
     override fun offerComponent(neighbour: ThermalObject): ThermalComponentInfo {
         return ThermalComponentInfo(
-            when (map.eval(cell.posDescr, neighbour.cell.posDescr)) {
+            when (map.eval(cell.pos, neighbour.cell.pos)) {
                 Pole.Plus -> b1
                 Pole.Minus -> b2
             }
@@ -166,7 +169,7 @@ class ThermalBipoleObject(cell: Cell, val map: PoleMap) : ThermalObject(cell), D
         simulator.add(b2)
     }
 
-    override fun appendBody(builder: WailaTooltipBuilder, config: IPluginConfig?) {
+    override fun appendWaila(builder: WailaTooltipBuilder, config: IPluginConfig?) {
         builder.temperature(b1.tempK)
         builder.temperature(b2.tempK)
     }
@@ -453,7 +456,7 @@ class FuelBurnerBehavior(val cell: Cell, val bodyGetter: ThermalBodyAccessor) : 
         cell.setChanged()
     }
 
-    override fun appendBody(builder: WailaTooltipBuilder, config: IPluginConfig?) {
+    override fun appendWaila(builder: WailaTooltipBuilder, config: IPluginConfig?) {
         builder.text("Control Signal x1000", (burnRateSignal * 1000).formatted(2))
         builder.text("Fuel", (fuel?.fuelAmount ?: 0.0).formatted())
     }
@@ -487,18 +490,18 @@ class HeatGeneratorCell(ci: CellCreateInfo) : Cell(ci) {
     /**
      * If true, this burner needs more fuel to continue burning. Internally, this checks if the available energy is less than a threshold value.
      * */
-    val needsFuel get() = behaviorContainer.get<FuelBurnerBehavior>().availableEnergy approxEq 0.0
+    val needsFuel get() = behaviors.get<FuelBurnerBehavior>().availableEnergy approxEq 0.0
 
     fun replaceFuel(mass: HeatGeneratorFuelMass) {
-        behaviorContainer.get<FuelBurnerBehavior>().replaceFuel(mass)
+        behaviors.get<FuelBurnerBehavior>().replaceFuel(mass)
     }
 
     override fun loadCellData(tag: CompoundTag) {
-        tag.useSubTagIfPreset(BURNER_BEHAVIOR, behaviorContainer.get<FuelBurnerBehavior>()::loadNbt)
+        tag.useSubTagIfPreset(BURNER_BEHAVIOR, behaviors.get<FuelBurnerBehavior>()::loadNbt)
     }
 
     override fun saveCellData(): CompoundTag {
-        return CompoundTag().withSubTag(BURNER_BEHAVIOR, behaviorContainer.get<FuelBurnerBehavior>().saveNbt())
+        return CompoundTag().withSubTag(BURNER_BEHAVIOR, behaviors.get<FuelBurnerBehavior>().saveNbt())
     }
 }
 
@@ -735,7 +738,7 @@ abstract class SolarIlluminationBehavior(private val cell: Cell) : CellBehavior,
         get() = cell.graph.level.getSunAngle(0f).toDouble()
 
     override val isObstructed: Boolean
-        get() = !cell.graph.level.canSeeSky(cell.posDescr.requireBlockPosLoc { "Solar Behaviors require block pos locator" })
+        get() = !cell.graph.level.canSeeSky(cell.pos.requireLocator<BlockLocator> { "Solar Behaviors require block pos locator" })
 }
 
 /**
@@ -817,7 +820,7 @@ class PhotovoltaicBehavior(val cell: Cell, val generator: VRGeneratorObject, val
         generator.potential = model.voltageFunction.compute(this)
     }
 
-    override val normal: Direction get() = cell.posDescr.requireBlockFaceLoc { "Photovoltaic behavior requires a face locator" }
+    override val normal: Direction get() = cell.pos.requireLocator<FaceLocator> { "Photovoltaic behavior requires a face locator" }
 }
 
 class PhotovoltaicGeneratorCell(ci: CellCreateInfo, model: PhotovoltaicModel) : Cell(ci) {

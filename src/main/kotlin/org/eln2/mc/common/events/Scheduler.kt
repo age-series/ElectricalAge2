@@ -213,13 +213,18 @@ object Scheduler {
 
 @ServerOnly
 fun schedulePre(countdown: Int, item: () -> Unit) = Scheduler.scheduleWork(countdown, item, Phase.START)
+
 @ServerOnly
 fun schedulePost(countdown: Int, item: () -> Unit) = Scheduler.scheduleWork(countdown, item, Phase.END)
+
 @ServerOnly
 fun runPre(block: () -> Unit) = Scheduler.scheduleWork(0, block, Phase.START)
+
 @ServerOnly
 fun runPost(block: () -> Unit) = Scheduler.scheduleWork(0, block, Phase.END)
+
 @ServerOnly
 fun periodicPre(interval: Int, item: () -> Boolean) = Scheduler.scheduleWorkPeriodic(interval, item, Phase.START)
+
 @ServerOnly
 fun periodicPost(interval: Int, item: () -> Boolean) = Scheduler.scheduleWorkPeriodic(interval, item, Phase.END)

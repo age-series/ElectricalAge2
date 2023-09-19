@@ -9,7 +9,6 @@ import net.minecraft.world.entity.MobCategory
 import net.minecraft.world.item.BucketItem
 import net.minecraft.world.item.Item
 import net.minecraft.world.item.Items.BUCKET
-import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.level.block.LiquidBlock
 import net.minecraft.world.level.block.state.BlockBehaviour
 import net.minecraft.world.level.material.FlowingFluid
@@ -162,8 +161,8 @@ object Content {
     val THERMOCOUPLE_CELL = cell("thermocouple_cell", BasicCellProvider { createInfo ->
         ThermocoupleCell(
             createInfo,
-            dirActualMap(plusDir = RelativeDir.Front, minusDir = RelativeDir.Back),
-            dirActualMap(plusDir = RelativeDir.Left, minusDir = RelativeDir.Right)
+            dirActualMap(plusDir = Base6Direction3d.Front, minusDir = Base6Direction3d.Back),
+            dirActualMap(plusDir = Base6Direction3d.Left, minusDir = Base6Direction3d.Right)
         ).also {
             it.generatorObj.ruleSet.withDirectionActualRule(DirectionMask.FRONT + DirectionMask.BACK)
             it.thermalBipoleObj.ruleSet.withDirectionActualRule(DirectionMask.LEFT + DirectionMask.RIGHT)
@@ -241,18 +240,7 @@ object Content {
     val GRID_CONNECT_ITEM = item("grid_connect_item", ::GridConnectItem)
     val GRID_CONNECTION_ENTITY = entity("grid_connection_entity", MobCategory.MISC, ::GridConnectionEntity)
 
-    val DRAGONS_TEST_CELL = injCell<DiffusionConduitCell>("dragons_test_cell")
-    val DRAGONS_TEST_BLOCK = block("dragons_test_block") { BasicCellBlock(DRAGONS_TEST_CELL) }
-    val DRAGONS_TEST_SRC_CELL = injCell<DRAGONSTestSrcCell>("dragons_test_src_cell")
-    val DRAGONS_TEST_SRC_BLOCK = block("dragons_test_src_block") { BasicCellBlock(DRAGONS_TEST_SRC_CELL) }
-
-    val RAD_TEST_BLOCK = block("rad_test_block") { RadioactiveBlockTest() }
-    val RAD_TEST_METER_ITEM = item("rad_test_meter_item") { RadiationMeterItem() }
-
-    val FERMENTATION_BARREL_BLOCK = block("fermentation_barrel_block") { FermentationBarrelBlock() }
-    val FERMENTATION_BARREL_BLOCK_ENTITY = blockEntity("fermentation_barrel_block_entity", ::FermentationBarrelBlockEntity) { FERMENTATION_BARREL_BLOCK.block.get() }
-
-    val TREE_TAP_PART = part("tree_tap_part", TreeTapPartProvider())
+    // to be removed
     val LATEX_SAP_FLUID_TYPE: RegistryObject<FluidType> = FLUID_TYPES.register("latex_sap_fluid_type") {
         BasicFluidType(
             properties = FluidType.Properties.create().viscosity(500),
@@ -261,18 +249,23 @@ object Content {
             tint = McColor(255, 255, 255)
         )
     }
-    val LATEX_SAP_SOURCE_FLUID: RegistryObject<ForgeFlowingFluid.Source> = FLUIDS.register("latex_sap_fluid_source") { ForgeFlowingFluid.Source(LATEX_SAP_FLUID_PROPERTIES) }
-    val LATEX_SAP_FLOW_FLUID: RegistryObject<FlowingFluid> = FLUIDS.register("latex_sap_fluid_flow") { ForgeFlowingFluid.Flowing(LATEX_SAP_FLUID_PROPERTIES) }
+    val LATEX_SAP_SOURCE_FLUID: RegistryObject<ForgeFlowingFluid.Source> =
+        FLUIDS.register("latex_sap_fluid_source") { ForgeFlowingFluid.Source(LATEX_SAP_FLUID_PROPERTIES) }
+    val LATEX_SAP_FLOW_FLUID: RegistryObject<FlowingFluid> =
+        FLUIDS.register("latex_sap_fluid_flow") { ForgeFlowingFluid.Flowing(LATEX_SAP_FLUID_PROPERTIES) }
     val LATEX_SAP_BUCKET = item("latex_sap_bucket_item") {
         BucketItem(LATEX_SAP_SOURCE_FLUID, Item.Properties().craftRemainder(BUCKET).stacksTo(1))
     }
-    val LATEX_SAP_FLUID_BLOCK = block("latex_sap_fluid_block") { LiquidBlock({ LATEX_SAP_SOURCE_FLUID.get()}, BlockBehaviour.Properties.of(net.minecraft.world.level.material.Material.WATER))}
-    val LATEX_SAP_FLUID_PROPERTIES: ForgeFlowingFluid.Properties = ForgeFlowingFluid.Properties(LATEX_SAP_FLUID_TYPE, LATEX_SAP_SOURCE_FLUID, LATEX_SAP_FLOW_FLUID)
-        .bucket { LATEX_SAP_BUCKET.item.get() }
-        .block { LATEX_SAP_FLUID_BLOCK.block.get() as LiquidBlock }
-    val RAW_NATURAL_RUBBER = item("raw_natural_rubber_item") { RawNaturalRubberItem() }
-    val LATEX_COAGULATION_BARREL_BLOCK = block("latex_coagulation_barrel_block") { LatexCoagulationBarrelBlock() }
-    val LATEX_COAGULATION_BARREL_BLOCK_ENTITY = blockEntity("latex_coagulation_barrel_block_entity", ::LatexCoagulationBarrelBlockEntity) { LATEX_COAGULATION_BARREL_BLOCK.block.get() }
+    val LATEX_SAP_FLUID_BLOCK = block("latex_sap_fluid_block") {
+        LiquidBlock(
+            { LATEX_SAP_SOURCE_FLUID.get() },
+            BlockBehaviour.Properties.of(net.minecraft.world.level.material.Material.WATER)
+        )
+    }
+    val LATEX_SAP_FLUID_PROPERTIES: ForgeFlowingFluid.Properties =
+        ForgeFlowingFluid.Properties(LATEX_SAP_FLUID_TYPE, LATEX_SAP_SOURCE_FLUID, LATEX_SAP_FLOW_FLUID)
+            .bucket { LATEX_SAP_BUCKET.item.get() }
+            .block { LATEX_SAP_FLUID_BLOCK.block.get() as LiquidBlock }
 
     @Mod.EventBusSubscriber
     object ClientSetup {

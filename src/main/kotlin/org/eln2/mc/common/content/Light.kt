@@ -22,8 +22,8 @@ import org.eln2.mc.common.parts.foundation.PartPlacementInfo
 import org.eln2.mc.common.parts.foundation.PartRenderer
 import org.eln2.mc.data.TooltipField
 import org.eln2.mc.data.withDirectionActualRule
+import org.eln2.mc.mathematics.Base6Direction3d
 import org.eln2.mc.mathematics.DirectionMask
-import org.eln2.mc.mathematics.RelativeDir
 import org.eln2.mc.mathematics.approxEq
 import org.eln2.mc.mathematics.bbVec
 import java.nio.ByteBuffer
@@ -43,13 +43,20 @@ class LightCell(
     ci: CellCreateInfo,
     val model: LightModel,
     // Probably doesn't make sense to use maps here:
-    dir1: RelativeDir = RelativeDir.Left,
-    dir2: RelativeDir = RelativeDir.Right,
+    dir1: Base6Direction3d = Base6Direction3d.Left,
+    dir2: Base6Direction3d = Base6Direction3d.Right,
 ) :
     Cell(ci) {
     companion object {
         private const val RENDER_SYNC_INTERVAL = 0.05
         private const val RENDER_EPS = 10e-4
+    }
+
+    init {
+        data.withField(TooltipField { b ->
+            b.text("Minecraft Brightness", trackedBr)
+            b.text("Model Brightness", rawBr)
+        })
     }
 
     private var trackedBr: Int = 0
@@ -109,13 +116,6 @@ class LightCell(
         trackedBr = actualBrightness
 
         receiver.enqueue(LightChangeEvent(actualBrightness))
-    }
-
-    override val dataNode = super.dataNode.withChild {
-        it.data.withField(TooltipField { b ->
-            b.text("Minecraft Brightness", trackedBr)
-            b.text("Model Brightness", rawBr)
-        })
     }
 
     init {
