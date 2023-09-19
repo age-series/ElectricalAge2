@@ -1,22 +1,13 @@
 package org.eln2.mc.common.cells.foundation
 
-import net.minecraft.core.Direction
 import net.minecraft.nbt.CompoundTag
 import org.ageseries.libage.sim.electrical.mna.Circuit
 import org.ageseries.libage.sim.electrical.mna.component.Component
 import org.ageseries.libage.sim.thermal.ConnectionParameters
 import org.ageseries.libage.sim.thermal.Simulator
 import org.eln2.mc.ThermalBody
-import org.eln2.mc.data.LocationDescriptor
 import org.eln2.mc.data.LocatorRelationRuleSet
-import org.eln2.mc.data.requireBlockPosLoc
-import org.eln2.mc.directionTo
-import org.eln2.mc.mathematics.Vector3di
-import org.eln2.mc.mathematics.exp2i
-import org.eln2.mc.scientific.DiffusionFluidOptions
-import org.eln2.mc.scientific.RealizedVoxelPatchNode
-import org.eln2.mc.scientific.VoxelPatchDirection
-import org.eln2.mc.scientific.VoxelPatchModule
+import org.eln2.mc.data.LocatorSet
 
 /**
  * Represents a discrete simulation unit that participates in one simulation type.
@@ -50,8 +41,8 @@ abstract class SimulationObject(val cell: Cell) {
      * */
     abstract fun destroy()
 
-    open fun acceptsRemoteLocation(remoteDesc: LocationDescriptor): Boolean {
-        return ruleSet.accepts(cell.pos.descriptor, remoteDesc)
+    open fun acceptsRemoteLocation(remoteDesc: LocatorSet): Boolean {
+        return ruleSet.accepts(cell.pos, remoteDesc)
     }
 }
 
@@ -231,102 +222,6 @@ abstract class ElectricalObject(cell: Cell) : SimulationObject(cell) {
     }
 }
 
-data class DiffusionDef(
-    val name: String,
-    val simulationOptions: DiffusionFluidOptions,
-)
-
-interface DiffusionAccessor {
-    val realizedNode: RealizedVoxelPatchNode
-    val node get() = realizedNode.node
-    val patch get() = node.patch
-
-    fun readDensity(tilePatch: Vector3di): Float
-    fun addDensityIncr(tilePatch: Vector3di, incr: Float, activate: Boolean = true)
-    fun setDensity(tilePatch: Vector3di, amount: Float, activate: Boolean = true)
-    fun activate(tilePatch: Vector3di)
-}
-
-abstract class DiffusionObject(cell: Cell, val patchLog: Int, val def: DiffusionDef) : SimulationObject(cell) {
-    data class Connection(
-        val obj: DiffusionObject,
-        val direction: VoxelPatchDirection,
-    )
-
-    val size = exp2i(patchLog)
-
-    protected val connections = ArrayList<Connection>()
-
-    val actualConnections get() = connections as List<Connection>
-    val connectionDirections get() = connections.map { it.direction }
-
-    private var accessor: DiffusionAccessor? = null
-
-    protected val simulation: DiffusionAccessor
-        get() =
-            this.accessor ?: error("Tried to access DRAGONS simulation accessor before it was ready")
-
-    final override val type get() = SimulationObjectType.Diffusion
-
-    fun isCompatibleWith(remote: DiffusionObject) = def == remote.def && size == remote.size
-
-    open fun addConnection(remote: DiffusionObject) {
-        require(isCompatibleWith(remote)) { "Tried to create incompatible connection" }
-        require(!connections.any { it.obj == remote }) { "Duplicate connection" }
-
-        val actualBlockPosWorld = cell.posDescr.requireBlockPosLoc {
-            "DRAGONS requires an actual world position"
-        }
-
-        val targetBlockPosWorld = remote.cell.posDescr.requireBlockPosLoc {
-            "DRAGONS requires a target world position"
-        }
-
-        val dxActualTarget = when (actualBlockPosWorld.directionTo(targetBlockPosWorld)) {
-            Direction.DOWN -> VoxelPatchDirection.Down
-            Direction.UP -> VoxelPatchDirection.Up
-            Direction.NORTH -> VoxelPatchDirection.Back
-            Direction.SOUTH -> VoxelPatchDirection.Front
-            Direction.WEST -> VoxelPatchDirection.Left
-            Direction.EAST -> VoxelPatchDirection.Right
-            null -> error("Unhandled object direction $actualBlockPosWorld $targetBlockPosWorld")
-        }
-
-        if (connections.any { it.direction == dxActualTarget }) {
-            error("Duplicate connection $dxActualTarget")
-        }
-
-        connections.add(Connection(remote, dxActualTarget))
-    }
-
-    override fun destroy() {
-        connections.forEach { obj -> obj.obj.connections.removeIf { it.obj == this } }
-    }
-
-    override fun update(connectionsChanged: Boolean, graphChanged: Boolean) {}
-
-    override fun clear() {
-        connections.clear()
-        accessor = null
-    }
-
-    fun createPatchModule(): VoxelPatchModule {
-        val module = VoxelPatchModule(size)
-
-        createVolumetricDefinition(module)
-
-        return module
-    }
-
-    fun bindAccessor(accessor: DiffusionAccessor) {
-        this.accessor = accessor
-    }
-
-    protected abstract fun createVolumetricDefinition(module: VoxelPatchModule)
-
-    override fun build() {}
-}
-
 /**
  * Represents an object with NBT saving capabilities.
  * */
@@ -357,8 +252,8 @@ class SimulationObjectSet(objects: List<SimulationObject>) {
     }
 
     val electricalObject get() = getObject(SimulationObjectType.Electrical) as ElectricalObject
+
     val thermalObject get() = getObject(SimulationObjectType.Thermal) as ThermalObject
-    val diffusionObject get() = getObject(SimulationObjectType.Diffusion) as DiffusionObject
 
     fun process(function: ((SimulationObject) -> Unit)) {
         objects.values.forEach(function)
@@ -369,8 +264,11 @@ class SimulationObjectSet(objects: List<SimulationObject>) {
     }
 }
 
-enum class SimulationObjectType(id: Int, name: String) {
-    Electrical(1, "electrical"),
-    Thermal(2, "thermal"),
-    Diffusion(3, "diffusion")
+enum class SimulationObjectType(val index: Int, val id: Int, val domain: String) {
+    Electrical(0, 1, "electrical"),
+    Thermal(1, 2, "thermal");
+
+    companion object {
+        val values: List<SimulationObjectType> = values().toList()
+    }
 }

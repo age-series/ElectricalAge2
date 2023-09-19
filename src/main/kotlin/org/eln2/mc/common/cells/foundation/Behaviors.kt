@@ -9,18 +9,38 @@ import org.eln2.mc.ThermalBody
 import org.eln2.mc.common.blocks.foundation.MultipartBlockEntity
 import org.eln2.mc.common.events.Scheduler
 import org.eln2.mc.common.events.schedulePre
+import org.eln2.mc.common.parts.foundation.CellPart
 import org.eln2.mc.data.*
 import org.eln2.mc.destroyPart
 import org.eln2.mc.formattedPercentN
 import org.eln2.mc.integration.WailaEntity
 import org.eln2.mc.integration.WailaTooltipBuilder
 
+/**
+ * *A cell behavior* manages routines ([Subscriber]) that run on the simulation thread.
+ * It is attached to a cell.
+ * */
 interface CellBehavior {
+    /**
+     * Called when the behavior is added to the container.
+     * */
     fun onAdded(container: CellBehaviorContainer) {}
+
+    /**
+     * Called when the subscriber collection is being set up.
+     * Subscribers can be added here.
+     * */
     fun subscribe(subscribers: SubscriberCollection) {}
+
+    /**
+     * Called when the behavior is destroyed.
+     * This can be caused by the cell being destroyed.
+     * It can also be caused by the game object being detached, in the case of [ReplicatorBehavior]s.
+     * */
     fun destroy() {}
 }
 
+// to remove
 /**
  * Temporary staging storage for behaviors.
  * */
@@ -52,12 +72,16 @@ class CellBehaviorSource : CellBehavior {
 }
 
 operator fun CellBehavior.times(b: CellBehavior) = CellBehaviorSource().also { it.add(this).add(b) }
+
 operator fun CellBehaviorSource.times(b: CellBehavior) = this.add(b)
 
+/**
+ * Container for multiple [CellBehavior]s. It is a Set. As such, there may be one instance of each behavior type.
+ * */
 class CellBehaviorContainer(private val cell: Cell) : DataEntity {
     val behaviors = ArrayList<CellBehavior>()
 
-    fun addInst(b: CellBehavior) {
+    fun addBehaviorInstance(b: CellBehavior) {
         if (behaviors.any { it.javaClass == b.javaClass }) {
             error("Duplicate behavior $b")
         }
@@ -114,7 +138,7 @@ fun interface ElectricalPowerAccessor {
 }
 
 /**
- * Integrates electrical power into energy.
+ * Integrates electrical power into energy. Injection is supported using [PowerField].
  * */
 class ElectricalPowerConverterBehavior(private val accessor: ElectricalPowerAccessor) : CellBehavior {
     @Inj
@@ -144,7 +168,7 @@ fun ThermalBodyAccessor.temperature(): TemperatureAccessor = TemperatureAccessor
 }
 
 /**
- * Converts dissipated electrical energy to thermal energy.
+ * Converts dissipated electrical energy to thermal energy. Injection is supported using [ThermalBody]
  * */
 class ElectricalHeatTransferBehavior(private val bodyAccessor: ThermalBodyAccessor) : CellBehavior {
     @Inj
@@ -203,8 +227,11 @@ data class TemperatureExplosionBehaviorOptions(
  * The [TemperatureExplosionBehavior] will destroy the game object if a temperature is held
  * above a threshold for a certain time period, as specified in [TemperatureExplosionBehaviorOptions]
  * A **score** is used to determine if the object should blow up. The score is increased when the temperature is above threshold
- * and decreased when the temperature is under threshold. Once a score of 1 is reached, the part explosion is enqueued
+ * and decreased when the temperature is under threshold. Once a score of 1 is reached, the explosion is enqueued
  * using the [Scheduler]
+ * The explosion uses an [ExplosionConsumer] to access the game object. [ExplosionConsumer.explode] is called from the game thread.
+ * If no consumer is specified, a default one is used. Currently, only [CellPart] is implemented.
+ * Injection is supported using [TemperatureAccessor], [TemperatureField]
  * */
 class TemperatureExplosionBehavior(
     val temperatureAccessor: TemperatureAccessor,
@@ -259,13 +286,13 @@ class TemperatureExplosionBehavior(
         if (!enqueued) {
             enqueued = true
 
-            schedulePre(1) {
+            schedulePre(0) {
                 consumer.explode()
             }
         }
     }
 
-    override fun appendBody(builder: WailaTooltipBuilder, config: IPluginConfig?) {
+    override fun appendWaila(builder: WailaTooltipBuilder, config: IPluginConfig?) {
         builder.text("Explode", score.formattedPercentN())
     }
 
@@ -278,12 +305,12 @@ class TemperatureExplosionBehavior(
                     return
                 }
 
-                val part = container.getPart(cell.posDescr.requireLocator<Directional, BlockFaceLocator>().faceWorld)
+                val part = container.getPart(cell.pos.requireLocator<FaceLocator>())
                     ?: return
 
                 val level = (part.placement.level as ServerLevel)
 
-                level.destroyPart(part)
+                level.destroyPart(part, true)
             } else {
                 error("Cannot explode $container")
             }
@@ -315,17 +342,19 @@ fun CellBehaviorContainer.withStandardExplosionBehavior(
                 return@withExplosionBehavior
             }
 
-            val part = container.getPart(cell.posDescr.requireLocator<Directional, BlockFaceLocator>().faceWorld)
+            val part = container.getPart(cell.pos.requireLocator<FaceLocator>())
                 ?: return@withExplosionBehavior
 
             val level = (part.placement.level as ServerLevel)
 
-            level.destroyPart(part)
+            level.destroyPart(part, true)
         } else {
             error("Cannot explode $container")
         }
     }
 }
+
+// todo remove
 
 /**
  * Registers a set of standard cell behaviors:
@@ -355,12 +384,12 @@ fun standardBehavior(cell: Cell, power: ElectricalPowerAccessor, thermal: Therma
                     return@TemperatureExplosionBehavior
                 }
 
-                val part = container.getPart(cell.posDescr.requireLocator<Directional, BlockFaceLocator>().faceWorld)
+                val part = container.getPart(cell.pos.requireLocator<FaceLocator>())
                     ?: return@TemperatureExplosionBehavior
 
                 val level = (part.placement.level as ServerLevel)
 
-                level.destroyPart(part)
+                level.destroyPart(part, true)
             } else {
                 error("Cannot explode $container")
             }

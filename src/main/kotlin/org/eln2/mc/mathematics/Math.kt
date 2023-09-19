@@ -71,13 +71,6 @@ fun powi(base: Int, exponent: Int): Int {
 fun Int.pow(exponent: Int) = powi(this, exponent)
 
 /**
- * Computes 2 to the specified power [exponent]. Calls [pow] with a base of 2.
- * */
-fun exp2i(exponent: Int): Int {
-    return powi(2, exponent)
-}
-
-/**
  * Computes the fractional part of [x].
  * */
 fun frac(x: Double): Double = x - floor(x)
@@ -337,7 +330,7 @@ fun Double.infinityZero(): Double {
 /**
  * @return 0 if [this] is NaN or infinity. Otherwise, [this].
  * */
-fun Double.definedOrZero(): Double = this.nanZero().infinityZero()
+fun Double.defined(): Double = this.nanZero().infinityZero()
 
 /**
  * Returns the square of this number.

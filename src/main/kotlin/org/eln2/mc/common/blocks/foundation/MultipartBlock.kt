@@ -1,6 +1,8 @@
 package org.eln2.mc.common.blocks.foundation
 
 import mcp.mobius.waila.api.IPluginConfig
+import net.minecraft.client.Minecraft
+import net.minecraft.client.multiplayer.ClientLevel
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
 import net.minecraft.nbt.CompoundTag
@@ -46,16 +48,6 @@ import org.eln2.mc.integration.WailaTooltipBuilder
 import org.eln2.mc.mathematics.DirectionMask
 import java.util.*
 import java.util.concurrent.ConcurrentLinkedQueue
-import kotlin.collections.ArrayList
-import kotlin.collections.HashMap
-import kotlin.collections.LinkedHashSet
-import kotlin.collections.any
-import kotlin.collections.forEach
-import kotlin.collections.isNotEmpty
-import kotlin.collections.listOf
-import kotlin.collections.map
-import kotlin.collections.maxOf
-import kotlin.collections.maxOfOrNull
 import kotlin.collections.set
 
 class MultipartBlock : BaseEntityBlock(Properties.of(Material.STONE)
@@ -225,11 +217,26 @@ class MultipartBlock : BaseEntityBlock(Properties.of(Material.STONE)
             return null
         }
 
-        if (context.entity !is LivingEntity) {
-            return null
+        val entity: LivingEntity
+
+        if (context.entity == null) {
+            if (level is ClientLevel && Minecraft.getInstance() != null && Minecraft.getInstance().player != null) {
+                // What to do?
+                // It doesn't give me the context
+                // Hopefully, this workaround won't screw me
+                entity = Minecraft.getInstance().player!!
+            } else {
+                return null
+            }
+        } else {
+            if (context.entity is LivingEntity) {
+                entity = context.entity as LivingEntity
+            } else {
+                return null
+            }
         }
 
-        return pickPart(level, pos, (context.entity as LivingEntity))
+        return pickPart(level, pos, entity)
     }
 
     private fun pickPart(level: BlockGetter, pos: BlockPos, entity: LivingEntity): Part<*>? {
@@ -451,11 +458,11 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
     // (which would cause our issues with iteration)
     private var tickingRemoveQueue = ArrayDeque<TickablePart>()
 
-    val isEmpty = parts.isEmpty()
+    val isEmpty get() = parts.isEmpty()
 
     // Used for rendering:
     @ClientOnly
-    val renderQueue = ConcurrentLinkedQueue<PartUpdate>()
+    val renderUpdates = ConcurrentLinkedQueue<PartUpdate>()
 
     var collisionShape: VoxelShape private set
 
@@ -924,7 +931,7 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
     @ClientOnly
     private fun clientAddPart(part: Part<*>) {
         part.onAddedToClient()
-        renderQueue.add(PartUpdate(part, PartUpdateType.Add))
+        renderUpdates.add(PartUpdate(part, PartUpdateType.Add))
     }
 
     /**
@@ -933,7 +940,7 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
     @ClientOnly
     private fun clientRemovePart(part: Part<*>) {
         part.onBroken()
-        renderQueue.add(PartUpdate(part, PartUpdateType.Remove))
+        renderUpdates.add(PartUpdate(part, PartUpdateType.Remove))
     }
 
     //#endregion
@@ -1119,7 +1126,7 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
     }
 
     override fun neighborScan(actualCell: Cell): ArrayList<CellNeighborInfo> {
-        val partFace = actualCell.pos.descriptor.requireLocator<Directional, BlockFaceLocator>().faceWorld
+        val partFace = actualCell.pos.requireLocator<FaceLocator>()
 
         val part = parts[partFace]!!
 
@@ -1187,13 +1194,13 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
     }
 
     override fun onCellConnected(actualCell: Cell, remoteCell: Cell) {
-        val innerFace = actualCell.pos.descriptor.requireLocator<Directional, BlockFaceLocator>().faceWorld
+        val innerFace = actualCell.pos.requireLocator<FaceLocator>()
         val part = parts[innerFace] as PartCellContainer
         part.onConnected(remoteCell)
     }
 
     override fun onCellDisconnected(actualCell: Cell, remoteCell: Cell) {
-        val part = parts[actualCell.posDescr.requireLocator<Directional, BlockFaceLocator>().faceWorld] as PartCellContainer
+        val part = parts[actualCell.pos.requireLocator<FaceLocator>()] as PartCellContainer
         part.onDisconnected(remoteCell)
     }
 
@@ -1220,7 +1227,7 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
      * */
     fun bindRenderer(instance: MultipartBlockEntityInstance) {
         parts.values.forEach { part ->
-            renderQueue.add(PartUpdate(part, PartUpdateType.Add))
+            renderUpdates.add(PartUpdate(part, PartUpdateType.Add))
         }
     }
 
@@ -1335,13 +1342,13 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
         }
     }
 
-    override fun appendBody(builder: WailaTooltipBuilder, config: IPluginConfig?) {
+    override fun appendWaila(builder: WailaTooltipBuilder, config: IPluginConfig?) {
         parts.values.forEach { part ->
             if (part !is WailaEntity) {
                 return@forEach
             }
 
-            part.appendBody(builder, config)
+            part.appendWaila(builder, config)
         }
     }
 

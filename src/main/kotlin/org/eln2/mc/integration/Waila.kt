@@ -5,9 +5,11 @@ import mcp.mobius.waila.api.component.PairComponent
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.nbt.ListTag
 import net.minecraft.network.chat.Component
-import net.minecraft.world.level.block.entity.BlockEntity
 import org.ageseries.libage.sim.electrical.mna.component.Pin
+import org.eln2.mc.LOG
 import org.eln2.mc.MODID
+import org.eln2.mc.common.blocks.foundation.CellBlockEntity
+import org.eln2.mc.common.blocks.foundation.MultipartBlockEntity
 import org.eln2.mc.data.DataEntity
 import org.eln2.mc.data.UnitType
 import org.eln2.mc.data.valueText
@@ -21,48 +23,49 @@ class Eln2WailaPlugin : IWailaPlugin {
             return
         }
 
-        registrar.addComponent(object : IBlockComponentProvider {
+        val component = object : IBlockComponentProvider {
             override fun appendBody(tooltip: ITooltip?, accessor: IBlockAccessor?, config: IPluginConfig?) {
                 if (tooltip == null || accessor == null || config == null) {
                     return
                 }
 
-                val entries = WailaTooltip.fromNbt(accessor.serverData)
+                val entries = WailaTooltip.fromNbt(accessor.data.raw())
 
                 entries.values.forEach { entry ->
                     entry.write(tooltip)
                 }
             }
-        }, TooltipPosition.BODY, BlockEntity::class.java)
+        }
 
-        registrar.addBlockData(object : IServerDataProvider<BlockEntity> {
-            override fun appendServerData(
-                data: CompoundTag?,
-                accessor: IServerAccessor<BlockEntity>?,
-                config: IPluginConfig?,
-            ) {
-                if (data == null || accessor == null) {
-                    return
-                }
+        registrar.addBlockData(IDataProvider<MultipartBlockEntity> { data, accessor, config ->
+            appendWailaEntity(data, accessor?.target, config)
+        }, MultipartBlockEntity::class.java)
 
-                val blockEntity = accessor.target
+        registrar.addComponent(component, TooltipPosition.BODY, MultipartBlockEntity::class.java)
 
-                if (blockEntity !is WailaEntity) {
-                    return
-                }
+        registrar.addBlockData(IDataProvider<CellBlockEntity> { data, accessor, config ->
+            appendWailaEntity(data, accessor?.target, config)
+        }, CellBlockEntity::class.java)
 
-                val builder = WailaTooltip.builder()
+        registrar.addComponent(component, TooltipPosition.BODY, CellBlockEntity::class.java)
+    }
 
-                try {
-                    blockEntity.appendBody(builder, config)
-                } catch (_: Exception) {
-                    // Handle errors caused by simulator
-                    // Make sure you add a breakpoint here if you aren't getting your toolip properly
-                }
+    private fun appendWailaEntity(data: IDataWriter?, entity: WailaEntity?, config: IPluginConfig?) {
+        if (data == null || entity == null) {
+            return
+        }
 
-                builder.build().toNbt(data)
-            }
-        }, BlockEntity::class.java)
+        val builder = WailaTooltip.builder()
+
+        try {
+            entity.appendWaila(builder, config)
+        } catch (_: Exception) {
+            // Handle errors caused by simulator
+            // Make sure you add a breakpoint here if you aren't getting your toolip properly
+            LOG.error("Tooltip ex")
+        }
+
+        builder.build().toNbt(data.raw())
     }
 }
 
@@ -71,13 +74,13 @@ class Eln2WailaPlugin : IWailaPlugin {
  * */
 @FunctionalInterface
 interface WailaEntity {
-    fun appendBody(builder: WailaTooltipBuilder, config: IPluginConfig?) {
+    fun appendWaila(builder: WailaTooltipBuilder, config: IPluginConfig?) {
         if (this is DataEntity) {
             val node = this.dataNode
 
             node.valueScan {
                 if (it is WailaEntity) {
-                    it.appendBody(builder, config)
+                    it.appendWaila(builder, config)
                 }
             }
         }

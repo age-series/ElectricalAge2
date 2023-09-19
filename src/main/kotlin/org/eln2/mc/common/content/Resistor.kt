@@ -13,15 +13,19 @@ import org.eln2.mc.common.parts.foundation.PartPlacementInfo
 import org.eln2.mc.data.withDirectionActualRule
 import org.eln2.mc.integration.WailaEntity
 import org.eln2.mc.integration.WailaTooltipBuilder
+import org.eln2.mc.mathematics.Base6Direction3d
 import org.eln2.mc.mathematics.DirectionMask
-import org.eln2.mc.mathematics.RelativeDir
 import org.eln2.mc.mathematics.bbVec
 import org.eln2.mc.resistor
 
 /**
  * The resistor object has a single resistor. At most, two connections can be made by this object.
  * */
-class ResistorObject(cell: Cell, val dir1: RelativeDir = RelativeDir.Front, val dir2: RelativeDir = RelativeDir.Back) :
+class ResistorObject(
+    cell: Cell,
+    val dir1: Base6Direction3d = Base6Direction3d.Front,
+    val dir2: Base6Direction3d = Base6Direction3d.Back,
+) :
     ElectricalObject(cell),
     WailaEntity {
     private lateinit var resistor: Resistor
@@ -72,7 +76,7 @@ class ResistorObject(cell: Cell, val dir1: RelativeDir = RelativeDir.Front, val 
         }
     }
 
-    override fun appendBody(builder: WailaTooltipBuilder, config: IPluginConfig?) {
+    override fun appendWaila(builder: WailaTooltipBuilder, config: IPluginConfig?) {
         builder.resistor(resistor)
     }
 }

@@ -10,11 +10,13 @@ import kotlin.reflect.full.*
 @Target(AnnotationTarget.FUNCTION)
 annotation class Replicator
 
+/**
+ * Represents a specialized [CellBehavior], that only exists when the game object also exists.
+ * */
 interface ReplicatorBehavior : CellBehavior
 
 object Replicators {
-    fun replicatorScan(cellK: KClass<*>, containerK: KClass<*>, cellInst: Any, containerInst: Any) =
-        getReplicators(cellK, containerK).mapNotNull { it.create(cellInst, containerInst) }
+    fun replicatorScan(cellK: KClass<*>, containerK: KClass<*>, cellInst: Any, containerInst: Any) = getReplicators(cellK, containerK).mapNotNull { it.create(cellInst, containerInst) }
 
     private fun interface ReplicatorFactory {
         fun create(cellInst: Any, containerInst: Any): ReplicatorBehavior?
@@ -56,7 +58,17 @@ fun interface ThermalReplicator {
     fun streamTemperatureChanges(bodies: List<ThermalBody>, dirty: List<ThermalBody>)
 }
 
+// todo maybe find an event based system instead of polling
+
+/**
+ * Generalized behavior for sending temperature changes to clients (for e.g. rendering hot bodies)
+ * @param bodies The list of bodies to track.
+ * @param replicator The consumer for the changes.
+ * */
 class ThermalReplicatorBehavior(val bodies: List<ThermalBody>, val replicator: ThermalReplicator) : ReplicatorBehavior {
+    /**
+     * Gets or sets the interval (in simulation ticks) for polling.
+     * */
     var scanInterval: Int = 10
     var scanPhase: SubscriberPhase = SubscriberPhase.Pre
     var toleranceK: Double = 1.0

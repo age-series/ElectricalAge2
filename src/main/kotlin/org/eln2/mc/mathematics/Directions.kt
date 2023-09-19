@@ -7,7 +7,7 @@ import org.eln2.mc.isHorizontal
 import org.eln2.mc.isVertical
 import org.joml.Matrix4f
 
-enum class RelativeDir(val id: Int) {
+enum class Base6Direction3d(val id: Int) {
     Front(1),
     Back(2),
     Left(3),
@@ -39,7 +39,7 @@ enum class RelativeDir(val id: Int) {
     val isVertical get() = this == Up || this == Down
 
     companion object {
-        fun fromForwardUp(facing: Direction, normal: Direction, direction: Direction): RelativeDir {
+        fun fromForwardUp(facing: Direction, normal: Direction, direction: Direction): Base6Direction3d {
             if (facing.isVertical()) {
                 error("Facing cannot be vertical")
             }
@@ -71,7 +71,7 @@ enum class RelativeDir(val id: Int) {
             return result
         }
 
-        fun fromId(id: Int): RelativeDir {
+        fun fromId(id: Int): Base6Direction3d {
             return when (id) {
                 Front.id -> Front
                 Back.id -> Back
@@ -136,7 +136,7 @@ value class DirectionMask(val mask: Int) {
         /**
          * Gets the cached mask for the specified direction.
          * */
-        fun ofRelative(direction: RelativeDir): DirectionMask {
+        fun ofRelative(direction: Base6Direction3d): DirectionMask {
             return of(direction.alias)
         }
 
@@ -164,7 +164,7 @@ value class DirectionMask(val mask: Int) {
         /**
          * **Computes** the mask for the specified directions.
          * */
-        fun ofRelatives(directions: List<RelativeDir>): DirectionMask {
+        fun ofRelatives(directions: List<Base6Direction3d>): DirectionMask {
             if (directions.isEmpty()) {
                 return EMPTY
             }
@@ -178,7 +178,7 @@ value class DirectionMask(val mask: Int) {
         /**
          * **Computes** the mask for the specified directions.
          * */
-        fun ofRelatives(vararg directions: RelativeDir): DirectionMask {
+        fun ofRelatives(vararg directions: Base6Direction3d): DirectionMask {
             return ofRelatives(directions.asList())
         }
 
@@ -186,16 +186,16 @@ value class DirectionMask(val mask: Int) {
         val UP = of(Direction.UP)
 
         val NORTH = of(Direction.NORTH)
-        val FRONT = ofRelative(RelativeDir.Front)
+        val FRONT = ofRelative(Base6Direction3d.Front)
 
         val SOUTH = of(Direction.SOUTH)
-        val BACK = ofRelative(RelativeDir.Back)
+        val BACK = ofRelative(Base6Direction3d.Back)
 
         val WEST = of(Direction.WEST)
-        val LEFT = ofRelative(RelativeDir.Left)
+        val LEFT = ofRelative(Base6Direction3d.Left)
 
         val EAST = of(Direction.EAST)
-        val RIGHT = ofRelative(RelativeDir.Right)
+        val RIGHT = ofRelative(Base6Direction3d.Right)
 
         val HORIZONTALS = NORTH + SOUTH + EAST + WEST
         val VERTICALS = UP + DOWN
@@ -277,12 +277,12 @@ value class DirectionMask(val mask: Int) {
     val isEmpty get() = (mask == 0)
     val isNotEmpty get() = !isEmpty
     fun hasFlag(direction: Direction) = (mask and getBit(direction)) > 0
-    fun hasFlag(direction: RelativeDir) = hasFlag(direction.alias)
+    fun hasFlag(direction: Base6Direction3d) = hasFlag(direction.alias)
     fun hasAll(flags: DirectionMask) = (mask and flags.mask) == flags.mask
     fun hasAny(flags: DirectionMask) = (mask and flags.mask) > 0
 
     infix fun has(direction: Direction) = hasFlag(direction)
-    infix fun has(direction: RelativeDir) = hasFlag(direction)
+    infix fun has(direction: Base6Direction3d) = hasFlag(direction)
     infix fun has(flags: DirectionMask) = hasAll(flags)
 
     //#endregion
@@ -294,13 +294,13 @@ value class DirectionMask(val mask: Int) {
     val hasDown get() = hasFlag(Direction.DOWN)
     val hasUp get() = hasFlag(Direction.UP)
     val hasNorth get() = hasFlag(Direction.NORTH)
-    val hasFront get() = hasFlag(RelativeDir.Front)
+    val hasFront get() = hasFlag(Base6Direction3d.Front)
     val hasSouth get() = hasFlag(Direction.SOUTH)
-    val hasBack get() = hasFlag(RelativeDir.Back)
+    val hasBack get() = hasFlag(Base6Direction3d.Back)
     val hasWest get() = hasFlag(Direction.WEST)
-    val hasLeft get() = hasFlag(RelativeDir.Left)
+    val hasLeft get() = hasFlag(Base6Direction3d.Left)
     val hasEast get() = hasFlag(Direction.EAST)
-    val hasRight get() = hasFlag(RelativeDir.Right)
+    val hasRight get() = hasFlag(Base6Direction3d.Right)
 
     /**
      * Gets the cached list of directions in this mask.

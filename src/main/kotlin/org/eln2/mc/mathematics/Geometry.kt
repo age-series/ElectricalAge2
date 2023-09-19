@@ -1491,7 +1491,7 @@ data class Rotation3d(val x: Double, val y: Double, val z: Double, val w: Double
 
     fun log(): Vector3d {
         val n = xyz.norm
-        return xyz * if (n < 10e-10) 2.0 / w - 2.0 / 3.0 * n * n / (w * w * w)
+        return xyz * if (n < 1e-9) 2.0 / w - 2.0 / 3.0 * n * n / (w * w * w)
         else 2.0 * atan2(n * snz(w), w * snz(w)) / n
     }
 
@@ -1541,6 +1541,8 @@ data class Rotation3d(val x: Double, val y: Double, val z: Double, val w: Double
         x.approxEq(other.x, eps) && y.approxEq(other.y, eps) && z.approxEq(other.z, eps) && w.approxEq(other.w, eps)
 
     companion object {
+        val identity = rma(Matrix3x3.identity)
+
         fun axisAngle(axis: Vector3d, angle: Double) = exp(axis.normalizedNz() * angle)
 
         fun rma(m: Matrix3x3): Rotation3d {
@@ -1602,7 +1604,12 @@ data class Rotation3d(val x: Double, val y: Double, val z: Double, val w: Double
 
         fun exp(w: Vector3d): Rotation3d {
             val t = w.norm
-            val axis = w.normalizedNz()
+
+            if (t == 0.0) {
+                return identity
+            }
+
+            val axis = w / t
             val s = sin(t / 2.0)
 
             return Rotation3d(axis.x * s, axis.y * s, axis.z * s, cos(t / 2.0))
@@ -1717,7 +1724,7 @@ data class Pose3d(val translation: Vector3d, val rotation: Rotation3d) {
         val wx = Rotation3d.alg(w)
         val t = w.norm
 
-        val c = if (abs(t) < 10e-9) {
+        val c = if (abs(t) < 1e-7) {
             1 / 12.0 + t * t / 720.0 + t * t * (t * t) / 30240.0
         } else {
             (1.0 - sin(t) / t / (2.0 * ((1 - cos(t)) / (t * t)))) / (t * t)
@@ -1755,7 +1762,7 @@ data class Pose3d(val translation: Vector3d, val rotation: Rotation3d) {
             val b: Double
             val c: Double
 
-            if (abs(t) < 10e-9) {
+            if (abs(t) < 1e-7) {
                 b = 1.0 / 2.0 - t * t / 24.0 + t * t * (t * t) / 720.0
                 c = 1.0 / 6.0 - t * t / 120.0 + t * t * (t * t) / 5040.0
             } else {

@@ -15,9 +15,6 @@ import org.eln2.mc.*
 import org.eln2.mc.common.cells.CellRegistry
 import org.eln2.mc.data.*
 import org.eln2.mc.integration.WailaEntity
-import org.eln2.mc.mathematics.Vector3di
-import org.eln2.mc.scientific.*
-import java.nio.ByteBuffer
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
@@ -25,9 +22,6 @@ import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.locks.ReentrantLock
-import kotlin.collections.ArrayDeque
-
-data class CellPos(val descriptor: LocationDescriptor)
 
 class TrackedSubscriberCollection(val underlying: SubscriberCollection) : SubscriberCollection {
     private val subscribers = HashSet<Sub>()
@@ -51,7 +45,7 @@ class TrackedSubscriberCollection(val underlying: SubscriberCollection) : Subscr
 }
 
 data class CellCreateInfo(
-    val pos: CellPos,
+    val pos: LocatorSet,
     val id: ResourceLocation,
     val envFm: DataFieldMap,
 )
@@ -69,20 +63,8 @@ annotation class Behavior
  * have a Simulation Object associated with it.
  * Cells create connections with other cells, and objects create connections with other objects of the same simulation type.
  * */
-abstract class Cell(val pos: CellPos, val id: ResourceLocation, val envFldMap: DataFieldMap) : WailaEntity, DataEntity {
-    constructor(ci: CellCreateInfo) : this(ci.pos, ci.id, ci.envFm)
-
-    override val dataNode = DataNode().also { root ->
-        root.withChild {
-            it.data.withField(
-                ObjectField("ID") {
-                    if (hasGraph) graph.id
-                    else null
-                }
-            )
-        }
-    }
-
+abstract class Cell(val pos: LocatorSet, val id: ResourceLocation, val environmentData: DataFieldMap) : WailaEntity,
+    DataEntity {
     companion object {
         private val OBJECT_READERS = ConcurrentHashMap<Class<*>, List<FieldReader<Cell>>>()
         private val BEHAVIOR_READERS = ConcurrentHashMap<Class<*>, List<FieldReader<Cell>>>()
@@ -91,9 +73,25 @@ abstract class Cell(val pos: CellPos, val id: ResourceLocation, val envFldMap: D
         private const val OBJECT_DATA = "objectData"
     }
 
-    val posDescr get() = pos.descriptor
+    constructor(ci: CellCreateInfo) : this(ci.pos, ci.id, ci.envFm)
 
+    final override val dataNode = DataNode()
+
+    val data get() = dataNode.data
+
+    init {
+        dataNode.data.withField(
+            ObjectField("ID") {
+                if (hasGraph) graph.id
+                else null
+            }
+        )
+    }
+
+    // Persistent behaviors are used by cell logic, and live throughout the lifetime of the cell:
     private var persistentPool: TrackedSubscriberCollection? = null
+
+    // Transient behaviors are used when the cell is in range of a player (and the game object exists):
     private var transientPool: TrackedSubscriberCollection? = null
 
     lateinit var graph: CellGraph
@@ -107,24 +105,42 @@ abstract class Cell(val pos: CellPos, val id: ResourceLocation, val envFldMap: D
             .withSingleton { dataNode }
             .withSingleton { this }
             .withSingleton(this.javaClass) { this }
-            .withSingleton { posDescr }
-            .withExternalResolver { dataNode.data.read(it) }
+            .withSingleton { pos }
+            .withExternalResolver { dataNode.data.get(it) }
             .also { registerServices(it) }
     }
 
     protected val services get() = servicesLazy.value
 
+    /**
+     * Called when the [servicesLazy] is being initialized, in order to register user services.
+     * */
     protected open fun registerServices(services: ServiceCollection) {}
 
+    /**
+     * Instantiates the specified class using dependency injection. Calling this method will initialize the [servicesLazy].
+     * By default, the following services are included:
+     * - [dataNode]
+     * - this
+     * - [javaClass]
+     * - [pos]
+     * - data node fields (fields in [dataNode], but not child nodes)
+     * - [registerServices] (user-specified services)
+     * */
     protected inline fun <reified T> activate(vararg extraParams: Any): T = services.activate(extraParams.asList())
 
+    /**
+     * Checks if this cell accepts a connection from the remote cell.
+     * @return True if the connection is accepted. Otherwise, false.
+     * */
     open fun acceptsConnection(remote: Cell): Boolean {
-        return ruleSet.accepts(pos.descriptor, remote.pos.descriptor)
+        return ruleSet.accepts(pos, remote.pos)
     }
 
     private val replicators = ArrayList<ReplicatorBehavior>()
 
     /**
+     * Marks this cell as dirty.
      * If [hasGraph], [CellGraph.setChanged] is called to ensure the cell data will be saved.
      * */
     fun setChanged() {
@@ -143,7 +159,7 @@ abstract class Cell(val pos: CellPos, val id: ResourceLocation, val envFldMap: D
 
     var container: CellContainer? = null
 
-    private val objSetLazy = lazy {
+    private val objectsLazy = lazy {
         createObjectSet().also { set ->
             set.process { obj ->
                 if (obj is DataEntity) {
@@ -153,7 +169,7 @@ abstract class Cell(val pos: CellPos, val id: ResourceLocation, val envFldMap: D
         }
     }
 
-    val objSet get() = objSetLazy.value
+    val objects get() = objectsLazy.value
 
     private val behaviorsLazy = lazy {
         createBehaviorContainer().also { container ->
@@ -161,7 +177,10 @@ abstract class Cell(val pos: CellPos, val id: ResourceLocation, val envFldMap: D
         }
     }
 
-    protected val behaviorContainer get() = behaviorsLazy.value
+    /**
+     * Gets the behavior container for this cell. Accessing this will initialize [behaviorsLazy].
+     * */
+    protected val behaviors get() = behaviorsLazy.value
 
     /**
      * Called once when the object set is requested. The result is then cached.
@@ -174,7 +193,7 @@ abstract class Cell(val pos: CellPos, val id: ResourceLocation, val envFldMap: D
 
     open fun createBehaviorContainer() = CellBehaviorContainer(this).also { container ->
         fieldScan(this.javaClass, CellBehavior::class, Behavior::class.java, BEHAVIOR_READERS)
-            .mapNotNull { it.get(this) as? CellBehavior }.forEach(container::addInst)
+            .mapNotNull { it.get(this) as? CellBehavior }.forEach(container::addBehaviorInstance)
     }
 
     fun loadTag(tag: CompoundTag) {
@@ -222,17 +241,17 @@ abstract class Cell(val pos: CellPos, val id: ResourceLocation, val envFldMap: D
     open fun saveCellData(): CompoundTag? = null
 
     private fun saveObjectData(tag: CompoundTag) {
-        objSet.process { obj ->
+        objects.process { obj ->
             if (obj is PersistentObject) {
-                tag.put(obj.type.name, obj.save())
+                tag.put(obj.type.domain, obj.save())
             }
         }
     }
 
     private fun loadObjectData(tag: CompoundTag) {
-        objSet.process { obj ->
+        objects.process { obj ->
             if (obj is PersistentObject) {
-                obj.load(tag.getCompound(obj.type.name))
+                obj.load(tag.getCompound(obj.type.domain))
             }
         }
     }
@@ -251,7 +270,7 @@ abstract class Cell(val pos: CellPos, val id: ResourceLocation, val envFldMap: D
 
         objects.forEach { obj ->
             fun bindReplicator(replicatorBehavior: ReplicatorBehavior) {
-                behaviorContainer.addInst(replicatorBehavior)
+                behaviors.addBehaviorInstance(replicatorBehavior)
                 replicators.add(replicatorBehavior)
             }
 
@@ -273,7 +292,7 @@ abstract class Cell(val pos: CellPos, val id: ResourceLocation, val envFldMap: D
             ?: error("Transient null in unbind")
 
         replicators.forEach {
-            behaviorContainer.destroy(it)
+            behaviors.destroy(it)
         }
 
         replicators.clear()
@@ -301,7 +320,7 @@ abstract class Cell(val pos: CellPos, val id: ResourceLocation, val envFldMap: D
     protected open fun onCreated() {}
 
     fun notifyRemoving() {
-        behaviorContainer.destroy()
+        behaviors.destroy()
         onRemoving()
         persistentPool?.destroy()
     }
@@ -320,7 +339,7 @@ abstract class Cell(val pos: CellPos, val id: ResourceLocation, val envFldMap: D
      * Called after the cell was destroyed.
      */
     protected open fun onDestroyed() {
-        objSet.process { it.destroy() }
+        objects.process { it.destroy() }
     }
 
     /**
@@ -340,7 +359,7 @@ abstract class Cell(val pos: CellPos, val id: ResourceLocation, val envFldMap: D
             persistentPool = TrackedSubscriberCollection(graph.subscribers)
             transientPool = TrackedSubscriberCollection(graph.subscribers)
 
-            behaviorContainer.behaviors.forEach {
+            behaviors.behaviors.forEach {
                 it.subscribe(persistentPool!!)
             }
 
@@ -365,16 +384,16 @@ abstract class Cell(val pos: CellPos, val id: ResourceLocation, val envFldMap: D
      * Called when the solver is being built, in order to clear and prepare the objects.
      * */
     fun clearObjectConnections() {
-        objSet.process { it.clear() }
+        objects.process { it.clear() }
     }
 
     /**
      * Called when the solver is being built, in order to record all object-object connections.
      * */
     fun recordObjectConnections() {
-        objSet.process { localObj ->
+        objects.process { localObj ->
             connections.forEach { remoteCell ->
-                if (!localObj.acceptsRemoteLocation(remoteCell.pos.descriptor)) {
+                if (!localObj.acceptsRemoteLocation(remoteCell.pos)) {
                     return@forEach
                 }
 
@@ -382,11 +401,11 @@ abstract class Cell(val pos: CellPos, val id: ResourceLocation, val envFldMap: D
                     return@forEach
                 }
 
-                val remoteObj = remoteCell.objSet[localObj.type]
+                val remoteObj = remoteCell.objects[localObj.type]
 
                 require(remoteCell.connections.contains(this)) { "Mismatched connection set" }
 
-                if (!remoteObj.acceptsRemoteLocation(pos.descriptor)) {
+                if (!remoteObj.acceptsRemoteLocation(pos)) {
                     return@forEach
                 }
 
@@ -395,27 +414,14 @@ abstract class Cell(val pos: CellPos, val id: ResourceLocation, val envFldMap: D
                 when (localObj.type) {
                     SimulationObjectType.Electrical -> {
                         (localObj as ElectricalObject).addConnection(
-                            remoteCell.objSet.electricalObject
+                            remoteCell.objects.electricalObject
                         )
                     }
 
                     SimulationObjectType.Thermal -> {
                         (localObj as ThermalObject).addConnection(
-                            remoteCell.objSet.thermalObject
+                            remoteCell.objects.thermalObject
                         )
-                    }
-
-                    SimulationObjectType.Diffusion -> {
-                        localObj as DiffusionObject
-                        remoteObj as DiffusionObject
-
-                        require(localObj.isCompatibleWith(remoteObj) == remoteObj.isCompatibleWith(localObj)) {
-                            "Compatibility conclusion conflict for DRAGONS $localObj $remoteObj"
-                        }
-
-                        if (localObj.isCompatibleWith(remoteObj)) {
-                            localObj.addConnection(remoteObj)
-                        }
                     }
                 }
             }
@@ -426,17 +432,13 @@ abstract class Cell(val pos: CellPos, val id: ResourceLocation, val envFldMap: D
      * Called when the solver is being built, in order to finish setting up the underlying components in the
      * simulation objects.
      * */
-    fun build() {
-        objSet.process { it.build() }
-    }
+    fun build() = objects.process { it.build() }
 
     /**
      * Checks if this cell has the specified simulation object type.
      * @return True if this cell has the required object. Otherwise, false.
      * */
-    fun hasObject(type: SimulationObjectType): Boolean {
-        return objSet.hasObject(type)
-    }
+    fun hasObject(type: SimulationObjectType) = objects.hasObject(type)
 }
 
 /**
@@ -668,7 +670,11 @@ object CellConnections {
      * There is a case, though, that will complete in constant time: removing a cell that has zero or one neighbors.
      * Keep in mind that the simulation logic likely won't complete in constant time, in any case.
      * */
-    private fun rebuildTopologies(neighborInfoList: List<CellNeighborInfo>, removedCell: Cell, manager: CellGraphManager) {
+    private fun rebuildTopologies(
+        neighborInfoList: List<CellNeighborInfo>,
+        removedCell: Cell,
+        manager: CellGraphManager,
+    ) {
         /*
         * For now, we use this simple algorithm.:
         *   We enqueue all neighbors for visitation. We perform searches through their graphs,
@@ -703,11 +709,6 @@ object CellConnections {
                     continue
                 }
 
-                // Remove it from the neighbor queue, if it exists.
-                // todo: can we add an exit condition here?
-                // Hypothesis: If at any point, the neighbor queue becomes empty, we can stop traversal, and use the cells
-                // in the old circuit, minus the one we are removing. This helps performance if there are close
-                // cycles around the cell we are removing.
                 neighborQueue.remove(cell)
 
                 graph.addCell(cell)
@@ -744,20 +745,15 @@ object CellConnections {
 }
 
 fun planarCellScan(level: Level, actualCell: Cell, searchDirection: Direction, consumer: ((CellNeighborInfo) -> Unit)) {
-    val actualPosWorld = actualCell.posDescr.requireLocator<Positional, BlockPosLocator> { "Planar Scan requires a block position" }.pos
-    val actualFaceTarget = actualCell.posDescr.requireLocator<Directional, BlockFaceLocator> { "Planar Scan requires a face" }.faceWorld
+    val actualPosWorld = actualCell.pos.requireLocator<BlockLocator> { "Planar Scan requires a block position" }
+    val actualFaceTarget = actualCell.pos.requireLocator<FaceLocator> { "Planar Scan requires a face" }
     val remoteContainer = level.getBlockEntity(actualPosWorld + searchDirection) as? CellContainer ?: return
 
     remoteContainer
         .getCells()
-        .filter {
-            // Select cells that we can search using this algorithm. Those cells are SE(3) parameterized, so we can search using the position and face rotation.
-            val desc = it.pos.descriptor
-
-            desc.hasLocator<Positional, BlockPosLocator>() && desc.hasLocator<Directional, BlockFaceLocator>()
-        }
+        .filter { it.pos.has<BlockLocator>() && it.pos.has<FaceLocator>() }
         .forEach { targetCell ->
-            val targetFaceTarget = targetCell.pos.descriptor.requireLocator<Directional, BlockFaceLocator>().faceWorld
+            val targetFaceTarget = targetCell.pos.requireLocator<FaceLocator>()
 
             if (targetFaceTarget == actualFaceTarget) {
                 if (actualCell.acceptsConnection(targetCell) && targetCell.acceptsConnection(actualCell)) {
@@ -767,22 +763,23 @@ fun planarCellScan(level: Level, actualCell: Cell, searchDirection: Direction, c
         }
 }
 
-fun wrappedCellScan(level: Level, actualCell: Cell, searchDirectionTarget: Direction, consumer: ((CellNeighborInfo) -> Unit)) {
-    val actualPosWorld = actualCell.pos.descriptor.requireLocator<Positional, BlockPosLocator> { "Wrapped Scan requires a block position" }.pos
-    val actualFaceActual = actualCell.pos.descriptor.requireLocator<Directional, BlockFaceLocator> { "Wrapped Scan requires a face" }.faceWorld
+fun wrappedCellScan(
+    level: Level,
+    actualCell: Cell,
+    searchDirectionTarget: Direction,
+    consumer: ((CellNeighborInfo) -> Unit),
+) {
+    val actualPosWorld = actualCell.pos.requireLocator<BlockLocator> { "Wrapped Scan requires a block position" }
+    val actualFaceActual = actualCell.pos.requireLocator<FaceLocator> { "Wrapped Scan requires a face" }
     val wrapDirection = actualFaceActual.opposite
     val remoteContainer = level.getBlockEntity(actualPosWorld + searchDirectionTarget + wrapDirection) as? CellContainer
         ?: return
 
     remoteContainer
         .getCells()
-        .filter {
-            // Select cells that we can search using this algorithm. Those cells are SE(3) parameterized, so we can search using the position and face rotation.
-            val desc = it.pos.descriptor
-            desc.hasLocator<Positional, BlockPosLocator>() && desc.hasLocator<Directional, BlockFaceLocator>()
-        }
+        .filter { it.pos.has<BlockLocator>() && it.pos.has<FaceLocator>() }
         .forEach { targetCell ->
-            val targetFaceTarget = targetCell.pos.descriptor.requireLocator<Directional, BlockFaceLocator>().faceWorld
+            val targetFaceTarget = targetCell.pos.requireLocator<FaceLocator>()
 
             if (targetFaceTarget == searchDirectionTarget) {
                 if (actualCell.acceptsConnection(targetCell) && targetCell.acceptsConnection(actualCell)) {
@@ -790,13 +787,6 @@ fun wrappedCellScan(level: Level, actualCell: Cell, searchDirectionTarget: Direc
                 }
             }
         }
-}
-
-fun hashLocationDescriptorSet(v: Collection<LocationDescriptor>): Int {
-    val cache = IntArray(v.size)
-    v.forEachIndexed { index, it -> cache[index] = it.hashCode() }
-    cache.sort()
-    return cache.contentHashCode()
 }
 
 interface CellContainer {
@@ -823,11 +813,10 @@ data class CellNeighborInfo(val neighbor: Cell, val neighborContainer: CellConta
 class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLevel) {
     val cells = ArrayList<Cell>()
 
-    private val posCells = HashMap<CellPos, Cell>()
+    private val posCells = HashMap<LocatorSet, Cell>()
 
     private val electricalSims = ArrayList<Circuit>()
     private val thermalSims = ArrayList<Simulator>()
-    private val diffusionSims = ArrayList<VoxelizedDiffusionSimulation>()
 
     private val simStopLock = ReentrantLock()
 
@@ -886,7 +875,6 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
         UpdateSubsPre,
         UpdateElectricalSims,
         UpdateThermalSims,
-        UpdateDiffusionSims,
         UpdateSubsPost
     }
 
@@ -927,20 +915,6 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
                         it.step(fixedDt)
                     }
                 }
-
-                stage = UpdateStep.UpdateDiffusionSims
-                val diffusionTime = measureDuration {
-                    diffusionSims.forEach {
-                        it.simulation.step() // controlled by Diffusion Rate
-
-                        if (it.simulation.isActive) {
-                            setChanged()
-                            println("a/C: ${it.simulation.activeClusters}, a/c: ${it.simulation.activeFluidCells}, a/g: ${it.simulation.sparseGrid.activeGrids.size}, t/g: ${it.simulation.sparseGrid.subGrids.size}")
-                        }
-                    }
-                }
-
-                //println("diff time: ${(diffusionTime..MILLISECONDS).rounded()} ms")
             }
 
             stage = UpdateStep.UpdateSubsPost
@@ -953,94 +927,6 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
         } finally {
             // Maybe blow up the game instead of just allowing this to go on?
             simStopLock.unlock()
-        }
-    }
-
-    fun saveSimulationData(): CompoundTag {
-        return CompoundTag().also {
-            it.putSubTag(NBT_DIFFUSION_DATA) { diffusionTag ->
-                val simList = ListTag()
-
-                diffusionSims.forEach { (code, sim) ->
-                    val simTag = CompoundTag()
-
-                    simTag.putInt(NBT_DIFFUSION_HULL_CODE, code)
-
-                    // Serialize more efficiently using binary serialization
-                    val sparse = sim.sparseGrid
-                    val cursor = sparse.createCursor()
-
-                    val serializedCells = ArrayList<Pair<Vector3di, Float>>()
-
-                    sparse.subGrids.values.forEach { grid ->
-                        cursor.loadg(grid)
-
-                        for (i in sparse.windowRange) {
-                            cursor.loadi(i)
-
-                            val actualIndex = grid.ixGrid(cursor.x, cursor.y, cursor.z)
-
-                            if (!grid.wallGrid[actualIndex] && grid.densities[actualIndex] > 0f) {
-                                serializedCells.add(
-                                    Pair(
-                                        cursor.vector,
-                                        grid.densities[actualIndex]
-                                    )
-                                )
-                            }
-                        }
-                    }
-
-                    val buffer = ByteBuffer.allocate(1 * 4 + serializedCells.size * (3 * 4 + 1 * 4))
-
-                    buffer.putInt(serializedCells.size)
-                    serializedCells.forEach { (pos, density) ->
-                        buffer.putVector3di(pos)
-                        buffer.putFloat(density)
-                    }
-
-                    simTag.putByteArray(NBT_DENSE_SET, buffer.array())
-
-                    simList.add(simTag)
-                }
-
-                diffusionTag.put(NBT_DIFFUSION_SIMS_LIST, simList)
-            }
-        }
-    }
-
-    fun loadSimulationData(tag: CompoundTag) {
-        tag.useSubTagIfPreset(NBT_DIFFUSION_DATA) { diffusionTag ->
-            val simList = diffusionTag.get(NBT_DIFFUSION_SIMS_LIST) as ListTag
-
-            simList.map { it as CompoundTag }.forEach { simTag ->
-                val hullCode = simTag.getInt(NBT_DIFFUSION_HULL_CODE)
-
-                val sim = diffusionSims.firstOrNull { it.code == hullCode }
-
-                if (sim == null) {
-                    LOG.error("Failed to resolve diffusion simulation with hull code $hullCode")
-                    return@forEach
-                }
-
-                val sparse = sim.simulation.sparseGrid
-
-                val buffer = ByteBuffer.wrap(simTag.getByteArray(NBT_DENSE_SET))
-                val count = buffer.int
-
-                repeat(count) {
-                    val pos = buffer.getVector3di()
-                    val density = buffer.float
-
-                    sparse.setDensityTile(
-                        pos.x, pos.y, pos.z,
-                        density,
-                        true
-                    )
-                }
-
-                println("Loaded $count tiles")
-            }
         }
     }
 
@@ -1057,7 +943,6 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
 
         realizeElectrical()
         realizeThermal()
-        realizeDiffusion()
 
         cells.forEach { it.build() }
         electricalSims.forEach { postProcessCircuit(it) }
@@ -1071,7 +956,7 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
 
         realizeComponents(SimulationObjectType.Electrical, factory = { set ->
             val circuit = Circuit()
-            set.forEach { it.objSet.electricalObject.setNewCircuit(circuit) }
+            set.forEach { it.objects.electricalObject.setNewCircuit(circuit) }
             electricalSims.add(circuit)
         })
     }
@@ -1081,134 +966,9 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
 
         realizeComponents(SimulationObjectType.Thermal, factory = { set ->
             val simulation = Simulator()
-            set.forEach { it.objSet.thermalObject.setNewSimulation(simulation) }
+            set.forEach { it.objects.thermalObject.setNewSimulation(simulation) }
             thermalSims.add(simulation)
         })
-    }
-
-    private fun realizeDiffusion() {
-        diffusionSims.clear()
-
-        realizeComponents(SimulationObjectType.Diffusion, factory = { set ->
-            if (set.isEmpty()) {
-                return@realizeComponents
-            }
-
-            val diffusionObjects = set.map { it.objSet.diffusionObject }
-
-            // Build volumetric graph:
-            val mapNodes = diffusionObjects.associateWithBi {
-                VoxelPatchNode(it.createPatchModule())
-            }
-
-            mapNodes.forward.forEach { (obj, node) ->
-                obj.actualConnections.forEach { (connObj, connDir) ->
-                    node.connections.add(
-                        VoxelPatchEdge(
-                            patchNode = mapNodes.forward[connObj]!!,
-                            direction = connDir
-                        )
-                    )
-                }
-            }
-
-            val scan = VoxelVolumetricScan(
-                // Ensure it gets replicated on loading (so the subspace matches the stored data):
-                mapNodes.forward[
-                    mapNodes.backward.values.minByOrNull {
-                        it.cell.posDescr.hashCode()
-                    }!!
-                ]!!,
-                mapNodes.forward.keys.first().size
-            )
-
-            val grid = SparseGrid3dFluid(FLUID_GRID_SIZE_LOG)
-            val realized = HashMap<VoxelPatchNode, RealizedVoxelPatchNode>()
-
-            val scanResult = scan.voxelizeHull(grid, realized)
-
-            if (!scanResult.hullClosed) {
-                grid.exportForInspection()
-
-                error("Open hull, check file\n${grid.subGrids}")
-            }
-
-            grid.exportForInspection() // todo remove in "production"
-
-            val simulation = DiffusionSimulation(
-                grid,
-                mapNodes.forward.keys.first().def.simulationOptions
-            )
-
-            val code = hashLocationDescriptorSet(
-                diffusionObjects.map { it.cell.posDescr }
-            )
-
-            diffusionSims.add(
-                VoxelizedDiffusionSimulation(
-                    code,
-                    simulation
-                )
-            )
-
-            realized.values.forEach { realizedNode ->
-                mapNodes.backward[realizedNode.node]!!.bindAccessor(
-                    DiffusionAccessorImpl(
-                        simulation,
-                        realizedNode
-                    )
-                )
-            }
-        }, extraCondition = { a, b ->
-            a as DiffusionObject
-            b as DiffusionObject
-
-            a.isCompatibleWith(b)
-        })
-    }
-
-    private data class VoxelizedDiffusionSimulation(
-        val code: Int,
-        val simulation: DiffusionSimulation,
-    )
-
-    private class DiffusionAccessorImpl(
-        val simulation: DiffusionSimulation,
-        override val realizedNode: RealizedVoxelPatchNode,
-    ) : DiffusionAccessor {
-        private val grid get() = simulation.sparseGrid
-
-        private fun getTileGrid(tilePatch: Vector3di): Vector3di {
-            val tileGrid = realizedNode.mapTileGrid(tilePatch)
-
-            if (!realizedNode.isTileGridWithinPatchBounds(tileGrid)) {
-                error("Tried to access tile outside of patch $realizedNode $tileGrid $tilePatch")
-            }
-
-            return tileGrid
-        }
-
-        override fun readDensity(tilePatch: Vector3di): Float {
-            val tileGrid = getTileGrid(tilePatch)
-            val target = grid.getOrCreateTile(tileGrid)
-
-            return target.densities[tileGrid]
-        }
-
-        override fun addDensityIncr(tilePatch: Vector3di, incr: Float, activate: Boolean) {
-            val tileGrid = getTileGrid(tilePatch)
-            grid.addDensityIncrTile(tileGrid.x, tileGrid.y, tileGrid.z, incr, activate)
-        }
-
-        override fun setDensity(tilePatch: Vector3di, amount: Float, activate: Boolean) {
-            val tileGrid = getTileGrid(tilePatch)
-            grid.setDensityTile(tileGrid.x, tileGrid.y, tileGrid.z, amount, activate)
-        }
-
-        override fun activate(tilePatch: Vector3di) {
-            val tileGrid = getTileGrid(tilePatch)
-            grid.activate(tileGrid.x, tileGrid.y, tileGrid.z)
-        }
     }
 
     /**
@@ -1259,7 +1019,11 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
 
                 cell.connections.forEach { connectedCell ->
                     if (connectedCell.hasObject(type)) {
-                        if (extraCondition != null && !extraCondition(cell.objSet[type], connectedCell.objSet[type])) {
+                        if (extraCondition != null && !extraCondition(
+                                cell.objects[type],
+                                connectedCell.objects[type]
+                            )
+                        ) {
                             return@forEach
                         }
 
@@ -1296,7 +1060,7 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
      * Gets the cell at the specified CellPos.
      * @return The cell, if found, or throws an exception, if the cell does not exist.
      * */
-    fun getCell(pos: CellPos): Cell {
+    fun getCell(pos: LocatorSet): Cell {
         val result = posCells[pos]
 
         if (result == null) {
@@ -1415,6 +1179,8 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
         }
     }
 
+    // TODO revamp the schema
+
     fun toNbt(): CompoundTag {
         val circuitCompound = CompoundTag()
 
@@ -1430,11 +1196,11 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
 
             cell.connections.forEach { conn ->
                 val connectionCompound = CompoundTag()
-                connectionCompound.putCellPos(NBT_POSITION, conn.pos)
+                connectionCompound.putLocatorSet(NBT_POSITION, conn.pos)
                 connectionsTag.add(connectionCompound)
             }
 
-            cellTag.putCellPos(NBT_POSITION, cell.pos)
+            cellTag.putLocatorSet(NBT_POSITION, cell.pos)
             cellTag.putString(NBT_ID, cell.id.toString())
             cellTag.put(NBT_CONNECTIONS, connectionsTag)
 
@@ -1464,12 +1230,6 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
         private const val NBT_CELLS = "cells"
         private const val NBT_POSITION = "pos"
         private const val NBT_CONNECTIONS = "connections"
-        private const val NBT_DIFFUSION_DATA = "diffusionData"
-        private const val NBT_DIFFUSION_SIMS_LIST = "diffusionSimList"
-        private const val NBT_DIFFUSION_HULL_CODE = "hullCode"
-        private const val NBT_DENSE_SET = "denseSet"
-
-        const val FLUID_GRID_SIZE_LOG = 3
 
         init {
             // We do get an exception from thread pool creation, but explicit handling is better here.
@@ -1509,22 +1269,22 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
                 return result
 
             // Used to assign the connections after all cells have been loaded:
-            val cellConnections = HashMap<Cell, ArrayList<CellPos>>()
+            val cellConnections = HashMap<Cell, ArrayList<LocatorSet>>()
 
             // Used to load cell custom data:
             val cellData = HashMap<Cell, CompoundTag>()
 
             cellListTag.forEach { cellNbt ->
                 val cellCompound = cellNbt as CompoundTag
-                val pos = cellCompound.getCellPos(NBT_POSITION)
+                val pos = cellCompound.getLocatorSet(NBT_POSITION)
                 val cellId = ResourceLocation.tryParse(cellCompound.getString(NBT_ID))!!
 
-                val connectionPositions = ArrayList<CellPos>()
+                val connectionPositions = ArrayList<LocatorSet>()
                 val connectionsTag = cellCompound.get(NBT_CONNECTIONS) as ListTag
 
                 connectionsTag.forEach {
                     val connectionCompound = it as CompoundTag
-                    val connectionPos = connectionCompound.getCellPos(NBT_POSITION)
+                    val connectionPos = connectionCompound.getLocatorSet(NBT_POSITION)
                     connectionPositions.add(connectionPos)
                 }
 
@@ -1645,9 +1405,7 @@ class CellGraphManager(val level: ServerLevel) : SavedData() {
 
         graphs.values.forEach { graph ->
             graph.runSuspended {
-                graphListTag.add(graph.toNbt().also {
-                    it.put(SIM_DATA, graph.saveSimulationData())
-                })
+                graphListTag.add(graph.toNbt())
             }
         }
 
@@ -1668,8 +1426,6 @@ class CellGraphManager(val level: ServerLevel) : SavedData() {
     }
 
     companion object {
-        private const val SIM_DATA = "SimData"
-
         private fun load(tag: CompoundTag, level: ServerLevel): CellGraphManager {
             val manager = CellGraphManager(level)
 
@@ -1680,15 +1436,9 @@ class CellGraphManager(val level: ServerLevel) : SavedData() {
                 return manager
             }
 
-            val simData = HashMap<CellGraph, CompoundTag>()
-
             graphListTag.forEach { circuitNbt ->
                 val graphCompound = circuitNbt as CompoundTag
                 val graph = CellGraph.fromNbt(graphCompound, manager, level)
-
-                graphCompound.useSubTagIfPreset(SIM_DATA) {
-                    simData[graph] = it
-                }
 
                 if (graph.cells.isEmpty()) {
                     LOG.error("Loaded circuit with no cells!")
@@ -1705,10 +1455,6 @@ class CellGraphManager(val level: ServerLevel) : SavedData() {
             }
 
             manager.graphs.values.forEach { it.buildSolver() }
-
-            simData.keys.forEach { k ->
-                k.loadSimulationData(simData[k]!!)
-            }
 
             manager.graphs.values.forEach {
                 it.cells.forEach { cell -> cell.onWorldLoadedPostSolver() }
@@ -1749,7 +1495,7 @@ abstract class CellProvider {
     /**
      * Creates a new Cell, at the specified position.
      * */
-    fun create(pos: CellPos, envNode: DataFieldMap): Cell {
+    fun create(pos: LocatorSet, envNode: DataFieldMap): Cell {
         return createInstance(
             CellCreateInfo(
                 pos,
@@ -1787,6 +1533,7 @@ class InjCellProvider<T : Cell>(val c: Class<T>, val extraParams: List<Any>) : C
  * Describes the pin exported to other Electrical Objects.
  * */
 const val EXTERNAL_PIN: Int = 1
+
 /**
  * Describes the pin used internally by Electrical Objects.
  * */

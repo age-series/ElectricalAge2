@@ -95,3 +95,34 @@ fun interface EventHandler<T : Event> {
  * @see Scheduler.register
  * */
 interface EventListener
+
+interface EventSourceView<E : Event> {
+    operator fun plusAssign(s: EventHandler<E>)
+    operator fun minusAssign(s: EventHandler<E>)
+}
+
+class EventSource<E : Event> : EventSourceView<E> {
+    private val subscribers = ArrayList<EventHandler<E>>()
+
+    override operator fun plusAssign(s: EventHandler<E>) {
+        subscribers.add(s)
+    }
+
+    override operator fun minusAssign(s: EventHandler<E>) {
+        subscribers.remove(s)
+    }
+
+    fun send(e: E) {
+        subscribers.forEach {
+            it.handle(e)
+        }
+    }
+
+    fun send(supplier: () -> E) {
+        if (subscribers.isNotEmpty()) {
+            send(supplier.invoke())
+        }
+    }
+
+    val view: EventSourceView<E> get() = this
+}

@@ -15,7 +15,6 @@ import org.eln2.mc.common.blocks.foundation.MultiblockControllerEntity
 import org.eln2.mc.common.blocks.foundation.MultiblockDefinition
 import org.eln2.mc.common.blocks.foundation.MultiblockManager
 import org.eln2.mc.common.cells.foundation.*
-import org.eln2.mc.data.DataNode
 import org.eln2.mc.data.PowerField
 import org.eln2.mc.integration.WailaTooltipBuilder
 import kotlin.math.absoluteValue
@@ -43,8 +42,8 @@ class HeaterHeatPortCell(ci: CellCreateInfo) : Cell(ci) {
         }
     }
 
-    override fun appendBody(builder: WailaTooltipBuilder, config: IPluginConfig?) {
-        super.appendBody(builder, config)
+    override fun appendWaila(builder: WailaTooltipBuilder, config: IPluginConfig?) {
+        super.appendWaila(builder, config)
 
         builder.text("Provider", provider ?: "none")
     }
@@ -59,7 +58,7 @@ class HeaterHeatPortCell(ci: CellCreateInfo) : Cell(ci) {
         loadTag?.also {
             if (it.contains(LINK_GRAPH)) {
                 val linkGraph = it.getUUID(LINK_GRAPH)
-                val targetPos = it.getCellPos(LINK_POS)
+                val targetPos = it.getLocatorSet(LINK_POS)
                 val targetGraph = graph.manager.getGraph(linkGraph)
                 this.provider = targetGraph.getCell(targetPos) as HeaterPowerPortCell
             }
@@ -74,13 +73,13 @@ class HeaterHeatPortCell(ci: CellCreateInfo) : Cell(ci) {
 
             if (provider != null) {
                 it.putUUID(LINK_GRAPH, provider.graph.id)
-                it.putCellPos(LINK_POS, provider.pos)
+                it.putLocatorSet(LINK_POS, provider.pos)
             }
         }
     }
 
     class HeatOutputObject(cell: Cell) : ThermalObject(cell) {
-        val body = ThermalBody.createDefault(cell.envFldMap)
+        val body = ThermalBody.createDefault(cell.environmentData)
         override fun offerComponent(neighbour: ThermalObject) = ThermalComponentInfo(body)
         override fun addComponents(simulator: Simulator) = simulator.add(body)
     }
@@ -91,12 +90,10 @@ class HeaterHeatPortCell(ci: CellCreateInfo) : Cell(ci) {
     }
 }
 
-class HeaterPowerPortCell(ci: CellCreateInfo, val onResistance: Double = 1.0, val offResistance: Double = 10e8) :
+class HeaterPowerPortCell(ci: CellCreateInfo, val onResistance: Double = 1.0, val offResistance: Double = 1e9) :
     Cell(ci) {
-    override val dataNode = DataNode().also {
-        it.data.withField(PowerField {
-            portObj.power.absoluteValue
-        })
+    init {
+        data.withField(PowerField { portObj.power.absoluteValue })
     }
 
     @SimObject
@@ -137,12 +134,12 @@ class HeaterPowerPortCell(ci: CellCreateInfo, val onResistance: Double = 1.0, va
 
     private fun simulationTick(d: Double, subscriberPhase: SubscriberPhase) {
         if (active) {
-            atomicIncr.addAndGet(behaviorContainer.get<ElectricalPowerConverterBehavior>().deltaEnergy)
+            atomicIncr.addAndGet(behaviors.get<ElectricalPowerConverterBehavior>().deltaEnergy)
         }
     }
 
-    override fun appendBody(builder: WailaTooltipBuilder, config: IPluginConfig?) {
-        super.appendBody(builder, config)
+    override fun appendWaila(builder: WailaTooltipBuilder, config: IPluginConfig?) {
+        super.appendWaila(builder, config)
         builder.text("Active", active)
     }
 

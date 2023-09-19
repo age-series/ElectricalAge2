@@ -34,6 +34,10 @@ data class ThermalBodyDef(val material: Material, val mass: Double, val area: Do
     )
 }
 
+val nullMaterial = Material(0.0, 0.0, 0.0, 0.0)
+fun nullThermalMass() = ThermalMass(nullMaterial, 0.0, 0.0)
+fun nullThermalBody() = ThermalBody(nullThermalMass(), 0.0)
+
 class ThermalBody(var thermal: ThermalMass, var area: Double) : WailaEntity {
     var temp: Temperature
         get() = thermal.temperature
@@ -53,7 +57,7 @@ class ThermalBody(var thermal: ThermalMass, var area: Double) : WailaEntity {
             thermal.energy = value
         }
 
-    override fun appendBody(builder: WailaTooltipBuilder, config: IPluginConfig?) {
+    override fun appendWaila(builder: WailaTooltipBuilder, config: IPluginConfig?) {
         thermal.appendBody(builder, config)
     }
 
@@ -64,7 +68,7 @@ class ThermalBody(var thermal: ThermalMass, var area: Double) : WailaEntity {
 
         fun createDefault(env: DataFieldMap): ThermalBody {
             return createDefault().also { b ->
-                env.read<EnvTemperatureField>()?.readTemperature()?.also {
+                env.get<EnvTemperatureField>()?.readTemperature()?.also {
                     b.temp = it
                 }
             }

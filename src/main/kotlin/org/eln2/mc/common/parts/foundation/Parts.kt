@@ -23,7 +23,6 @@ import org.eln2.mc.client.render.foundation.MultipartBlockEntityInstance
 import org.eln2.mc.common.blocks.foundation.MultipartBlockEntity
 import org.eln2.mc.common.cells.foundation.Cell
 import org.eln2.mc.common.cells.foundation.CellGraphManager
-import org.eln2.mc.common.cells.foundation.CellPos
 import org.eln2.mc.common.cells.foundation.CellProvider
 import org.eln2.mc.common.network.serverToClient.BulkMessages
 import org.eln2.mc.common.network.serverToClient.PacketHandler
@@ -33,8 +32,8 @@ import org.eln2.mc.common.parts.PartRegistry
 import org.eln2.mc.data.*
 import org.eln2.mc.integration.WailaEntity
 import org.eln2.mc.integration.WailaTooltipBuilder
+import org.eln2.mc.mathematics.Base6Direction3d
 import org.eln2.mc.mathematics.DirectionMask
-import org.eln2.mc.mathematics.RelativeDir
 import org.joml.AxisAngle4f
 import org.joml.Quaternionf
 import org.joml.Vector3f
@@ -58,11 +57,10 @@ data class PartPlacementInfo(
     val level: Level,
     val multipart: MultipartBlockEntity,
 ) {
-    fun createDescriptor(): LocationDescriptor {
-        return LocationDescriptor()
-            .withLocator(BlockPosLocator(pos))
-            .withLocator(IdentityDirectionLocator(horizontalFacing)) // is this right?
-            .withLocator(BlockFaceLocator(face))
+    fun createDescriptor() = LocatorSet().apply {
+        withLocator(pos)
+        withLocator(FacingLocator(horizontalFacing)) // is this right?
+        withLocator(face)
     }
 }
 
@@ -148,8 +146,8 @@ object PartGeometry {
     fun worldBoundingBox(sizeActual: Vec3, facingWorld: Direction, faceWorld: Direction, posWorld: BlockPos): AABB =
         gridBoundingBox(sizeActual, facingWorld, faceWorld, posWorld).move(Vec3(-0.5, 0.0, -0.5))
 
-    fun getDirectionActual(actualFacingActual: Direction, faceWorld: Direction, dirWorld: Direction): RelativeDir =
-        RelativeDir.fromForwardUp(
+    fun getDirectionActual(actualFacingActual: Direction, faceWorld: Direction, dirWorld: Direction): Base6Direction3d =
+        Base6Direction3d.fromForwardUp(
             actualFacingActual,
             faceWorld,
             dirWorld
@@ -229,7 +227,7 @@ abstract class Part<Renderer : PartRenderer>(val id: ResourceLocation, val place
      * @param dirWorld A global direction.
      * @return The relative direction towards the global direction.
      * */
-    fun getDirectionActual(dirWorld: Direction): RelativeDir {
+    fun getDirectionActual(dirWorld: Direction): Base6Direction3d {
         return PartGeometry.getDirectionActual(placement.horizontalFacing, placement.face, dirWorld)
     }
 
@@ -551,7 +549,7 @@ abstract class CellPart<Renderer : PartRenderer>(
     final override val hasCell: Boolean
         get() = this::cell.isInitialized
 
-    val cellPos = CellPos(placement.createDescriptor())
+    val cellPos = placement.createDescriptor()
 
     /**
      * Used by the loading procedures.
@@ -672,9 +670,9 @@ abstract class CellPart<Renderer : PartRenderer>(
 
     open fun loadCustomSimData(tag: CompoundTag) {}
 
-    override fun appendBody(builder: WailaTooltipBuilder, config: IPluginConfig?) {
+    override fun appendWaila(builder: WailaTooltipBuilder, config: IPluginConfig?) {
         if (hasCell) {
-            this.cell.appendBody(builder, config)
+            this.cell.appendWaila(builder, config)
         }
     }
 
@@ -738,14 +736,14 @@ enum class CellPartConnectionMode {
 
 data class CellPartConnectionInfo(
     val mode: CellPartConnectionMode,
-    val actualDirActualPlr: RelativeDir,
+    val actualDirActualPlr: Base6Direction3d,
 )
 
 fun solveCellPartConnection(actualCell: Cell, remoteCell: Cell): CellPartConnectionInfo {
-    val actualPosWorld = actualCell.posDescr.requireLocator<Positional, BlockPosLocator>().pos
-    val remotePosWorld = remoteCell.posDescr.requireLocator<Positional, BlockPosLocator>().pos
-    val actualFaceWorld = actualCell.posDescr.requireLocator<Directional, BlockFaceLocator>().faceWorld
-    val remoteFaceWorld = remoteCell.posDescr.requireLocator<Directional, BlockFaceLocator>().faceWorld
+    val actualPosWorld = actualCell.pos.requireLocator<BlockLocator>()
+    val remotePosWorld = remoteCell.pos.requireLocator<BlockLocator>()
+    val actualFaceWorld = actualCell.pos.requireLocator<FaceLocator>()
+    val remoteFaceWorld = remoteCell.pos.requireLocator<FaceLocator>()
 
     val mode: CellPartConnectionMode
 
@@ -799,8 +797,8 @@ fun solveCellPartConnection(actualCell: Cell, remoteCell: Cell): CellPartConnect
 
     return CellPartConnectionInfo(
         mode,
-        RelativeDir.fromForwardUp(
-            actualCell.posDescr.requireLocator<Directional, IdentityDirectionLocator>().forwardWorld,
+        Base6Direction3d.fromForwardUp(
+            actualCell.pos.requireLocator<FacingLocator>().forwardWorld,
             actualFaceWorld,
             dirGlobal
         )

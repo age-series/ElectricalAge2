@@ -14,7 +14,6 @@ import org.eln2.mc.client.render.FlywheelRegistry
 import org.eln2.mc.client.render.PartialModels
 import org.eln2.mc.client.render.RenderTypes
 import org.eln2.mc.common.blocks.BlockRegistry
-import org.eln2.mc.common.capabilities.CapabilityRegistry
 import org.eln2.mc.common.cells.CellRegistry
 import org.eln2.mc.common.containers.ContainerRegistry
 import org.eln2.mc.common.content.Content
@@ -63,7 +62,6 @@ class Eln2 {
 
         CellRegistry.setup(modEventBus)
         PartRegistry.setup(modEventBus)
-        CapabilityRegistry.setup(modEventBus)
         Content.initialize()
 
         LOG.info("Prepared registries.")
@@ -87,6 +85,7 @@ val GAME = false
 fun getResourceStringHelper(s: String) =
     if (GAME) getResourceString(resource(s))
     else Files.readString(Path("./src/main/resources/assets/eln2/$s"))
+
 fun getResourceBinaryHelper(s: String) =
     if (GAME) getResourceBinary(resource(s))
     else Files.readAllBytes(Path("./src/main/resources/assets/eln2/$s"))

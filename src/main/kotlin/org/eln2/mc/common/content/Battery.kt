@@ -194,7 +194,7 @@ class BatteryCell(ci: CellCreateInfo, override val model: BatteryModel) : Cell(c
     }
 
     init {
-        behaviorContainer.apply {
+        behaviors.apply {
             withElectricalPowerConverter { generatorObj.generatorPower }
             withElectricalHeatTransfer { thermalWireObj.body }
         }
@@ -332,8 +332,8 @@ class BatteryCell(ci: CellCreateInfo, override val model: BatteryModel) : Cell(c
         graph.setChanged()
     }
 
-    override fun appendBody(builder: WailaTooltipBuilder, config: IPluginConfig?) {
-        super.appendBody(builder, config)
+    override fun appendWaila(builder: WailaTooltipBuilder, config: IPluginConfig?) {
+        super.appendWaila(builder, config)
         builder.text("Charge", thresholdCharge.formattedPercentN())
         builder.text("Life", life.formattedPercentN())
         builder.text("Cycles", cycles.formatted())

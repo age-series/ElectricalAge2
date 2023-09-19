@@ -75,7 +75,7 @@ class VoltageSourceObject(cell: Cell) : ElectricalObject(cell), WailaEntity, Dat
         resistors.process { it.connect(INTERNAL_PIN, source, EXTERNAL_PIN) }
     }
 
-    override fun appendBody(builder: WailaTooltipBuilder, config: IPluginConfig?) {
+    override fun appendWaila(builder: WailaTooltipBuilder, config: IPluginConfig?) {
         builder.voltageSource(source)
     }
 

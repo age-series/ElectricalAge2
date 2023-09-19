@@ -105,7 +105,8 @@ class ServiceCollection {
     }
 
     fun activate(c: Class<*>, extraParams: List<Any>): Any {
-        val rxTargets = activators.getOrPut(c) {
+        // If @Inj is used on any of the constructors, only constructors annotated with @Inj are used. Otherwise, all constructors are used.
+        val activators = activators.getOrPut(c) {
             val constructors = if (c.constructors.any { it.getAnnotation(Inj::class.java) != null }) {
                 c.constructors.filter { it.getAnnotation(Inj::class.java) != null }
             } else {
@@ -131,7 +132,7 @@ class ServiceCollection {
             )
         }
 
-        rxTargets.forEach { rsi ->
+        activators.forEach { rsi ->
             val args = Array<Any?>(rsi.parameters.size) { null }
 
             rsi.parameters.forEachIndexed { index, paramClass ->
