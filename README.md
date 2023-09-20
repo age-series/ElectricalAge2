@@ -15,7 +15,7 @@ An age-series-development server exists but is for developers only.
 
 ## Game Support
 
-Planned support for Minecraft 1.18.x (Forge only)
+Planned support for Minecraft 1.19.x (Forge only)
 
 ## Licensing
 
