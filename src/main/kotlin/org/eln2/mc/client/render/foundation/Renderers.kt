@@ -95,11 +95,11 @@ open class BasicPartRenderer(val part: Part<*>, val model: PartialModel) : PartR
 
 fun ModelData.applyBlockBenchTransform(part: Part<*>, downOffset: Double, yRotation: Float = 0f): ModelData {
     return this
-        .translate(part.placement.face.opposite.normal.toVec3() * vec3(downOffset))
+        .translate(part.placement.face.opposite.normal.toVec3() * downOffset)
         .blockCenter()
         .translate(part.worldBoundingBox.center)
         .multiply(
-            part.placement.face.rotation
+            part.placement.face.rotation.toJoml()
                 .mul(part.facingRotation)
                 .mul(
                     Quaternionf(
@@ -108,7 +108,7 @@ fun ModelData.applyBlockBenchTransform(part: Part<*>, downOffset: Double, yRotat
                             Vector3f(0.0f, 1.0f, 0.0f)
                         )
                     )
-                )
+                ).toMinecraft()
         )
         .zeroCenter()
 }

@@ -527,10 +527,10 @@ class WirePartRenderer(
             .getModel(model)
             .createInstance()
             .loadIdentity()
-            .translate(part.placement.face.opposite.normal.toVec3() * Vec3(size, size, size))
+            .translate(part.placement.face.opposite.normal.toVec3() * size)
             .blockCenter()
             .translate(part.worldBoundingBox.center)
-            .multiply(part.placement.face.rotation.mul(part.facingRotation).mul(rotation))
+            .multiply(part.placement.face.rotation.toJoml().mul(part.facingRotation).mul(rotation).toMinecraft())
             .zeroCenter()
 
         multipartInstance.relightPart(part)

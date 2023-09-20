@@ -149,7 +149,11 @@ class MultiblockManager(
         }
     }
 
-    override fun handleGameEvent(
+    override fun handleGameEvent(pLevel: ServerLevel, pEventMessage: GameEvent.Message): Boolean {
+        return handleGameEvent(pLevel, pEventMessage.gameEvent(), pEventMessage.context(), pEventMessage.source())
+    }
+
+    private fun handleGameEvent(
         pLevel: ServerLevel,
         pGameEvent: GameEvent,
         pContext: GameEvent.Context,

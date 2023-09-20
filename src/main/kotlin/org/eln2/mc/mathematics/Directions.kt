@@ -52,7 +52,7 @@ enum class Base6Direction3d(val id: Int) {
                 return Down
             }
 
-            val adjustedFacing = Direction.rotate(Matrix4f().set(normal.rotation), facing)
+            val adjustedFacing = Direction.rotate(com.mojang.math.Matrix4f(normal.rotation), facing)
 
             var result = when (direction) {
                 adjustedFacing -> Front

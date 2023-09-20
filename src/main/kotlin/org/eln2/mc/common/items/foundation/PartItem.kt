@@ -3,7 +3,6 @@ package org.eln2.mc.common.items.foundation
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.InteractionResult
 import net.minecraft.world.item.BlockItem
-import net.minecraft.world.item.CreativeModeTab
 import net.minecraft.world.item.context.UseOnContext
 import org.eln2.mc.common.blocks.BlockRegistry
 import org.eln2.mc.common.blocks.foundation.MultipartBlockEntity
@@ -13,7 +12,7 @@ import org.eln2.mc.plus
 /**
  * The Part Item delegates the placement of a Part to the Multipart Container.
  * */
-class PartItem(private val provider: PartProvider, tab: CreativeModeTab) : BlockItem(
+class PartItem(private val provider: PartProvider) : BlockItem(
     BlockRegistry.MULTIPART_BLOCK.block.get(),
     Properties()
 ) {

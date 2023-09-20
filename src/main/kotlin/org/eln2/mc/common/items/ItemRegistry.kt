@@ -36,8 +36,13 @@ object ItemRegistry {
 
     val MULTIBLOCK_SCAN_TOOL = item("multiblock_scan_tool", ::MultiblockScanTool)
 }
+// FRAK you!
+/*
 
 val eln2Tab: CreativeModeTab =
-    object : CreativeModeTab(builder(Row.TOP, 0 /*todo what is this?*/).title(Component.literal("Electrical Age 2?"))) {
+    object : CreativeModeTab(builder(Row.TOP, 0 */
+/*todo what is this?*//*
+).title(Component.literal("Electrical Age 2?"))) {
         override fun getIconItem(): ItemStack = ItemStack(Blocks.BARRIER.asItem())
     }
+*/

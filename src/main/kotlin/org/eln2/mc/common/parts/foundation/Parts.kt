@@ -91,7 +91,7 @@ object PartGeometry {
         val halfSize = sizeActual / 2.0
         return AABB(center - halfSize, center + halfSize)
             .transformed(facingRotation(facingWorld))
-            .transformed(faceWorld.rotation)
+            .transformed(faceWorld.rotation.toJoml())
             .move(faceOffset(sizeActual, faceWorld))
     }
 

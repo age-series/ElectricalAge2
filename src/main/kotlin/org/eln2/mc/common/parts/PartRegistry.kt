@@ -6,7 +6,6 @@ import net.minecraftforge.registries.*
 import org.ageseries.libage.data.mutableBiMapOf
 import org.eln2.mc.LOG
 import org.eln2.mc.MODID
-import org.eln2.mc.common.items.eln2Tab
 import org.eln2.mc.common.items.foundation.PartItem
 import org.eln2.mc.common.parts.foundation.PartProvider
 import org.eln2.mc.resource
@@ -47,7 +46,7 @@ object PartRegistry {
      * */
     fun part(name: String, provider: PartProvider): PartRegistryItem {
         val part = PARTS.register(name) { provider }
-        val item = PART_ITEMS.register(name) { PartItem(provider, eln2Tab) }
+        val item = PART_ITEMS.register(name) { PartItem(provider) }
 
         parts.add(provider, part.id)
 

@@ -58,6 +58,8 @@ import org.eln2.mc.common.parts.foundation.PartUpdateType
 import org.eln2.mc.data.*
 import org.eln2.mc.integration.WailaTooltipBuilder
 import org.eln2.mc.mathematics.*
+import org.eln2.mc.mathematics.Vector3d
+import org.joml.Matrix4f
 import org.joml.Quaternionf
 import org.joml.Vector3f
 import java.io.InputStream
@@ -123,7 +125,7 @@ fun AABB.transformed(quaternion: Quaternionf): AABB {
     var max = Vector3f(Float.MIN_VALUE, Float.MIN_VALUE, Float.MIN_VALUE)
 
     this.corners().forEach {
-        val corner = quaternion.transform(it.toVector3f())
+        val corner = quaternion.transform(it.toJoml())
 
         min = componentMin(min, corner)
         max = componentMax(max, corner)
@@ -846,7 +848,6 @@ fun ByteBuffer.getVector3di() = Vector3di(
 fun Direction.valueHashCode() = this.normal.hashCode()
 
 fun Vector3di.toBlockPos() = BlockPos(this.x, this.y, this.z)
-fun Vec3.toVector3d() = Vector3d(this.x, this.y, this.z)
 
 fun Scale.map(u: Dual) = factor * u + base
 fun Scale.unmap(u: Dual) = (u - base) / factor
@@ -947,3 +948,7 @@ fun <T> InputStream.getList(deserialize: (InputStream) -> T) = this.getIntPacked
 
 fun InputStream.getFloatList() = this.getList { it.getFloat() }
 fun InputStream.getStringList() = this.getList { it.getString() }
+
+fun Quaternion.toJoml() = Quaternionf(this.i(), this.j(), this.k(), this.r())
+fun Quaternionf.toMinecraft() = Quaternion(this.x, this.y, this.z, this.w)
+fun Vec3.toJoml() = Vector3f(this.x.toFloat(), this.y.toFloat(), this.z.toFloat())
