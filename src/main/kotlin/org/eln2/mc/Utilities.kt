@@ -1,5 +1,6 @@
 package org.eln2.mc
 
+import com.mojang.blaze3d.systems.RenderSystem
 import net.minecraft.core.BlockPos
 import net.minecraft.sounds.SoundEvent
 import net.minecraft.sounds.SoundEvents
@@ -16,6 +17,8 @@ import net.minecraft.world.level.block.entity.BlockEntityTicker
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
+import net.minecraftforge.common.ForgeHooks
+import net.minecraftforge.server.ServerLifecycleHooks
 import org.ageseries.libage.data.MultiMap
 import org.ageseries.libage.data.MutableSetMapMultiMap
 import org.eln2.mc.data.CsvLoader
@@ -24,15 +27,25 @@ import org.eln2.mc.data.Quantity
 import org.eln2.mc.data.Time
 import org.eln2.mc.mathematics.*
 import org.joml.Vector3f
+import kotlin.contracts.ExperimentalContracts
+import kotlin.contracts.InvocationKind
+import kotlin.contracts.contract
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.system.measureNanoTime
 
 fun <T> all(vararg items: T, condition: (T) -> Boolean) = items.asList().all(condition)
 
-fun measureDuration(block: () -> Unit) = Quantity(
-    measureNanoTime(block).toDouble(), NANOSECONDS
-)
+@OptIn(ExperimentalContracts::class)
+fun measureDuration(block: () -> Unit) : Quantity<Time> {
+    contract {
+        callsInPlace(block, InvocationKind.EXACTLY_ONCE)
+    }
+
+    val result = measureNanoTime(block)
+
+    return Quantity(result.toDouble(), NANOSECONDS)
+}
 
 val digitRange = '0'..'9'
 val subscriptDigitRange = '₀'..'₉'
@@ -276,3 +289,10 @@ fun prepareBucket(
 
     player.level.playSound(null, pos, sound, source, 1.0F, 1.0F);
 }
+
+inline fun requireIsOnServerThread(message: () -> String) = require(ServerLifecycleHooks.getCurrentServer().isSameThread, message)
+fun requireIsOnServerThread() = requireIsOnServerThread { "Requirement failed: not on server thread (${Thread.currentThread()})" }
+
+inline fun requireIsOnRenderThread(message: () -> String) = require(RenderSystem.isOnRenderThread(), message)
+
+fun requireIsOnRenderThread() = requireIsOnRenderThread { "Requirement failed: not on render thread (${Thread.currentThread()})" }

@@ -292,35 +292,3 @@ class ListVertexList(val vertices: List<VertPositionColorNormalUv>) : VertexList
 
     override fun getVertexCount() = vertices.size
 }
-
-class PackedVertexList(vertices: List<VertPositionColorNormalUv>) : VertexList {
-    private val posX = vertices.map { it.position.x.toFloat() }.toFloatArray()
-    private val posY = vertices.map { it.position.y.toFloat() }.toFloatArray()
-    private val posZ = vertices.map { it.position.z.toFloat() }.toFloatArray()
-    private val nmlX = vertices.map { it.normal.x.toFloat() }.toFloatArray()
-    private val nmlY = vertices.map { it.normal.y.toFloat() }.toFloatArray()
-    private val nmlZ = vertices.map { it.normal.z.toFloat() }.toFloatArray()
-    private val u = vertices.map { it.uv.x.toFloat() }.toFloatArray()
-    private val v = vertices.map { it.uv.y.toFloat() }.toFloatArray()
-    val count = vertices.size
-
-    override fun getX(index: Int) = posX[index]
-    override fun getY(index: Int) = posY[index]
-    override fun getZ(index: Int) = posZ[index]
-
-    override fun getR(index: Int): Byte = Byte.MAX_VALUE
-    override fun getG(index: Int): Byte = Byte.MAX_VALUE
-    override fun getB(index: Int): Byte = Byte.MAX_VALUE
-    override fun getA(index: Int): Byte = Byte.MAX_VALUE
-
-    override fun getU(index: Int) = u[index]
-    override fun getV(index: Int) = v[index]
-
-    override fun getLight(index: Int) = 15
-
-    override fun getNX(index: Int) = nmlX[index]
-    override fun getNY(index: Int) = nmlY[index]
-    override fun getNZ(index: Int) = nmlZ[index]
-
-    override fun getVertexCount() = count
-}

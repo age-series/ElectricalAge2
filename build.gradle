@@ -2,12 +2,12 @@ buildscript {
     repositories {
         // These repositories are only for Gradle plugins, put any other repositories in the repository block further below
         maven { url = 'https://maven.minecraftforge.net' }
+
         mavenCentral()
+
         maven { url = 'https://maven.parchmentmc.org' }
         maven { url = 'https://repo.spongepowered.org/repository/maven-public' }
-        maven {
-            url "https://oss.sonatype.org/content/repositories/snapshots/"
-        }
+        maven { url = 'https://oss.sonatype.org/content/repositories/snapshots/' }
     }
     dependencies {
         classpath group: 'net.minecraftforge.gradle', name: 'ForgeGradle', version: "${forgegradle_version}", changing: true
@@ -92,6 +92,11 @@ minecraft {
     }
 }
 
+mixin {
+    add sourceSets.main, "eln2.refmap.json"
+    config "eln2.mixins.json"
+}
+
 configurations {
     library
     implementation.extendsFrom library
@@ -144,12 +149,13 @@ dependencies {
     library ("org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.0") { exclude group: 'org.jetbrains', module: 'annotations'}
     library("org.jetbrains.kotlin:kotlin-reflect:1.8.0")
     library("org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.0")
+    library("org.jetbrains.kotlinx:kotlinx-serialization-cbor:1.5.0")
 
     compileOnly fg.deobf("mcp.mobius.waila:wthit-api:forge-${wthit_version}")
     runtimeOnly fg.deobf("mcp.mobius.waila:wthit:forge-${wthit_version}")
     runtimeOnly fg.deobf("lol.bai:badpackets:forge-${badpackets_version}")
 
-    implementation fg.deobf("com.simibubi.create:create-${create_minecraft_version}:${create_version}:slim") { transitive = false }
+    //implementation fg.deobf("com.simibubi.create:create-${create_minecraft_version}:${create_version}:slim") { transitive = false }
     implementation fg.deobf("com.jozufozu.flywheel:flywheel-forge-${flywheel_minecraft_version}:${flywheel_version}")
     implementation fg.deobf("com.tterrag.registrate:Registrate:${registrate_version}")
 
@@ -177,6 +183,7 @@ shadowJar {
     relocate 'org.ageseries', "${rlTarget}.ageseries"
     relocate 'org.intellij', "${rlTarget}.intellij"
     relocate 'jetbrains', "${rlTarget}.jetbrains"
+    relocate 'org.joml', "${rlTarget}.joml"
 
     afterEvaluate {
         finalizedBy reobfShadowJar

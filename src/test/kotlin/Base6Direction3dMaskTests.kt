@@ -1,16 +1,16 @@
 import net.minecraft.core.Direction
-import org.eln2.mc.mathematics.DirectionMask
+import org.eln2.mc.mathematics.Base6Direction3dMask
 import org.eln2.mc.mathematics.Base6Direction3d
 import org.eln2.mc.isHorizontal
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.fail
 
-class DirectionMaskTests {
+class Base6Direction3dMaskTests {
     private val horizontalDirectionList = Base6Direction3d.values().filter { it.isHorizontal }
     private val verticalDirectionList = Base6Direction3d.values().filter { it.isVertical }
 
-    private val horizontalsMask = DirectionMask.ofRelatives(horizontalDirectionList)
-    private val verticalsMask = DirectionMask.ofRelatives(verticalDirectionList)
+    private val horizontalsMask = Base6Direction3dMask.ofRelatives(horizontalDirectionList)
+    private val verticalsMask = Base6Direction3dMask.ofRelatives(verticalDirectionList)
 
     @Test
     fun testVerticalsHorizontals() {
@@ -20,20 +20,20 @@ class DirectionMaskTests {
         assert(verticalsMask.hasVerticals && !verticalsMask.isHorizontal)
         assert(!verticalsMask.isHorizontal &&!verticalsMask.hasHorizontals)
 
-        assert(DirectionMask.FULL.hasHorizontals && DirectionMask.FULL.hasVerticals &&!DirectionMask.FULL.isVertical &&!DirectionMask.FULL.isHorizontal)
+        assert(Base6Direction3dMask.FULL.hasHorizontals && Base6Direction3dMask.FULL.hasVerticals &&!Base6Direction3dMask.FULL.isVertical &&!Base6Direction3dMask.FULL.isHorizontal)
 
-        assert(!DirectionMask.EMPTY.isVertical &&! DirectionMask.EMPTY.isHorizontal);
+        assert(!Base6Direction3dMask.EMPTY.isVertical &&! Base6Direction3dMask.EMPTY.isHorizontal);
     }
 
     @Test
     fun testClockwiseCounterclockwise(){
-        testTransform({it.clockWise}, {if(it.isHorizontal()) it.clockWise else it}, DirectionMask.ALL_MASKS)
-        testTransform({it.counterClockWise}, {if(it.isHorizontal()) it.counterClockWise else it}, DirectionMask.ALL_MASKS)
+        testTransform({it.clockWise}, {if(it.isHorizontal()) it.clockWise else it}, Base6Direction3dMask.ALL_MASKS)
+        testTransform({it.counterClockWise}, {if(it.isHorizontal()) it.counterClockWise else it}, Base6Direction3dMask.ALL_MASKS)
 
-        fun stepTransform(maskTransform: (DirectionMask, Int) -> DirectionMask, directionTransform : ((Direction) -> Direction), masks: List<DirectionMask>){
+        fun stepTransform(maskTransform: (Base6Direction3dMask, Int) -> Base6Direction3dMask, directionTransform : ((Direction) -> Direction), masks: List<Base6Direction3dMask>){
             masks.forEach { untransformedMask ->
                 for(i in 0..3){
-                    var result = DirectionMask.EMPTY
+                    var result = Base6Direction3dMask.EMPTY
 
                     untransformedMask.directionList.forEach { direction ->
                         var rotatedDirection = direction
@@ -59,48 +59,48 @@ class DirectionMaskTests {
             }
         }
 
-        stepTransform({mask, steps -> mask.clockWise(steps)}, {it.clockWise}, DirectionMask.ALL_MASKS)
-        stepTransform({mask, steps -> mask.counterClockWise(steps)}, {it.counterClockWise}, DirectionMask.ALL_MASKS)
+        stepTransform({mask, steps -> mask.clockWise(steps)}, {it.clockWise}, Base6Direction3dMask.ALL_MASKS)
+        stepTransform({mask, steps -> mask.counterClockWise(steps)}, {it.counterClockWise}, Base6Direction3dMask.ALL_MASKS)
     }
 
     @Test
     fun testAddRemove(){
-        var mask = DirectionMask.EMPTY
+        var mask = Base6Direction3dMask.EMPTY
 
-        mask += DirectionMask.SOUTH + DirectionMask.NORTH
+        mask += Base6Direction3dMask.SOUTH + Base6Direction3dMask.NORTH
 
-        assert(mask == (DirectionMask.SOUTH + DirectionMask.NORTH))
+        assert(mask == (Base6Direction3dMask.SOUTH + Base6Direction3dMask.NORTH))
 
-        mask -= DirectionMask.SOUTH + DirectionMask.NORTH
+        mask -= Base6Direction3dMask.SOUTH + Base6Direction3dMask.NORTH
 
-        assert(mask == DirectionMask.EMPTY)
+        assert(mask == Base6Direction3dMask.EMPTY)
 
-        mask += DirectionMask.EAST
+        mask += Base6Direction3dMask.EAST
 
-        assert(mask == DirectionMask.EAST)
+        assert(mask == Base6Direction3dMask.EAST)
 
-        mask += DirectionMask.WEST
+        mask += Base6Direction3dMask.WEST
 
-        assert(mask == (DirectionMask.EAST + DirectionMask.WEST))
+        assert(mask == (Base6Direction3dMask.EAST + Base6Direction3dMask.WEST))
 
-        mask -= DirectionMask.WEST
+        mask -= Base6Direction3dMask.WEST
 
-        assert(mask == DirectionMask.EAST)
+        assert(mask == Base6Direction3dMask.EAST)
 
-        mask -= DirectionMask.EAST
+        mask -= Base6Direction3dMask.EAST
 
-        assert(mask == DirectionMask.EMPTY)
+        assert(mask == Base6Direction3dMask.EMPTY)
 
-        assert((DirectionMask.EMPTY + DirectionMask.EMPTY) == DirectionMask.EMPTY)
-        assert((DirectionMask.FULL + DirectionMask.FULL) == DirectionMask.FULL)
-        assert((DirectionMask.FULL - DirectionMask.FULL) == DirectionMask.EMPTY)
-        assert((DirectionMask.FULL - DirectionMask.EMPTY) == DirectionMask.FULL)
-        assert((DirectionMask.FULL + DirectionMask.EMPTY) == DirectionMask.FULL)
+        assert((Base6Direction3dMask.EMPTY + Base6Direction3dMask.EMPTY) == Base6Direction3dMask.EMPTY)
+        assert((Base6Direction3dMask.FULL + Base6Direction3dMask.FULL) == Base6Direction3dMask.FULL)
+        assert((Base6Direction3dMask.FULL - Base6Direction3dMask.FULL) == Base6Direction3dMask.EMPTY)
+        assert((Base6Direction3dMask.FULL - Base6Direction3dMask.EMPTY) == Base6Direction3dMask.FULL)
+        assert((Base6Direction3dMask.FULL + Base6Direction3dMask.EMPTY) == Base6Direction3dMask.FULL)
     }
 
     @Test
     fun testChecks(){
-        DirectionMask.ALL_MASKS.forEach { mask ->
+        Base6Direction3dMask.ALL_MASKS.forEach { mask ->
             mask.directionList.forEach { dir ->
                 assert(mask.has(dir) == mask.directionList.contains(dir))
 
@@ -117,19 +117,19 @@ class DirectionMaskTests {
 
     @Test
     fun testOpposite(){
-        testTransform({it.opposite}, {it.opposite}, DirectionMask.ALL_MASKS)
+        testTransform({it.opposite}, {it.opposite}, Base6Direction3dMask.ALL_MASKS)
     }
 
     @Test
     fun testCount(){
-        DirectionMask.ALL_MASKS.forEach {
+        Base6Direction3dMask.ALL_MASKS.forEach {
             assert(it.count == it.directionList.size)
         }
     }
 
     @Test
     fun testLists(){
-        DirectionMask.ALL_MASKS.forEach { mask ->
+        Base6Direction3dMask.ALL_MASKS.forEach { mask ->
             val list = ArrayList<Direction>(6)
 
             mask.toList(list)
@@ -145,9 +145,9 @@ class DirectionMaskTests {
     }
 
     private fun testTransform(
-        maskTransform : ((DirectionMask) -> DirectionMask),
+        maskTransform : ((Base6Direction3dMask) -> Base6Direction3dMask),
         directionTransform : ((Direction) -> Direction),
-        mask : DirectionMask
+        mask : Base6Direction3dMask
     ){
 
         val transformedDirections = maskTransform(mask).directionList
@@ -160,9 +160,9 @@ class DirectionMaskTests {
     }
 
     private fun testTransform(
-        maskTransform : ((DirectionMask) -> DirectionMask),
+        maskTransform : ((Base6Direction3dMask) -> Base6Direction3dMask),
         directionTransform : ((Direction) -> Direction),
-        masks : List<DirectionMask>){
+        masks : List<Base6Direction3dMask>){
 
         masks.forEach { testTransform(maskTransform, directionTransform, it) }
     }
@@ -172,7 +172,7 @@ class DirectionMaskTests {
         Direction.values().forEach { direction ->
             val perpendiculars = Direction.values().filter { it != direction && it != direction.opposite }
 
-            if(DirectionMask.of(perpendiculars) != DirectionMask.perpendicular(direction)){
+            if(Base6Direction3dMask.of(perpendiculars) != Base6Direction3dMask.perpendicular(direction)){
                 fail("Perpendicular test failed")
             }
         }

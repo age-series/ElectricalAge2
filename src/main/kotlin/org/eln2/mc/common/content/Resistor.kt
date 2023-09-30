@@ -1,105 +1,112 @@
 package org.eln2.mc.common.content
 
-import mcp.mobius.waila.api.IPluginConfig
 import net.minecraft.resources.ResourceLocation
 import org.ageseries.libage.sim.electrical.mna.Circuit
 import org.ageseries.libage.sim.electrical.mna.component.Resistor
+import org.eln2.mc.LIBAGE_SET_EPS
+import org.eln2.mc.NoInj
+import org.eln2.mc.add
 import org.eln2.mc.client.render.PartialModels
 import org.eln2.mc.client.render.PartialModels.bbOffset
 import org.eln2.mc.client.render.foundation.BasicPartRenderer
 import org.eln2.mc.common.cells.foundation.*
 import org.eln2.mc.common.parts.foundation.CellPart
 import org.eln2.mc.common.parts.foundation.PartPlacementInfo
-import org.eln2.mc.data.withDirectionActualRule
+import org.eln2.mc.data.*
 import org.eln2.mc.integration.WailaEntity
-import org.eln2.mc.integration.WailaTooltipBuilder
 import org.eln2.mc.mathematics.Base6Direction3d
-import org.eln2.mc.mathematics.DirectionMask
+import org.eln2.mc.mathematics.Base6Direction3dMask
+import org.eln2.mc.mathematics.approxEq
 import org.eln2.mc.mathematics.bbVec
-import org.eln2.mc.resistor
 
-/**
- * The resistor object has a single resistor. At most, two connections can be made by this object.
- * */
+@NoInj
 class ResistorObject(
     cell: Cell,
-    val dir1: Base6Direction3d = Base6Direction3d.Front,
-    val dir2: Base6Direction3d = Base6Direction3d.Back,
-) :
-    ElectricalObject(cell),
-    WailaEntity {
-    private lateinit var resistor: Resistor
+    val poleMap: PoleMap
+) : ElectricalObject(cell), DataEntity, WailaEntity {
 
-    init {
-        ruleSet.withDirectionActualRule(DirectionMask.ofRelatives(dir1, dir2))
+    private val resistor = ComponentHolder {
+        Resistor().also { it.resistance = resistanceExact }
     }
 
-    val hasResistor get() = this::resistor.isInitialized
-
-    /**
-     * Gets or sets the resistance.
-     * */
-    var resistance: Double = 1.0
+    var resistanceExact: Double = 1.0
         set(value) {
             field = value
-
-            // P.S. do not use an epsilon comparison here. I just want to make sure
-            // we can set the same resistance, presumably in an update loop.
-            if (hasResistor && resistor.resistance != value) {
-                resistor.resistance = value
-            }
+            resistor.ifPresent { it.resistance = value }
         }
 
-    val current get() = resistor.current
-    val power get() = resistor.power
+    /**
+     * Updates the resistance if the deviation between the current resistance and [value] is larger than [eps].
+     * @return True if the resistance was updated. Otherwise, false.
+     * */
+    fun updateResistance(value: Double, eps: Double = LIBAGE_SET_EPS): Boolean {
+        if(resistanceExact.approxEq(value, eps)) {
+            return false
+        }
+
+        resistanceExact = value
+
+        return true
+    }
+
+    val hasResistor get() = resistor.isPresent
+
+    val current get() = if(resistor.isPresent) resistor.instance.current else 0.0
+    val power get() = if(resistor.isPresent) resistor.instance.power else 0.0
+    val potential get() = if(resistor.isPresent) resistor.instance.potential else 0.0
 
     override val maxConnections = 2
 
-    override fun offerComponent(neighbour: ElectricalObject): ElectricalComponentInfo {
-        return ElectricalComponentInfo(resistor, indexOf(neighbour))
-    }
+    override fun offerComponent(neighbour: ElectricalObject) = ElectricalComponentInfo(
+        resistor.instance,
+        poleMap.evaluate(cell.locator, neighbour.cell.locator).conventionalPin
+    )
 
-    override fun clearComponents() {
-        resistor = Resistor()
-        resistor.resistance = resistance
-    }
+    override fun clearComponents() = resistor.clear()
 
     override fun addComponents(circuit: Circuit) {
         circuit.add(resistor)
     }
 
-    override fun build() {
-        connections.forEach { remote ->
-            val localInfo = offerComponent(remote)
-            val remoteInfo = remote.offerComponent(this)
-            localInfo.component.connect(localInfo.index, remoteInfo.component, remoteInfo.index)
-        }
-    }
+    override val dataNode = data {
+        it.withField(ResistanceField {
+            resistanceExact
+        })
 
-    override fun appendWaila(builder: WailaTooltipBuilder, config: IPluginConfig?) {
-        builder.resistor(resistor)
+        it.withField(CurrentField {
+            current
+        })
+
+        it.withField(PowerField {
+            power
+        })
     }
 }
 
 class ResistorCell(ci: CellCreateInfo) : Cell(ci) {
-    @SimObject
-    val resistorObj = ResistorObject(this)
-
-    @SimObject
-    val thermalWireObj = ThermalWireObject(this)
-
-    @Behavior
-    val behavior = standardBehavior(this, { resistorObj.power }, { thermalWireObj.body })
+    companion object {
+        private val A = Base6Direction3d.Front
+        private val B = Base6Direction3d.Back
+    }
 
     init {
-        ruleSet.withDirectionActualRule(DirectionMask.FRONT + DirectionMask.BACK)
+        ruleSet.withDirectionRule(A + B)
     }
+
+    @SimObject @Inspect
+    val resistor = ResistorObject(this, directionPoleMap(A, B))
+
+    @SimObject @Inspect
+    val thermalWire = ThermalWireObject(this)
+
+    @Behavior
+    val heating = PowerHeatingBehavior({ resistor.power }, thermalWire.thermalBody)
 }
 
 class ResistorPart(id: ResourceLocation, placementContext: PartPlacementInfo) :
-    CellPart<BasicPartRenderer>(id, placementContext, Content.RESISTOR_CELL.get()) {
+    CellPart<ResistorCell, BasicPartRenderer>(id, placementContext, Content.RESISTOR_CELL.get()) {
 
-    override val sizeActual = bbVec(3.5, 2.25, 5.0)
+    override val partSize = bbVec(3.5, 2.25, 5.0)
 
     override fun createRenderer() = BasicPartRenderer(this, PartialModels.RESISTOR).also {
         it.downOffset = bbOffset(2.5)

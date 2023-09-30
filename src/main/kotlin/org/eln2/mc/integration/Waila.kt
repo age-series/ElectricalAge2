@@ -6,15 +6,16 @@ import net.minecraft.nbt.CompoundTag
 import net.minecraft.nbt.ListTag
 import net.minecraft.network.chat.Component
 import org.ageseries.libage.sim.electrical.mna.component.Pin
+import org.eln2.mc.LARGE_RESISTANCE
 import org.eln2.mc.LOG
 import org.eln2.mc.MODID
-import org.eln2.mc.common.blocks.foundation.CellBlockEntity
 import org.eln2.mc.common.blocks.foundation.MultipartBlockEntity
 import org.eln2.mc.data.DataEntity
 import org.eln2.mc.data.UnitType
 import org.eln2.mc.data.valueText
 import org.eln2.mc.integration.WailaTooltipEntryType.Companion.getTooltipEntryType
 import org.eln2.mc.integration.WailaTooltipEntryType.Companion.putTooltipEntryType
+import org.eln2.mc.mathematics.approxEq
 
 @WailaPlugin(id = "$MODID:waila_plugin")
 class Eln2WailaPlugin : IWailaPlugin {
@@ -23,7 +24,38 @@ class Eln2WailaPlugin : IWailaPlugin {
             return
         }
 
-        val component = object : IBlockComponentProvider {
+        registrar.addBlockData(IDataProvider { data, accessor, config ->
+            var entity = accessor?.target as? WailaEntity
+
+            if (data == null || entity == null) {
+                return@IDataProvider
+            }
+
+            if(entity is MultipartBlockEntity) {
+                val part = entity.pickPart(accessor.player)
+
+                if(part is WailaEntity) {
+                    entity = part
+                }
+                else {
+                    return@IDataProvider
+                }
+            }
+
+            val builder = WailaTooltip.builder()
+
+            try {
+                entity.appendWaila(builder, config)
+            } catch (e : Exception) {
+                // Handle errors caused by simulator (invalid access from user code)
+                // Make sure you add a breakpoint here if you aren't getting your tooltip properly
+                LOG.error("Tooltip error: $e")
+            }
+
+            builder.build().toNbt(data.raw())
+        }, WailaEntity::class.java)
+
+        registrar.addComponent(object : IBlockComponentProvider {
             override fun appendBody(tooltip: ITooltip?, accessor: IBlockAccessor?, config: IPluginConfig?) {
                 if (tooltip == null || accessor == null || config == null) {
                     return
@@ -35,37 +67,7 @@ class Eln2WailaPlugin : IWailaPlugin {
                     entry.write(tooltip)
                 }
             }
-        }
-
-        registrar.addBlockData(IDataProvider<MultipartBlockEntity> { data, accessor, config ->
-            appendWailaEntity(data, accessor?.target, config)
-        }, MultipartBlockEntity::class.java)
-
-        registrar.addComponent(component, TooltipPosition.BODY, MultipartBlockEntity::class.java)
-
-        registrar.addBlockData(IDataProvider<CellBlockEntity> { data, accessor, config ->
-            appendWailaEntity(data, accessor?.target, config)
-        }, CellBlockEntity::class.java)
-
-        registrar.addComponent(component, TooltipPosition.BODY, CellBlockEntity::class.java)
-    }
-
-    private fun appendWailaEntity(data: IDataWriter?, entity: WailaEntity?, config: IPluginConfig?) {
-        if (data == null || entity == null) {
-            return
-        }
-
-        val builder = WailaTooltip.builder()
-
-        try {
-            entity.appendWaila(builder, config)
-        } catch (_: Exception) {
-            // Handle errors caused by simulator
-            // Make sure you add a breakpoint here if you aren't getting your toolip properly
-            LOG.error("Tooltip ex")
-        }
-
-        builder.build().toNbt(data.raw())
+        }, TooltipPosition.BODY, WailaEntity::class.java)
     }
 }
 
@@ -238,8 +240,8 @@ class WailaTooltipBuilder {
     /**
      * Adds an entry with literal [key] and [value].
      * */
-    fun text(key: String, value: Any): WailaTooltipBuilder {
-        entries.add(WailaTooltipEntry(key, value.toString(), WailaTooltipEntryType.TextText))
+    fun text(key: String, value: Any?): WailaTooltipBuilder {
+        entries.add(WailaTooltipEntry(key, value?.toString() ?: "nil", WailaTooltipEntryType.TextText))
         return this
     }
 
@@ -280,9 +282,14 @@ class WailaTooltipBuilder {
 
     /**
      * Adds an entry with translated "resistance" and formatted value.
+     * If the value is [LARGE_RESISTANCE], an infinity symbol is shown.
      * */
     fun resistance(value: Double): WailaTooltipBuilder {
-        return translateText("resistance", valueText(value, UnitType.OHM))
+        val adjustedValue = if(value.approxEq(LARGE_RESISTANCE, 1.0))
+            Double.POSITIVE_INFINITY
+        else value
+
+        return translateText("resistance", valueText(adjustedValue, UnitType.OHM))
     }
 
     /**

@@ -11,7 +11,8 @@ import org.eln2.mc.data.requireLocator
 import kotlin.math.abs
 
 class ComponentHolder<T : Component>(private val factory: () -> T) {
-    private var value: T? = null
+    var value: T? = null
+        private set
 
     val instance: T
         get() {
@@ -112,6 +113,8 @@ class ComponentHolder<T : Component>(private val factory: () -> T) {
 
     val isPresent get() = value != null
 
+    val isNotPresent get() = value == null
+
     fun ifPresent(action: ((T) -> Unit)): Boolean {
         if (value == null) {
             return false
@@ -128,9 +131,9 @@ class ComponentHolder<T : Component>(private val factory: () -> T) {
  * */
 class ResistorBundle(var resistance: Double, obj: ElectricalObject) {
     init {
-        obj.cell.pos.requireLocator<BlockLocator>()
-        obj.cell.pos.requireLocator<FacingLocator>()
-        obj.cell.pos.requireLocator<FaceLocator>()
+        obj.cell.locator.requireLocator<BlockLocator>()
+        obj.cell.locator.requireLocator<FacingLocator>()
+        obj.cell.locator.requireLocator<FaceLocator>()
     }
 
     private val resistors = HashMap<ElectricalObject, Resistor>()
@@ -178,6 +181,7 @@ class ResistorBundle(var resistance: Double, obj: ElectricalObject) {
             }
 
             val result = Resistor()
+
             result.resistance = resistance
 
             return@computeIfAbsent result
@@ -197,7 +201,7 @@ class ResistorBundle(var resistance: Double, obj: ElectricalObject) {
      * Iterates through all the initialized resistors.
      * Keep in mind that a resistor is initialized __after__ *getOfferedResistor* is called.
      * */
-    fun process(action: ((Resistor) -> Unit)) {
+    fun forEach(action: ((Resistor) -> Unit)) {
         resistors.values.forEach { action(it) }
     }
 
@@ -210,5 +214,5 @@ class ResistorBundle(var resistance: Double, obj: ElectricalObject) {
         prepared = false
     }
 
-    val power get() = resistors.values.sumOf { abs(it.power) }
+    val totalPower get() = resistors.values.sumOf { abs(it.power) }
 }

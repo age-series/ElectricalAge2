@@ -81,7 +81,7 @@ operator fun CellBehaviorSource.times(b: CellBehavior) = this.add(b)
 class CellBehaviorContainer(private val cell: Cell) : DataEntity {
     val behaviors = ArrayList<CellBehavior>()
 
-    fun addBehaviorInstance(b: CellBehavior) {
+    fun addToCollection(b: CellBehavior) {
         if (behaviors.any { it.javaClass == b.javaClass }) {
             error("Duplicate behavior $b")
         }
@@ -91,30 +91,12 @@ class CellBehaviorContainer(private val cell: Cell) : DataEntity {
         }
 
         behaviors.add(b)
-
         b.onAdded(this)
     }
 
     fun forEach(action: ((CellBehavior) -> Unit)) = behaviors.forEach(action)
     inline fun <reified T : CellBehavior> getOrNull(): T? = behaviors.first { it is T } as? T
     inline fun <reified T : CellBehavior> get(): T = getOrNull() ?: error("Failed to get behavior")
-
-    // todo remove
-    inline fun <reified T : CellBehavior> add(behavior: T): CellBehaviorContainer {
-        if (behaviors.any { it is T }) {
-            error("Duplicate add behavior $behavior")
-        }
-
-        behaviors.add(behavior)
-
-        if (behavior is DataEntity) {
-            dataNode.withChild(behavior.dataNode)
-        }
-
-        behavior.onAdded(this)
-
-        return this
-    }
 
     fun destroy(behavior: CellBehavior) {
         require(behaviors.remove(behavior)) { "Illegal behavior remove $behavior" }
@@ -164,37 +146,24 @@ fun interface ThermalBodyAccessor {
 }
 
 fun ThermalBodyAccessor.temperature(): TemperatureAccessor = TemperatureAccessor {
-    this.get().tempK
+    this.get().temperatureKelvin
 }
 
 /**
- * Converts dissipated electrical energy to thermal energy. Injection is supported using [ThermalBody]
+ * Converts dissipated electrical energy to thermal energy.
  * */
-class ElectricalHeatTransferBehavior(private val bodyAccessor: ThermalBodyAccessor) : CellBehavior {
+class PowerHeatingBehavior @Inj constructor(private val accessor: ElectricalPowerAccessor, private val body: ThermalBody) : CellBehavior {
     @Inj
-    constructor(body: ThermalBody) : this({ body })
-
-    private lateinit var converterBehavior: ElectricalPowerConverterBehavior
-
-    override fun onAdded(container: CellBehaviorContainer) {
-        converterBehavior = container.get()
-    }
+    constructor(powerField: PowerField, body: ThermalBody) : this(powerField.read, body)
 
     override fun subscribe(subscribers: SubscriberCollection) {
         subscribers.addPre(this::simulationTick)
     }
 
     private fun simulationTick(dt: Double, p: SubscriberPhase) {
-        bodyAccessor.get().energy += converterBehavior.deltaEnergy
-        converterBehavior.energy -= converterBehavior.deltaEnergy
+        body.energy += accessor.get() * dt
     }
 }
-
-fun CellBehaviorContainer.withElectricalPowerConverter(accessor: ElectricalPowerAccessor): CellBehaviorContainer =
-    this.add(ElectricalPowerConverterBehavior(accessor))
-
-fun CellBehaviorContainer.withElectricalHeatTransfer(getter: ThermalBodyAccessor): CellBehaviorContainer =
-    this.add(ElectricalHeatTransferBehavior(getter))
 
 fun interface TemperatureAccessor {
     fun get(): Double
@@ -209,7 +178,7 @@ data class TemperatureExplosionBehaviorOptions(
      * If the temperature is above this threshold, [increaseSpeed] will be used to increase the explosion score.
      * Otherwise, [decayRate] will be used to decrease it.
      * */
-    val temperatureThreshold: Double = Temperature.from(600.0, ThermalUnits.CELSIUS).kelvin,
+    val temperatureThreshold: Quantity<Temp> = Quantity(350.0, KELVIN),
 
     /**
      * The score increase speed.
@@ -267,15 +236,14 @@ class TemperatureExplosionBehavior(
     private fun simulationTick(dt: Double, phase: SubscriberPhase) {
         val temperature = temperatureAccessor.get()
 
-        if (temperature > options.temperatureThreshold) {
-            val difference = temperature - options.temperatureThreshold
-
+        if (temperature > !options.temperatureThreshold) {
+            val difference = temperature - !options.temperatureThreshold
             score += options.increaseSpeed * difference * dt
         } else {
             score -= options.decayRate * dt
         }
 
-        if (score >= 1) {
+        if (score >= 1.0) {
             blowUp()
         }
 
@@ -305,7 +273,7 @@ class TemperatureExplosionBehavior(
                     return
                 }
 
-                val part = container.getPart(cell.pos.requireLocator<FaceLocator>())
+                val part = container.getPart(cell.locator.requireLocator<FaceLocator>())
                     ?: return
 
                 val level = (part.placement.level as ServerLevel)
@@ -317,80 +285,3 @@ class TemperatureExplosionBehavior(
         }
     }
 }
-
-fun CellBehaviorContainer.withExplosionBehavior(
-    temperatureAccessor: TemperatureAccessor,
-    options: TemperatureExplosionBehaviorOptions,
-    explosionNotifier: ExplosionConsumer,
-): CellBehaviorContainer {
-
-    this.add(TemperatureExplosionBehavior(temperatureAccessor, options, explosionNotifier))
-
-    return this
-}
-
-fun CellBehaviorContainer.withStandardExplosionBehavior(
-    cell: Cell,
-    threshold: Double,
-    temperatureAccessor: TemperatureAccessor,
-): CellBehaviorContainer {
-    return withExplosionBehavior(temperatureAccessor, TemperatureExplosionBehaviorOptions(threshold, 0.1, 0.25)) {
-        val container = cell.container ?: return@withExplosionBehavior
-
-        if (container is MultipartBlockEntity) {
-            if (container.isRemoved) {
-                return@withExplosionBehavior
-            }
-
-            val part = container.getPart(cell.pos.requireLocator<FaceLocator>())
-                ?: return@withExplosionBehavior
-
-            val level = (part.placement.level as ServerLevel)
-
-            level.destroyPart(part, true)
-        } else {
-            error("Cannot explode $container")
-        }
-    }
-}
-
-// todo remove
-
-/**
- * Registers a set of standard cell behaviors:
- * - [ElectricalPowerConverterBehavior]
- *      - converts power into energy
- * - [ElectricalHeatTransferBehavior]
- *      - moves energy to the heat mass from the electrical converter
- * - [TemperatureExplosionBehavior]
- *      - explodes part when a threshold temperature is held for a certain time period
- * */
-fun standardBehavior(cell: Cell, power: ElectricalPowerAccessor, thermal: ThermalBodyAccessor) =
-    ElectricalPowerConverterBehavior(power) *
-        ElectricalHeatTransferBehavior(thermal) *
-        TemperatureExplosionBehavior(
-            thermal.temperature(),
-            TemperatureExplosionBehaviorOptions(
-                temperatureThreshold = 600.0,
-                increaseSpeed = 0.1,
-                decayRate = 0.25
-            )
-        ) {
-            val container = cell.container
-                ?: return@TemperatureExplosionBehavior
-
-            if (container is MultipartBlockEntity) {
-                if (container.isRemoved) {
-                    return@TemperatureExplosionBehavior
-                }
-
-                val part = container.getPart(cell.pos.requireLocator<FaceLocator>())
-                    ?: return@TemperatureExplosionBehavior
-
-                val level = (part.placement.level as ServerLevel)
-
-                level.destroyPart(part, true)
-            } else {
-                error("Cannot explode $container")
-            }
-        }

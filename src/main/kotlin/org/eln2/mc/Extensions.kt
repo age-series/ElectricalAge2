@@ -23,6 +23,7 @@ import net.minecraft.world.entity.player.Inventory
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.inventory.AbstractContainerMenu
 import net.minecraft.world.inventory.Slot
+import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.ChunkPos
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.Block
@@ -32,6 +33,7 @@ import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
+import net.minecraftforge.common.ForgeMod
 import net.minecraftforge.items.ItemStackHandler
 import net.minecraftforge.network.NetworkHooks
 import org.ageseries.libage.data.BiMap
@@ -47,19 +49,16 @@ import org.ageseries.libage.sim.thermal.Simulator
 import org.ageseries.libage.sim.thermal.Temperature
 import org.ageseries.libage.sim.thermal.ThermalMass
 import org.apache.commons.math3.geometry.euclidean.threed.Vector3D
-import org.eln2.mc.common.blocks.foundation.CellBlockEntity
-import org.eln2.mc.common.blocks.foundation.MultiblockManager
 import org.eln2.mc.common.blocks.foundation.MultipartBlockEntity
-import org.eln2.mc.common.cells.foundation.Cell
 import org.eln2.mc.common.cells.foundation.ComponentHolder
 import org.eln2.mc.common.cells.foundation.ElectricalComponentInfo
+import org.eln2.mc.common.parts.foundation.CellPartConnectionMode
 import org.eln2.mc.common.parts.foundation.Part
 import org.eln2.mc.common.parts.foundation.PartUpdateType
 import org.eln2.mc.data.*
 import org.eln2.mc.integration.WailaTooltipBuilder
 import org.eln2.mc.mathematics.*
 import org.eln2.mc.mathematics.Vector3d
-import org.joml.Matrix4f
 import org.joml.Quaternionf
 import org.joml.Vector3f
 import java.io.InputStream
@@ -73,7 +72,12 @@ fun AABB.viewClip(entity: LivingEntity): Optional<Vec3> {
 
     val start = Vec3(entity.x, entity.eyeY, entity.z)
 
-    val distance = 5.0
+    val distance = if(entity is Player) {
+        entity.reachDistance
+    }
+    else {
+        ForgeMod.REACH_DISTANCE.get().defaultValue
+    }
 
     val end = start + viewDirection * distance
 
@@ -200,6 +204,10 @@ fun Direction.toVector3D(): Vector3D {
     return Vector3D(this.stepX.toDouble(), this.stepY.toDouble(), this.stepZ.toDouble())
 }
 
+fun Direction.toVector3d(): Vector3d {
+    return Vector3d(this.stepX.toDouble(), this.stepY.toDouble(), this.stepZ.toDouble())
+}
+
 fun AbstractContainerMenu.addPlayerGrid(playerInventory: Inventory, addSlot: ((Slot) -> Unit)): Int {
     var slots = 0
 
@@ -250,9 +258,21 @@ fun Level.addParticle(
     this.addParticle(pParticleData, pos.x, pos.y, pos.z, speed.x, speed.y, speed.z)
 }
 
+fun ServerLevel.addItem(x: Double, y: Double, z: Double, stack: ItemStack) {
+    this.addFreshEntity(ItemEntity(
+        this,
+        x,
+        y,
+        z,
+        stack
+    ))
+}
+
+fun ServerLevel.addItem(pos: BlockPos, stack: ItemStack) = addItem(pos.x.toDouble(), pos.y.toDouble(), pos.z.toDouble(), stack)
+
 @ServerOnly
 fun ServerLevel.destroyPart(part: Part<*>, dropPart: Boolean) {
-    val pos = part.placement.pos
+    val pos = part.placement.position
 
     val multipart = this.getBlockEntity(pos)
         as? MultipartBlockEntity
@@ -339,6 +359,7 @@ fun Level.getDataAccess(pos: BlockPos): DataNode? {
         as? DataEntity ?: return null)
         .dataNode
 }
+/*
 
 inline fun <reified T : Cell> Level.getCellOrNull(mb: MultiblockManager, cellPosId: BlockPos): T? {
     val entity = this.getBlockEntity(mb.txIdWorld(cellPosId)) as? CellBlockEntity
@@ -349,8 +370,9 @@ inline fun <reified T : Cell> Level.getCellOrNull(mb: MultiblockManager, cellPos
 
 inline fun <reified T : Cell> Level.getCell(mb: MultiblockManager, cellPosId: BlockPos): T =
     getCellOrNull(mb, cellPosId) ?: error("Cell was not present")
+*/
 
-private const val LIBAGE_SET_EPS = 0.001
+const val LIBAGE_SET_EPS = 1e-3
 fun org.ageseries.libage.sim.electrical.mna.component.Component.connect(pin: Int, info: ElectricalComponentInfo) {
     this.connect(pin, info.component, info.index)
 }
@@ -503,16 +525,22 @@ fun CompoundTag.getDirection(key: String): Direction {
     return Direction.from3DDataValue(data3d)
 }
 
-fun CompoundTag.putRelativeDirection(key: String, direction: Base6Direction3d) {
-    val data = direction.id
+fun CompoundTag.putBase6Direction(key: String, direction: Base6Direction3d) {
+    this.putInt(key, direction.id)
+}
 
-    this.putInt(key, data)
+fun CompoundTag.putConnectionMode(key: String, mode: CellPartConnectionMode) {
+    this.putInt(key, mode.index)
+}
+
+fun CompoundTag.getConnectionMode(key: String): CellPartConnectionMode {
+    val value = this.getInt(key)
+    return CellPartConnectionMode.byId[value] ?: error("Invalid connection mode $value")
 }
 
 fun CompoundTag.getDirectionActual(key: String): Base6Direction3d {
     val data = this.getInt(key)
-
-    return Base6Direction3d.fromId(data)
+    return Base6Direction3d.byId[data]
 }
 
 fun CompoundTag.putPartUpdateType(key: String, type: PartUpdateType) {
@@ -578,13 +606,13 @@ fun CompoundTag.placeSubTag(key: String, consumer: ((CompoundTag) -> Unit)): Com
  * Gets the compound tag from this instance, and calls the consumer method with the found tag.
  * @return The tag that was found.
  * */
-fun CompoundTag.useSubTagIfPreset(key: String, consumer: ((CompoundTag) -> Unit)): CompoundTag? {
+fun CompoundTag.useSubTagIfPreset(key: String, consumer: ((CompoundTag) -> Unit)): CompoundTag {
     val tag = this.get(key) as? CompoundTag
-        ?: return null
+        ?: return this
 
     consumer(tag)
 
-    return tag
+    return this
 }
 
 fun CompoundTag.putMaterial(id: String, material: Material) {

@@ -23,22 +23,9 @@ fun lerp(from: Dual, to: Dual, factor: Dual): Dual {
     return (1.0 - factor) * from + factor * to
 }
 
-fun log2i(x: Int): Int {
-    var v = x
-    var r = 0xFFFF - v shr 31 and 0x10
-    v = v shr r
-    var fnz = 0xFF - v shr 31 and 0x8
-    v = v shr fnz
-    r = r or fnz
-    fnz = 0xF - v shr 31 and 0x4
-    v = v shr fnz
-    r = r or fnz
-    fnz = 0x3 - v shr 31 and 0x2
-    v = v shr fnz
-    r = r or fnz
-    r = r or (v shr 1)
-    return r
-}
+fun rsb(v: Int) = (v ushr 31)
+fun rsbu(v: Int) = (v ushr 31).toUInt()
+
 
 /**
  * Computes the [base] with the specified power [exponent] efficiently.
@@ -246,10 +233,13 @@ fun Double.mappedTo(srcMin: Double, srcMax: Double, dstMin: Double, dstMax: Doub
 fun Dual.mappedTo(srcMin: Dual, srcMax: Dual, dstMin: Dual, dstMax: Dual): Dual =
     map(this, srcMin, srcMax, dstMin, dstMax)
 
-fun approxEqual(a: Double, b: Double, epsilon: Double = 10e-6): Boolean = abs(a - b) < epsilon
-fun Double.approxEq(other: Double, epsilon: Double = 10e-6): Boolean = approxEqual(this, other, epsilon)
-fun Double.sqrt() = sqrt(this)
-infix fun Double.approxEq(other: Double): Boolean = approxEqual(this, other, 10e-6)
+fun approxEqual(a: Double, b: Double, epsilon: Double = 1e-6): Boolean = abs(a - b) < epsilon
+fun approxEqual(a: Float, b: Float, epsilon: Float = 1e-6f): Boolean = abs(a - b) < epsilon
+
+fun Double.approxEq(other: Double, epsilon: Double = 1e-6): Boolean = approxEqual(this, other, epsilon)
+infix fun Double.approxEq(other: Double): Boolean = approxEqual(this, other)
+fun Float.approxEq(other: Float, epsilon: Float = 1e-6f) = approxEqual(this, other, epsilon)
+infix fun Float.approxEq(other: Float) = approxEqual(this, other)
 
 /**
  * Returns the max of [a] and [b].

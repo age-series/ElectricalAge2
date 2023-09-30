@@ -4,7 +4,6 @@ import mcp.mobius.waila.api.IPluginConfig
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
 import net.minecraft.nbt.CompoundTag
-import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.player.Player
@@ -21,10 +20,9 @@ import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.level.block.state.StateDefinition
 import net.minecraft.world.level.material.FluidState
 import net.minecraft.world.level.material.Material
-import net.minecraftforge.registries.RegistryObject
 import org.eln2.mc.BiomeEnvironments
+import org.eln2.mc.LOG
 import org.eln2.mc.ServerOnly
-import org.eln2.mc.common.blocks.BlockRegistry
 import org.eln2.mc.common.cells.CellRegistry
 import org.eln2.mc.common.cells.foundation.*
 import org.eln2.mc.data.*
@@ -33,8 +31,7 @@ import org.eln2.mc.integration.WailaTooltipBuilder
 import org.eln2.mc.isHorizontal
 import java.util.*
 
-abstract class CellBlock(props: Properties? = null) :
-    HorizontalDirectionalBlock(props ?: Properties.of(Material.STONE).noOcclusion()), EntityBlock {
+abstract class CellBlock<C : Cell>(p : Properties? = null) : HorizontalDirectionalBlock(p ?: Properties.of(Material.STONE).noOcclusion()), EntityBlock {
     init {
         @Suppress("LeakingThis")
         registerDefaultState(getStateDefinition().any().setValue(FACING, Direction.NORTH))
@@ -49,82 +46,53 @@ abstract class CellBlock(props: Properties? = null) :
         pBuilder.add(FACING)
     }
 
-    override fun setPlacedBy(
-        level: Level,
-        pos: BlockPos,
-        blockState: BlockState,
-        entity: LivingEntity?,
-        itemStack: ItemStack,
-    ) {
-        val cellEntity = level.getBlockEntity(pos)!! as CellBlockEntity
-        cellEntity.setPlacedBy(
-            level,
-            pos,
-            blockState,
-            entity,
-            itemStack,
-            CellRegistry.getProvider(getCellProvider())
+    @Suppress("UNCHECKED_CAST")
+    override fun setPlacedBy(level: Level, blockPos: BlockPos, blockState: BlockState, entity: LivingEntity?, itemStack: ItemStack) {
+        val cellEntity = level.getBlockEntity(blockPos)!! as CellBlockEntity<C>
+        cellEntity.setPlacedBy(level, getCellProvider())
+    }
+
+    override fun onBlockExploded(blockState: BlockState?, level: Level?, blockPos: BlockPos?, explosion: Explosion?) {
+        destroy(level ?: error("Level was null"), blockPos ?: error("Position was null"))
+        super.onBlockExploded(blockState, level, blockPos, explosion)
+    }
+
+    override fun onDestroyedByPlayer(blockState: BlockState?, level: Level?, blockPos: BlockPos?, player: Player?, willHarvest: Boolean, fluidState: FluidState?): Boolean {
+        destroy(
+            level
+            ?: error("Level was null"),
+            blockPos ?: error("Position was null")
         )
+        return super.onDestroyedByPlayer(blockState, level, blockPos, player, willHarvest, fluidState)
     }
 
-
-    override fun onBlockExploded(blState: BlockState?, lvl: Level?, pos: BlockPos?, exp: Explosion?) {
-        destroy(lvl ?: error("Level was null"), pos ?: error("Position was null"))
-        super.onBlockExploded(blState, lvl, pos, exp)
-    }
-
-    override fun onDestroyedByPlayer(
-        blState: BlockState?,
-        lvl: Level?,
-        pos: BlockPos?,
-        pl: Player?,
-        wh: Boolean,
-        flState: FluidState?,
-    ): Boolean {
-        destroy(lvl ?: error("Level was null"), pos ?: error("Position was null"))
-        return super.onDestroyedByPlayer(blState, lvl, pos, pl, wh, flState)
-    }
-
-    private fun destroy(level: Level, pos: BlockPos) {
+    @Suppress("UNCHECKED_CAST")
+    private fun destroy(level: Level, blockPos: BlockPos) {
         if (!level.isClientSide) {
-            val cellEntity = level.getBlockEntity(pos)!! as CellBlockEntity
+            val cellEntity = level.getBlockEntity(blockPos)!! as CellBlockEntity<C>
             cellEntity.setDestroyed()
         }
     }
 
-    override fun newBlockEntity(pPos: BlockPos, pState: BlockState): BlockEntity? {
-        return CellBlockEntity(pPos, pState)
-    }
-
-    // override this:
-    abstract fun getCellProvider(): ResourceLocation
+    abstract fun getCellProvider(): CellProvider<C>
 }
 
-class BasicCellBlock(val supplier: () -> ResourceLocation) : CellBlock() {
-    constructor(p: RegistryObject<CellProvider>) : this({ p.id!! })
-
-    override fun getCellProvider(): ResourceLocation = supplier()
-}
-
-open class CellBlockEntity(pos: BlockPos, state: BlockState, targetType: BlockEntityType<*>) :
+open class CellBlockEntity<C : Cell>(pos: BlockPos, state: BlockState, targetType: BlockEntityType<*>) :
     BlockEntity(targetType, pos, state),
     CellContainer,
     WailaEntity,
     DataEntity {
-    constructor(pos: BlockPos, state: BlockState) : this(pos, state, BlockRegistry.CELL_BLOCK_ENTITY.get())
 
     final override val dataNode: DataNode = DataNode()
 
     open val cellFace = Direction.UP
 
     private lateinit var graphManager: CellGraphManager
-    private lateinit var cellProvider: CellProvider
-
-    // Used for loading
+    private lateinit var cellProvider: CellProvider<C>
     private lateinit var savedGraphID: UUID
 
     @ServerOnly
-    var cell: Cell? = null
+    var cell: C? = null
         private set(value) {
             fun removeOld() {
                 if (field != null) {
@@ -145,18 +113,7 @@ open class CellBlockEntity(pos: BlockPos, state: BlockState, targetType: BlockEn
             field = value
         }
 
-    @ServerOnly
-    private val serverLevel get() = level as ServerLevel
-
-    @Suppress("UNUSED_PARAMETER") // Will very likely be needed later and helps to know the name of the args.
-    fun setPlacedBy(
-        level: Level,
-        position: BlockPos,
-        blockState: BlockState,
-        entity: LivingEntity?,
-        itemStack: ItemStack,
-        cellProvider: CellProvider,
-    ) {
+    fun setPlacedBy(level: Level, cellProvider: CellProvider<C>) {
         this.cellProvider = cellProvider
 
         if (level.isClientSide) {
@@ -165,20 +122,15 @@ open class CellBlockEntity(pos: BlockPos, state: BlockState, targetType: BlockEn
 
         // Create the cell based on the provider.
 
-        val p = getCellPos()
-        cell = cellProvider.create(p, BiomeEnvironments.cellEnv(level, p).fieldMap())
+        val cellPos = createCellLocator()
 
+        cell = cellProvider.create(cellPos, BiomeEnvironments.getInformationForBlock(level, cellPos).fieldMap())
         cell!!.container = this
 
         CellConnections.insertFresh(this, cell!!)
-
         setChanged()
 
-        cell!!.bindGameObjects(
-            listOf(
-                this
-            )
-        )
+        cell!!.bindGameObjects(createObjectList())
     }
 
     fun disconnect() {
@@ -188,6 +140,8 @@ open class CellBlockEntity(pos: BlockPos, state: BlockState, targetType: BlockEn
     fun reconnect() {
         CellConnections.connectCell(cell!!, this)
     }
+
+    protected open fun createObjectList() = listOf(this)
 
     open fun setDestroyed() {
         val level = this.level ?: error("Level is null in setDestroyed")
@@ -205,19 +159,16 @@ open class CellBlockEntity(pos: BlockPos, state: BlockState, targetType: BlockEn
         CellConnections.destroy(cell, this)
     }
 
-    //#region Saving and Loading
-
     override fun saveAdditional(pTag: CompoundTag) {
         if (level!!.isClientSide) {
             // No saving is done on the client
-
             return
         }
 
         if (cell!!.hasGraph) {
             pTag.putString("GraphID", cell!!.graph.id.toString())
         } else {
-            org.eln2.mc.LOG.info("Save additional: graph null")
+            LOG.info("Save additional: graph null")
         }
     }
 
@@ -226,9 +177,9 @@ open class CellBlockEntity(pos: BlockPos, state: BlockState, targetType: BlockEn
 
         if (pTag.contains("GraphID")) {
             savedGraphID = UUID.fromString(pTag.getString("GraphID"))!!
-            org.eln2.mc.LOG.info("Deserialized cell entity at $blockPos")
+            LOG.info("Deserialized cell entity at $blockPos")
         } else {
-            org.eln2.mc.LOG.warn("Cell entity at $blockPos does not have serialized data.")
+            LOG.warn("Cell entity at $blockPos does not have serialized data.")
         }
     }
 
@@ -243,6 +194,7 @@ open class CellBlockEntity(pos: BlockPos, state: BlockState, targetType: BlockEn
         }
     }
 
+    @Suppress("UNCHECKED_CAST")
     override fun setLevel(pLevel: Level) {
         super.setLevel(pLevel)
 
@@ -252,7 +204,7 @@ open class CellBlockEntity(pos: BlockPos, state: BlockState, targetType: BlockEn
 
         // here, we can get our manager. We have the level at this point.
 
-        graphManager = CellGraphManager.getFor(serverLevel)
+        graphManager = CellGraphManager.getFor(level as ServerLevel)
 
         if (this::savedGraphID.isInitialized && graphManager.contains(savedGraphID)) {
             // fetch graph with ID
@@ -261,22 +213,18 @@ open class CellBlockEntity(pos: BlockPos, state: BlockState, targetType: BlockEn
             // fetch cell instance
             println("Loading cell at location $blockPos")
 
-            cell = graph.getCell(getCellPos())
+            cell = graph.getCell(createCellLocator()) as C
 
-            cellProvider = CellRegistry.getProvider(cell!!.id)
+            cellProvider = CellRegistry.getProvider(cell!!.id) as CellProvider<C>
             cell!!.container = this
             cell!!.onContainerLoaded()
-            cell!!.bindGameObjects(
-                listOf(
-                    this
-                )
-            )
+            cell!!.bindGameObjects(createObjectList())
         }
     }
 
     //#endregion
 
-    private fun getCellPos() = LocatorSet().apply {
+    private fun createCellLocator() = LocatorSet().apply {
         withLocator(blockPos)
         withLocator(cellFace)
         withLocator(FacingLocator(blockState.getValue(HorizontalDirectionalBlock.FACING)))
@@ -302,11 +250,11 @@ open class CellBlockEntity(pos: BlockPos, state: BlockState, targetType: BlockEn
     }
 
     override fun onCellConnected(actualCell: Cell, remoteCell: Cell) {
-        org.eln2.mc.LOG.info("Cell Block recorded connection from $actualCell to $remoteCell")
+        LOG.info("Cell Block recorded connection from $actualCell to $remoteCell")
     }
 
     override fun onCellDisconnected(actualCell: Cell, remoteCell: Cell) {
-        org.eln2.mc.LOG.info("Cell Block recorded deleted connection from $actualCell to $remoteCell")
+        LOG.info("Cell Block recorded deleted connection from $actualCell to $remoteCell")
     }
 
     override fun onTopologyChanged() {
@@ -314,7 +262,7 @@ open class CellBlockEntity(pos: BlockPos, state: BlockState, targetType: BlockEn
     }
 
     override val manager: CellGraphManager
-        get() = CellGraphManager.getFor(serverLevel)
+        get() = CellGraphManager.getFor(level as ServerLevel)
 
     override fun appendWaila(builder: WailaTooltipBuilder, config: IPluginConfig?) {
         val cell = this.cell

@@ -1,21 +1,22 @@
+@file:OptIn(ExperimentalSerializationApi::class)
+
 package org.eln2.mc.common.network.serverToClient
 
-import kotlinx.serialization.decodeFromString
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
+import kotlinx.serialization.*
+import kotlinx.serialization.cbor.Cbor
 import net.minecraft.client.Minecraft
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
 import net.minecraft.network.FriendlyByteBuf
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.level.ServerLevel
+import net.minecraft.world.level.ChunkPos
 import net.minecraftforge.api.distmarker.Dist
 import net.minecraftforge.event.TickEvent
 import net.minecraftforge.eventbus.api.SubscribeEvent
 import net.minecraftforge.fml.DistExecutor
 import net.minecraftforge.fml.common.Mod
 import net.minecraftforge.network.NetworkEvent
-import net.minecraftforge.server.ServerLifecycleHooks
 import org.eln2.mc.CrossThreadAccess
 import org.eln2.mc.LOG
 import org.eln2.mc.common.blocks.foundation.MultipartBlockEntity
@@ -34,8 +35,8 @@ fun ByteBuffer.putBlockPos(pos: BlockPos) {
 
 fun ByteBuffer.getBlockPos() = BlockPos(this.int, this.int, this.int)
 
-fun ByteBuffer.putDirection(dir: Direction) = this.putInt(dir.get3DDataValue())
-fun ByteBuffer.getDirection() = Direction.from3DDataValue(this.int)
+fun ByteBuffer.putDirection(dir: Direction): ByteBuffer = this.putInt(dir.get3DDataValue())
+fun ByteBuffer.getDirection(): Direction = Direction.from3DDataValue(this.int)
 
 fun ByteBuffer.putArray(array: ByteArray) {
     this.putInt(array.size)
@@ -104,11 +105,7 @@ fun loadByteArrays(buffer: ByteBuffer): ArrayList<ByteArray> {
 }
 
 class PartMessage(val pos: BlockPos, val face: Direction, val payload: ByteArray) {
-    val size
-        get() =
-            3 * 4 +
-                1 * 4 +
-                (4 + payload.size)
+    val size get() = 3 * 4 + 1 * 4 + (4 + payload.size)
 
     fun save(buffer: ByteBuffer) {
         buffer.putBlockPos(pos)
@@ -126,14 +123,10 @@ class PartMessage(val pos: BlockPos, val face: Direction, val payload: ByteArray
 }
 
 class BulkPartMessage(val dim: Int, val messages: List<PartMessage>) {
-    val size
-        get() =
-            1 * 4 +
-                1 * 4 +
-                messages.sumOf { it.size }
+    private fun calculateSize() = 1 * 4 + 1 * 4 + messages.sumOf { it.size }
 
-    fun save(): ByteArray {
-        val result = ByteArray(size)
+    fun toArray(): ByteArray {
+        val result = ByteArray(calculateSize())
         val buffer = ByteBuffer.wrap(result)
 
         buffer.putInt(dim)
@@ -147,7 +140,7 @@ class BulkPartMessage(val dim: Int, val messages: List<PartMessage>) {
     }
 
     companion object {
-        fun load(data: ByteArray): BulkPartMessage {
+        private fun fromArray(data: ByteArray): BulkPartMessage {
             val buffer = ByteBuffer.wrap(data)
 
             val dim = buffer.int
@@ -161,6 +154,50 @@ class BulkPartMessage(val dim: Int, val messages: List<PartMessage>) {
 
             return BulkPartMessage(dim, results)
         }
+
+        fun encode(message: BulkPartMessage, buf: FriendlyByteBuf): FriendlyByteBuf = buf.writeByteArray(message.toArray())
+
+        fun decode(buf: FriendlyByteBuf): BulkPartMessage = BulkPartMessage.fromArray(buf.readByteArray())
+
+        fun handle(message: BulkPartMessage, ctx: Supplier<NetworkEvent.Context>) {
+            ctx.get().enqueueWork {
+                DistExecutor.unsafeRunWhenOn(Dist.CLIENT) {
+                    Runnable {
+                        val actualLevel = Minecraft.getInstance().level
+
+                        if (actualLevel == null) {
+                            LOG.error("Got bulk message, but level is null")
+                            return@Runnable
+                        }
+
+                        if (actualLevel.dimension().registry().id() != message.dim) {
+                            // Cheap check to make sure we don't get a badly timed packet
+                            return@Runnable
+                        }
+
+                        message.messages.forEach { msg ->
+                            val entity = actualLevel.getBlockEntity(msg.pos)
+
+                            if (entity !is MultipartBlockEntity) {
+                                LOG.error("Rogue multipart message $msg")
+                                return@forEach
+                            }
+
+                            val part = entity.getPart(msg.face)
+
+                            if (part == null) {
+                                LOG.error("Lingering multipart $msg")
+                                return@forEach
+                            }
+
+                            part.handleBulkMessage(msg.payload)
+                        }
+                    }
+                }
+            }
+
+            ctx.get().packetHandled = true
+        }
     }
 }
 
@@ -168,55 +205,9 @@ fun ResourceLocation.id(): Int = this.hashCode()
 
 @Mod.EventBusSubscriber
 object BulkMessages {
-    fun encodeBulkPartMessage(message: BulkPartMessage, buf: FriendlyByteBuf): FriendlyByteBuf =
-        buf.writeByteArray(message.save())
-
-    fun decodeBulkPartMessage(buf: FriendlyByteBuf): BulkPartMessage = BulkPartMessage.load(buf.readByteArray())
-
-    fun handleBulkPartMessage(bulkMsg: BulkPartMessage, ctx: Supplier<NetworkEvent.Context>) {
-        ctx.get().enqueueWork {
-            DistExecutor.unsafeRunWhenOn(Dist.CLIENT) {
-                Runnable {
-                    val actualLevel = Minecraft.getInstance().level
-
-                    if (actualLevel == null) {
-                        LOG.error("Got bulk message, but level is null")
-                        return@Runnable
-                    }
-
-                    if (actualLevel.dimension().registry().id() != bulkMsg.dim) {
-                        // Cheap check to make sure we don't get a badly timed packet
-                        return@Runnable
-                    }
-
-                    bulkMsg.messages.forEach { msg ->
-                        val entity = actualLevel.getBlockEntity(msg.pos)
-
-                        if (entity !is MultipartBlockEntity) {
-                            LOG.error("Rogue multipart message $msg")
-                            return@forEach
-                        }
-
-                        val part = entity.getPart(msg.face)
-
-                        if (part == null) {
-                            LOG.error("Lingering multipart $msg")
-                            return@forEach
-                        }
-
-                        part.handleBulkMessage(msg.payload)
-                    }
-                }
-            }
-        }
-
-        ctx.get().packetHandled = true
-    }
-
     @CrossThreadAccess
     private val bulkPartMessages = ConcurrentHashMap<ServerLevel, ConcurrentLinkedDeque<PartMessage>>()
-    fun enqueuePartMessage(level: ServerLevel, msg: PartMessage) =
-        bulkPartMessages.getOrPut(level, ::ConcurrentLinkedDeque).add(msg)
+    fun enqueuePartMessage(level: ServerLevel, msg: PartMessage) = bulkPartMessages.getOrPut(level, ::ConcurrentLinkedDeque).add(msg)
 
     @SubscribeEvent
     @JvmStatic
@@ -226,26 +217,35 @@ object BulkMessages {
         }
     }
 
-    private val bulkPartMessageBuffer = ArrayList<PartMessage>()
     private fun flushPartData() {
-        bulkPartMessages.forEach { (level, queue) ->
+        bulkPartMessages.forEach { (level, messageQueue) ->
+            val perChunkMessages = HashMap<ChunkPos, ArrayList<PartMessage>>()
+
             while (true) {
-                val msg = queue.poll() ?: break
-                bulkPartMessageBuffer.add(msg)
+                val message = messageQueue.poll() ?: break
+                val chunkPos = ChunkPos(message.pos)
+                var messageList = perChunkMessages[chunkPos]
+
+                if(messageList == null) {
+                    messageList = ArrayList()
+                    require(perChunkMessages.put(chunkPos, messageList) == null)
+                }
+
+                messageList.add(message)
             }
 
-            val message = BulkPartMessage(
-                level.dimension().registry().id(),
-                bulkPartMessageBuffer.toList()
-            )
+            val chunkMap = level.chunkSource.chunkMap
 
-            ServerLifecycleHooks.getCurrentServer().playerList.players.forEach { player ->
-                if (player.level == level) {
-                    Networking.sendTo(message, player)
+            perChunkMessages.forEach { (chunkPos, messages) ->
+                val message = BulkPartMessage(
+                    level.dimension().registry().id(),
+                    messages
+                )
+
+                chunkMap.getPlayers(chunkPos, false).forEach { player ->
+                    Networking.send(message, player)
                 }
             }
-
-            bulkPartMessageBuffer.clear()
         }
     }
 }
@@ -259,7 +259,7 @@ class PacketHandlerBuilder {
 
     inline fun <reified P> withHandler(crossinline consume: (P) -> Unit): PacketHandlerBuilder {
         registeredIds[P::class.reflectId] = DeserializeHandler {
-            val instance = Json.decodeFromString<P>(it.decodeToString())
+            val instance = Cbor.decodeFromByteArray<P>(it)
 
             try {
                 consume(instance)
@@ -296,7 +296,7 @@ class PacketHandler(private val registeredIds: Map<Int, DeserializeHandler>) {
 
     companion object {
         inline fun <reified P> encode(packet: P): ByteArray {
-            val data = Json.encodeToString(packet).encodeToByteArray()
+            val data = Cbor.encodeToByteArray(packet)
 
             val sendBuffer = ByteArray(4 + data.size)
             val result = ByteBuffer.wrap(sendBuffer)

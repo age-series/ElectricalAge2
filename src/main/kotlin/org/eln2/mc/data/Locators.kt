@@ -9,8 +9,10 @@ import net.minecraft.nbt.ListTag
 import org.ageseries.libage.data.ImmutableBiMapView
 import org.ageseries.libage.data.biMapOf
 import org.eln2.mc.*
+import org.eln2.mc.common.cells.foundation.NEGATIVE_PIN
+import org.eln2.mc.common.cells.foundation.POSITIVE_PIN
 import org.eln2.mc.mathematics.Base6Direction3d
-import org.eln2.mc.mathematics.DirectionMask
+import org.eln2.mc.mathematics.Base6Direction3dMask
 
 typealias BlockLocator = BlockPos
 typealias FaceLocator = Direction
@@ -194,7 +196,7 @@ class LocatorRelationRuleSet {
     }
 }
 
-fun LocatorRelationRuleSet.withDirectionActualRule(mask: DirectionMask): LocatorRelationRuleSet {
+fun LocatorRelationRuleSet.withDirectionRule(mask: Base6Direction3dMask): LocatorRelationRuleSet {
     return this.with { a, b ->
         mask.has(a.findDirActualOrNull(b) ?: return@with false)
     }
@@ -217,3 +219,31 @@ fun LocatorSet.findDirActualOrNull(other: LocatorSet): Base6Direction3d? {
 fun LocatorSet.findDirActual(other: LocatorSet): Base6Direction3d {
     return this.findDirActualOrNull(other) ?: error("Failed to get relative rotation direction")
 }
+
+enum class Pole(val conventionalPin: Int) {
+    Plus(POSITIVE_PIN),
+    Minus(NEGATIVE_PIN)
+}
+
+fun interface PoleMap {
+    /**
+     * Maps the target location to a pole, when looking from the actual location.
+     * @param sourceLocator The observer's location.
+     * @param targetLocator The target's location.
+     * @return The pole [targetLocator] corresponds to.
+     * */
+    fun evaluate(sourceLocator: LocatorSet, targetLocator: LocatorSet): Pole
+}
+
+/**
+ * Creates a [PoleMap] that maps [plusDir] to plus and [minusDir] to minus. These directions are in the observer's frame.
+ * This means that, from the object's perspective, [Pole.Plus] is returned when the other object is towards [plusDir], and [Pole.Minus] is returned when the target is towards [minusDir].
+ * */
+fun directionPoleMap(plusDir: Base6Direction3d = Base6Direction3d.Front, minusDir: Base6Direction3d = Base6Direction3d.Back) =
+    PoleMap { actualDescr, targetDescr ->
+        when (val dirActual = actualDescr.findDirActual(targetDescr)) {
+            plusDir -> Pole.Plus
+            minusDir -> Pole.Minus
+            else -> error("Unhandled neighbor direction $dirActual")
+        }
+    }

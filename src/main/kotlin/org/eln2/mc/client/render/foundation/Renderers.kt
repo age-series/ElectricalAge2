@@ -8,6 +8,7 @@ import com.jozufozu.flywheel.core.PartialModel
 import com.jozufozu.flywheel.core.materials.FlatLit
 import com.jozufozu.flywheel.core.materials.model.ModelData
 import com.jozufozu.flywheel.util.Color
+import net.minecraft.world.level.LightLayer
 import org.ageseries.libage.sim.thermal.STANDARD_TEMPERATURE
 import org.ageseries.libage.sim.thermal.Temperature
 import org.ageseries.libage.sim.thermal.ThermalUnits
@@ -17,17 +18,17 @@ import org.eln2.mc.common.parts.foundation.Part
 import org.eln2.mc.common.parts.foundation.PartRenderer
 import org.eln2.mc.common.parts.foundation.PartUpdateType
 import org.eln2.mc.mathematics.map
-import org.eln2.mc.mathematics.vec3
 import org.joml.AxisAngle4f
 import org.joml.Quaternionf
 import org.joml.Vector3f
+import kotlin.math.max
 
 fun createPartInstance(
     multipart: MultipartBlockEntityInstance,
     model: PartialModel,
     part: Part<*>,
     downOffset: Double,
-    yRotation: Float,
+    yRotation: Double,
 ): ModelData {
     return multipart.materialManager
         .defaultSolid()
@@ -35,22 +36,18 @@ fun createPartInstance(
         .getModel(model)
         .createInstance()
         .loadIdentity()
-        .applyBlockBenchTransform(part, downOffset, yRotation)
+        .applyBlockBenchTransform(part, downOffset, yRotation.toFloat())
 }
 
 /**
  * The basic part renderer is used to render a single partial model.
  * */
-open class BasicPartRenderer(val part: Part<*>, val model: PartialModel) : PartRenderer {
-    override fun isSetupWith(multipartBlockEntityInstance: MultipartBlockEntityInstance): Boolean {
-        return this::multipart.isInitialized && this.multipart == multipartBlockEntityInstance
-    }
-
+open class BasicPartRenderer(val part: Part<*>, val model: PartialModel) : PartRenderer() {
     /**
      * Useful if the model needs to be rotated to match the networked behavior.
      * Alternatively, the model may be rotated in the 3D editor.
      * */
-    var yRotation = 0f
+    var yRotation = 0.0
 
     /**
      * Required in order to "place" the model on the mounting surface. Usually, this offset is calculated using information from the 3D editor.
@@ -58,19 +55,12 @@ open class BasicPartRenderer(val part: Part<*>, val model: PartialModel) : PartR
     var downOffset = 0.0
 
     private var modelInstance: ModelData? = null
-    protected lateinit var multipart: MultipartBlockEntityInstance
 
-    override fun setupRendering(multipart: MultipartBlockEntityInstance) {
-        this.multipart = multipart
-
+    override fun setupRendering() {
         buildInstance()
     }
 
     fun buildInstance() {
-        if (!this::multipart.isInitialized) {
-            error("Multipart not initialized!")
-        }
-
         modelInstance?.delete()
 
         modelInstance = createPartInstance(multipart, model, part, downOffset, yRotation)
@@ -80,7 +70,7 @@ open class BasicPartRenderer(val part: Part<*>, val model: PartialModel) : PartR
 
     override fun beginFrame() {}
 
-    override fun relightModels(): List<FlatLit<*>>? {
+    override fun getModelsToRelight(): List<FlatLit<*>>? {
         if (modelInstance != null) {
             return listOf(modelInstance!!)
         }
@@ -169,6 +159,10 @@ class MultipartBlockEntityInstance(val materialManager: MaterialManager, blockEn
         blockEntity.bindRenderer(this)
     }
 
+    fun readBlockBrightness() = world.getBrightness(LightLayer.BLOCK, pos)
+    fun readSkyBrightness() = world.getBrightness(LightLayer.SKY, pos)
+    fun readBrightness() = max(readSkyBrightness(), readBlockBrightness())
+
     /**
      * Called by flywheel at the start of each frame.
      * This applies any part updates (new or removed parts), and notifies the part renderers about the new frame.
@@ -246,10 +240,15 @@ class MultipartBlockEntityInstance(val materialManager: MaterialManager, blockEn
      * This may happen when a model is initially created.
      * */
     fun relightPart(part: Part<*>) {
-        val models = part.renderer.relightModels()
+        val models = part.renderer.getModelsToRelight()
 
         if (models != null) {
             relight(pos, models.stream())
+            part.renderer.afterRelight(models)
         }
     }
+}
+
+fun interface PartRendererSupplier<T : Part<R>, R : PartRenderer> {
+    fun create(part: T) : R
 }

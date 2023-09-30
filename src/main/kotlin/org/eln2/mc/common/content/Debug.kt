@@ -1,0 +1,82 @@
+package org.eln2.mc.common.content
+
+import net.minecraft.resources.ResourceLocation
+import net.minecraft.world.InteractionResult
+import net.minecraft.world.phys.Vec3
+import org.eln2.mc.client.render.PartialModels
+import org.eln2.mc.client.render.foundation.BasicPartRenderer
+import org.eln2.mc.common.cells.foundation.*
+import org.eln2.mc.common.parts.foundation.CellPart
+import org.eln2.mc.common.parts.foundation.PartPlacementInfo
+import org.eln2.mc.common.parts.foundation.PartUseInfo
+import org.eln2.mc.data.*
+import org.eln2.mc.formatted
+import org.eln2.mc.mathematics.Base6Direction3d
+import kotlin.math.absoluteValue
+import kotlin.math.sin
+
+class ElectricalEnergyMeterCell(ci: CellCreateInfo) : Cell(ci) {
+    companion object {
+        private val A = Base6Direction3d.Front
+        private val B = Base6Direction3d.Back
+    }
+
+    init {
+        ruleSet.withDirectionRule(A + B)
+
+        data.withField(TooltipField { b ->
+            b.text("Metered energy", valueText(converter.energy, UnitType.JOULE))
+        })
+    }
+
+    @SimObject @Inspect
+    val resistor = ResistorObject(this, directionPoleMap(A, B))
+
+    @Behavior
+    val converter = ElectricalPowerConverterBehavior { resistor.power }
+}
+
+class ElectricalEnergyMeterPart(id: ResourceLocation, placement: PartPlacementInfo) : CellPart<ElectricalEnergyMeterCell, BasicPartRenderer>(id, placement, Content.ELECTRICAL_ENERGY_METER_CELL.get()) {
+    override val partSize = Vec3(1.0, 1.0, 1.0)
+
+    override fun createRenderer() = BasicPartRenderer(this, PartialModels.ELECTRICAL_WIRE_CROSSING_FULL)
+
+    override fun onUsedBy(context: PartUseInfo): InteractionResult {
+        if(!placement.level.isClientSide) {
+            val resistance = cell.resistor.resistanceExact + if(context.player.isSecondaryUseActive) {
+                -1.0
+            }
+            else {
+                1.0
+            }
+
+            cell.resistor.resistanceExact = resistance.coerceIn(1.0, 1e6)
+        }
+
+        return super.onUsedBy(context)
+    }
+}
+
+class OscillatorCell(ci: CellCreateInfo) : Cell(ci) {
+    @SimObject
+    val source = VoltageSourceObject(this)
+
+    var t = 0.0
+
+    override fun subscribe(subs: SubscriberCollection) {
+        subs.addPre(this::simulationTick)
+    }
+
+    private fun simulationTick(dt: Double, phase: SubscriberPhase) {
+        source.potential = sin(t / 4).absoluteValue * 12.0
+
+        t += dt
+    }
+}
+
+class OscillatorPart(id: ResourceLocation, placement: PartPlacementInfo) :
+    CellPart<OscillatorCell, BasicPartRenderer>(id, placement, Content.OSCILLATOR_CELL.get()) {
+    override val partSize = Vec3(1.0, 1.0, 1.0)
+
+    override fun createRenderer() = BasicPartRenderer(this, PartialModels.BATTERY)
+}

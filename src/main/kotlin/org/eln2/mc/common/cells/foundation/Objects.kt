@@ -42,7 +42,7 @@ abstract class SimulationObject(val cell: Cell) {
     abstract fun destroy()
 
     open fun acceptsRemoteLocation(remoteDesc: LocatorSet): Boolean {
-        return ruleSet.accepts(cell.pos, remoteDesc)
+        return ruleSet.accepts(cell.locator, remoteDesc)
     }
 }
 
@@ -226,8 +226,8 @@ abstract class ElectricalObject(cell: Cell) : SimulationObject(cell) {
  * Represents an object with NBT saving capabilities.
  * */
 interface PersistentObject {
-    fun save(): CompoundTag
-    fun load(tag: CompoundTag)
+    fun saveObjectNbt(): CompoundTag
+    fun loadObjectNbt(tag: CompoundTag)
 }
 
 class SimulationObjectSet(objects: List<SimulationObject>) {

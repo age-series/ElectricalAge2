@@ -54,7 +54,7 @@ object Replicators {
         }
 }
 
-fun interface ThermalReplicator {
+fun interface TemperatureReplicator {
     fun streamTemperatureChanges(bodies: List<ThermalBody>, dirty: List<ThermalBody>)
 }
 
@@ -65,7 +65,7 @@ fun interface ThermalReplicator {
  * @param bodies The list of bodies to track.
  * @param replicator The consumer for the changes.
  * */
-class ThermalReplicatorBehavior(val bodies: List<ThermalBody>, val replicator: ThermalReplicator) : ReplicatorBehavior {
+class ThermalReplicatorBehavior(val bodies: List<ThermalBody>, val replicator: TemperatureReplicator) : ReplicatorBehavior {
     /**
      * Gets or sets the interval (in simulation ticks) for polling.
      * */
@@ -73,20 +73,20 @@ class ThermalReplicatorBehavior(val bodies: List<ThermalBody>, val replicator: T
     var scanPhase: SubscriberPhase = SubscriberPhase.Pre
     var toleranceK: Double = 1.0
 
-    private val tracked = bodies.associateWith { it.tempK }.toMutableMap()
+    private val tracked = bodies.associateWith { it.temperatureKelvin }.toMutableMap()
 
     override fun subscribe(subscribers: SubscriberCollection) {
         subscribers.addSubscriber(SubscriberOptions(scanInterval, scanPhase), this::scan)
     }
 
     private fun scan(dt: Double, phase: SubscriberPhase) {
-        val dirty = bodies.filter { !tracked[it]!!.approxEq(it.tempK, toleranceK) }
+        val dirty = bodies.filter { !tracked[it]!!.approxEq(it.temperatureKelvin, toleranceK) }
 
         if (dirty.isEmpty()) {
             return
         }
 
-        dirty.forEach { tracked[it] = it.tempK }
+        dirty.forEach { tracked[it] = it.temperatureKelvin }
 
         replicator.streamTemperatureChanges(
             bodies,

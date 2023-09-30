@@ -21,16 +21,12 @@ import net.minecraft.world.entity.player.Player
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.BlockGetter
 import net.minecraft.world.level.Level
-import net.minecraft.world.level.block.AirBlock
 import net.minecraft.world.level.block.BaseEntityBlock
 import net.minecraft.world.level.block.Block
-import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.entity.BlockEntityTicker
 import net.minecraft.world.level.block.entity.BlockEntityType
 import net.minecraft.world.level.block.state.BlockState
-import net.minecraft.world.level.block.state.StateDefinition
-import net.minecraft.world.level.block.state.properties.IntegerProperty
 import net.minecraft.world.level.material.FluidState
 import net.minecraft.world.level.material.Material
 import net.minecraft.world.phys.BlockHitResult
@@ -45,15 +41,16 @@ import org.eln2.mc.common.parts.foundation.*
 import org.eln2.mc.data.*
 import org.eln2.mc.integration.WailaEntity
 import org.eln2.mc.integration.WailaTooltipBuilder
-import org.eln2.mc.mathematics.DirectionMask
+import org.eln2.mc.mathematics.Base6Direction3dMask
 import java.util.*
 import java.util.concurrent.ConcurrentLinkedQueue
+import kotlin.collections.HashSet
 import kotlin.collections.set
 
-class MultipartBlock : BaseEntityBlock(Properties.of(Material.STONE)
+class MultipartBlock : BaseEntityBlock(
+    Properties.of(Material.STONE)
     .noOcclusion()
-    .destroyTime(0.2f)
-    .lightLevel { it.getValue(GhostLightBlock.brightnessProperty) }) {
+    .destroyTime(0.2f)) {
 
     private val epsilon = 0.00001
     private val emptyBox = box(0.0, 0.0, 0.0, epsilon, epsilon, epsilon)
@@ -268,10 +265,6 @@ class MultipartBlock : BaseEntityBlock(Properties.of(Material.STONE)
         )
     }
 
-    override fun createBlockStateDefinition(pBuilder: StateDefinition.Builder<Block, BlockState>) {
-        pBuilder.add(GhostLightBlock.brightnessProperty)
-    }
-
     override fun getCloneItemStack(
         state: BlockState?,
         target: HitResult?,
@@ -287,139 +280,6 @@ class MultipartBlock : BaseEntityBlock(Properties.of(Material.STONE)
             ?: return ItemStack.EMPTY
 
         return ItemStack(PartRegistry.getPartItem(picked.id))
-    }
-}
-
-interface GhostLight {
-    fun update(brightness: Int)
-    fun destroy()
-}
-
-class GhostLightBlock : AirBlock(Properties.of(Material.AIR).lightLevel { it.getValue(brightnessProperty) }) {
-    private class LightGrid(val level: Level) {
-        private class Cell(val level: Level, val pos: BlockPos, val grid: LightGrid) {
-            private fun handleBrightnessChanged(handle: Handle) {
-                refreshGhost()
-            }
-
-            private fun handleDestroyed(handle: Handle) {
-                handles.remove(handle)
-
-                if (handles.size == 0) {
-                    clearFromLevel(level, pos)
-                    grid.onCellCleared(pos)
-                }
-            }
-
-            private val handles = ArrayList<Handle>()
-
-            fun createHandle(): GhostLight {
-                return Handle(this).also { handles.add(it) }
-            }
-
-            fun refreshGhost() {
-                LOG.info("Refresh ghost")
-
-                val maximalBrightness = handles.maxOf { it.trackedBrightness }
-
-                setInLevel(level, pos, maximalBrightness)
-            }
-
-            private class Handle(val cell: Cell) : GhostLight {
-                var trackedBrightness: Int = 0
-
-                var destroyed = false
-
-                override fun update(brightness: Int) {
-                    if (destroyed) {
-                        error("Cannot set brightness, handle destroyed!")
-                    }
-
-                    if (brightness == trackedBrightness) {
-                        return
-                    }
-
-                    trackedBrightness = brightness
-
-                    cell.handleBrightnessChanged(this)
-                }
-
-                override fun destroy() {
-                    if (!destroyed) {
-                        cell.handleDestroyed(this)
-                    }
-                }
-            }
-        }
-
-        private val cells = HashMap<BlockPos, Cell>()
-
-        fun onCellCleared(pos: BlockPos) {
-            cells.remove(pos)
-        }
-
-        fun createHandle(pos: BlockPos): GhostLight {
-            return cells.computeIfAbsent(pos) { Cell(level, pos, this) }.createHandle()
-        }
-
-        fun refreshGhost(pos: BlockPos) {
-            cells[pos]?.refreshGhost()
-        }
-    }
-
-    companion object {
-        private val block get() = BlockRegistry.LIGHT_GHOST_BLOCK.block.get()
-
-        val brightnessProperty: IntegerProperty = IntegerProperty.create("brightness", 0, 15)
-
-        private val grids = HashMap<Level, LightGrid>()
-
-        private fun setInLevel(level: Level, pos: BlockPos, brightness: Int): Boolean {
-            val previousBlockState = level.getBlockState(pos)
-
-            if (previousBlockState.block != Blocks.AIR && previousBlockState.block != block) {
-                LOG.info("Could not place, existing block there: $previousBlockState")
-                return false
-            }
-
-            if (previousBlockState.block != block || previousBlockState.getValue(brightnessProperty) != brightness) {
-                level.setBlockAndUpdate(pos, block.defaultBlockState().setValue(brightnessProperty, brightness))
-                LOG.info("Placed")
-                return true
-            }
-
-            return false
-        }
-
-        private fun clearFromLevel(level: Level, pos: BlockPos): Boolean {
-            val state = level.getBlockState(pos)
-
-            if (state.block != block) {
-                LOG.error("Cannot remove: not ghost light")
-
-                return false
-            }
-
-            level.setBlockAndUpdate(pos, Blocks.AIR.defaultBlockState())
-
-            return true
-        }
-
-        private fun getGrid(level: Level): LightGrid {
-            return grids.computeIfAbsent(level) { LightGrid(level) }
-        }
-
-        fun createHandle(level: Level, pos: BlockPos): GhostLight {
-            return getGrid(level).createHandle(pos)
-        }
-
-        fun refreshGhost(level: Level, pos: BlockPos) {
-            grids[level]?.refreshGhost(pos)
-        }
-    }
-
-    override fun createBlockStateDefinition(pBuilder: StateDefinition.Builder<Block, BlockState>) {
-        pBuilder.add(brightnessProperty)
     }
 }
 
@@ -446,7 +306,7 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
     private val parts = HashMap<Direction, Part<*>>()
 
     // Used for part sync:
-    private val syncingParts = ArrayList<Direction>()
+    private val dirtyParts = HashSet<Direction>()
     private val placementUpdates = ArrayList<PartUpdate>()
 
     // Used for disk loading:
@@ -484,14 +344,6 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
 
         result.onRemoved()
 
-        level?.also {
-            if (!it.isClientSide) {
-                // Remove lingering lights
-
-                updateBrightness()
-            }
-        }
-
         return result
     }
 
@@ -502,18 +354,10 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
     }
 
     /**
-     * Ensures that this multipart will be saved at a later date.
-     * */
-    @ServerOnly
-    private fun saveData() {
-        setChanged()
-    }
-
-    /**
      * Enqueues this multipart for synchronization to clients.
      * */
     @ServerOnly
-    private fun syncData() {
+    private fun setSyncDirty() {
         level!!.sendBlockUpdated(blockPos, blockState, blockState, Block.UPDATE_CLIENTS)
     }
 
@@ -523,8 +367,8 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
      * */
     @ServerOnly
     fun enqueuePartSync(face: Direction) {
-        syncingParts.add(face)
-        syncData() // TODO: Can we batch multiple updates?
+        dirtyParts.add(face)
+        setSyncDirty() // TODO: Can we batch multiple updates?
     }
 
     /**
@@ -576,7 +420,7 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
             provider.placementCollisionSize,
             placementContext.horizontalFacing,
             placementContext.face,
-            placementContext.pos
+            placementContext.position
         )
 
         val collides = parts.values.any { part ->
@@ -598,26 +442,26 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
         placementUpdates.add(PartUpdate(part, PartUpdateType.Add))
         joinCollider(part)
 
-        if (part is ItemPersistentPart && part.order == PersistentPartLoadOrder.BeforeSim) {
-            part.loadItemTag(saveTag)
+        if (part is ItemPersistentPart && part.order == ItemPersistentPartLoadOrder.BeforeSim) {
+            part.loadFromItemNbt(saveTag)
         }
 
         part.onPlaced()
 
-        if (part is PartCellContainer) {
+        if (part is PartCellContainer<*>) {
             CellConnections.insertFresh(this, part.cell)
         }
 
-        if (part is ItemPersistentPart && part.order == PersistentPartLoadOrder.AfterSim) {
-            part.loadItemTag(saveTag)
+        if (part is ItemPersistentPart && part.order == ItemPersistentPartLoadOrder.AfterSim) {
+            part.loadFromItemNbt(saveTag)
         }
 
-        if (part is PartCellContainer) {
+        if (part is PartCellContainer<*>) {
             part.cell.bindGameObjects(listOf(this, part))
         }
 
-        saveData()
-        syncData()
+        setChanged()
+        setSyncDirty()
 
         return true
     }
@@ -648,17 +492,13 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
      * */
     @ServerOnly
     fun breakPart(part: Part<*>, saveTag: CompoundTag? = null) {
-        if (part is PartCellContainer) {
+        if (part is PartCellContainer<*>) {
             part.cell.unbindGameObjects()
-
-            CellConnections.destroy(
-                part.cell,
-                this
-            )
+            CellConnections.destroy(part.cell, this)
         }
 
         if (part is ItemPersistentPart && saveTag != null) {
-            part.saveItemTag(saveTag)
+            part.saveToItemNbt(saveTag)
         }
 
         destroyPart(part.placement.face)
@@ -666,8 +506,8 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
 
         part.onBroken()
 
-        saveData()
-        syncData()
+        setChanged()
+        setSyncDirty()
     }
 
     /**
@@ -725,10 +565,16 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
     @ServerOnly
     override fun getUpdateTag(): CompoundTag {
         if (level!!.isClientSide) {
-            return CompoundTag()
+            return CompoundTag() //?
         }
 
-        return saveParts()
+        val tag = saveParts()
+
+        parts.values.forEach {
+            it.onSyncSuggested()
+        }
+
+        return tag
     }
 
     @ClientOnly
@@ -813,13 +659,13 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
 
     @ServerOnly
     private fun packPartUpdates(tag: CompoundTag) {
-        if (syncingParts.size == 0) {
+        if (dirtyParts.size == 0) {
             return
         }
 
         val partUpdatesTag = ListTag()
 
-        syncingParts.forEach { face ->
+        dirtyParts.forEach { face ->
             val part = parts[face]
 
             if (part == null) {
@@ -841,7 +687,7 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
             partUpdatesTag.add(updateTag)
         }
 
-        syncingParts.clear()
+        dirtyParts.clear()
 
         tag.put("PartUpdates", partUpdatesTag)
     }
@@ -1024,7 +870,7 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
         val tag = CompoundTag()
 
         tag.putResourceLocation("ID", part.id)
-        tag.putBlockPos("Pos", part.placement.pos)
+        tag.putBlockPos("Pos", part.placement.position)
         tag.putDirection("Face", part.placement.face)
         tag.putDirection("Facing", part.placement.horizontalFacing)
 
@@ -1117,7 +963,7 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
         val results = ArrayList<Cell>()
 
         parts.values.forEach { part ->
-            if (part is PartCellContainer) {
+            if (part is PartCellContainer<*>) {
                 results.add(part.cell)
             }
         }
@@ -1126,11 +972,11 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
     }
 
     override fun neighborScan(actualCell: Cell): ArrayList<CellNeighborInfo> {
-        val partFace = actualCell.pos.requireLocator<FaceLocator>()
+        val partFace = actualCell.locator.requireLocator<FaceLocator>()
 
         val part = parts[partFace]!!
 
-        if (part !is PartCellContainer) {
+        if (part !is PartCellContainer<*>) {
             error("FATAL! Queried neighbors for non-cell part!")
         }
 
@@ -1138,7 +984,7 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
 
         val level = this.level ?: error("Level null in queryNeighbors")
 
-        DirectionMask.perpendicular(partFace).process { searchDirection ->
+        Base6Direction3dMask.perpendicular(partFace).process { searchDirection ->
             fun innerScan() {
                 // Inner scan does not make sense outside multiparts, so I did not move it to CellScanner
 
@@ -1148,7 +994,7 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
                     val innerPart = parts[innerFace]
                         ?: return
 
-                    if (innerPart !is PartCellContainer) {
+                    if (innerPart !is PartCellContainer<*>) {
                         return
                     }
 
@@ -1194,18 +1040,18 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
     }
 
     override fun onCellConnected(actualCell: Cell, remoteCell: Cell) {
-        val innerFace = actualCell.pos.requireLocator<FaceLocator>()
-        val part = parts[innerFace] as PartCellContainer
+        val innerFace = actualCell.locator.requireLocator<FaceLocator>()
+        val part = parts[innerFace] as PartCellContainer<*>
         part.onConnected(remoteCell)
     }
 
     override fun onCellDisconnected(actualCell: Cell, remoteCell: Cell) {
-        val part = parts[actualCell.pos.requireLocator<FaceLocator>()] as PartCellContainer
+        val part = parts[actualCell.locator.requireLocator<FaceLocator>()] as PartCellContainer<*>
         part.onDisconnected(remoteCell)
     }
 
     override fun onTopologyChanged() {
-        saveData()
+        setChanged()
     }
 
     @ServerOnly
@@ -1265,33 +1111,6 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
 
     val needsTicks get() = tickingParts.isNotEmpty()
 
-    private fun setBlockBrightness(value: Int) {
-        level!!.setBlockAndUpdate(pos, blockState.setValue(GhostLightBlock.brightnessProperty, value))
-    }
-
-    fun updateBrightness() {
-        if (level!!.isClientSide) {
-            error("Cannot update brightness on client")
-        }
-
-        if (!worldLoaded) {
-            return
-        }
-
-        val currentBrightness = blockState.getValue(GhostLightBlock.brightnessProperty)
-
-        val targetBrightness = parts.values.maxOfOrNull { it.brightness }
-
-        if (targetBrightness == null) {
-            setBlockBrightness(0)
-            return
-        }
-
-        if (targetBrightness != currentBrightness) {
-            setBlockBrightness(targetBrightness)
-        }
-    }
-
     companion object {
         fun <T : BlockEntity> blockTick(level: Level?, pos: BlockPos?, state: BlockState?, entity: T?) {
             if (entity !is MultipartBlockEntity) {
@@ -1315,10 +1134,6 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
             }
 
             entity.worldLoaded = true
-
-            if (!level.isClientSide) {
-                entity.updateBrightness()
-            }
 
             if (!entity.needsTicks) {
                 // Remove the ticker

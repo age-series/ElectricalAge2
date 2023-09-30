@@ -518,7 +518,7 @@ data class Spline3d(val segments: SplineSegmentMap<SplineSegment3d>) :
         segments[t].let { it.evaluateDual(Dual.variable(it.reparamSplineActual(t), n)) }
 
     fun tangent(t: Double) = evaluateDual(t, 2)[1].normalized()
-    fun evaluatePoseFrenet(t: Double) = Pose3d(evaluate(t), Rotation3d.rma(frenet(t)))
+    fun evaluatePoseFrenet(t: Double) = Pose3d(evaluate(t), Rotation3d.fromRotationMatrix(frenet(t)))
     fun arclengthScan(a: Double, b: Double, eps: Double) = integralScan(a, b, eps) { this.evaluateDual(it, 2)[1].norm }
     fun paramSpeed(t: Double) = evaluateDual(t, 2)[1].norm
     fun curvature(t: Double) = evaluateDual(t, 3).let { (it[1] x it[2]).norm / it[1].norm.pow(3) }
@@ -648,7 +648,7 @@ fun chordNormCondition3d(distMax: Double): AdaptscanCondition<Spline3d> {
     val distMaxSqr = distMax * distMax
 
     return AdaptscanCondition { s, t0, t1 ->
-        s.evaluate(t0) distToSqr s.evaluate(t1) > distMaxSqr
+        s.evaluate(t0) distanceToSqr s.evaluate(t1) > distMaxSqr
     }
 }
 

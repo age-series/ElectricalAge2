@@ -1,9 +1,9 @@
-@file:Suppress("LocalVariableName")
+@file:Suppress("LocalVariableName", "NOTHING_TO_INLINE")
 
 package org.eln2.mc.mathematics
 
+import net.minecraft.core.BlockPos
 import kotlin.math.*
-
 
 private const val GEOMETRY_COMPARE_EPS = 1e-8
 private const val GEOMETRY_NORMALIZED_EPS = 1e-6
@@ -1246,14 +1246,15 @@ data class Vector3di(val x: Int, val y: Int, val z: Int) {
 }
 
 data class Vector3d(val x: Double, val y: Double, val z: Double) {
+    constructor(x: Int, y: Int, z: Int) : this(x.toDouble(), y.toDouble(), z.toDouble())
     constructor(value: Double) : this(value, value, value)
 
     infix fun o(b: Vector3d) = x * b.x + y * b.y + z * b.z
     val normSqr get() = this o this
     val norm get() = sqrt(normSqr)
     val isUnit get() = normSqr.approxEq(1.0, GEOMETRY_NORMALIZED_EPS)
-    infix fun distTo(b: Vector3d) = (this - b).norm
-    infix fun distToSqr(b: Vector3d) = (this - b).normSqr
+    infix fun distanceTo(b: Vector3d) = (this - b).norm
+    infix fun distanceToSqr(b: Vector3d) = (this - b).normSqr
     infix fun cosAngle(b: Vector3d) = (this o b) / (this.norm * b.norm)
     infix fun angle(b: Vector3d) = acos(this cosAngle b)
 
@@ -1272,7 +1273,7 @@ data class Vector3d(val x: Double, val y: Double, val z: Double) {
 
     override fun toString() = "x=$x, y=$y, z=$z"
 
-    operator fun rangeTo(b: Vector3d) = this distTo b
+    operator fun rangeTo(b: Vector3d) = this distanceTo b
     operator fun unaryPlus() = this
     operator fun unaryMinus() = Vector3d(-x, -y, -z)
     operator fun plus(b: Vector3d) = Vector3d(x + b.x, y + b.y, z + b.z)
@@ -1541,11 +1542,11 @@ data class Rotation3d(val x: Double, val y: Double, val z: Double, val w: Double
         x.approxEq(other.x, eps) && y.approxEq(other.y, eps) && z.approxEq(other.z, eps) && w.approxEq(other.w, eps)
 
     companion object {
-        val identity = rma(Matrix3x3.identity)
+        val identity = Rotation3d(0.0, 0.0, 0.0, 1.0)
 
-        fun axisAngle(axis: Vector3d, angle: Double) = exp(axis.normalizedNz() * angle)
+        fun fromAxisAngle(axis: Vector3d, angle: Double) = exp(axis.normalizedNz() * angle)
 
-        fun rma(m: Matrix3x3): Rotation3d {
+        fun fromRotationMatrix(m: Matrix3x3): Rotation3d {
             val t: Double
             val q: Rotation3d
 
@@ -1590,10 +1591,10 @@ data class Rotation3d(val x: Double, val y: Double, val z: Double, val w: Double
             return q * 0.5 / sqrt(t)
         }
 
-        fun forwardUp(forward: Vector3d, up: Vector3d): Rotation3d {
+        fun fromForwardUp(forward: Vector3d, up: Vector3d): Rotation3d {
             val left = up x forward
 
-            return rma(
+            return fromRotationMatrix(
                 Matrix3x3(
                     forward,
                     left,
@@ -1689,7 +1690,7 @@ data class Rotation3dDual(val x: Dual, val y: Dual, val z: Dual, val w: Dual) {
     )
 
     companion object {
-        fun axisAngle(axis: Vector3dDual, angle: Dual) = exp(axis.normalized() * angle)
+        fun fromAxisAngle(axis: Vector3dDual, angle: Dual) = exp(axis.normalized() * angle)
 
         fun exp(w: Vector3dDual): Rotation3dDual {
             val t = w.norm
@@ -2055,6 +2056,10 @@ data class Ray3d(val origin: Vector3d, val direction: Vector3d) {
         return if (tmax >= tmin) IntersectionParametricBi(tmin, tmax)
         else null
     }
+
+    companion object {
+        fun fromSourceAndDestination(source: Vector3d, destination: Vector3d) = Ray3d(source, source directionTo destination)
+    }
 }
 
 data class BoundingSphere(val origin: Vector3d, val radius: Double) {
@@ -2182,10 +2187,16 @@ fun bresenham(
     }
 }
 
-fun dda(ray: Ray3d, distance: Double, user: (Int, Int, Int) -> Boolean) {
+fun dda(ray: Ray3d, withSource: Boolean = true, user: (Int, Int, Int) -> Boolean) {
     var x = floor(ray.origin.x).toInt()
     var y = floor(ray.origin.y).toInt()
     var z = floor(ray.origin.z).toInt()
+
+    if(withSource) {
+        if (!user(x, y, z)) {
+            return
+        }
+    }
 
     val sx = snzi(ray.direction.x)
     val sy = snzi(ray.direction.y)
@@ -2201,15 +2212,6 @@ fun dda(ray: Ray3d, distance: Double, user: (Int, Int, Int) -> Boolean) {
     val tdx = if (ray.direction.x != 0.0) 1.0 / ray.direction.x * sx else Double.MAX_VALUE
     val tdy = if (ray.direction.y != 0.0) 1.0 / ray.direction.y * sy else Double.MAX_VALUE
     val tdz = if (ray.direction.z != 0.0) 1.0 / ray.direction.z * sz else Double.MAX_VALUE
-
-    val distanceSqr = distance * distance
-
-    fun dispatch() =
-        user(x, y, z) && (Vector3d(x.toDouble(), y.toDouble(), z.toDouble()) distToSqr ray.origin) < distanceSqr
-
-    if (!dispatch()) {
-        return
-    }
 
     while (true) {
         if (tmx < tmy) {
@@ -2230,8 +2232,64 @@ fun dda(ray: Ray3d, distance: Double, user: (Int, Int, Int) -> Boolean) {
             }
         }
 
-        if (!dispatch()) {
+        if (!user(x, y, z)) {
             return
         }
+    }
+}
+
+@JvmInline
+value class BlockPosInt(val value: Int) {
+    constructor(x: Int, y: Int, z: Int) : this(pack(x, y, z))
+
+    val x get() = unpackMember(value)
+    val y get() = unpackMember(value shr 10)
+    val z get() = unpackMember(value shr 20)
+
+    val isZero get() = value == 0
+
+    fun toBlockPos() = BlockPos(x, y, z)
+
+    operator fun not() = value
+
+    companion object {
+        const val MAX_VALUE = +511
+        const val MIN_VALUE = -511
+        const val SIGN_BIT = 1 shl 9
+        const val SIGN_TABLE = (-1L shl 32) or 1
+
+        inline fun packMember(value: Int): Int {
+            val bit = value shr 31
+            val mod = (value + bit) xor bit
+            return ((value ushr 31) shl 9) or mod
+        }
+
+        inline fun unpackMember(value: Int): Int {
+            val idx = (value and SIGN_BIT) ushr 4
+            val sign = (SIGN_TABLE ushr idx).toInt()
+            return sign * (value and MAX_VALUE)
+        }
+
+        inline fun pack(x: Int, y: Int, z: Int): Int {
+            if(x < MIN_VALUE || x > MAX_VALUE || y < MIN_VALUE || y > MAX_VALUE || z < MIN_VALUE || z > MAX_VALUE) {
+                error("XYZ $x $y $z are out of bounds")
+            }
+
+            val i = packMember(x)
+            val j = packMember(y) shl 10
+            val k = packMember(z) shl 20
+
+            return i or j or k
+        }
+
+        fun pack(blockPos: BlockPos) = pack(blockPos.x, blockPos.y, blockPos.z)
+
+        fun of(x: Int, y: Int, z: Int) = BlockPosInt(pack(x, y, z))
+
+        fun of(blockPos: BlockPos) = BlockPosInt(pack(blockPos.x, blockPos.y, blockPos.z))
+
+        fun unpackX(v: Int) = unpackMember(v)
+        fun unpackY(v: Int) = unpackMember(v shr 10)
+        fun unpackZ(v: Int) = unpackMember(v shr 20)
     }
 }
