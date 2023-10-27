@@ -7,9 +7,9 @@ class AtomicUpdate<T> {
 
     val isPending get() = reference.get() != null
 
-    fun setLatest(value: T?): T? {
-        return reference.getAndSet(value)
-    }
+    fun setLatest(value: T?): T? = reference.getAndSet(value)
+
+    fun setWithCompare(value: T?) : T? = reference.compareAndExchange(null, value)
 
     fun consume(consumer: ((T) -> Unit)): Boolean {
         val value = reference.getAndSet(null)

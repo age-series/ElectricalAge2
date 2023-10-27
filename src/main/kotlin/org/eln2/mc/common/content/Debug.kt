@@ -10,7 +10,6 @@ import org.eln2.mc.common.parts.foundation.CellPart
 import org.eln2.mc.common.parts.foundation.PartPlacementInfo
 import org.eln2.mc.common.parts.foundation.PartUseInfo
 import org.eln2.mc.data.*
-import org.eln2.mc.formatted
 import org.eln2.mc.mathematics.Base6Direction3d
 import kotlin.math.absoluteValue
 import kotlin.math.sin
@@ -22,7 +21,7 @@ class ElectricalEnergyMeterCell(ci: CellCreateInfo) : Cell(ci) {
     }
 
     init {
-        ruleSet.withDirectionRule(A + B)
+        ruleSet.withDirectionRulePlanar(A + B)
 
         data.withField(TooltipField { b ->
             b.text("Metered energy", valueText(converter.energy, UnitType.JOULE))
@@ -30,7 +29,7 @@ class ElectricalEnergyMeterCell(ci: CellCreateInfo) : Cell(ci) {
     }
 
     @SimObject @Inspect
-    val resistor = ResistorObject(this, directionPoleMap(A, B))
+    val resistor = ResistorObject(this, directionPoleMapPlanar(A, B))
 
     @Behavior
     val converter = ElectricalPowerConverterBehavior { resistor.power }
@@ -39,7 +38,7 @@ class ElectricalEnergyMeterCell(ci: CellCreateInfo) : Cell(ci) {
 class ElectricalEnergyMeterPart(id: ResourceLocation, placement: PartPlacementInfo) : CellPart<ElectricalEnergyMeterCell, BasicPartRenderer>(id, placement, Content.ELECTRICAL_ENERGY_METER_CELL.get()) {
     override val partSize = Vec3(1.0, 1.0, 1.0)
 
-    override fun createRenderer() = BasicPartRenderer(this, PartialModels.ELECTRICAL_WIRE_CROSSING_FULL)
+    override fun createRenderer() = BasicPartRenderer(this, PartialModels.ELECTRICAL_WIRE_HUB)
 
     override fun onUsedBy(context: PartUseInfo): InteractionResult {
         if(!placement.level.isClientSide) {
@@ -68,7 +67,7 @@ class OscillatorCell(ci: CellCreateInfo) : Cell(ci) {
     }
 
     private fun simulationTick(dt: Double, phase: SubscriberPhase) {
-        source.potential = sin(t / 4).absoluteValue * 12.0
+        source.potential = sin(t * 4).absoluteValue * 12.0
 
         t += dt
     }

@@ -2,11 +2,9 @@ package org.eln2.mc.common.content
 
 import com.jozufozu.flywheel.core.Materials
 import com.jozufozu.flywheel.core.PartialModel
-import com.jozufozu.flywheel.core.materials.FlatLit
 import com.jozufozu.flywheel.core.materials.model.ModelData
 import com.jozufozu.flywheel.util.Color
 import it.unimi.dsi.fastutil.ints.*
-import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
 import net.minecraft.nbt.CompoundTag
@@ -32,17 +30,25 @@ import org.eln2.mc.common.blocks.foundation.GhostLightUpdateType
 import org.eln2.mc.common.cells.foundation.*
 import org.eln2.mc.common.events.*
 import org.eln2.mc.common.network.serverToClient.with
-import org.eln2.mc.common.parts.foundation.CellPart
-import org.eln2.mc.common.parts.foundation.PartPlacementInfo
-import org.eln2.mc.common.parts.foundation.PartRenderer
-import org.eln2.mc.common.parts.foundation.PartUseInfo
+import org.eln2.mc.common.parts.foundation.*
 import org.eln2.mc.data.*
 import org.eln2.mc.integration.WailaEntity
 import org.eln2.mc.mathematics.*
 import java.nio.ByteBuffer
-import java.util.concurrent.atomic.AtomicLong
 import kotlin.math.*
 import kotlin.random.Random
+
+private val DIRECTIONS = Direction.values().map { it.normal }.let {
+    val result = ArrayList<Byte>()
+
+    it.forEach { vec ->
+        result.add(vec.x.toByte())
+        result.add(vec.y.toByte())
+        result.add(vec.z.toByte())
+    }
+
+    result.toByteArray()
+}
 
 // Unfortunately, vanilla rendering has a problem which causes some smooth lighting to break
 // Nothing I can do
@@ -76,263 +82,62 @@ private inline fun traverseLightRay(x: Int, y: Int, z: Int, crossinline user: (I
     }
 }
 
-private inline fun traverseLightRay(pos: BlockPosInt, crossinline user: (Int, Int, Int) -> Boolean) {
-    traverseLightRay(pos.x, pos.y, pos.z, user)
+private inline fun traverseLightRay(pos: Int, crossinline user: (Int, Int, Int) -> Boolean) {
+    traverseLightRay(BlockPosInt.unpackX(pos), BlockPosInt.unpackY(pos), BlockPosInt.unpackZ(pos), user)
 }
 
-/**
- * Data storage for a *Light Field*. A light field is a regular grid of voxel cells with brightness values.
- *
- * It also implements a query for ray intersection, which returns the set of all cells whose ray traversals ([traverseLightRay]) intersect the query voxel.
- * */
-interface LightFieldStorage {
-    /**
-     * Gets the light value at the specified [cell].
-     * */
-    fun getLight(cell: BlockPosInt) : Byte
+private inline fun rayIntersectionAnalyzer(voxel: Int, crossinline predicate: (Int) -> Boolean) : IntOpenHashSet {
+    val minX = BlockPosInt.unpackX(voxel).toDouble()
+    val minY = BlockPosInt.unpackY(voxel).toDouble()
+    val minZ = BlockPosInt.unpackZ(voxel).toDouble()
+    val maxX = minX + 1.0
+    val maxY = minY + 1.0
+    val maxZ = minZ + 1.0
 
-    /**
-     * Gets all cells whose ray to the origin intersects the [voxel].
-     * */
-    fun intersectRays(voxel: BlockPosInt) : Iterable<Int>
-}
+    val queue = IntArrayFIFOQueue()
+    val results = IntOpenHashSet()
+    val directions = DIRECTIONS
 
-/**
- * *Baked* (pre-computed) [LightFieldStorage].
- * All queries are pre-computed and stored in hash tables. It is very expensive in memory! For testing only.
- * @param sourceBrightnessField The source brightness field. The data is cloned to ensure immutability of this [BakedLightFieldStorage].
- * */
-class BakedLightFieldStorage(sourceBrightnessField: Map<Int, Byte>) : LightFieldStorage {
-    // Defensive copy to be absolutely sure it is immutable.
-    private val brightnessField = Int2ByteOpenHashMap(sourceBrightnessField)
-    private val intersections = Int2ObjectOpenHashMap<ImmutableIntArrayView>()
+    queue.enqueue(voxel)
 
-    init {
-        val watch = Stopwatch()
-        val intersectionsBuffer = Int2ObjectOpenHashMap<IntArrayList>(brightnessField.size)
+    while (!queue.isEmpty) {
+        val front = queue.dequeueInt()
 
-        var fieldIndex = 0
-        var cellsPerSecond = 0
-
-        brightnessField.forEach { (sourcePositionInt, _) ->
-            ++fieldIndex
-
-            val x = BlockPosInt.unpackX(sourcePositionInt)
-            val y = BlockPosInt.unpackY(sourcePositionInt)
-            val z = BlockPosInt.unpackZ(sourcePositionInt)
-
-            if(x == 0 && y == 0 && z == 0) {
-                // Do not trace from origin
-                return@forEach
-            }
-
-            traverseLightRay(x, y, z) { i, j, k ->
-                val key = BlockPosInt.pack(i, j, k)
-                var list = intersectionsBuffer.get(key)
-
-                if(list == null) {
-                    list = IntArrayList()
-                    intersectionsBuffer.put(key, list)
-                }
-
-                list.add(sourcePositionInt)
-
-                ++cellsPerSecond
-
-                return@traverseLightRay true
-            }
-
-            if(watch.total >= 0.25) {
-                LOG.warn("Baking... $fieldIndex/${brightnessField.size}, ${(cellsPerSecond.toDouble() / !watch.total).formatted()} R/S")
-                cellsPerSecond = 0
-                watch.resetTotal()
-            }
+        if (!results.add(front) || !predicate(front)) {
+            continue
         }
 
-        var intCount = 0L
+        val x = BlockPosInt.unpackX(front)
+        val y = BlockPosInt.unpackY(front)
+        val z = BlockPosInt.unpackZ(front)
 
-        intersectionsBuffer.keys.forEach { voxelInt ->
-            val list = intersectionsBuffer[voxelInt]
-            intCount += list.size
-            intersections[voxelInt] = ImmutableIntArrayView(list.toIntArray())
-        }
+        for (i in 0..5) {
+            val nx = x + directions[i * 3 + 0]
+            val ny = y + directions[i * 3 + 1]
+            val nz = z + directions[i * 3 + 2]
 
-        LOG.warn("Intersection overhead: $intCount")
+            val cx = nx + 0.5
+            val cy = ny + 0.5
+            val cz = nz + 0.5
 
-        OVERHEAD_TOTAL.addAndGet(intCount)
-    }
+            val k = -1.0 / sqrt((nx * nx + ny * ny + nz * nz).toDouble())
 
-    fun getAsMap() : Map<Int, Byte> = brightnessField
+            val dx = 1.0 / (nx * k)
+            val dy = 1.0 / (ny * k)
+            val dz = 1.0 / (nz * k)
 
-    override fun getLight(cell: BlockPosInt): Byte {
-        val result = brightnessField.getOrDefault(!cell, -1)
-        require(result.compareTo(-1) != 0) { "Queried light value outside of light field" }
-        return result
-    }
+            val a = (minX - cx) * dx
+            val b = (maxX - cx) * dx
+            val c = (minY - cy) * dy
+            val d = (maxY - cy) * dy
+            val e = (minZ - cz) * dz
+            val f = (maxZ - cz) * dz
 
-    override fun intersectRays(voxel: BlockPosInt) = intersections.get(!voxel) ?: QUERY_EMPTY
+            val tMin = max(max(min(a, b), min(c, d)), min(e, f))
+            val tMax = min(min(max(a, b), max(c, d)), max(e, f))
 
-    companion object {
-        private val QUERY_EMPTY = ImmutableIntArrayView(IntArray(0))
-        val OVERHEAD_TOTAL = AtomicLong()
-    }
-}
-
-/**
- * [LightFieldStorage] with a pruned search algorithm for ray intersections.
- * Slower than baking, but without a large memory overhead. It is still very fast in testing.
- * Algorithm steps:
- *  - Start a flood fill at the query voxel (certainly, the traversal from the query voxel intersects the query voxel)
- *  - Flood towards neighbors whose rays intersect the bounding box of the query voxel (AABB-Ray intersection)
- *
- * This algorithm **will not work** if there are gaps in the light field, which could cause the search to end early.
- * */
-class HomogenousLightFieldStorage(sourceBrightnessField: Map<Int, Byte>) : LightFieldStorage {
-    // Defensive copy to be absolutely sure it is immutable.
-    private val brightnessField = Int2ByteOpenHashMap(sourceBrightnessField)
-
-    fun getAsMap(): Map<Int, Byte> = brightnessField
-
-    override fun getLight(cell: BlockPosInt): Byte {
-        val result = brightnessField.getOrDefault(!cell, -1)
-        require(result.compareTo(-1) != 0) { "Queried light value outside of light field" }
-        return result
-    }
-
-    override fun intersectRays(voxel: BlockPosInt): Iterable<Int> {
-        val minX = voxel.x.toDouble()
-        val minY = voxel.y.toDouble()
-        val minZ = voxel.z.toDouble()
-        val maxX = minX + 1.0
-        val maxY = minY + 1.0
-        val maxZ = minZ + 1.0
-
-        val queue = IntArrayFIFOQueue()
-        val results = IntOpenHashSet()
-
-        queue.enqueue(!voxel)
-
-        while (!queue.isEmpty) {
-            val front = queue.dequeueInt()
-
-            if(!results.add(front) || brightnessField[front] < 1) {
-                continue
-            }
-
-            val x = BlockPosInt.unpackX(front)
-            val y = BlockPosInt.unpackY(front)
-            val z = BlockPosInt.unpackZ(front)
-
-            for (i in 0..5) {
-                val step = STEPS[i]
-
-                val nx = x + step.stepX
-                val ny = y + step.stepY
-                val nz = z + step.stepZ
-
-                val cx = nx + 0.5
-                val cy = ny + 0.5
-                val cz = nz + 0.5
-
-                val k = -1.0 / sqrt((nx * nx + ny * ny + nz * nz).toDouble())
-
-                val dx = 1.0 / (nx * k)
-                val dy = 1.0 / (ny * k)
-                val dz = 1.0 / (nz * k)
-
-                val a  = (minX - cx) * dx
-                val b  = (maxX - cx) * dx
-                val c  = (minY - cy) * dy
-                val d  = (maxY - cy) * dy
-                val e  = (minZ - cz) * dz
-                val f  = (maxZ - cz) * dz
-
-                val tMin = max(max(min(a, b), min(c, d)), min(e, f))
-                val tMax = min(min(max(a, b), max(c, d)), max(e, f))
-
-                if(tMax >= 0.0 && (tMax - tMin) > SNZE_EPSILONf) {
-                    queue.enqueue(BlockPosInt.pack(nx, ny, nz))
-                }
-            }
-        }
-
-        return results
-    }
-
-    companion object {
-        private val STEPS = Direction.values()
-    }
-}
-
-/**
- * Computes the state transitions from every state to every other state.
- * @param states The fields, parameterized by state increment.
- * @return The map of all transitions.
- * */
-private fun computeStateTransitions(states: Map<Int, Map<Int, Byte>>) : Long2ObjectOpenHashMap<LightVolumeTransition> {
-    require(states.isNotEmpty()) { "Cannot compute state transitions for 0 states " }
-
-    val watch = Stopwatch()
-    val results = Long2ObjectOpenHashMap<LightVolumeTransition>()
-    var pairIndex = 0
-
-    for (incr1 in states.keys) {
-        val brightnesses1 = states[incr1]!!
-
-        val removed = IntArrayList()
-        val updated = IntArrayList()
-
-        for (incr2 in states.keys) {
-            if(incr1 == incr2) {
-                continue
-            }
-
-            ++pairIndex
-
-            val brightnesses2 = Int2ByteOpenHashMap(states[incr2]!!)
-
-            removed.clear()
-            updated.clear()
-
-            // Computes deleted and updated:
-            brightnesses1.forEach { (position1Int, brightness1) ->
-                require(brightness1 > 0) { "Light field 1 in g1 pass has $brightness1 cell" }
-
-                val brightness2 = brightnesses2.remove(position1Int)
-
-                if(brightness2 < 1) {
-                    // No longer in set 2, so deleted:
-                    removed.add(position1Int)
-                }
-                else {
-                    // In set 1 and set 2, so update:
-                    updated.add(position1Int)
-                }
-            }
-
-            val inserted = IntArray(brightnesses2.size)
-            var insertedI = 0
-
-            // Computes inserted:
-            brightnesses2.forEach { (position2Int, brightness2) ->
-                require(brightness2 > 0) { "Light field in g2 pass has 0 cell" }
-                inserted[insertedI++] = position2Int
-            }
-
-            require(insertedI == inserted.size)
-
-            results.put(
-                !IntPair(incr1, incr2),
-                LightVolumeTransition(
-                    ImmutableIntArrayView(inserted),
-                    ImmutableIntArrayView(removed.toIntArray()),
-                    ImmutableIntArrayView(updated.toIntArray())
-                )
-            )
-
-            if(watch.total > 0.5) {
-                LOG.warn("Computing transitions $pairIndex/${(states.size - 1) * (states.size - 1)}")
-                watch.resetTotal()
+            if (tMax >= 0.0 && (tMax - tMin) > 0.0) {
+                queue.enqueue(BlockPosInt.pack(nx, ny, nz))
             }
         }
     }
@@ -352,31 +157,15 @@ class FaceOrientedLightVolumeProvider(variantsByFace: Map<FaceLocator, Map<Int, 
     }
 
     private val volumesByFace = variantsByFace.mapValues { (_, variantsByState) ->
-        val transitions = computeStateTransitions(variantsByState)
-
-        val storage = variantsByState.mapValues { (_, field) ->
-            HomogenousLightFieldStorage(field)
-        }
-
-        Volume(storage, transitions)
+        LightVolume(variantsByState)
     }
 
-    override fun getVolume(locatorSet: LocatorSet): LightVolume {
+    override fun getVolume(locatorSet: Location): LightVolume {
         val face = locatorSet.requireLocator<FaceLocator> {
             "Face-oriented lights require a face locator"
         }
 
         return volumesByFace[face] ?: error("Oriented light volume did not have $face")
-    }
-
-    private class Volume(val variantsByState: Map<Int, LightFieldStorage>, val transitions: Long2ObjectOpenHashMap<LightVolumeTransition>) : LightVolume {
-        override val stateIncrements: Int
-            get() = variantsByState.size - 1
-
-        override fun getLightField(state: Int) = variantsByState[state]!!
-
-        override fun getVolumeTransition(actualState: Int, targetState: Int) = transitions.get(!IntPair(actualState, targetState))
-            ?: error("Did not have transition from $actualState to $targetState")
     }
 }
 
@@ -387,16 +176,49 @@ object LightFieldPrimitives {
      * @param strength The light range and intensity
      * @param deviationMax The maximum angle between the surface normal and a light ray
      * */
-    fun cone(increments: Int, strength: Double, deviationMax: Double): FaceOrientedLightVolumeProvider {
+    fun cone(increments: Int, strength: Double, deviationMax: Double, baseRadius: Int): FaceOrientedLightVolumeProvider {
         val variantsByFace = HashMap<FaceLocator, HashMap<Int, Int2ByteOpenHashMap>>()
         val cosDeviationMax = cos(deviationMax)
 
         var currentStep = 0
 
-        val sw = Stopwatch()
-        val directions = Direction.values()
-
         Direction.values().forEach { face ->
+            val baseVectors = let {
+                val results = ArrayList<Vector3d>()
+
+                if(baseRadius <= 0) {
+                    results.add(Vector3d.zero)
+                }
+                else {
+                    when(face.axis) {
+                        Direction.Axis.X -> {
+                            for (y in -baseRadius..baseRadius) {
+                                for (z in -baseRadius..baseRadius) {
+                                    results.add(Vector3d(0.0, y.toDouble(), z.toDouble()))
+                                }
+                            }
+                        }
+                        Direction.Axis.Y -> {
+                            for (x in -baseRadius..baseRadius) {
+                                for (z in -baseRadius..baseRadius) {
+                                    results.add(Vector3d(x.toDouble(), 0.0, z.toDouble()))
+                                }
+                            }
+                        }
+                        Direction.Axis.Z -> {
+                            for (x in -baseRadius..baseRadius) {
+                                for (y in -baseRadius..baseRadius) {
+                                    results.add(Vector3d(x.toDouble(), y.toDouble(), 0.0))
+                                }
+                            }
+                        }
+                        else -> error("Invalid axis ${face.axis}")
+                    }
+                }
+
+                results
+            }
+
             val normal = face.toVector3d()
 
             val variants = HashMap<Int, Int2ByteOpenHashMap>()
@@ -405,94 +227,97 @@ object LightFieldPrimitives {
             for (state in 0 .. increments) {
                 ++currentStep
 
-                if(sw.total > 0.5) {
-                    sw.resetTotal()
-                    LOG.warn("Computing increment $currentStep/${6 * (increments + 1)}")
-                }
+                val fieldBase = Int2DoubleOpenHashMap()
+                val results = Int2ByteOpenHashMap(fieldBase.size)
+                variants[state] = results
 
-                val grid = Int2ByteOpenHashMap()
-                variants[state] = grid
+                val radius = strength * (state / increments.toDouble())
+                val radiusUpper = ceil(radius).toInt()
 
-                val lightRadiusBase = strength * (state / increments.toDouble())
-                val lightRadiusUpper = ceil(lightRadiusBase).toInt()
-
-                if(lightRadiusUpper == 0) {
+                if(radiusUpper == 0) {
                     continue
                 }
 
                 fun set(x: Int, y: Int, z: Int) {
-                    val t = Vector3d(x, y, z)
+                    val cell = Vector3d(x, y, z)
 
-                    val distance = t.norm
+                    for(baseVector in baseVectors) {
+                        val distance = cell distanceTo baseVector
 
-                    if(!distance.approxEq(0.0)) {
-                        if(((t / distance) cosAngle normal) < cosDeviationMax) {
-                            return
+                        if(!distance.approxEq(0.0)) {
+                            if(((cell - baseVector).normalized() cosAngle normal) < cosDeviationMax) {
+                                continue
+                            }
                         }
-                    }
 
-                    if(distance <= lightRadiusUpper) {
-                        val unitDistance = distance / lightRadiusBase
-                        val intensity = 1.0 - unitDistance
+                        if(distance <= radiusUpper) {
+                            val fz = when(face.axis) {
+                                Direction.Axis.X -> cell.x - baseVector.x
+                                Direction.Axis.Y -> cell.y - baseVector.y
+                                Direction.Axis.Z -> cell.z - baseVector.z
+                                else -> error("Invalid axis ${face.axis}")
+                            }.absoluteValue
 
-                        val brightness = round(strength * intensity).toInt().coerceIn(0, 15)
+                            val brightness = 15.0 * (1.0 - (fz / radius))
 
-                        if(brightness > 0) {
-                            grid.put(BlockPosInt.pack(x, y, z), brightness.toByte())
+                            if(brightness >= 1.0) {
+                                val k = BlockPosInt.pack(x, y, z)
+                                fieldBase.put(k, max(fieldBase.get(k), brightness))
+                            }
                         }
                     }
                 }
 
                 when(face) {
                     Direction.DOWN -> {
-                        for (x in -lightRadiusUpper..lightRadiusUpper) {
-                            for (y in -lightRadiusUpper..0) {
-                                for (z in -lightRadiusUpper..lightRadiusUpper) {
+                        for (x in -radiusUpper..radiusUpper) {
+                            for (y in -radiusUpper..0) {
+                                for (z in -radiusUpper..radiusUpper) {
                                     set(x, y, z)
                                 }
                             }
                         }
                     }
                     Direction.UP -> {
-                        for (x in -lightRadiusUpper..lightRadiusUpper) {
-                            for (y in 0..lightRadiusUpper) {
-                                for (z in -lightRadiusUpper..lightRadiusUpper) {
+                        for (x in -radiusUpper..radiusUpper) {
+                            for (y in 0..radiusUpper) {
+                                for (z in -radiusUpper..radiusUpper) {
                                     set(x, y, z)
                                 }
                             }
                         }
                     }
                     Direction.NORTH -> {
-                        for (x in -lightRadiusUpper..lightRadiusUpper) {
-                            for (y in -lightRadiusUpper..lightRadiusUpper) {
-                                for (z in -lightRadiusUpper..0) {
+                        for (x in -radiusUpper..radiusUpper) {
+                            for (y in -radiusUpper..radiusUpper) {
+                                for (z in -radiusUpper..0) {
                                     set(x, y, z)
                                 }
                             }
                         }
                     }
                     Direction.SOUTH -> {
-                        for (x in -lightRadiusUpper..lightRadiusUpper) {
-                            for (y in -lightRadiusUpper..lightRadiusUpper) {
-                                for (z in 0..lightRadiusUpper) {
+                        for (x in -radiusUpper..radiusUpper) {
+                            for (y in -radiusUpper..radiusUpper) {
+                                for (z in 0..radiusUpper) {
                                     set(x, y, z)
                                 }
                             }
                         }
                     }
                     Direction.WEST -> {
-                        for (x in -lightRadiusUpper..0) {
-                            for (y in -lightRadiusUpper..lightRadiusUpper) {
-                                for (z in -lightRadiusUpper..lightRadiusUpper) {
+                        for (x in -radiusUpper..0) {
+                            for (y in -radiusUpper..radiusUpper) {
+                                for (z in -radiusUpper..radiusUpper) {
                                     set(x, y, z)
                                 }
                             }
                         }
                     }
                     Direction.EAST -> {
-                        for (x in 0..lightRadiusUpper) {
-                            for (y in -lightRadiusUpper..lightRadiusUpper) {
-                                for (z in -lightRadiusUpper..lightRadiusUpper) {
+                        for (x in 0..radiusUpper) {
+                            for (y in -radiusUpper..radiusUpper) {
+                                for (z in -radiusUpper..radiusUpper) {
                                     set(x, y, z)
                                 }
                             }
@@ -500,45 +325,109 @@ object LightFieldPrimitives {
                     }
                 }
 
-                // Ameliorate the smooth lighting problem a bit by decreasing some values at the frontiers.
+                lateralPass(face, fieldBase)
 
-                for (kvp in grid) {
-                    val centerPos = BlockPosInt(kvp.key)
-                    val x = centerPos.x
-                    val y = centerPos.y
-                    val z = centerPos.z
-
-                    if((x == 0 && y == 0 && z == 0)) {
-                        continue
-                    }
-
-                    require(kvp.value > 0)
-
-                    var isFrontier = false
-
-                    for (direction in directions) {
-                        val neighbor = grid.get(
-                            BlockPosInt.pack(
-                                x + direction.stepX,
-                                y + direction.stepY,
-                                z + direction.stepZ
-                            )
-                        )
-
-                        if(neighbor < 1) {
-                            isFrontier = true
-                            break
-                        }
-                    }
-
-                    if(isFrontier) {
-                        grid.replace(kvp.key, max(1, (round(kvp.value / 2.0).toInt())).toByte())
+                if(fieldBase.size > 0) {
+                    for ((k, v) in fieldBase) {
+                        results.put(k, round(v).toInt().coerceIn(0, 15).toByte())
                     }
                 }
             }
         }
 
         return FaceOrientedLightVolumeProvider(variantsByFace)
+    }
+
+    private fun lateralPass(face: Direction, grid: Int2DoubleOpenHashMap) {
+        val axis = face.axis
+
+        val increment = Vector3di(face.stepX, face.stepY, face.stepZ)
+        var columnPosition = Vector3di.zero
+
+        val queue = IntArrayFIFOQueue()
+        val plane = IntOpenHashSet()
+
+        while (true) {
+            val kColumn = BlockPosInt.pack(columnPosition)
+
+            if(grid.get(kColumn) < 1) {
+                break
+            }
+
+            var radiusSqr = 0
+            var minBrightness = Double.MAX_VALUE
+
+            queue.enqueue(kColumn)
+
+            while (queue.size() > 0) {
+                val front = queue.dequeueInt()
+                val brightness = grid.get(front)
+
+                if(brightness < 1) {
+                    continue
+                }
+
+                if(!plane.add(front)) {
+                    continue
+                }
+
+                if(brightness < minBrightness) {
+                    minBrightness = brightness
+                }
+
+                val x = BlockPosInt.unpackX(front)
+                val y = BlockPosInt.unpackY(front)
+                val z = BlockPosInt.unpackZ(front)
+
+                val dx = x - columnPosition.x
+                val dy = y - columnPosition.y
+                val dz = z - columnPosition.z
+
+                radiusSqr = max(radiusSqr, dx * dx + dy * dy + dz * dz)
+
+                when(axis) {
+                    Direction.Axis.X -> {
+                        queue.enqueue(BlockPosInt.pack(x, y + 1, z))
+                        queue.enqueue(BlockPosInt.pack(x, y - 1, z))
+                        queue.enqueue(BlockPosInt.pack(x, y, z + 1))
+                        queue.enqueue(BlockPosInt.pack(x, y, z - 1))
+                    }
+                    Direction.Axis.Y -> {
+                        queue.enqueue(BlockPosInt.pack(x + 1, y, z))
+                        queue.enqueue(BlockPosInt.pack(x - 1, y, z))
+                        queue.enqueue(BlockPosInt.pack(x, y, z + 1))
+                        queue.enqueue(BlockPosInt.pack(x, y, z - 1))
+                    }
+                    Direction.Axis.Z -> {
+                        queue.enqueue(BlockPosInt.pack(x + 1, y, z))
+                        queue.enqueue(BlockPosInt.pack(x - 1, y, z))
+                        queue.enqueue(BlockPosInt.pack(x, y + 1, z))
+                        queue.enqueue(BlockPosInt.pack(x, y - 1, z))
+                    }
+                    else -> error("Invalid axis $axis")
+                }
+            }
+
+            plane.remove(kColumn)
+
+            val radius = sqrt(radiusSqr.toDouble())
+
+            val iterator = plane.iterator()
+            while (iterator.hasNext()) {
+                val k = iterator.nextInt()
+
+                val dx = columnPosition.x - BlockPosInt.unpackX(k)
+                val dy = columnPosition.y - BlockPosInt.unpackY(k)
+                val dz = columnPosition.z - BlockPosInt.unpackZ(k)
+
+                val distance = sqrt((dx * dx + dy * dy + dz * dz).toDouble())
+                grid.put(k, grid.get(k) * (1.0 - (distance / radius).coerceIn(0.0, 1.0)))
+            }
+
+            plane.clear()
+
+            columnPosition += increment
+        }
     }
 }
 
@@ -594,29 +483,41 @@ fun interface LightResistanceFunction {
 }
 
 /**
- * Describes the transition of a light volume, from one state to another.
- * @param inserted The list of cells that, initially, were not included in the light field (their brightness is 0), but now have been inserted (their brightness is larger than 0)
- * @param removed The list of cells that, initially, were lit with a non-zero brightness, but now have been removed (their brightness is 0)
- * @param updated The list of cells that, initially, were lit with a non-zero brightness, but now have been re-lit with another non-zero brightness.
- * */
-class LightVolumeTransition(
-    val inserted: ImmutableIntArrayView,
-    val removed: ImmutableIntArrayView,
-    val updated: ImmutableIntArrayView,
-)
-
-/**
  * Provider for a [LightVolume], parameterized on the spatial configuration of the light emitter.
  * */
 fun interface LightVolumeProvider {
-    fun getVolume(locatorSet: LocatorSet) : LightVolume
+    fun getVolume(locatorSet: Location) : LightVolume
 }
 
 /**
  * *Light Volume* (light voxel data) function. This function maps a state increment (light "brightness") to the
- * desired light voxels. It also provides information about the change in state between 2 state increments ([LightVolumeTransition]).
+ * desired light voxels.
  * */
-interface LightVolume {
+class LightVolume private constructor(private val variants: Map<Int, Int2ByteMap>, private val mask: IntSet) {
+   companion object {
+       fun createImmutableStorage(source: Map<Int, Map<Int, Byte>>) : Int2ObjectOpenHashMap<Int2ByteMap> {
+           val result = Int2ObjectOpenHashMap<Int2ByteMap>()
+
+           source.forEach { (k, v) ->
+               result.put(k, Int2ByteMaps.unmodifiable(Int2ByteOpenHashMap(v)))
+           }
+
+           return result
+       }
+
+       fun createMask(source: Map<Int, Map<Int, Byte>>) : IntSet {
+           val mask = IntOpenHashSet()
+
+           source.values.forEach {
+               it.forEach { (k, v) ->
+                   mask.add(k)
+               }
+           }
+
+           return IntSets.unmodifiable(mask)
+       }
+   }
+
     /**
      * Gets the number of "state increments" (number of variants of the light field when the emitter is **powered**)
      * The *state* is given by the [LightTemperatureFunction] (whose co-domain is 0-1).
@@ -625,15 +526,36 @@ interface LightVolume {
      * */
     val stateIncrements: Int
 
+    init {
+        require(variants.isNotEmpty()) {
+            "Variant map was empty"
+        }
+
+        for (i in 0 until variants.size) {
+            require(variants.containsKey(i)) {
+                "Variant map did not have state increment $i"
+            }
+        }
+
+        stateIncrements = variants.size - 1
+    }
+
+    constructor(variantsByState: Map<Int, Map<Int, Byte>>) : this(
+        createImmutableStorage(variantsByState),
+        createMask(variantsByState)
+    )
+
     /**
      * Gets the desired light field, based on the current state of the light source, as per [view].
      * */
-    fun getLightField(state: Int) : LightFieldStorage
+    fun getLightField(state: Int) : Int2ByteMap = variants[state] ?: error("Did not have variant $state")
+
+    // In the future, maybe implement an algorithm to generate the mask, that fills in gaps (this would allow light fields with holes)
 
     /**
-     * Gets the [LightVolumeTransition] when going from the state [actualState] to the state [targetState].
+     * Gets a set of positions, that includes the positions of all cells (in all states).
      * */
-    fun getVolumeTransition(actualState: Int, targetState: Int): LightVolumeTransition
+    fun getMask() : IntSet = mask
 }
 
 /**
@@ -666,7 +588,7 @@ fun interface LightTemperatureConsumer {
     fun consume(temperature: Double)
 }
 
-class LightCell(ci: CellCreateInfo, poleMap: PoleMap) : Cell(ci), DataEntity, WailaEntity, LightView {
+class LightCell(ci: CellCreateInfo, poleMap: PoleMap) : Cell(ci), DataContainer, WailaEntity, LightView {
     companion object {
         private const val ID = "id"
         private const val LIFE = "life"
@@ -752,7 +674,7 @@ class LightCell(ci: CellCreateInfo, poleMap: PoleMap) : Cell(ci), DataEntity, Wa
     }
 
     override fun subscribe(subs: SubscriberCollection) {
-        subs.addPre10(this::simulationTick)
+        subs.addPre(this::simulationTick)
     }
 
     private fun simulationTick(dt: Double, phase: SubscriberPhase) {
@@ -803,7 +725,9 @@ class LightCell(ci: CellCreateInfo, poleMap: PoleMap) : Cell(ci), DataEntity, Wa
         // Detect changes:
         if (volumeState != targetState) {
             volumeState = targetState
-            gameEventReceiver.enqueue(VolumetricLightChangeEvent(volume, targetState))
+            // Using this new "place" API, the game object will receive one event (with the latest values),
+            // even if we do multiple updates in our simulation thread:
+            gameEventReceiver.place(VolumetricLightChangeEvent(volume, targetState))
         }
     }
 
@@ -865,15 +789,12 @@ class LightBulbItem(val model: LightModel) : Item(Properties()) {
     }
 }
 
-class LightPart(id: ResourceLocation, placementContext: PartPlacementInfo, cellProvider: CellProvider<LightCell>) : CellPart<LightCell, LightRenderer>(id, placementContext, cellProvider), EventListener {
+class LightPart(
+    id: ResourceLocation,
+    placementContext: PartPlacementInfo,
+    cellProvider: CellProvider<LightCell>
+) : CellPart<LightCell, LightFixtureRenderer>(id, placementContext, cellProvider), EventListener, RotatablePart {
     override val partSize = bbVec(8.0, 1.0 + 2.302, 5.0)
-
-    // We are working in the volume frame, and our part is the origin:
-    private fun getPositionWorld(positionVolume: BlockPosInt) = BlockPos(
-        placement.position.x + positionVolume.x,
-        placement.position.y + positionVolume.y,
-        placement.position.z + positionVolume.z
-    )
 
     private fun getPositionWorld(x: Int, y: Int, z: Int) = BlockPos(
         placement.position.x + x,
@@ -906,7 +827,7 @@ class LightPart(id: ResourceLocation, placementContext: PartPlacementInfo, cellP
         return false
     }
 
-    private val lightCells = HashMap<Int, LightVoxel>()
+    private val lightCells = Int2ObjectOpenHashMap<Light>()
     private var volume: LightVolume? = null
     private var state: Int = 0
 
@@ -928,7 +849,6 @@ class LightPart(id: ResourceLocation, placementContext: PartPlacementInfo, cellP
 
             if(existingItem != null) {
                 destroyCells()
-
                 level.addItem(placement.position, existingItem.createStack(cell.life))
                 cell.resetValues()
                 sendClientBrightness(0.0)
@@ -956,7 +876,7 @@ class LightPart(id: ResourceLocation, placementContext: PartPlacementInfo, cellP
         return result
     }
 
-    override fun createRenderer() = LightRenderer(
+    override fun createRenderer() = LightFixtureRenderer(
         this,
         PartialModels.SMALL_WALL_LAMP_CAGE,
         PartialModels.SMALL_WALL_LAMP_EMITTER
@@ -991,47 +911,70 @@ class LightPart(id: ResourceLocation, placementContext: PartPlacementInfo, cellP
     private fun onVolumeUpdated(event: VolumetricLightChangeEvent) {
         requireIsOnServerThread()
 
-        if(volume == null) {
-            volume = event.volume
+        // Item is only mutated on onUsedBy (server thread), when the bulb is added/removed, so it is safe to access here
+        // if it is null, it means we got this update possibly after the bulb was removed by a player, so we will ignore it
+        if(!hasCell || cell.item == null) {
+            return
+        }
+
+        if(this.volume == null) {
+            this.volume = event.volume
         }
 
         require(this.volume == event.volume)
 
         if(event.targetState == state) {
-            LOG.error("Same state")
+            LOG.error("Same state") // not an error but it is interesting to see that the `place` api saves us time
             return
         }
 
         val volume = this.volume!!
 
-        val transition = volume.getVolumeTransition(state, event.targetState)
+        // We first do a pass on the keys in the actual field.
+        // This way, we can detect cells that are no longer present in the target field, or got updated.
+        // While we do that, we remove cells that we processed from a set that has the cells in the target field.
+        // After we finished processing the positions in the actual field, this set will have all cells that were not present in the
+        // actual field, so they are new
+
+        val actualField = volume.getLightField(this.state)
         val targetField = volume.getLightField(event.targetState)
+        val newCells = IntOpenHashSet(targetField.keys)
 
-        for (i in transition.inserted.indices) {
-            val posVolume = BlockPosInt(transition.inserted[i])
-            val posWorld = getPositionWorld(posVolume)
+        val actualFieldIterator = actualField.keys.intIterator()
+        while (actualFieldIterator.hasNext()) {
+            val k = actualFieldIterator.nextInt()
 
-            if(!GhostLightServer.canCreateHandle(placement.level, posWorld)) {
+            newCells.remove(k)
+
+            val newBrightness = targetField.getOrDefault(k, 0)
+            val cell = lightCells[k] ?: continue // Out of bounds?
+
+            if(newBrightness < 1) {
+                // No longer present in target brightness field:
+                cell.updateBrightness(0)
+            } else {
+                // Present in both, updated:
+                cell.updateBrightness(newBrightness.toInt())
+            }
+        }
+
+        val newCellsIterator = newCells.intIterator()
+        while (newCellsIterator.hasNext()) {
+            val k = newCellsIterator.nextInt()
+            val positionWorld = placement.position + BlockPosInt.unpackBlockPos(k)
+
+            if(!GhostLightServer.canCreateHandle(placement.level, positionWorld)) {
                 continue
             }
 
-            val cell = lightCells.computeIfAbsent(!posVolume) {
-                LightVoxel(posVolume, posWorld)
+            var cell = lightCells.get(k)
+
+            if(cell == null) {
+                cell = Light(k, positionWorld)
+                require(lightCells.put(k, cell) == null)
             }
 
-            cell.updateBrightness(targetField.getLight(posVolume).toInt())
-        }
-
-        for (i in transition.updated.indices) {
-            val posVolume = BlockPosInt(transition.updated[i])
-            val cell = lightCells[!posVolume] ?: continue // Out of bounds?
-            cell.updateBrightness(targetField.getLight(posVolume).toInt())
-        }
-
-        for (i in transition.removed.indices) {
-            val posVolume = BlockPosInt(transition.removed[i])
-            val cell = lightCells[!posVolume] ?: continue // Out of bounds?
-            cell.updateBrightness(0)
+            cell.updateBrightness(targetField.get(k).toInt())
         }
 
         this.state = event.targetState
@@ -1077,10 +1020,13 @@ class LightPart(id: ResourceLocation, placementContext: PartPlacementInfo, cellP
 
     override fun onRemoved() {
         super.onRemoved()
-        destroyCells()
+
+        if(!placement.level.isClientSide) {
+            destroyCells()
+        }
     }
 
-    private inner class LightVoxel(val voxelPositionVolume: BlockPosInt, voxelPositionWorld: BlockPos) {
+    private inner class Light(val voxelPositionVolume: Int, voxelPositionWorld: BlockPos) {
         private val handle = GhostLightServer.createHandle(placement.level, voxelPositionWorld) { _, type ->
             onUpdate(type)
         }!!
@@ -1091,7 +1037,7 @@ class LightPart(id: ResourceLocation, placementContext: PartPlacementInfo, cellP
          * */
         private val obstructingBlocks = IntOpenHashSet()
         private val isObstructed get() = obstructingBlocks.size > 0
-        private val isOrigin get() = voxelPositionVolume.isZero
+        private val isOrigin get() = BlockPosInt(voxelPositionVolume).isZero
 
         init {
             // Initially, we intersect all blocks in the world, to find the blocks occluding the ray.
@@ -1138,26 +1084,32 @@ class LightPart(id: ResourceLocation, placementContext: PartPlacementInfo, cellP
 
             // First of all, we'll get the light cells whose rays intersect this voxel. That includes this one too!
 
-            val field = volume!!.getLightField(state)
-            val intersectionsVolume = field.intersectRays(voxelPositionVolume)
+            val mask = volume!!.getMask()
+
+            val intersectionsVolume = rayIntersectionAnalyzer(voxelPositionVolume) { k ->
+                mask.contains(k)
+            }
+
+            LOG.info("Intersected ${intersectionsVolume.size}")
+
+            val iterator = intersectionsVolume.intIterator()
 
             when(type) {
                 GhostLightUpdateType.Closed -> {
                     // Add to obstructions list and update:
-
-                    for (k in intersectionsVolume) {
-                        val cell = lightCells[k] ?: continue
-                        cell.obstructingBlocks.add(!voxelPositionVolume)
+                    while (iterator.hasNext()) {
+                        val cell = lightCells[iterator.nextInt()] ?: continue
+                        cell.obstructingBlocks.add(voxelPositionVolume)
                         // If we added one, it automatically means the cell is blocked:
                         cell.handle.setBrightness(0)
                     }
                 }
                 GhostLightUpdateType.Opened -> {
                     // Remove from list of obstructions and, if empty, set light:
-                    for (k in intersectionsVolume) {
-                        val cell = lightCells[k] ?: continue
+                    while (iterator.hasNext()) {
+                        val cell = lightCells[iterator.nextInt()] ?: continue
 
-                        if(cell.obstructingBlocks.remove(!voxelPositionVolume)) {
+                        if(cell.obstructingBlocks.remove(voxelPositionVolume)) {
                             if(!cell.isObstructed) {
                                 cell.handle.setBrightness(cell.desiredBrightness)
                             }
@@ -1177,12 +1129,13 @@ class LightPart(id: ResourceLocation, placementContext: PartPlacementInfo, cellP
     }
 }
 
-class LightRenderer(private val part: LightPart, private val cage: PartialModel, private val emitter: PartialModel) : PartRenderer() {
-    companion object {
-        val COLD_TINT = Color(255, 255, 255, 255)
-        val WARM_TINT = Color(254, 196, 127, 255)
-    }
-
+class LightFixtureRenderer(
+    val part: LightPart,
+    val cageModel: PartialModel,
+    val emitterModel: PartialModel,
+    val coldTint: Color = Color(255, 255, 255, 255),
+    val warmTint: Color = Color(254, 196, 127, 255)
+) : PartRenderer() {
     private val brightnessUpdate = AtomicUpdate<Double>()
     private var brightness = 0.0
 
@@ -1195,7 +1148,11 @@ class LightRenderer(private val part: LightPart, private val cage: PartialModel,
     private var emitterInstance: ModelData? = null
 
     override fun setupRendering() {
-        buildInstance()
+        cageInstance?.delete()
+        emitterInstance?.delete()
+        cageInstance = create(cageModel)
+        emitterInstance = create(emitterModel)
+        applyLightTint()
     }
 
     private fun create(model: PartialModel): ModelData {
@@ -1208,45 +1165,23 @@ class LightRenderer(private val part: LightPart, private val cage: PartialModel,
             .applyBlockBenchTransform(part, downOffset, yRotation)
     }
 
-    private fun buildInstance() {
-        cageInstance?.delete()
-        emitterInstance?.delete()
-        cageInstance = create(cage)
-        emitterInstance = create(emitter)
-        multipart.relightPart(part)
-        tint()
-        relight()
+    private fun applyLightTint() {
+        emitterInstance?.setColor(colorLerp(coldTint, warmTint, brightness.toFloat()))
     }
 
-    override fun getModelsToRelight(): List<FlatLit<*>> {
-        val list = ArrayList<ModelData>(2)
+    override fun relight(source: RelightSource) {
+        multipart.relightModels(emitterInstance, cageInstance)
+    }
 
-        cageInstance?.also { list.add(it) }
-        emitterInstance?.also { list.add(it) }
-
-        return list
+    override fun beginFrame() {
+        brightnessUpdate.consume {
+            brightness = it.coerceIn(0.0, 1.0)
+            applyLightTint()
+        }
     }
 
     override fun remove() {
         cageInstance?.delete()
         emitterInstance?.delete()
-    }
-
-    private fun tint() {
-        emitterInstance!!.setColor(colorLerp(COLD_TINT, WARM_TINT, brightness.toFloat()))
-    }
-
-    private fun relight() {
-        multipart.relightPart(part)
-    }
-
-    override fun beginFrame() {
-        val emitter = emitterInstance ?: return
-
-        brightnessUpdate.consume {
-            brightness = it.coerceIn(0.0, 1.0)
-            tint()
-            relight()
-        }
     }
 }

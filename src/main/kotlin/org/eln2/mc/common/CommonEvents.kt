@@ -13,6 +13,7 @@ import net.minecraftforge.fml.common.Mod
 import net.minecraftforge.server.ServerLifecycleHooks
 import org.ageseries.libage.data.mutableMultiMapOf
 import net.minecraft.core.BlockPos
+import net.minecraftforge.event.level.LevelEvent
 import org.eln2.mc.LOG
 import org.eln2.mc.common.blocks.foundation.GhostLight
 import org.eln2.mc.common.blocks.foundation.GhostLightHackClient
@@ -110,9 +111,8 @@ object CommonEvents {
 
     @SubscribeEvent @JvmStatic
     fun onServerStopping(event: ServerStoppingEvent) {
-        LOG.info("DESTROYING SIMULATION")
-
         event.server.allLevels.forEach {
+            LOG.info("Stopping simulations for $it")
             CellGraphManager.getFor(it).serverStop()
         }
     }
@@ -140,9 +140,9 @@ object CommonEvents {
     }
 
     @SubscribeEvent @JvmStatic
-    fun onClientTick(event: ClientTickEvent) {
-        if(event.phase == TickEvent.Phase.START) {
-            GhostLightHackClient.update()
+    fun onClientLevelClosed(event: LevelEvent.Unload) {
+        if(event.level.isClientSide) {
+            GhostLightHackClient.clear()
         }
     }
 }

@@ -1,10 +1,7 @@
 package org.eln2.mc.mathematics
 
-import net.minecraft.core.Vec3i
 import net.minecraft.world.phys.Vec3
 import org.joml.Vector4f
-import java.math.BigDecimal
-import java.math.MathContext
 import kotlin.math.*
 
 fun lerp(from: Double, to: Double, factor: Double): Double {
@@ -24,8 +21,8 @@ fun lerp(from: Dual, to: Dual, factor: Dual): Dual {
 }
 
 fun rsb(v: Int) = (v ushr 31)
-fun rsbu(v: Int) = (v ushr 31).toUInt()
 
+fun rsbu(v: Int) = (v ushr 31).toUInt()
 
 /**
  * Computes the [base] with the specified power [exponent] efficiently.
@@ -149,44 +146,12 @@ fun vec3(value: Double): Vec3 {
     return Vec3(value, value, value)
 }
 
-/**
- * @return a [Vec3i] with all values set to [value].
- * */
-fun vec3i(value: Int): Vec3i {
-    return Vec3i(value, value, value)
-}
-
-/**
- * @return a [Vec3i] with X set to [x].
- * */
-fun vec3iX(x: Int): Vec3i {
-    return Vec3i(x, 0, 0)
-}
-
-/**
- * @return a [Vec3i] with Y set to [y].
- * */
-fun vec3iY(y: Int): Vec3i {
-    return Vec3i(0, y, 0)
-}
-
-/**
- * @return a [Vec3i] with Z set to [z].
- * */
-fun vec3iZ(z: Int): Vec3i {
-    return Vec3i(0, 0, z)
-}
-
 fun vec4f(value: Float): Vector4f {
     return Vector4f(value, value, value, value)
 }
 
 fun vec4fOne(): Vector4f {
     return vec4f(1f)
-}
-
-fun vec4FZero(): Vector4f {
-    return vec4f(0f)
 }
 
 /**
@@ -294,7 +259,6 @@ fun Double.requireNotNaN(): Double {
     return this
 }
 
-
 /**
  * @return 0 if [this] is NaN. Otherwise, [this].
  * */
@@ -316,16 +280,6 @@ fun Double.infinityZero(): Double {
 
     return this
 }
-
-/**
- * @return 0 if [this] is NaN or infinity. Otherwise, [this].
- * */
-fun Double.defined(): Double = this.nanZero().infinityZero()
-
-/**
- * Returns the square of this number.
- * */
-fun Double.sqr(): Double = this * this
 
 /**
  * Returns [this] with the specified [sign]. NaN is not permitted in either [this] or [sign].
@@ -382,6 +336,7 @@ fun nsnzE(a: Double): Double {
 }
 
 fun Double.nz() = this + snzE(this)
+
 fun Double.nnz() = this + nsnzE(this)
 
 fun snz(a: Double): Double {
@@ -430,14 +385,9 @@ fun matchSigni(a: Int, targetSign: Int): Int {
     else 0
 }
 
-fun matchSnzi(a: Int, snz: Int): Int {
-    return if (snzi(a) == snz) 1
-    else 0
-}
-
 fun Float.nz() = this + snzE(this)
-fun Float.nnz() = this + nsnzE(this)
 
+fun Float.nnz() = this + nsnzE(this)
 
 private const val ADAPTLOB_ALPHA = 0.816496580927726
 private const val ADAPTLOB_BETA = 0.447213595499958
@@ -529,8 +479,6 @@ fun integralScan(a: Double, b: Double, tolerance: Double = 1e-15, f: ((Double) -
     return adaptlobStp(f, a, b, y1, y13, `is`)
 }
 
-fun coth(d: Double) = cosh(d) / sinh(d)
-
 class Dual private constructor(private val values: DoubleArray) {
     constructor(values: List<Double>) : this(values.toDoubleArray())
 
@@ -550,6 +498,7 @@ class Dual private constructor(private val values: DoubleArray) {
     operator fun get(index: Int) = values[index]
 
     val size get() = values.size
+
     val isReal get() = values.size == 1
 
     /**
@@ -600,12 +549,15 @@ class Dual private constructor(private val values: DoubleArray) {
         else Dual(x(this.value), dx(this.head()) * this.tail())
 
     operator fun plus(const: Double) = Dual(values.clone().also { it[0] += const })
+
     operator fun minus(const: Double) = Dual(values.clone().also { it[0] -= const })
 
-    private inline fun mapValues(transform: ((Double) -> Double)) =
-        Dual(DoubleArray(values.size) { i -> transform(values[i]) })
+    private inline fun mapValues(transform: ((Double) -> Double)) = Dual(DoubleArray(values.size) { i ->
+        transform(values[i]) }
+    )
 
     operator fun times(constant: Double) = mapValues { v -> v * constant }
+
     operator fun div(constant: Double) = mapValues { v -> v / constant }
 
     override fun equals(other: Any?): Boolean {
@@ -663,13 +615,13 @@ operator fun Double.div(dual: Dual) = Dual.const(this, dual.size) / dual
 
 fun sin(d: Dual): Dual = d.function({ sin(it) }) { cos(it) }
 fun cos(d: Dual): Dual = d.function({ cos(it) }) { -sin(it) }
-fun pow(d: Dual, n: Double): Dual = d.function({ it.pow(n) }) { n * pow(it, n - 1) }
-fun sqrt(d: Dual): Dual = d.function({ sqrt(it) }) { (Dual.const(1.0, d.size) / (Dual.const(2.0, d.size) * sqrt(it))) }
 fun sinh(d: Dual): Dual = d.function({ sinh(it) }) { cosh(it) }
 fun cosh(d: Dual): Dual = d.function({ cosh(it) }) { sinh(it) }
+fun coth(x: Dual) = cosh(x) / sinh(x)
+fun pow(d: Dual, n: Double): Dual = d.function({ it.pow(n) }) { n * pow(it, n - 1) }
+fun sqrt(d: Dual): Dual = d.function({ sqrt(it) }) { (Dual.const(1.0, d.size) / (Dual.const(2.0, d.size) * sqrt(it))) }
 fun ln(d: Dual): Dual = d.function({ ln(it) }) { Dual.const(1.0, d.size) / it }
 fun exp(d: Dual): Dual = d.function({ exp(it) }) { exp(it) }
-fun coth(x: Dual) = cosh(x) / sinh(x)
 
 data class DualArray(val values: List<DoubleArray>) {
     val size: Int
@@ -712,28 +664,4 @@ data class DualArray(val values: List<DoubleArray>) {
  * */
 fun cylinderSurfaceArea(length: Double, radius: Double): Double {
     return 2 * PI * radius * length + 2 * PI * radius * radius
-}
-
-fun ln(x: BigDecimal, ctx: MathContext, iterations: Long = 4096): BigDecimal {
-    var a: BigDecimal = x
-
-    if (a == BigDecimal.ONE) {
-        return BigDecimal.ZERO
-    }
-
-    a -= BigDecimal.ONE
-
-    var result = BigDecimal(iterations + 1)
-
-    for (i in iterations downTo 0) {
-        var term: BigDecimal = BigDecimal(i / 2 + 1).pow(2)
-        term = term.multiply(a, ctx)
-        result = term.divide(result, ctx)
-        term = BigDecimal(i + 1)
-        result = result.add(term, ctx)
-    }
-
-    result = a.divide(result, ctx)
-
-    return result
 }

@@ -1,5 +1,6 @@
 package org.eln2.mc.common.blocks.foundation
 
+import com.jozufozu.flywheel.light.LightUpdater
 import it.unimi.dsi.fastutil.ints.Int2ByteOpenHashMap
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap
 import it.unimi.dsi.fastutil.ints.IntArrayList
@@ -20,7 +21,6 @@ import java.nio.ByteBuffer
 import java.util.*
 import java.util.concurrent.locks.ReentrantReadWriteLock
 import java.util.function.Supplier
-import kotlin.concurrent.read
 import kotlin.concurrent.write
 
 /**
@@ -127,8 +127,8 @@ class GhostLightCommandMessage(val chunkPos: ChunkPos, val type: Type) {
         fun handle(message: GhostLightCommandMessage, ctx: Supplier<NetworkEvent.Context>) {
             ctx.get().enqueueWork {
                 when(message.type) {
-                    Type.BeginTracking -> GhostLightHackClient.startTracking(message.chunkPos)
-                    Type.StopTracking -> GhostLightHackClient.stopTracking(message.chunkPos)
+                    Type.BeginTracking -> GhostLightHackClient.addChunk(message.chunkPos)
+                    Type.StopTracking -> GhostLightHackClient.removeChunk(message.chunkPos)
                 }
             }
 
@@ -206,7 +206,7 @@ class GhostLightChunkDataMessage(val data: ByteArray) {
             val (chunk, values) = decodeBinary(message.data)
 
             ctx.get().enqueueWork {
-                GhostLightHackClient.loadNewValuesAndRender(chunk, values)
+                GhostLightHackClient.commit(chunk, values)
             }
 
             ctx.get().packetHandled = true
@@ -530,22 +530,37 @@ object GhostLightHackClient {
         return result.toInt()
     }
 
-    fun startTracking(chunkPos: ChunkPos) {
+    /**
+     * Prepares storage to handle ghost light data for the chunk at [chunkPos], if the chunk is not already prepared.
+     * */
+    fun addChunk(chunkPos: ChunkPos) {
         lock.write {
-            chunks.put(chunkPos, Int2ByteOpenHashMap())
+            if(!chunks.containsKey(chunkPos)) {
+                chunks[chunkPos] = Int2ByteOpenHashMap()
+            }
         }
     }
 
-    fun stopTracking(chunkPos: ChunkPos) {
+    /**
+     * Removes the data stores for the chunk at [chunkPos].
+     * */
+    fun removeChunk(chunkPos: ChunkPos) {
         lock.write {
             chunks.remove(chunkPos)
         }
     }
 
-    fun loadNewValuesAndRender(chunkPos: ChunkPos, values: LongArray) {
-        requireIsOnRenderThread { "Tried to load client lights on ${Thread.currentThread()}" }
+    /**
+     * Updates the given stored [PackedLightVoxel] values for the chunk at [chunkPos] and notifies the game in order to update rendering.
+     * The chunk must be prepared prior to calling this.
+     * */
+    fun commit(chunkPos: ChunkPos, values: LongArray) {
+        requireIsOnRenderThread {
+            "Tried to load client lights on ${Thread.currentThread()}"
+        }
 
         val minecraft = Minecraft.getInstance()
+        val level = minecraft.level
         val renderer = minecraft.levelRenderer
 
         lock.write {
@@ -567,28 +582,19 @@ object GhostLightHackClient {
                 val blockPos = unpackKey(chunkPos, key)
                 val sectionPos = SectionPos.of(blockPos)
 
-                renderer.setSectionDirtyWithNeighbors(
-                    sectionPos.x,
-                    sectionPos.y,
-                    sectionPos.z
-                )
+                renderer.setSectionDirtyWithNeighbors(sectionPos.x, sectionPos.y, sectionPos.z)
+
+                if(level != null) {
+                    // We also need to tell flywheel:
+                    LightUpdater.get(level).onLightUpdate(LightLayer.BLOCK, sectionPos.asLong())
+                }
             }
         }
     }
 
-    // remove:
-
-    private val logSw = Stopwatch()
-
-    fun update() {
-        if(logSw.total < 2.0) {
-            return
-        }
-
-        logSw.resetTotal()
-
-        lock.read {
-            LOG.info("Chunks: ${chunks.size}, voxels: ${chunks.values.sumOf { it.size }}")
+    fun clear() {
+        lock.write {
+            chunks.clear()
         }
     }
 }

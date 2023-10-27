@@ -17,7 +17,7 @@ import net.minecraft.world.level.block.entity.BlockEntityTicker
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
-import net.minecraftforge.common.ForgeHooks
+import net.minecraftforge.api.distmarker.Dist
 import net.minecraftforge.server.ServerLifecycleHooks
 import org.ageseries.libage.data.MultiMap
 import org.ageseries.libage.data.MutableSetMapMultiMap
@@ -26,7 +26,9 @@ import org.eln2.mc.data.NANOSECONDS
 import org.eln2.mc.data.Quantity
 import org.eln2.mc.data.Time
 import org.eln2.mc.mathematics.*
+import org.eln2.mc.mathematics.arrayKDGridDOf
 import org.joml.Vector3f
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
@@ -290,9 +292,55 @@ fun prepareBucket(
     player.level.playSound(null, pos, sound, source, 1.0F, 1.0F);
 }
 
-inline fun requireIsOnServerThread(message: () -> String) = require(ServerLifecycleHooks.getCurrentServer().isSameThread, message)
+inline fun requireIsOnServerThread(message: () -> String) = require(ServerLifecycleHooks.getCurrentServer().isSameThread) {
+    message()
+}
 fun requireIsOnServerThread() = requireIsOnServerThread { "Requirement failed: not on server thread (${Thread.currentThread()})" }
 
 inline fun requireIsOnRenderThread(message: () -> String) = require(RenderSystem.isOnRenderThread(), message)
 
 fun requireIsOnRenderThread() = requireIsOnRenderThread { "Requirement failed: not on render thread (${Thread.currentThread()})" }
+
+fun<K, V> ConcurrentHashMap<K, V>.atomicRemoveIf(consumer: (Map.Entry<K, V>) -> Boolean) {
+    this.entries.forEach { entry ->
+        if(consumer(entry)) {
+            this.remove(entry.key, entry.value)
+        }
+    }
+}
+
+private fun validateSide(side: Dist) = when(side) {
+    Dist.CLIENT -> requireIsOnRenderThread {
+        "Accessed client only"
+    }
+    Dist.DEDICATED_SERVER -> requireIsOnServerThread {
+        "Accessed server only"
+    }
+}
+class SidedLazy<T>(private val factory: () -> T, val side: Dist) {
+    private val lazy = lazy(LazyThreadSafetyMode.NONE, factory)
+
+    fun get() : T {
+        validateSide(side)
+        return lazy.value
+    }
+
+    operator fun not() = get()
+}
+
+class SidedHolder<T>(initialValue: T, val side: Dist) {
+    var value = initialValue
+        get() {
+            validateSide(side)
+            return field
+        }
+        set(value) {
+            validateSide(side)
+            field = value
+        }
+}
+
+fun<T> clientOnlyHolder(factory: () -> T) = SidedLazy(factory, Dist.CLIENT)
+fun<T> serverOnlyHolder(factory: () -> T) = SidedLazy(factory, Dist.DEDICATED_SERVER)
+fun<T> clientOnlyField(value: T) = SidedHolder(value, Dist.CLIENT)
+fun<T> serverOnlyField(value: T) = SidedHolder(value, Dist.DEDICATED_SERVER)

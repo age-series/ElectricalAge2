@@ -5,13 +5,17 @@ import net.minecraft.world.level.biome.Biome
 import org.ageseries.libage.sim.thermal.Temperature
 import org.ageseries.libage.sim.thermal.ThermalUnits
 import org.eln2.mc.data.BlockLocator
-import org.eln2.mc.data.DataTable
-import org.eln2.mc.data.LocatorSet
+import org.eln2.mc.data.HashDataTable
+import org.eln2.mc.data.Location
 import org.eln2.mc.data.requireLocator
 import java.util.concurrent.ConcurrentHashMap
 
 fun interface EnvironmentalTemperatureField {
     fun readTemperature(): Temperature
+}
+
+fun EnvironmentalTemperatureField.readInto(body: ThermalBody) {
+    body.temperature = this.readTemperature()
 }
 
 fun interface EnvironmentalThermalConductivityField {
@@ -22,7 +26,7 @@ data class EnvironmentInformation(
     val temperature: Temperature,
     val airThermalConductivity: Double,
 ) {
-    fun fieldMap() = DataTable()
+    fun fieldMap() = HashDataTable()
         .withField { EnvironmentalTemperatureField { temperature } }
         .withField { EnvironmentalThermalConductivityField { airThermalConductivity } }
 }
@@ -33,7 +37,7 @@ object BiomeEnvironments {
     private val AIR_THERMAL_CONDUCTIVITY = loadCsvSpline("air_thermal_conductivity/ds.csv", 0, 2)
     private val MINECRAFT_TEMPERATURE_CELSIUS = loadCsvSpline("minecraft_temperature/ds.csv", 0, 1)
 
-    fun getInformationForBlock(level: Level, pos: LocatorSet): EnvironmentInformation {
+    fun getInformationForBlock(level: Level, pos: Location): EnvironmentInformation {
         val biome = level.getBiome(pos.requireLocator<BlockLocator> {
             "Biome Environments need a block pos locator"
         }).value()

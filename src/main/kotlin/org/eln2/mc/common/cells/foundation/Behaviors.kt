@@ -2,8 +2,6 @@ package org.eln2.mc.common.cells.foundation
 
 import mcp.mobius.waila.api.IPluginConfig
 import net.minecraft.server.level.ServerLevel
-import org.ageseries.libage.sim.thermal.Temperature
-import org.ageseries.libage.sim.thermal.ThermalUnits
 import org.eln2.mc.Inj
 import org.eln2.mc.ThermalBody
 import org.eln2.mc.common.blocks.foundation.MultipartBlockEntity
@@ -78,7 +76,7 @@ operator fun CellBehaviorSource.times(b: CellBehavior) = this.add(b)
 /**
  * Container for multiple [CellBehavior]s. It is a Set. As such, there may be one instance of each behavior type.
  * */
-class CellBehaviorContainer(private val cell: Cell) : DataEntity {
+class CellBehaviorContainer(private val cell: Cell) : DataContainer {
     val behaviors = ArrayList<CellBehavior>()
 
     fun addToCollection(b: CellBehavior) {
@@ -86,7 +84,7 @@ class CellBehaviorContainer(private val cell: Cell) : DataEntity {
             error("Duplicate behavior $b")
         }
 
-        if (b is DataEntity) {
+        if (b is DataContainer) {
             dataNode.withChild(b.dataNode)
         }
 
@@ -101,7 +99,7 @@ class CellBehaviorContainer(private val cell: Cell) : DataEntity {
     fun destroy(behavior: CellBehavior) {
         require(behaviors.remove(behavior)) { "Illegal behavior remove $behavior" }
 
-        if (behavior is DataEntity) {
+        if (behavior is DataContainer) {
             dataNode.children.removeIf { access -> access == behavior.dataNode }
         }
 
@@ -112,7 +110,7 @@ class CellBehaviorContainer(private val cell: Cell) : DataEntity {
         behaviors.toList().forEach { destroy(it) }
     }
 
-    override val dataNode: DataNode = DataNode()
+    override val dataNode: HashDataNode = HashDataNode()
 }
 
 fun interface ElectricalPowerAccessor {
@@ -220,11 +218,11 @@ class TemperatureExplosionBehavior(
 
     @Inj
     constructor(temperatureField: TemperatureField, options: TemperatureExplosionBehaviorOptions, cell: Cell) :
-        this(temperatureField::readK, options, cell)
+        this(temperatureField::readKelvin, options, cell)
 
     @Inj
     constructor(temperatureField: TemperatureField, cell: Cell) :
-        this(temperatureField::readK, TemperatureExplosionBehaviorOptions(), cell)
+        this(temperatureField::readKelvin, TemperatureExplosionBehaviorOptions(), cell)
 
 
     override fun onAdded(container: CellBehaviorContainer) {}

@@ -9,12 +9,12 @@ fun interface DataGetter<T> {
     fun getValue(): T
 }
 
-class DataTable {
+class HashDataTable {
     private val fields = HashMap<Class<*>, DataGetter<*>>()
 
     val values get() = fields.values.toList()
 
-    fun <T> withField(c: Class<T>, access: DataGetter<T>): DataTable {
+    fun <T> withField(c: Class<T>, access: DataGetter<T>): HashDataTable {
         if (fields.put(c, access) != null) {
             error("Duplicate field $c")
         }
@@ -22,7 +22,7 @@ class DataTable {
         return this
     }
 
-    inline fun <reified T> withField(access: DataGetter<T>): DataTable = withField(T::class.java, access)
+    inline fun <reified T> withField(access: DataGetter<T>): HashDataTable = withField(T::class.java, access)
 
     inline fun <reified T> withField(const: T) = withField { const }
 
@@ -32,10 +32,10 @@ class DataTable {
         }
     }
 
-    private fun getAccessor(c: Class<*>): DataGetter<*>? = fields[c]
+    private fun getGetter(c: Class<*>): DataGetter<*>? = fields[c]
 
     @Suppress("UNCHECKED_CAST")
-    fun <T> getOrNull(c: Class<T>): T? = (getAccessor(c) as? DataGetter<T>)?.getValue()
+    fun <T> getOrNull(c: Class<T>): T? = (getGetter(c) as? DataGetter<T>)?.getValue()
 
     inline fun <reified T> getOrNull(): T? = getOrNull(T::class.java)
 
@@ -46,33 +46,26 @@ class DataTable {
     inline fun <reified T> contains(): Boolean = contains(T::class.java)
 }
 
-inline fun <reified T1, reified T2> DataTable.getPair(): Pair<T1, T2>? {
-    return Pair(
-        this.getOrNull<T1>() ?: return null,
-        this.getOrNull<T2>() ?: return null
-    )
-}
+fun node(cfg: (HashDataNode) -> Unit): HashDataNode = HashDataNode().also(cfg)
 
-fun node(cfg: (DataNode) -> Unit): DataNode = DataNode().also(cfg)
+fun data(cfg: (HashDataTable) -> Unit): HashDataNode = node { cfg(it.data) }
 
-fun data(cfg: (DataTable) -> Unit): DataNode = node { cfg(it.data) }
+class HashDataNode(val data: HashDataTable) {
+    constructor() : this(HashDataTable())
 
-class DataNode(val data: DataTable) {
-    constructor() : this(DataTable())
+    val children = ArrayList<HashDataNode>()
 
-    val children = ArrayList<DataNode>()
-
-    fun withChild(child: DataNode): DataNode {
+    fun withChild(child: HashDataNode): HashDataNode {
         require(!children.contains(child)) { "Duplicate container child" }
         children.add(child)
 
         return this
     }
 
-    fun withChild(child: DataTable): DataNode = withChild(DataNode(child))
+    fun withChild(child: HashDataTable): HashDataNode = withChild(HashDataNode(child))
 
-    fun withChild(action: (DataNode) -> Unit): DataNode {
-        withChild(DataNode().also(action))
+    fun withChild(action: (HashDataNode) -> Unit): HashDataNode {
+        withChild(HashDataNode().also(action))
         return this
     }
 
@@ -96,16 +89,16 @@ class DataNode(val data: DataTable) {
 
     inline fun <reified T> fieldScan(): ArrayList<T> = fieldScan(T::class.java)
 
-    inline fun <reified F> pull(other: DataNode) {
+    inline fun <reified F> pull(other: HashDataNode) {
         require(other.data.contains<F>()) { "$other did not have ${F::class.java}"}
         data.withField { other.data.get<F>() }
     }
 
-    inline fun <reified F> pull(child: DataEntity) = pull<F>(child.dataNode)
+    inline fun <reified F> pull(child: DataContainer) = pull<F>(child.dataNode)
 }
 
-interface DataEntity {
-    val dataNode: DataNode
+interface DataContainer {
+    val dataNode: HashDataNode
 }
 
 data class VoltageField(var inspect: Boolean = true, val read: () -> Double) : WailaEntity {
@@ -131,7 +124,7 @@ data class TemperatureField(var inspect: Boolean = true, val read: () -> Tempera
         }
     }
 
-    fun readK() = read().kelvin
+    fun readKelvin() = read().kelvin
 }
 
 data class EnergyField(var inspect: Boolean = true, val read: () -> Double) : WailaEntity {
@@ -151,7 +144,7 @@ data class MassField(var inspect: Boolean = true, val read: () -> Double) : Wail
 }
 
 data class PowerField(var inspect: Boolean = true, val read: () -> Double) : WailaEntity {
-    constructor(self: DataTable, inspect: Boolean = true) : this(inspect, {
+    constructor(self: HashDataTable, inspect: Boolean = true) : this(inspect, {
         // Maybe blow up?
         val vf = self.getOrNull<VoltageField>()?.read?.invoke() ?: 0.0
         val cf = self.getOrNull<CurrentField>()?.read?.invoke() ?: 0.0

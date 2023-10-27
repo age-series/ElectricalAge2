@@ -1,10 +1,11 @@
 package org.eln2.mc.common.parts.foundation
 
 import com.jozufozu.flywheel.core.PartialModel
-import com.jozufozu.flywheel.core.materials.FlatLit
+import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap
 import mcp.mobius.waila.api.IPluginConfig
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
+import net.minecraft.core.Vec3i
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.level.ServerLevel
@@ -33,7 +34,7 @@ import org.eln2.mc.data.*
 import org.eln2.mc.integration.WailaEntity
 import org.eln2.mc.integration.WailaTooltipBuilder
 import org.eln2.mc.mathematics.Base6Direction3d
-import org.eln2.mc.mathematics.Base6Direction3dMask
+import org.eln2.mc.mathematics.BlockPosInt
 import org.joml.AxisAngle4f
 import org.joml.Quaternionf
 import org.joml.Vector3f
@@ -49,12 +50,13 @@ data class PartPlacementInfo(
     val horizontalFacing: Direction,
     val level: Level,
     val multipart: MultipartBlockEntity,
+    val provider: PartProvider
 ) {
-    fun createLocator() = LocatorSet().apply {
+    fun createLocator() = LocatorSetb().apply {
         withLocator(position)
         withLocator(FacingLocator(horizontalFacing)) // is this right?
         withLocator(face)
-    }
+    }.build()
 }
 
 enum class PartUpdateType(val id: Int) {
@@ -145,7 +147,7 @@ object PartGeometry {
  * but up to 6 can exist in the same block space.
  * They are placed on the inner faces of a multipart container block space.
  * */
-abstract class Part<Renderer : PartRenderer>(val id: ResourceLocation, val placement: PartPlacementInfo) : DataEntity {
+abstract class Part<Renderer : PartRenderer>(val id: ResourceLocation, val placement: PartPlacementInfo) : DataContainer {
     companion object {
         fun createPartDropStack(id: ResourceLocation, saveTag: CompoundTag?, count: Int = 1): ItemStack {
             val item = PartRegistry.getPartItem(id)
@@ -235,7 +237,7 @@ abstract class Part<Renderer : PartRenderer>(val id: ResourceLocation, val place
     /**
      * @return The offset towards the placement face, calculated using the base size.
      * */
-    private val txFace: Vec3 get() = PartGeometry.faceOffset(partSize, placement.face)
+    private val faceOffset: Vec3 get() = PartGeometry.faceOffset(partSize, placement.face)
 
     /**
      * This is the bounding box of the part, in its block position.
@@ -280,21 +282,31 @@ abstract class Part<Renderer : PartRenderer>(val id: ResourceLocation, val place
     }
 
     /**
-     * This method is used for saving the part.
+     * Saves the part data to the compound tag.
      * @return A compound tag with all the save data for this part, or null, if no data needs saving.
      * */
     @ServerOnly
-    open fun getSaveTag(): CompoundTag? {
-        return null
-    }
+    open fun getSaveTag(): CompoundTag? = null
 
     /**
-     * This method is called to restore the part data from the compound tag.
+     * Gets the synced data that should be sent when a client first loads the part.
+     * @return A compound tag with all the data, or null, if no data needs to be sent.
+     * */
+    @ServerOnly
+    open fun getInitialSyncTag(): CompoundTag? = null
+
+    /**
+     * Restore the part data from the compound tag.
      * This method is used on both logical sides. The client only receives this call
      * when the initial chunk synchronization happens.
      * @param tag The custom data tag, as created by getSaveTag.
      * */
     open fun loadFromTag(tag: CompoundTag) {}
+
+    /**
+     * Loads the synced data that was sent when the client first loaded this part, from [getInitialSyncTag].
+     * */
+    open fun loadInitialSyncTag(tag: CompoundTag) { }
 
     /**
      * This method is called when this part is invalidated, and in need of synchronization to clients.
@@ -439,7 +451,7 @@ abstract class Part<Renderer : PartRenderer>(val id: ResourceLocation, val place
         cachedRenderer = null
     }
 
-    override val dataNode: DataNode = DataNode()
+    override val dataNode: HashDataNode = HashDataNode()
 }
 
 /**
@@ -644,23 +656,37 @@ abstract class CellPart<C: Cell, R : PartRenderer>(
         cell.container = placement.multipart
         cell.onContainerLoaded()
 
-        if (customSimulationData != null) {
-            LOG.info(customSimulationData)
-            loadCustomSimData(customSimulationData!!)
-            customSimulationData = null
+        if (this.customSimulationData != null) {
+            loadCustomSimDataPre(customSimulationData!!)
         }
 
         isAlive = true
         acquireCell()
 
+        if (this.customSimulationData != null) {
+            loadCustomSimDataPost(customSimulationData!!)
+            this.customSimulationData = null
+        }
+
         cell.bindGameObjects(listOf(this, placement.multipart))
     }
 
+    /**
+     * Saves custom data to the simulation storage (separate from the block entity and chunks)
+     * */
     open fun saveCustomSimData(): CompoundTag? {
         return null
     }
 
-    open fun loadCustomSimData(tag: CompoundTag) {}
+    /**
+     * Loads custom data from the simulation storage, just before the cell is acquired.
+     * */
+    open fun loadCustomSimDataPre(tag: CompoundTag) {}
+
+    /**
+     * Loads custom data from the simulation storage, after the cell is acquired.
+     * */
+    open fun loadCustomSimDataPost(tag: CompoundTag) {}
 
     override fun appendWaila(builder: WailaTooltipBuilder, config: IPluginConfig?) {
         if (hasCell) {
@@ -730,19 +756,141 @@ enum class CellPartConnectionMode(val index: Int) {
     }
 }
 
-@JvmInline
-value class CellPartConnectionInfo(val data: Int) {
-    val mode get() = CellPartConnectionMode.byId[(data and 3)]
-    val actualDirActualPlr get() = Base6Direction3d.byId[(data shr 2)]
-    constructor(mode: CellPartConnectionMode, actualDirActualPlr: Base6Direction3d) : this(mode.index or (actualDirActualPlr.id shl 2))
+private val DIRECTIONS = Direction.values()
+
+private val INCREMENT_FROM_FORWARD_UP = Int2IntOpenHashMap().also { map ->
+    for (facingWorld in DIRECTIONS) {
+        if(facingWorld.isVertical()) {
+            continue
+        }
+
+        DIRECTIONS.forEach { faceWorld ->
+            DIRECTIONS.forEach { direction ->
+                val direction3d = Vector3f(
+                    direction.stepX.toFloat(),
+                    direction.stepY.toFloat(),
+                    direction.stepZ.toFloat()
+                )
+
+                PartGeometry.facingRotation(facingWorld).transform(direction3d)
+                faceWorld.rotation.toJoml().transform(direction3d)
+
+                val result = Direction.getNearest(direction3d.x, direction3d.y, direction3d.z)
+
+                val id = BlockPosInt.pack(
+                    facingWorld.get3DDataValue(),
+                    faceWorld.get3DDataValue(),
+                    direction.get3DDataValue()
+                )
+
+                map[id] = result.get3DDataValue()
+            }
+        }
+    }
 }
 
-fun solveCellPartConnection(actualCell: Cell, remoteCell: Cell): CellPartConnectionInfo {
-    val actualPosWorld = actualCell.locator.requireLocator<BlockLocator>()
-    val remotePosWorld = remoteCell.locator.requireLocator<BlockLocator>()
-    val actualFaceWorld = actualCell.locator.requireLocator<FaceLocator>()
-    val remoteFaceWorld = remoteCell.locator.requireLocator<FaceLocator>()
+fun incrementFromForwardUp(facingWorld: Direction, faceWorld: Direction, direction: Direction): Direction {
+    val id = BlockPosInt.pack(
+        facingWorld.get3DDataValue(),
+        faceWorld.get3DDataValue(),
+        direction.get3DDataValue()
+    )
 
+    return Direction.from3DDataValue(INCREMENT_FROM_FORWARD_UP.get(id))
+}
+
+fun incrementFromForwardUp(facingWorld: Direction, faceWorld: Direction, direction: Base6Direction3d) = incrementFromForwardUp(facingWorld, faceWorld, direction.alias)
+
+@JvmInline
+value class PartConnectionDirection(val data: Int) {
+    val mode get() = CellPartConnectionMode.byId[(data and 3)]
+    val directionPart get() = Base6Direction3d.byId[(data shr 2)]
+
+    constructor(mode: CellPartConnectionMode, directionPart: Base6Direction3d) : this(mode.index or (directionPart.id shl 2))
+
+    fun toNbt(): CompoundTag {
+        val tag = CompoundTag()
+
+        tag.putBase6Direction(DIR, directionPart)
+        tag.putConnectionMode(MODE, mode)
+
+        return tag
+    }
+
+    fun getIncrement(facingWorld: Direction, faceWorld: Direction) = when(mode) {
+        CellPartConnectionMode.Unknown -> {
+            error("Undefined part connection")
+        }
+        CellPartConnectionMode.Planar -> {
+            incrementFromForwardUp(facingWorld, faceWorld, directionPart).normal
+        }
+        CellPartConnectionMode.Inner -> {
+            Vec3i.ZERO
+        }
+        CellPartConnectionMode.Wrapped ->{
+            val trWorld = incrementFromForwardUp(facingWorld, faceWorld, directionPart)
+            Vec3i(
+                trWorld.stepX - faceWorld.stepX,
+                trWorld.stepY - faceWorld.stepY,
+                trWorld.stepZ - faceWorld.stepZ
+            )
+        }
+    }
+
+    companion object {
+        private const val MODE = "mode"
+        private const val DIR = "dir"
+
+        fun fromNbt(tag: CompoundTag) = PartConnectionDirection(
+            tag.getConnectionMode(MODE),
+            tag.getDirectionActual(DIR),
+        )
+    }
+}
+
+fun getPartConnection(actualCell: Cell, remoteCell: Cell): PartConnectionDirection {
+    return getPartConnection(actualCell.locator, remoteCell.locator)
+}
+
+fun getPartConnection(actualCell: Location, remoteCell: Location): PartConnectionDirection {
+    val actualPosWorld = actualCell.requireLocator<BlockLocator>()
+    val remotePosWorld = remoteCell.requireLocator<BlockLocator>()
+    val actualFaceWorld = actualCell.requireLocator<FaceLocator>()
+    val remoteFaceWorld = remoteCell.requireLocator<FaceLocator>()
+    val remoteFacingWorld = actualCell.requireLocator<FacingLocator>()
+
+    return getPartConnection(
+        actualPosWorld,
+        remotePosWorld,
+        actualFaceWorld,
+        remoteFaceWorld,
+        remoteFacingWorld
+    )
+}
+
+fun getPartConnectionOrNull(actualCell: Location, remoteCell: Location): PartConnectionDirection? {
+    val actualPosWorld = actualCell.get<BlockLocator>() ?: return null
+    val remotePosWorld = remoteCell.get<BlockLocator>() ?: return null
+    val actualFaceWorld = actualCell.get<FaceLocator>() ?: return null
+    val remoteFaceWorld = remoteCell.get<FaceLocator>() ?: return null
+    val remoteFacingWorld = actualCell.get<FacingLocator>() ?: return null
+
+    return getPartConnection(
+        actualPosWorld,
+        remotePosWorld,
+        actualFaceWorld,
+        remoteFaceWorld,
+        remoteFacingWorld
+    )
+}
+
+fun getPartConnection(
+    actualPosWorld: BlockPos,
+    remotePosWorld: BlockPos,
+    actualFaceWorld: FaceLocator,
+    remoteFaceWorld: FaceLocator,
+    actualFacingWorld: FacingLocator
+) : PartConnectionDirection {
     val mode: CellPartConnectionMode
 
     val dir = if (actualPosWorld == remotePosWorld) {
@@ -762,29 +910,26 @@ fun solveCellPartConnection(actualCell: Cell, remoteCell: Cell): CellPartConnect
             remoteFaceWorld.opposite
         }
     } else {
-        // They are planar if the normals match up.
+        // They are planar if the normals match up:
         if (actualFaceWorld == remoteFaceWorld) {
-            val txActualTarget = actualPosWorld.directionTo(remotePosWorld)
+            val direction = actualPosWorld.directionTo(remotePosWorld)
 
-            if (txActualTarget == null) {
-                // They are not in-plane, which means Unknown
+            if (direction == null) {
+                // They are not positioned correctly, which means Unknown:
                 mode = CellPartConnectionMode.Unknown
                 actualFaceWorld
             } else {
                 // This is planar:
                 mode = CellPartConnectionMode.Planar
-                txActualTarget
+                direction
             }
         } else {
-            // Scan for Wrapped connections. If those do not match, then Unknown.
-            val solution = Base6Direction3dMask.perpendicular(actualFaceWorld)
-                .directionList
-                .firstOrNull { (actualPosWorld + it - actualFaceWorld) == remotePosWorld }
+            val direction = Direction.fromNormal(remotePosWorld + actualFaceWorld - actualPosWorld)
 
-            if (solution != null) {
+            if (direction != null) {
                 // Solution was found, this is wrapped:
                 mode = CellPartConnectionMode.Wrapped
-                solution
+                direction
             } else {
                 mode = CellPartConnectionMode.Unknown
                 actualFaceWorld
@@ -792,10 +937,10 @@ fun solveCellPartConnection(actualCell: Cell, remoteCell: Cell): CellPartConnect
         }
     }
 
-    return CellPartConnectionInfo(
+    return PartConnectionDirection(
         mode,
         Base6Direction3d.fromForwardUp(
-            actualCell.locator.requireLocator<FacingLocator>().forwardWorld,
+            actualFacingWorld.forwardWorld,
             actualFaceWorld,
             dir
         )
@@ -837,6 +982,11 @@ interface ItemPersistentPart {
     fun loadFromItemNbt(tag: CompoundTag?)
 }
 
+enum class RelightSource {
+    Setup,
+    BlockEvent
+}
+
 /**
  * This is the per-part renderer. One is created for every instance of a part.
  * The various methods may be called from separate threads.
@@ -868,19 +1018,16 @@ abstract class PartRenderer {
     protected open fun setupRendering() { }
 
     /**
+     * Called when a light update occurs, or the part is set up (after [setupRendering]).
+     * Models should be re-lit here
+     * */
+    open fun relight(source: RelightSource) { }
+
+    /**
      * Called each frame. This method may be used to animate parts or to
      * apply general per-frame updates.
      * */
     open fun beginFrame() { }
-
-    /**
-     * Called when a re-light is required.
-     * This happens when the light sources are changed.
-     * @return A list of models that need relighting, or null if none do so.
-     * */
-    open fun getModelsToRelight(): List<FlatLit<*>>? = null
-
-    open fun afterRelight(models: List<FlatLit<*>>) {}
 
     /**
      * Called when the renderer is no longer required.

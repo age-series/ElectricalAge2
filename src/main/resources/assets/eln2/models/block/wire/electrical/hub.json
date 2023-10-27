@@ -1,10 +1,10 @@
 {
 	"credit": "Made with Blockbench",
 	"texture_size": [32, 32],
-    "textures": {
-        "3": "eln2:block/thermalwire",
-        "particle": "eln2:block/thermalwire"
-    },
+	"textures": {
+        "3": "eln2:block/wire/electrical_wire",
+		"particle": "eln2:block/wire/electrical_wire"
+	},
 	"elements": [
         {
             "from": [6.25, -0.125, 6.25],

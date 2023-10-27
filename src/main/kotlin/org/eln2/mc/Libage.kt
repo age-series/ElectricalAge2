@@ -1,12 +1,11 @@
 package org.eln2.mc
 
 import mcp.mobius.waila.api.IPluginConfig
-import org.ageseries.libage.data.MutableMapPairBiMap
 import org.ageseries.libage.data.biMapOf
 import org.ageseries.libage.sim.Material
 import org.ageseries.libage.sim.thermal.Temperature
 import org.ageseries.libage.sim.thermal.ThermalMass
-import org.eln2.mc.data.DataTable
+import org.eln2.mc.data.HashDataTable
 import org.eln2.mc.integration.WailaEntity
 import org.eln2.mc.integration.WailaTooltipBuilder
 
@@ -83,7 +82,7 @@ class ThermalBody(var thermal: ThermalMass, var area: Double) : WailaEntity {
             return ThermalBody(ThermalMass(Material.COPPER), 0.5)
         }
 
-        fun createDefault(env: DataTable): ThermalBody {
+        fun createDefault(env: HashDataTable): ThermalBody {
             return createDefault().also { b ->
                 env.getOrNull<EnvironmentalTemperatureField>()?.readTemperature()?.also {
                     b.temperature = it

@@ -6,8 +6,8 @@ import org.ageseries.libage.sim.electrical.mna.component.Component
 import org.ageseries.libage.sim.thermal.ConnectionParameters
 import org.ageseries.libage.sim.thermal.Simulator
 import org.eln2.mc.ThermalBody
+import org.eln2.mc.data.Location
 import org.eln2.mc.data.LocatorRelationRuleSet
-import org.eln2.mc.data.LocatorSet
 
 /**
  * Represents a discrete simulation unit that participates in one simulation type.
@@ -41,7 +41,7 @@ abstract class SimulationObject(val cell: Cell) {
      * */
     abstract fun destroy()
 
-    open fun acceptsRemoteLocation(remoteDesc: LocatorSet): Boolean {
+    open fun acceptsRemoteLocation(remoteDesc: Location): Boolean {
         return ruleSet.accepts(cell.locator, remoteDesc)
     }
 }
@@ -249,6 +249,10 @@ class SimulationObjectSet(objects: List<SimulationObject>) {
 
     private fun getObject(type: SimulationObjectType): SimulationObject {
         return objects[type] ?: error("Object set does not have $type")
+    }
+
+    fun getObjectOrNull(type: SimulationObjectType): SimulationObject? {
+        return objects[type]
     }
 
     val electricalObject get() = getObject(SimulationObjectType.Electrical) as ElectricalObject

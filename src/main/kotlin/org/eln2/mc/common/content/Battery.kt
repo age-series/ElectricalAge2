@@ -1,3 +1,5 @@
+@file:Suppress("LocalVariableName")
+
 package org.eln2.mc.common.content
 
 import net.minecraft.nbt.CompoundTag
@@ -16,51 +18,54 @@ import org.eln2.mc.common.parts.foundation.PartPlacementInfo
 import org.eln2.mc.common.parts.foundation.ItemPersistentPartLoadOrder
 import org.eln2.mc.data.*
 import org.eln2.mc.mathematics.*
+import kotlin.math.abs
+import kotlin.math.pow
 
 interface BatteryView {
     val model: BatteryModel
-
     /**
      * Gets the total amount of energy stored in the battery/
      * */
     val energy: Quantity<Energy>
-
     /**
      * Gets the total energy exchanged by this battery.
      * */
     val totalEnergyTransferred: Quantity<Energy>
-
     /**
      * Gets the battery current. This value's sign depends on the direction of flow.
      * By convention, if the current is incoming, it is positive. If it is outgoing, it is negative.
      * */
     val current: Double
-
     /**
      * Gets the life parameter of the battery.
      * */
     val life: Double
-
     /**
      * Gets the number of charge-discharge cycles this battery has been trough.
      * */
     val cycles: Double
-
     /**
      * Gets the charge percentage.
      * */
     val charge: Double
-
     /**
      * Gets the charge percentage, mapped using the battery's threshold parameter, as per [BatteryModel.damageChargeThreshold].
      * This value may be negative if the charge is under threshold.
      * */
     val safeCharge: Double
-
     /**
      * Gets the temperature of the battery.
      * */
     val temperature: Temperature
+    /**
+     * Gets the current power. If positive, this is power going out. Otherwise, this is power coming in.
+     * */
+    val sourcePower: Quantity<Power>
+    /**
+     * Gets the energy increment this tick. It is equal to **[sourcePower] * dT**.
+     * The signs are as per [sourcePower]
+     * */
+    val energyIncrement: Quantity<Energy>
 }
 
 /**
@@ -126,31 +131,20 @@ object BatteryModels {
         voltageFunction = BatteryVoltageModels.WET_CELL_12V,
         resistanceFunction = { _ -> Quantity(20.0, MILLIOHM)},
         damageFunction = { battery, dt ->
-            val currentThreshold = 100.0 //A
+            var damage = 0.0
 
-            // if current > threshold, 0.0001% per second for every amp
-            // if charge < threshold, amplify everything by 10delta
+            damage += dt * (1.0 / 3.0) * 1e-6 // 1 month
+            damage += !(abs(battery.energyIncrement) / (!battery.model.energyCapacity * 50.0))
+            damage += dt * abs(battery.current).pow(1.25) * 1e-6 *
+                if(battery.safeCharge > 0.0) 1.0
+                else map(battery.charge, 0.0, battery.model.damageChargeThreshold, 1.0, 5.0)
 
-            val absCurrent = kotlin.math.abs(battery.current)
+            //println("T: ${battery.life / (damage / dt)}")
 
-            val currentTerm = if (absCurrent > currentThreshold) {
-                (absCurrent - currentThreshold) * (0.0001 / 100.0)
-            } else 0.0
-
-            val amplification = if (battery.charge < battery.model.damageChargeThreshold) {
-                (battery.model.damageChargeThreshold - battery.charge) * 10
-            } else 0.0
-
-            currentTerm * dt * (1.0 + amplification)
+            damage
         },
         capacityFunction = { battery ->
-            // Test capacity func: 0% after 5 cycles
-            // life has 90% impact.
-
-            val lifeTerm = -(1.0 - battery.life) * 0.90
-            val cyclesTerm = -lerp(0.0, 1.0, battery.cycles / 5.0)
-
-            1.0 + lifeTerm + cyclesTerm
+            battery.life.pow(0.5)
         },
         energyCapacity = Quantity(2.2, kWh),
         0.5,
@@ -237,7 +231,7 @@ class BatteryCell(
     }
 
     @SimObject
-    val generator = VRGeneratorObject(this, directionPoleMap(plusDir, minusDir))
+    val generator = VRGeneratorObject(this, directionPoleMapPlanar(plusDir, minusDir))
 
     @SimObject
     val thermalWire = ThermalWireObject(this, ThermalBodyDef(model.material, !model.mass, !model.surfaceArea, null))
@@ -251,7 +245,7 @@ class BatteryCell(
     override var energy = Quantity<Energy>(0.0)
 
     init {
-        ruleSet.withDirectionRule(plusDir + minusDir)
+        ruleSet.withDirectionRulePlanar(plusDir + minusDir)
 
         dataNode.pull<VoltageField>(generator)
         dataNode.pull<ResistanceField>(generator)
@@ -282,6 +276,8 @@ class BatteryCell(
     override val cycles get() = totalEnergyTransferred / model.energyCapacity
     override val current get() = generator.resistorCurrent
     override val charge get() = energy / model.energyCapacity
+    override val sourcePower get() = Quantity(generator.sourcePower, WATT)
+    override var energyIncrement = Quantity(0.0, JOULE)
 
     private val stateUpdate = AtomicUpdate<BatteryState>()
 
@@ -334,16 +330,16 @@ class BatteryCell(
 
     private fun transfersEnergy(elapsed: Double): Boolean {
         // Get energy transfer:
-        val electricalEnergy = Quantity<Energy>(generator.sourcePower * elapsed)
+        energyIncrement = Quantity(generator.sourcePower * elapsed)
 
-        if(electricalEnergy.isApproxZero) {
+        if(energyIncrement.isApproxZero) {
             return false
         }
 
         // Update total IO:
-        totalEnergyTransferred += abs(electricalEnergy)
+        totalEnergyTransferred += abs(energyIncrement)
 
-        energy -= electricalEnergy
+        energy -= energyIncrement
 
         val capacity = adjustedEnergyCapacity
 
@@ -388,8 +384,8 @@ class BatteryPart(
     placementContext: PartPlacementInfo,
     provider: CellProvider<BatteryCell>,
     override val partSize: Vec3,
-    val rendererSupplier: PartRendererSupplier<BatteryPart, BasicPartRenderer>
-) : CellPart<BatteryCell, BasicPartRenderer>(id, placementContext, provider), ItemPersistentPart {
+    private val rendererSupplier: PartRendererSupplier<BatteryPart, BasicPartRenderer>
+) : CellPart<BatteryCell, BasicPartRenderer>(id, placementContext, provider), ItemPersistentPart, RotatablePart {
     companion object {
         private const val BATTERY = "battery"
     }

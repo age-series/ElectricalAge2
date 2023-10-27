@@ -15,16 +15,11 @@ import org.eln2.mc.common.parts.foundation.PartPlacementInfo
 import org.eln2.mc.data.*
 import org.eln2.mc.integration.WailaEntity
 import org.eln2.mc.mathematics.Base6Direction3d
-import org.eln2.mc.mathematics.Base6Direction3dMask
 import org.eln2.mc.mathematics.approxEq
 import org.eln2.mc.mathematics.bbVec
 
 @NoInj
-class ResistorObject(
-    cell: Cell,
-    val poleMap: PoleMap
-) : ElectricalObject(cell), DataEntity, WailaEntity {
-
+class ResistorObject(cell: Cell, val poleMap: PoleMap) : ElectricalObject(cell), DataContainer, WailaEntity {
     private val resistor = ComponentHolder {
         Resistor().also { it.resistance = resistanceExact }
     }
@@ -90,11 +85,11 @@ class ResistorCell(ci: CellCreateInfo) : Cell(ci) {
     }
 
     init {
-        ruleSet.withDirectionRule(A + B)
+        ruleSet.withDirectionRulePlanar(A + B)
     }
 
     @SimObject @Inspect
-    val resistor = ResistorObject(this, directionPoleMap(A, B))
+    val resistor = ResistorObject(this, directionPoleMapPlanar(A, B))
 
     @SimObject @Inspect
     val thermalWire = ThermalWireObject(this)

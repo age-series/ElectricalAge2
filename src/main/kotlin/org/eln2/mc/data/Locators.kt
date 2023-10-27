@@ -11,6 +11,7 @@ import org.ageseries.libage.data.biMapOf
 import org.eln2.mc.*
 import org.eln2.mc.common.cells.foundation.NEGATIVE_PIN
 import org.eln2.mc.common.cells.foundation.POSITIVE_PIN
+import org.eln2.mc.common.parts.foundation.getPartConnectionOrNull
 import org.eln2.mc.mathematics.Base6Direction3d
 import org.eln2.mc.mathematics.Base6Direction3dMask
 
@@ -75,12 +76,14 @@ fun getLocatorSerializer(locatorClass: Class<*>): LocatorSerializer {
     return locatorSerializers.forward[locatorClass] ?: error("Failed to find serializer definition for $locatorClass")
 }
 
-class LocatorSet {
-    private val locatorMap = HashMap<Class<*>, Any>()
+class LocatorSetb {
+    val locatorMap = HashMap<Class<*>, Any>()
+
     val locators: Collection<Any> get() = locatorMap.values
+
     fun bindLocators(): HashMap<Class<*>, Any> = locatorMap.bind()
 
-    fun withLocator(locator: Any): LocatorSet {
+    fun withLocator(locator: Any): LocatorSetb {
         if (locatorMap.put(locator.javaClass, locator) != null) {
             error("Duplicate locator $locator")
         }
@@ -88,9 +91,16 @@ class LocatorSet {
         return this
     }
 
+    fun build() = Location.createImmutable(locatorMap)
+}
+
+class Location private constructor(val locatorMap: Map<Class<*>, Any>) {
     fun <T> get(c: Class<T>): T? = locatorMap[c] as? T
+
     inline fun <reified T> get(): T? = get(T::class.java)
+
     fun has(c: Class<*>): Boolean = get(c) != null
+
     inline fun <reified T> has(): Boolean = has(T::class.java)
 
     override fun equals(other: Any?): Boolean {
@@ -102,7 +112,7 @@ class LocatorSet {
             return false
         }
 
-        other as LocatorSet
+        other as Location
 
         if (locatorMap.size != other.locatorMap.size) {
             return false
@@ -148,8 +158,8 @@ class LocatorSet {
     }
 
     companion object {
-        fun fromNbt(compoundTag: CompoundTag): LocatorSet {
-            val result = LocatorSet()
+        fun fromNbt(compoundTag: CompoundTag): Location {
+            val builder = LocatorSetb()
             val list = compoundTag.get("Locators") as ListTag
 
             list.forEach { tag ->
@@ -162,15 +172,17 @@ class LocatorSet {
 
                 val serializer = getLocatorSerializer(locatorClass)
 
-                result.withLocator(serializer.fromNbt(locatorCompound.getCompound("Locator")))
+                builder.withLocator(serializer.fromNbt(locatorCompound.getCompound("Locator")))
             }
 
-            return result
+            return Location(builder.locatorMap)
         }
+
+        fun createImmutable(source: Map<Class<*>, Any>) = Location(source.toMap())
     }
 }
 
-inline fun <reified T> LocatorSet.requireLocator(noinline message: (() -> Any)? = null): T {
+inline fun <reified T> Location.requireLocator(noinline message: (() -> Any)? = null): T {
     val result = this.get<T>()
 
     if (message != null) require(result != null, message)
@@ -180,7 +192,7 @@ inline fun <reified T> LocatorSet.requireLocator(noinline message: (() -> Any)? 
 }
 
 fun interface LocationRelationshipRule {
-    fun acceptsRelationship(descriptor: LocatorSet, target: LocatorSet): Boolean
+    fun acceptsRelationship(descriptor: Location, target: Location): Boolean
 }
 
 class LocatorRelationRuleSet {
@@ -191,33 +203,37 @@ class LocatorRelationRuleSet {
         return this
     }
 
-    fun accepts(descriptor: LocatorSet, target: LocatorSet): Boolean {
+    fun accepts(descriptor: Location, target: Location): Boolean {
         return rules.all { r -> r.acceptsRelationship(descriptor, target) }
     }
 }
 
-fun LocatorRelationRuleSet.withDirectionRule(mask: Base6Direction3dMask): LocatorRelationRuleSet {
+fun LocatorRelationRuleSet.withDirectionRulePlanar(mask: Base6Direction3dMask): LocatorRelationRuleSet {
     return this.with { a, b ->
-        mask.has(a.findDirActualOrNull(b) ?: return@with false)
+        mask.has(a.findDirActualPlanarOrNull(b) ?: return@with false)
     }
 }
 
-fun LocatorSet.findDirActualOrNull(other: LocatorSet): Base6Direction3d? {
+fun Location.findDirActualPlanarOrNull(other: Location): Base6Direction3d? {
     val actualPosWorld = this.get<BlockLocator>() ?: return null
     val actualIdWorld = this.get<FacingLocator>() ?: return null
     val actualFaceWorld = this.get<FaceLocator>() ?: return null
     val targetPosWorld = other.get<BlockLocator>() ?: return null
+    val dir = actualPosWorld.directionTo(targetPosWorld) ?: return null
 
-    return Base6Direction3d.fromForwardUp(
-        actualIdWorld.forwardWorld,
-        actualFaceWorld,
-        actualPosWorld.directionTo(targetPosWorld)
-            ?: return null
-    )
+    return Base6Direction3d.fromForwardUp(actualIdWorld.forwardWorld, actualFaceWorld, dir)
 }
 
-fun LocatorSet.findDirActual(other: LocatorSet): Base6Direction3d {
-    return this.findDirActualOrNull(other) ?: error("Failed to get relative rotation direction")
+fun Location.findDirActualPartOrNull(other: Location): Base6Direction3d? {
+    return getPartConnectionOrNull(this, other)?.directionPart
+}
+
+fun Location.findDirActualPlanar(other: Location): Base6Direction3d {
+    return this.findDirActualPlanarOrNull(other) ?: error("Failed to get relative rotation direction")
+}
+
+fun Location.findDirActualPart(other: Location): Base6Direction3d {
+    return this.findDirActualPartOrNull(other) ?: error("Failed to get relative rotation direction (part)")
 }
 
 enum class Pole(val conventionalPin: Int) {
@@ -232,18 +248,33 @@ fun interface PoleMap {
      * @param targetLocator The target's location.
      * @return The pole [targetLocator] corresponds to.
      * */
-    fun evaluate(sourceLocator: LocatorSet, targetLocator: LocatorSet): Pole
+    fun evaluate(sourceLocator: Location, targetLocator: Location): Pole
 }
 
 /**
- * Creates a [PoleMap] that maps [plusDir] to plus and [minusDir] to minus. These directions are in the observer's frame.
+ * Creates a [PoleMap] that maps [plusDir] to plus and [minusDir] to minus.
+ * These directions are in the observer's frame. Fused positions are not allowed (like with multiparts)
  * This means that, from the object's perspective, [Pole.Plus] is returned when the other object is towards [plusDir], and [Pole.Minus] is returned when the target is towards [minusDir].
  * */
-fun directionPoleMap(plusDir: Base6Direction3d = Base6Direction3d.Front, minusDir: Base6Direction3d = Base6Direction3d.Back) =
+fun directionPoleMapPlanar(plusDir: Base6Direction3d = Base6Direction3d.Front, minusDir: Base6Direction3d = Base6Direction3d.Back) =
     PoleMap { actualDescr, targetDescr ->
-        when (val dirActual = actualDescr.findDirActual(targetDescr)) {
+        when (val dirActual = actualDescr.findDirActualPlanarOrNull(targetDescr)) {
             plusDir -> Pole.Plus
             minusDir -> Pole.Minus
             else -> error("Unhandled neighbor direction $dirActual")
+        }
+    }
+
+/**
+ * Creates a [PoleMap] that maps [plusDir] to plus and [minusDir] to minus.
+ * These directions are in the observer's frame.
+ * This means that, from the object's perspective, [Pole.Plus] is returned when the other object is towards [plusDir], and [Pole.Minus] is returned when the target is towards [minusDir].
+ * */
+fun directionPoleMapPart(plusDir: Base6Direction3d = Base6Direction3d.Front, minusDir: Base6Direction3d = Base6Direction3d.Back) =
+    PoleMap { actualDescr, targetDescr ->
+        when (val dirActual = actualDescr.findDirActualPartOrNull(targetDescr)) {
+            plusDir -> Pole.Plus
+            minusDir -> Pole.Minus
+            else -> error("Unhandled neighbor direction part $dirActual")
         }
     }

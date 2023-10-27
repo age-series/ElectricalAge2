@@ -1,5 +1,6 @@
 package org.eln2.mc.mathematics
 
+import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap
 import net.minecraft.core.Direction
 import org.eln2.mc.alias
 import org.eln2.mc.index
@@ -41,36 +42,68 @@ enum class Base6Direction3d(val id: Int) {
     operator fun plus(other: Base6Direction3dMask) = other + Base6Direction3dMask.ofRelative(this)
 
     companion object {
+        private val FROM_FORWARD_UP = let {
+            val map = Int2IntOpenHashMap()
+
+            for (facing in Direction.values()) {
+                if(facing.isVertical()) {
+                    continue
+                }
+
+                for (normal in Direction.values()) {
+                    for (direction in Direction.values()) {
+                        val result = when (direction) {
+                            normal -> {
+                                Up
+                            }
+
+                            normal.opposite -> {
+                                Down
+                            }
+
+                            else -> {
+                                val adjustedFacing = Direction.rotate(com.mojang.math.Matrix4f(normal.rotation), facing)
+
+                                var result = when (direction) {
+                                    adjustedFacing -> Front
+                                    adjustedFacing.opposite -> Back
+                                    adjustedFacing.getClockWise(normal.axis) -> Right
+                                    adjustedFacing.getCounterClockWise(normal.axis) -> Left
+                                    else -> error("Adjusted facing did not match")
+                                }
+
+                                if (normal.axisDirection == Direction.AxisDirection.NEGATIVE) {
+                                    if (result == Left || result == Right) {
+                                        result = result.opposite
+                                    }
+                                }
+
+                                result
+                            }
+                        }
+
+                        map.put(BlockPosInt.pack(facing.index(), normal.index(), direction.index()), result.id)
+                    }
+                }
+            }
+
+            map
+        }
+
         fun fromForwardUp(facing: Direction, normal: Direction, direction: Direction): Base6Direction3d {
             if (facing.isVertical()) {
                 error("Facing cannot be vertical")
             }
 
-            if (direction == normal) {
-                return Up
-            }
-
-            if (direction == normal.opposite) {
-                return Down
-            }
-
-            val adjustedFacing = Direction.rotate(com.mojang.math.Matrix4f(normal.rotation), facing)
-
-            var result = when (direction) {
-                adjustedFacing -> Front
-                adjustedFacing.opposite -> Back
-                adjustedFacing.getClockWise(normal.axis) -> Right
-                adjustedFacing.getCounterClockWise(normal.axis) -> Left
-                else -> error("Adjusted facing did not match")
-            }
-
-            if (normal.axisDirection == Direction.AxisDirection.NEGATIVE) {
-                if (result == Left || result == Right) {
-                    result = result.opposite
-                }
-            }
-
-            return result
+            return Base6Direction3d.byId[
+                FROM_FORWARD_UP.get(
+                    BlockPosInt.pack(
+                        facing.index(),
+                        normal.index(),
+                        direction.index()
+                    )
+                )
+            ]
         }
 
         val byId = values().toList()

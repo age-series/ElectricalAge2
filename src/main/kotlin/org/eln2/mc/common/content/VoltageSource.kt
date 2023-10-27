@@ -10,10 +10,10 @@ import org.eln2.mc.client.render.foundation.BasicPartRenderer
 import org.eln2.mc.common.cells.foundation.*
 import org.eln2.mc.common.parts.foundation.CellPart
 import org.eln2.mc.common.parts.foundation.PartPlacementInfo
-import org.eln2.mc.data.DataEntity
+import org.eln2.mc.data.DataContainer
 import org.eln2.mc.data.VoltageField
 import org.eln2.mc.data.data
-import org.eln2.mc.data.withDirectionRule
+import org.eln2.mc.data.withDirectionRulePlanar
 import org.eln2.mc.integration.WailaEntity
 import org.eln2.mc.mathematics.Base6Direction3dMask
 import org.eln2.mc.mathematics.bbVec
@@ -22,7 +22,7 @@ import org.eln2.mc.mathematics.bbVec
  * The voltage source object has a bundle of resistors, whose External Pins are exported to other objects, and
  * a voltage source, connected to the Internal Pins of the bundle.
  * */
-class VoltageSourceObject(cell: Cell) : ElectricalObject(cell), WailaEntity, DataEntity {
+class VoltageSourceObject(cell: Cell) : ElectricalObject(cell), WailaEntity, DataContainer {
     override val dataNode = data {
         it.withField(VoltageField {
             source.value?.potential ?: 0.0
@@ -82,7 +82,7 @@ class VoltageSourceCell(ci: CellCreateInfo) : Cell(ci) {
     val voltageSource = VoltageSourceObject(this)
 
     init {
-        ruleSet.withDirectionRule(Base6Direction3dMask.FRONT)
+        ruleSet.withDirectionRulePlanar(Base6Direction3dMask.FRONT)
     }
 }
 

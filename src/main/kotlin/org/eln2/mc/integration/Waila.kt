@@ -10,7 +10,7 @@ import org.eln2.mc.LARGE_RESISTANCE
 import org.eln2.mc.LOG
 import org.eln2.mc.MODID
 import org.eln2.mc.common.blocks.foundation.MultipartBlockEntity
-import org.eln2.mc.data.DataEntity
+import org.eln2.mc.data.DataContainer
 import org.eln2.mc.data.UnitType
 import org.eln2.mc.data.valueText
 import org.eln2.mc.integration.WailaTooltipEntryType.Companion.getTooltipEntryType
@@ -77,7 +77,7 @@ class Eln2WailaPlugin : IWailaPlugin {
 @FunctionalInterface
 interface WailaEntity {
     fun appendWaila(builder: WailaTooltipBuilder, config: IPluginConfig?) {
-        if (this is DataEntity) {
+        if (this is DataContainer) {
             val node = this.dataNode
 
             node.valueScan {

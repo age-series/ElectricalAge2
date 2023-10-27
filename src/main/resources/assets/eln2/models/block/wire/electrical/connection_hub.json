@@ -1,0 +1,41 @@
+{
+	"credit": "Made with Blockbench",
+	"texture_size": [32, 32],
+	"textures": {
+		"3": "eln2:block/wire/electrical_wire",
+		"particle": "eln2:block/wire/electrical_wire"
+	},
+	"elements": [
+		{
+			"from": [7, 0, 0],
+			"to": [9, 1.5, 6.25],
+			"faces": {
+				"east": {"uv": [4, 0, 5.5, 4], "rotation": 90, "texture": "#3"},
+				"west": {"uv": [4, 0, 5.5, 8.5], "rotation": 90, "texture": "#3"},
+				"up": {"uv": [2, 8.5, 0, 0], "texture": "#3"},
+				"down": {"uv": [4, 0, 2, 8.5], "texture": "#3"}
+			}
+		}
+	],
+	"groups": [
+		{
+			"name": "wire crossing",
+			"origin": [8, 8, 8],
+			"color": 0,
+			"children": [
+				{
+					"name": "wireA",
+					"origin": [8, 8, 8],
+					"color": 0,
+					"children": [0]
+				},
+				{
+					"name": "junctionBox",
+					"origin": [0, 0, 0],
+					"color": 0,
+					"children": []
+				}
+			]
+		}
+	]
+}

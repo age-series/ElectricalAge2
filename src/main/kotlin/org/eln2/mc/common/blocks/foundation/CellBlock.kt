@@ -81,9 +81,9 @@ open class CellBlockEntity<C : Cell>(pos: BlockPos, state: BlockState, targetTyp
     BlockEntity(targetType, pos, state),
     CellContainer,
     WailaEntity,
-    DataEntity {
+    DataContainer {
 
-    final override val dataNode: DataNode = DataNode()
+    final override val dataNode: HashDataNode = HashDataNode()
 
     open val cellFace = Direction.UP
 
@@ -224,11 +224,11 @@ open class CellBlockEntity<C : Cell>(pos: BlockPos, state: BlockState, targetTyp
 
     //#endregion
 
-    private fun createCellLocator() = LocatorSet().apply {
+    private fun createCellLocator() = LocatorSetb().apply {
         withLocator(blockPos)
         withLocator(cellFace)
         withLocator(FacingLocator(blockState.getValue(HorizontalDirectionalBlock.FACING)))
-    }
+    }.build()
 
     override fun getCells(): ArrayList<Cell> {
         return arrayListOf(cell ?: error("Cell is null in getCells"))

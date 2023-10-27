@@ -17,11 +17,11 @@ import org.eln2.mc.common.blocks.foundation.MultipartBlockEntity
 import org.eln2.mc.common.parts.foundation.Part
 import org.eln2.mc.common.parts.foundation.PartRenderer
 import org.eln2.mc.common.parts.foundation.PartUpdateType
+import org.eln2.mc.common.parts.foundation.RelightSource
 import org.eln2.mc.mathematics.map
 import org.joml.AxisAngle4f
 import org.joml.Quaternionf
 import org.joml.Vector3f
-import kotlin.math.max
 
 fun createPartInstance(
     multipart: MultipartBlockEntityInstance,
@@ -62,21 +62,14 @@ open class BasicPartRenderer(val part: Part<*>, val model: PartialModel) : PartR
 
     fun buildInstance() {
         modelInstance?.delete()
-
         modelInstance = createPartInstance(multipart, model, part, downOffset, yRotation)
+    }
 
-        multipart.relightPart(part)
+    override fun relight(source: RelightSource) {
+        multipart.relightModels(modelInstance)
     }
 
     override fun beginFrame() {}
-
-    override fun getModelsToRelight(): List<FlatLit<*>>? {
-        if (modelInstance != null) {
-            return listOf(modelInstance!!)
-        }
-
-        return null
-    }
 
     override fun remove() {
         modelInstance?.delete()
@@ -105,12 +98,12 @@ fun ModelData.applyBlockBenchTransform(part: Part<*>, downOffset: Double, yRotat
 
 class RadiantBodyColorBuilder {
     var coldTint = colorF(1f, 1f, 1f, 1f)
-    var hotTint = colorF(5f, 0.1f, 0.2f, 1f)
+    var hotTint = colorF(1f, 0.2f, 0.1f, 1f)
     var coldTemperature = STANDARD_TEMPERATURE
-    var hotTemperature = Temperature.from(1000.0, ThermalUnits.CELSIUS)
+    var hotTemperature = Temperature.from(800.0, ThermalUnits.CELSIUS)
 
-    fun build(): RadiantBodyColor {
-        return RadiantBodyColor(
+    fun build(): ThermalTint {
+        return ThermalTint(
             coldTint,
             hotTint,
             coldTemperature,
@@ -119,49 +112,52 @@ class RadiantBodyColorBuilder {
     }
 }
 
-fun defaultRadiantBodyColor(): RadiantBodyColor {
+fun defaultRadiantBodyColor(): ThermalTint {
     return RadiantBodyColorBuilder().build()
 }
 
-class RadiantBodyColor(
+class ThermalTint(
     val coldTint: Color,
     val hotTint: Color,
     val coldTemperature: Temperature,
     val hotTemperature: Temperature,
 ) {
-    fun evaluate(t: Temperature): Color {
-        val progress = map(
-            t.kelvin.coerceIn(coldTemperature.kelvin, hotTemperature.kelvin),
-            coldTemperature.kelvin,
-            hotTemperature.kelvin,
+    fun evaluate(temperature: Temperature) =
+        colorLerp(
+            from = coldTint,
+            to = hotTint,
+            blend = map(
+                temperature.kelvin.coerceIn(
+                    coldTemperature.kelvin,
+                    hotTemperature.kelvin
+                ),
+                coldTemperature.kelvin,
+                hotTemperature.kelvin,
             0.0,
             1.0
+            ).toFloat()
         )
 
-        return colorLerp(coldTint, hotTint, progress.toFloat())
-    }
-
-    fun evaluate(t: Double): Color {
-        return evaluate(Temperature(t))
-    }
+    fun evaluate(t: Double) = evaluate(Temperature(t))
 }
 
 @ClientOnly
-class MultipartBlockEntityInstance(val materialManager: MaterialManager, blockEntity: MultipartBlockEntity) :
-    BlockEntityInstance<MultipartBlockEntity>(materialManager, blockEntity),
-    DynamicInstance {
+class MultipartBlockEntityInstance(
+    val materialManager: MaterialManager,
+    blockEntity: MultipartBlockEntity,
+) : BlockEntityInstance<MultipartBlockEntity>(materialManager, blockEntity), DynamicInstance {
 
-    private val parts = ArrayList<Part<*>>()
+    private val parts = HashSet<Part<*>>()
 
     override fun init() {
-        super.init()
-
+        // When this is called on an already initialized renderer (e.g. changing graphics settings),
+        // we will get the parts in handlePartUpdates
         blockEntity.bindRenderer(this)
     }
 
     fun readBlockBrightness() = world.getBrightness(LightLayer.BLOCK, pos)
+
     fun readSkyBrightness() = world.getBrightness(LightLayer.SKY, pos)
-    fun readBrightness() = max(readSkyBrightness(), readBlockBrightness())
 
     /**
      * Called by flywheel at the start of each frame.
@@ -170,10 +166,9 @@ class MultipartBlockEntityInstance(val materialManager: MaterialManager, blockEn
     override fun beginFrame() {
         handlePartUpdates()
 
-        parts.forEach { part ->
+        for (part in parts) {
             val renderer = part.renderer
 
-            // todo: maybe get jozufozu to document this?
             if (!renderer.isSetupWith(this)) {
                 renderer.setupRendering(this)
             }
@@ -187,8 +182,8 @@ class MultipartBlockEntityInstance(val materialManager: MaterialManager, blockEn
      * This applies a re-light to all the part renderers.
      * */
     override fun updateLight() {
-        parts.forEach { part ->
-            relightPart(part)
+        for (part in parts) {
+            part.renderer.relight(RelightSource.BlockEvent)
         }
     }
 
@@ -206,13 +201,9 @@ class MultipartBlockEntityInstance(val materialManager: MaterialManager, blockEn
 
             when (update.type) {
                 PartUpdateType.Add -> {
-                    // Parts may already be added, because of the bind method that we called.
-
-                    if (!parts.contains(part)) {
-                        parts.add(part)
-                        part.renderer.setupRendering(this)
-                        relightPart(part)
-                    }
+                    parts.add(part)
+                    part.renderer.setupRendering(this)
+                    part.renderer.relight(RelightSource.Setup)
                 }
 
                 PartUpdateType.Remove -> {
@@ -228,25 +219,34 @@ class MultipartBlockEntityInstance(val materialManager: MaterialManager, blockEn
      * This also calls a cleanup method on the part renderers.
      * */
     override fun remove() {
-        parts.forEach { part ->
+        for (part in parts) {
             part.destroyRenderer()
         }
 
         blockEntity.unbindRenderer()
     }
 
-    /**
-     * This is called by parts when they need to force a re-light.
-     * This may happen when a model is initially created.
-     * */
-    fun relightPart(part: Part<*>) {
-        val models = part.renderer.getModelsToRelight()
+    // Nullable for convenience
 
-        if (models != null) {
-            relight(pos, models.stream())
-            part.renderer.afterRelight(models)
+    /**
+     * Relights the [models] using the block and skylight at this position.
+     * */
+    fun relightModels(models: Iterable<FlatLit<*>?>) {
+        val block = readBlockBrightness()
+        val sky = readSkyBrightness()
+
+        for (it in models) {
+            if(it != null) {
+                it.setBlockLight(block)
+                it.setSkyLight(sky)
+            }
         }
     }
+
+    /**
+     * Relights the [models] using the block and skylight at this position.
+     * */
+    fun relightModels(vararg models: FlatLit<*>?) = relightModels(models.asIterable())
 }
 
 fun interface PartRendererSupplier<T : Part<R>, R : PartRenderer> {

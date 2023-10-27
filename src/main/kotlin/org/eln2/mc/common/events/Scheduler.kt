@@ -6,6 +6,8 @@ import net.minecraftforge.eventbus.api.SubscribeEvent
 import net.minecraftforge.fml.common.Mod
 import org.eln2.mc.CrossThreadAccess
 import org.eln2.mc.ServerOnly
+import org.eln2.mc.atomicRemoveIf
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.PriorityBlockingQueue
 import java.util.concurrent.atomic.AtomicLong
@@ -13,12 +15,30 @@ import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.read
 import kotlin.concurrent.write
 
-fun interface EventQueue {
+fun interface EventDiscardedCallback<T : Event> {
+    fun discard(event: T)
+}
+
+interface EventQueue {
     /**
      * Enqueues the specified event to be sent.
-     * @return True if the queue was valid at the time of sending. This **does not guarantee** the event will be received, because the receiver could be destroyed before the events are dispatched.
+     * @return True, if the queue was valid at the time of sending. This **does not guarantee** that the event will be received, because the receiver could be destroyed before the events are dispatched.
      * */
-    fun enqueue(event: Event): Boolean
+    fun<T : Event> enqueue(event: T) : Boolean
+
+    /**
+     * Enqueues the specified event to be sent.
+     * @param discardCallback A callback that gets invoked if the event receiver gets destroyed after the event is enqueued, but before it gets dispatched.
+     * @return True, if the queue was valid at the time of sending. This **does not guarantee** that the event will be received, because the receiver could be destroyed before the events are dispatched.
+     * */
+    fun<T : Event> enqueue(event: T, discardCallback: EventDiscardedCallback<T>) : Boolean
+
+    /**
+     * Enqueues the specified event to be sent.
+     * Only the latest value (at the time of inspection) will be sent, and previous values are discarded.
+     * @return True, if the queue was valid at the time of sending. This **does not guarantee** that the event will be received, because the receiver could be destroyed before the events are dispatched.
+     * */
+    fun place(event: Event) : Boolean
 }
 
 interface ScheduledWork {
@@ -32,6 +52,109 @@ interface ScheduledWork {
  * */
 @Mod.EventBusSubscriber
 object Scheduler {
+    private var timeStamp = 0L
+    private val eventQueues = HashMap<EventListener, EventQueueImplementation>()
+    private val lock = ReentrantReadWriteLock()
+
+    private val workQueues : Map<Phase, WorkQueue> = mapOf(
+        Phase.START to WorkQueue(),
+        Phase.END to WorkQueue()
+    )
+
+    private fun getEventQueue(listener: EventListener): EventQueueImplementation {
+        val result: EventQueueImplementation
+
+        lock.read {
+            result = eventQueues[listener] ?: error("Could not find event queue for $listener")
+        }
+
+        return result
+    }
+
+    @CrossThreadAccess
+    fun getManager(listener: EventListener) = getEventQueue(listener).manager
+
+    fun scheduleWork(countdown: Int, item: () -> Unit, phase: Phase) =
+        workQueues[phase]!!.scheduleOnce(timeStamp + countdown.toLong(), item)
+
+    fun scheduleWorkPeriodic(interval: Int, item: () -> Boolean, phase: Phase) =
+        workQueues[phase]!!.schedulePeriodic(timeStamp + interval, interval, item)
+
+    /**
+     * Creates an event queue for the specified listener.
+     * Only one queue can exist per listener.
+     * This queue can be subsequently accessed, and events can be enqueued for the next tick.
+     * */
+    fun register(listener: EventListener): EventManager {
+        val result = EventQueueImplementation()
+
+        lock.write {
+            if (eventQueues.put(listener, result) != null) {
+                error("Duplicate add $listener")
+            }
+        }
+
+        return result.manager
+    }
+
+    /**
+     * Gets a queue access to the specified listener.
+     * This may be used concurrently.
+     * Events enqueued using this access will be sent to the listener on the next tick.
+     * */
+    @CrossThreadAccess
+    fun getEventAccess(listener: EventListener): EventQueue = getEventQueue(listener)
+
+    /**
+     * Destroys the event queue of the specified listener.
+     * */
+    fun remove(listener: EventListener) {
+        lock.write {
+            val removed = eventQueues.remove(listener) ?: error("Could not find queue for $listener")
+            removed.valid = false
+
+            while (true) {
+                val pair = removed.eventStream.poll() ?: break
+                pair.second?.run()
+            }
+        }
+    }
+
+    @SubscribeEvent
+    @JvmStatic
+    fun onServerTick(event: TickEvent.ServerTickEvent) {
+        workQueues[event.phase]!!.dispatchWork(timeStamp)
+
+        if (event.phase == Phase.START) {
+            dispatchEvents()
+        }
+
+        if (event.phase == Phase.END) {
+            timeStamp++
+        }
+    }
+
+    private fun dispatchEvents() {
+        // Todo: hold a list of dirty queues so we don't traverse the full set
+
+        lock.read {
+            for (eventQueueImplementation in eventQueues.values) {
+                val queue = eventQueueImplementation.eventStream
+                val manager = eventQueueImplementation.manager
+
+                while (true) {
+                    val pair = queue.poll() ?: break
+                    manager.send(pair.first)
+                }
+
+                eventQueueImplementation.eventsUnique.atomicRemoveIf { (_, v) ->
+                    manager.send(v)
+                    true
+                }
+            }
+        }
+    }
+
     private class WorkQueue {
         private val idAtomic = AtomicLong()
 
@@ -105,109 +228,39 @@ object Scheduler {
         }
     }
 
-    private var timeStamp = 0L
-    private val eventQueues = HashMap<EventListener, EventQueueImplementation>()
-    private val lock = ReentrantReadWriteLock()
-
-    private val workQueues = mapOf(
-        Phase.START to WorkQueue(),
-        Phase.END to WorkQueue()
-    )
-
-    private fun getEventQueue(listener: EventListener): EventQueueImplementation {
-        val result: EventQueueImplementation
-
-        lock.read {
-            result = eventQueues[listener] ?: error("Could not find event queue for $listener")
-        }
-
-        return result
-    }
-
-    @CrossThreadAccess
-    fun getManager(listener: EventListener) = getEventQueue(listener).manager
-
-    fun scheduleWork(countdown: Int, item: () -> Unit, phase: Phase) =
-        workQueues[phase]!!.scheduleOnce(timeStamp + countdown.toLong(), item)
-
-    fun scheduleWorkPeriodic(interval: Int, item: () -> Boolean, phase: Phase) =
-        workQueues[phase]!!.schedulePeriodic(timeStamp + interval, interval, item)
-
-    /**
-     * Creates an event queue for the specified listener.
-     * Only one queue can exist per listener.
-     * This queue can be subsequently accessed, and events can be enqueued for the next tick.
-     * */
-    fun register(listener: EventListener): EventManager {
-        val result = EventQueueImplementation()
-
-        lock.write {
-            if (eventQueues.put(listener, result) != null) {
-                error("Duplicate add $listener")
-            }
-        }
-
-        return result.manager
-    }
-
-    /**
-     * Gets a queue access to the specified listener.
-     * This may be used concurrently.
-     * Events enqueued using this access will be sent to the listener on the next tick.
-     * */
-    @CrossThreadAccess
-    fun getEventAccess(listener: EventListener): EventQueue = getEventQueue(listener)
-
-    /**
-     * Destroys the event queue of the specified listener.
-     * */
-    fun remove(listener: EventListener) {
-        lock.write {
-            val removed = eventQueues.remove(listener) ?: error("Could not find queue for $listener")
-            removed.valid = false
-        }
-    }
-
-    @SubscribeEvent
-    @JvmStatic
-    fun onServerTick(event: TickEvent.ServerTickEvent) {
-        workQueues[event.phase]!!.dispatchWork(timeStamp)
-
-        if (event.phase == Phase.START) {
-            dispatchEvents()
-        }
-
-        if (event.phase == Phase.END) {
-            timeStamp++
-        }
-    }
-
-    private fun dispatchEvents() {
-        // Todo: hold a list of dirty queues so we don't traverse the full set
-
-        lock.read {
-            for (it in eventQueues.values) {
-                val queue = it.queue
-                val manager = it.manager
-
-                while (true) {
-                    manager.send(queue.poll() ?: break)
-                }
-            }
-        }
-    }
-
     private class EventQueueImplementation : EventQueue {
         val manager = EventManager()
-        val queue = ConcurrentLinkedQueue<Event>()
+        val eventStream = ConcurrentLinkedQueue<Pair<Event, Runnable?>>()
+        val eventsUnique = ConcurrentHashMap<Class<*>, Event>()
         var valid = true
 
-        override fun enqueue(event: Event): Boolean {
+        override fun<T : Event> enqueue(event: T): Boolean {
             if(!valid) {
                 return false
             }
 
-            queue.add(event)
+            eventStream.add(Pair(event, null))
+
+            return true
+        }
+        override fun<T : Event> enqueue(event: T, discardCallback : EventDiscardedCallback<T>): Boolean {
+            if(!valid) {
+                return false
+            }
+
+            eventStream.add(Pair(event, Runnable {
+                discardCallback.discard(event)
+            }))
+
+            return true
+        }
+
+        override fun place(event: Event): Boolean {
+            if(!valid) {
+                return false
+            }
+
+            eventsUnique[event.javaClass] = event
 
             return true
         }

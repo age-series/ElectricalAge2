@@ -51,7 +51,7 @@ class TrackedSubscriberCollection(private val underlyingCollection: SubscriberCo
     }
 }
 
-data class CellCreateInfo(val pos: LocatorSet, val id: ResourceLocation, val environment: DataTable)
+data class CellCreateInfo(val locator: Location, val id: ResourceLocation, val environment: HashDataTable)
 
 /**
  * Marks a field in a [Cell] as [SimulationObject]. The object will be registered automatically.
@@ -77,18 +77,22 @@ annotation class Inspect
  * Cells create connections with other cells, and objects create connections with other objects of the same simulation type.
  * */
 @ServerOnly
-abstract class Cell(val locator: LocatorSet, val id: ResourceLocation, val environmentData: DataTable) : WailaEntity, DataEntity {
+abstract class Cell(val locator: Location, val id: ResourceLocation, val environmentData: HashDataTable) : WailaEntity, DataContainer {
     companion object {
         private val OBJECT_READERS = ConcurrentHashMap<Class<*>, List<FieldInfo<Cell>>>()
         private val BEHAVIOR_READERS = ConcurrentHashMap<Class<*>, List<FieldInfo<Cell>>>()
 
         private const val CELL_DATA = "cellData"
         private const val OBJECT_DATA = "objectData"
+
+        private val ID_ATOMIC = AtomicInteger()
     }
 
-    constructor(ci: CellCreateInfo) : this(ci.pos, ci.id, ci.environment)
+    constructor(ci: CellCreateInfo) : this(ci.locator, ci.id, ci.environment)
 
-    final override val dataNode = DataNode()
+    val uniqueCellId = ID_ATOMIC.getAndIncrement()
+
+    final override val dataNode = HashDataNode()
 
     val data get() = dataNode.data
 
@@ -147,7 +151,7 @@ abstract class Cell(val locator: LocatorSet, val id: ResourceLocation, val envir
      * Instantiates the specified class using dependency injection, as per [activate].
      * Services will also be requested from the specified [entity]
      * */
-    protected inline fun <reified T> activateWith(entity: DataEntity, vararg extraParams: Any): T =
+    protected inline fun <reified T> activateWith(entity: DataContainer, vararg extraParams: Any): T =
         services.activate(extraParams.asList().plus(entity.dataNode.data.values.mapNotNull { it.getValue() }))
 
     /**
@@ -167,7 +171,7 @@ abstract class Cell(val locator: LocatorSet, val id: ResourceLocation, val envir
      * The result will also be added to the service collection.
      * Services will also be requested from the specified [entity]
      * */
-    protected inline fun <reified T> activateServiceWith(entity: DataEntity, vararg extraParams: Any): T {
+    protected inline fun <reified T> activateServiceWith(entity: DataContainer, vararg extraParams: Any): T {
         if(ReplicatorBehavior::class.java.isAssignableFrom(T::class.java)) {
             error("Cannot activate replicator behavior as service!")
         }
@@ -243,7 +247,7 @@ abstract class Cell(val locator: LocatorSet, val id: ResourceLocation, val envir
         })
 
         set.process { obj ->
-            if (obj is DataEntity && fields[obj]!!.field.isAnnotationPresent(Inspect::class.java)) {
+            if (obj is DataContainer && fields[obj]!!.field.isAnnotationPresent(Inspect::class.java)) {
                 dataNode.withChild(obj.dataNode)
             }
         }
@@ -889,7 +893,7 @@ data class CellNeighborInfo(val neighbor: Cell, val neighborContainer: CellConta
 class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLevel) {
     val cells = ArrayList<Cell>()
 
-    private val posCells = HashMap<LocatorSet, Cell>()
+    private val posCells = HashMap<Location, Cell>()
 
     private val electricalSims = ArrayList<Circuit>()
     private val thermalSims = ArrayList<Simulator>()
@@ -1141,7 +1145,7 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
      * Gets the cell at the specified CellPos.
      * @return The cell, if found, or throws an exception, if the cell does not exist.
      * */
-    fun getCell(pos: LocatorSet): Cell {
+    fun getCell(pos: Location): Cell {
         val result = posCells[pos]
 
         if (result == null) {
@@ -1357,7 +1361,7 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
                 return result
 
             // Used to assign the connections after all cells have been loaded:
-            val cellConnections = HashMap<Cell, ArrayList<LocatorSet>>()
+            val cellConnections = HashMap<Cell, ArrayList<Location>>()
 
             // Used to load cell custom data:
             val cellData = HashMap<Cell, CompoundTag>()
@@ -1367,7 +1371,7 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
                 val pos = cellCompound.getLocatorSet(NBT_POSITION)
                 val cellId = ResourceLocation.tryParse(cellCompound.getString(NBT_ID))!!
 
-                val connectionPositions = ArrayList<LocatorSet>()
+                val connectionPositions = ArrayList<Location>()
                 val connectionsTag = cellCompound.get(NBT_CONNECTIONS) as ListTag
 
                 connectionsTag.forEach {
@@ -1588,7 +1592,7 @@ abstract class CellProvider<T : Cell> {
      * */
     abstract fun create(ci: CellCreateInfo): T
 
-    fun create(pos: LocatorSet, environment: DataTable) = create(CellCreateInfo(pos, id, environment))
+    fun create(locator: Location, environment: HashDataTable) = create(CellCreateInfo(locator, id, environment))
 }
 
 class BasicCellProvider<T : Cell>(val factory: (CellCreateInfo) -> T) : CellProvider<T>() {

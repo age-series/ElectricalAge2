@@ -37,6 +37,10 @@ object Content {
      */
     fun initialize() {}
 
+    val WRENCH = item("wrench") {
+        WrenchItem()
+    }
+
     //#region Wires
 
     val COPPER_THERMAL_WIRE = ThermalWireBuilder("thermal_wire_copper")
@@ -47,7 +51,7 @@ object Content {
 
     val ELECTRICAL_WIRE_COPPER = ElectricalWireBuilder("electrical_cable_copper")
         .apply {
-            radiatesLight = false
+            incandescent = false
         }
         .register()
 
@@ -83,6 +87,7 @@ object Content {
         WireThermalProperties(
             ThermalBodyDef(Material.COPPER, 10.0, 50.0),
             TemperatureExplosionBehaviorOptions(temperatureThreshold = Quantity(1000.0, CELSIUS)),
+            true,
             true
         )
     )
@@ -124,10 +129,12 @@ object Content {
     }, Vec3(1.0, bbSize(2.0), 1.0)))
 
     val LIGHT_CELL = cell("light_cell", BasicCellProvider { context ->
-        LightCell(context, directionPoleMap(Base6Direction3d.Left, Base6Direction3d.Right)).also { cell ->
-            cell.ruleSet.withDirectionRule(Base6Direction3dMask.LEFT + Base6Direction3dMask.RIGHT)
+        LightCell(context, directionPoleMapPlanar(Base6Direction3d.Left, Base6Direction3d.Right)).also { cell ->
+            cell.ruleSet.withDirectionRulePlanar(Base6Direction3dMask.LEFT + Base6Direction3dMask.RIGHT)
         }
     })
+
+    val LIGHT_PART = part("light_part", BasicPartProvider({ a, b -> LightPart(a, b, LIGHT_CELL.get()) }, bbVec(8.0, 4.0, 5.0)))
 
     val OSCILLATOR_CELL = injCell<OscillatorCell>("oscillator")
 
@@ -135,9 +142,7 @@ object Content {
         OscillatorPart(a, b)
     }, Vec3(1.0, 1.0, 1.0)))
 
-    val LIGHT_PART = part("light_part", BasicPartProvider({ a, b -> LightPart(a, b, LIGHT_CELL.get()) }, bbVec(8.0, 4.0, 5.0)))
-
-    val TEST_BULB = item("light_bulb") {
+    val TEST_BULB_1 = item("light_bulb_1") {
         LightBulbItem(LightModel(
             temperatureFunction = {
                 it.power / 100.0
@@ -149,17 +154,7 @@ object Content {
                 //dt * 0.01 * (v.power / 100.0)
                 0.0
             },
-            volumeProvider = let {
-                val result: LightVolumeProvider
-
-                val time = measureDuration {
-                    result = LightFieldPrimitives.cone(32, 24.0, Math.toRadians(45.0))
-                }
-
-                LOG.info("BUILD TIME: ${(time .. MILLISECONDS).formatted()} ms")
-
-                result
-            }
+            volumeProvider = LightFieldPrimitives.cone(32, 32.0, Math.toRadians(45.0), 1)
         ))
     }
 

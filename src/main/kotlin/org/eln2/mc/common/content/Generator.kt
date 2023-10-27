@@ -46,7 +46,7 @@ import kotlin.math.*
 /**
  * Generator model consisting of a Voltage Source + Resistor
  * */
-class VRGeneratorObject(cell: Cell, val map: PoleMap) : ElectricalObject(cell), WailaEntity, DataEntity {
+class VRGeneratorObject(cell: Cell, val map: PoleMap) : ElectricalObject(cell), WailaEntity, DataContainer {
     private val resistor = ComponentHolder {
         Resistor().also { it.resistance = resistanceExact }
     }
@@ -55,12 +55,18 @@ class VRGeneratorObject(cell: Cell, val map: PoleMap) : ElectricalObject(cell), 
         VoltageSource().also { it.potential = potentialExact }
     }
 
+    /**
+     * Gets the exact resistance of the [resistor].
+     * */
     var resistanceExact: Double = 1.0
         set(value) {
             field = value
             resistor.ifPresent { it.resistance = value }
         }
 
+    /**
+     * Gets the exact potential of the [resistor].
+     * */
     var potentialExact: Double = 1.0
         set(value) {
             field = value
@@ -69,6 +75,7 @@ class VRGeneratorObject(cell: Cell, val map: PoleMap) : ElectricalObject(cell), 
 
     /**
      * Updates the resistance if the deviation between the current resistance and [value] is larger than [eps].
+     * This should be used instead of setting [resistanceExact] whenever possible, because setting the resistance is expensive.
      * @return True if the resistance was updated. Otherwise, false.
      * */
     fun updateResistance(value: Double, eps: Double = LIBAGE_SET_EPS): Boolean {
@@ -83,6 +90,7 @@ class VRGeneratorObject(cell: Cell, val map: PoleMap) : ElectricalObject(cell), 
 
     /**
      * Updates the potential if the deviation between the current potential and [value] is larger than [eps].
+     * Using this instead of setting [potentialExact] doesn't have a large performance impact.
      * @return True if the voltage was updated. Otherwise, false.
      * */
     fun updatePotential(value: Double, eps: Double = LIBAGE_SET_EPS): Boolean {
@@ -106,6 +114,10 @@ class VRGeneratorObject(cell: Cell, val map: PoleMap) : ElectricalObject(cell), 
 
     override val maxConnections = 2
 
+    /**
+     * Gets the offered component by evaluating the map.
+     * @return The resistor's external pin when the pole evaluates to *plus*. The source's negative pin when the pole evaluates to *minus*.
+     * */
     override fun offerComponent(neighbour: ElectricalObject): ElectricalComponentInfo =
         when (map.evaluate(this.cell.locator, neighbour.cell.locator)) {
             Pole.Plus -> resistor.offerExternal()
@@ -155,7 +167,7 @@ interface ThermalBipole {
  * Thermal body with two connection sides.
  * */
 @NoInj
-class ThermalBipoleObject(cell: Cell, val map: PoleMap, b1Def: ThermalBodyDef, b2Def: ThermalBodyDef) : ThermalObject(cell), DataEntity, WailaEntity, ThermalBipole {
+class ThermalBipoleObject(cell: Cell, val map: PoleMap, b1Def: ThermalBodyDef, b2Def: ThermalBodyDef) : ThermalObject(cell), DataContainer, WailaEntity, ThermalBipole {
     override var b1 = b1Def.create()
     override var b2 = b2Def.create()
 
@@ -178,7 +190,7 @@ class ThermalBipoleObject(cell: Cell, val map: PoleMap, b1Def: ThermalBodyDef, b
         simulator.add(b2)
     }
 
-    override val dataNode = DataNode().also { root ->
+    override val dataNode = HashDataNode().also { root ->
         root.withChild {
             it.data.withField(TooltipField { b -> b.text("B1", b1.temperatureKelvin.formatted()) })
         }
@@ -233,7 +245,7 @@ class FuelBurnerBehavior(val cell: Cell, val body: ThermalBody) : CellBehavior, 
     private val updates = AtomicUpdate<HeatGeneratorFuelMass>()
 
     private val pid = PIDController(1.0, 0.0, 0.0).also {
-        it.setPoint = 0.0
+        it.setPoint = 1.0
         it.minControl = 0.0
         it.maxControl = 1.0
     }
@@ -256,12 +268,14 @@ class FuelBurnerBehavior(val cell: Cell, val body: ThermalBody) : CellBehavior, 
 
         val fuel = this.fuel ?: return
 
-        signal = pid.update((!DESIRED_TEMPERATURE - body.temperatureKelvin) / !DESIRED_TEMPERATURE, dt)
+        val t = (!DESIRED_TEMPERATURE - body.temperatureKelvin) / !DESIRED_TEMPERATURE
+        signal = pid.update(t, dt)
 
         val heat = min(fuel.availableEnergy, signal * !MAX_POWER * dt)
 
         thermalPower = heat / dt
-
+        // todo fixme frakme
+        body.temperatureKelvin = 1200.0
         if(!heat.approxEq(0.0)) {
             fuel.removeEnergy(heat)
             body.energy += heat
@@ -290,13 +304,13 @@ class HeatGeneratorCell(ci: CellCreateInfo, thermalDef: ThermalBodyDef) : Cell(c
     }
 
     @SimObject
-    private val thermalWire = ThermalWireObject(this, thermalDef)
+    val thermalWire = ThermalWireObject(this, thermalDef)
 
     @Behavior
-    private val burner = FuelBurnerBehavior(this, thermalWire.thermalBody)
+    val burner = FuelBurnerBehavior(this, thermalWire.thermalBody)
 
     init {
-        ruleSet.withDirectionRule(Base6Direction3dMask.HORIZONTALS)
+        ruleSet.withDirectionRulePlanar(Base6Direction3dMask.HORIZONTALS)
     }
 
     val needsFuel get() = burner.availableEnergy approxEq 0.0
@@ -513,13 +527,13 @@ class HeatGeneratorBlock : CellBlock<HeatGeneratorCell>() {
 
 // Best option is to estimate irradiance but maybe in the future
 
-interface IIlluminatedBodyView {
+interface IlluminatedBodyView {
     val sunAngle: Double
     val isObstructed: Boolean
     val normal: Direction
 }
 
-abstract class SolarIlluminationBehavior(private val cell: Cell) : CellBehavior, IIlluminatedBodyView {
+abstract class SolarIlluminationBehavior(private val cell: Cell) : CellBehavior, IlluminatedBodyView {
     // Is it fine to access these from our simulation threads?
     override val sunAngle: Double
         get() = cell.graph.level.getSunAngle(0f).toDouble()
@@ -530,7 +544,7 @@ abstract class SolarIlluminationBehavior(private val cell: Cell) : CellBehavior,
 
 
 fun interface PhotovoltaicVoltageFunction {
-    fun compute(view: IIlluminatedBodyView): Double
+    fun compute(view: IlluminatedBodyView): Double
 }
 
 data class PhotovoltaicModel(
@@ -591,6 +605,9 @@ object PhotovoltaicModels {
     }
 }
 
+/**
+ * Photovoltaic generator behavior. Works by modulating the voltage of [generator], based on the [model].
+ * */
 class PhotovoltaicBehavior(val cell: Cell, val generator: VRGeneratorObject, val model: PhotovoltaicModel) : SolarIlluminationBehavior(cell) {
     override fun subscribe(subscribers: SubscriberCollection) {
         subscribers.addSubscriber(SubscriberOptions(100, SubscriberPhase.Pre), this::update)
@@ -607,12 +624,12 @@ class PhotovoltaicBehavior(val cell: Cell, val generator: VRGeneratorObject, val
 
 class PhotovoltaicGeneratorCell(ci: CellCreateInfo, model: PhotovoltaicModel) : Cell(ci) {
     @SimObject @Inspect
-    val generator = VRGeneratorObject(this, directionPoleMap()).also { it.potentialExact = 0.0 }
+    val generator = VRGeneratorObject(this, directionPoleMapPlanar()).also { it.potentialExact = 0.0 }
 
     @Behavior
     val photovoltaic = PhotovoltaicBehavior(this, generator, model)
 
     init {
-        ruleSet.withDirectionRule(Base6Direction3d.Front + Base6Direction3d.Back)
+        ruleSet.withDirectionRulePlanar(Base6Direction3d.Front + Base6Direction3d.Back)
     }
 }

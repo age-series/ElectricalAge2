@@ -8,7 +8,7 @@ import org.eln2.mc.client.render.foundation.BasicPartRenderer
 import org.eln2.mc.common.cells.foundation.*
 import org.eln2.mc.common.parts.foundation.CellPart
 import org.eln2.mc.common.parts.foundation.PartPlacementInfo
-import org.eln2.mc.data.withDirectionRule
+import org.eln2.mc.data.withDirectionRulePlanar
 import org.eln2.mc.mathematics.Base6Direction3dMask
 import org.eln2.mc.mathematics.bbVec
 
@@ -44,11 +44,11 @@ class GroundCell(ci: CellCreateInfo) : Cell(ci) {
     val ground = GroundObject(this)
 
     init {
-        ruleSet.withDirectionRule(Base6Direction3dMask.FRONT)
+        ruleSet.withDirectionRulePlanar(Base6Direction3dMask.FRONT)
     }
 }
 
-class GroundPart(id: ResourceLocation, placementContext: PartPlacementInfo) : CellPart<GroundCell, BasicPartRenderer>(id, placementContext, Content.GROUND_CELL.get()) {
+class GroundPart(id: ResourceLocation, placementContext: PartPlacementInfo) : CellPart<GroundCell, BasicPartRenderer>(id, placementContext, Content.GROUND_CELL.get()), RotatablePart {
     override val partSize = bbVec(4.0, 4.0, 4.0)
 
     override fun createRenderer() = BasicPartRenderer(this, PartialModels.GROUND).also {

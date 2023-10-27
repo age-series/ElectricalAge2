@@ -118,6 +118,7 @@ class SubscriberPool : SubscriberCollection {
 
     class SubscriberPool(val parameters: SubscriberOptions) {
         private val pool = ArrayList<Subscriber>()
+        private var isIterating = false
 
         val isEmpty get() = pool.isEmpty()
         val size get() = pool.size
@@ -129,7 +130,11 @@ class SubscriberPool : SubscriberCollection {
 
             if (--countdown <= 0) {
                 countdown = parameters.interval
-                pool.forEach { it.update(dt, parameters.phase) }
+                isIterating = true
+                for (sub in pool) {
+                    sub.update(dt, parameters.phase)
+                }
+                isIterating = false
                 return true
             }
 
@@ -137,6 +142,8 @@ class SubscriberPool : SubscriberCollection {
         }
 
         fun add(subscriber: Subscriber) {
+            require(!isIterating) { "Tried to add subscriber $subscriber while iterating" }
+
             if (pool.contains(subscriber)) {
                 error("Duplicate add $subscriber in $parameters")
             }
@@ -145,6 +152,8 @@ class SubscriberPool : SubscriberCollection {
         }
 
         fun remove(subscriber: Subscriber) {
+            require(!isIterating) { "Tried to remove subscriber $subscriber while iterating" }
+
             if (!pool.remove(subscriber)) {
                 error("Failed to remove $subscriber from $parameters")
             }

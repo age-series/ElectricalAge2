@@ -20,6 +20,7 @@ import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.BlockGetter
+import net.minecraft.world.level.ChunkPos
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.BaseEntityBlock
 import net.minecraft.world.level.block.Block
@@ -108,7 +109,7 @@ class MultipartBlock : BaseEntityBlock(
             return false
         }
 
-        if (level == null) {
+        if (level !is ServerLevel) {
             return false
         }
 
@@ -136,7 +137,20 @@ class MultipartBlock : BaseEntityBlock(
         val multipartIsDestroyed = multipart.isEmpty
 
         if (multipartIsDestroyed) {
-            level.destroyBlock(pos, false)
+            // There is an edge case here!
+            // Because we destroyed it, the update packet never got sent, unfortunately.
+            // We will manually send the update packet:
+
+            val chunk = level.chunkSource.chunkMap.updatingChunkMap.get(ChunkPos(pos).toLong())
+
+            if(chunk == null) {
+                LOG.error("Failed to access chunk holder for removed multipart!")
+            }
+            else {
+                // Force update packet:
+                chunk.broadcastBlockEntity(level, pos)
+                level.destroyBlock(pos, false)
+            }
         }
 
         return multipartIsDestroyed
@@ -295,7 +309,7 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
     BlockEntity(BlockRegistry.MULTIPART_BLOCK_ENTITY.get(), pos, state),
     CellContainer,
     WailaEntity,
-    DataEntity {
+    DataContainer {
 
     // Interesting issue.
     // If we try to add tickers before the block receives the first tick,
@@ -308,6 +322,8 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
     // Used for part sync:
     private val dirtyParts = HashSet<Direction>()
     private val placementUpdates = ArrayList<PartUpdate>()
+
+    val hasPlacementUpdates get() = placementUpdates.isNotEmpty()
 
     // Used for disk loading:
     private var savedTag: CompoundTag? = null
@@ -389,7 +405,12 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
         face: Direction,
         provider: PartProvider,
         saveTag: CompoundTag? = null,
+        orientation: Direction? = null
     ): Boolean {
+        if(orientation != null &&! orientation.isHorizontal()) {
+            error("Invalid orientation $orientation")
+        }
+
         if (entity.level.isClientSide) {
             return false
         }
@@ -408,13 +429,13 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
             return false
         }
 
-        val placeDirection = if (face.isVertical()) {
+        val placeDirection = orientation ?: if (face.isVertical()) {
             entity.direction
         } else {
             Direction.NORTH
         }
 
-        val placementContext = PartPlacementInfo(pos, face, placeDirection, level, this)
+        val placementContext = PartPlacementInfo(pos, face, placeDirection, level, this, provider)
 
         val worldBoundingBox = PartGeometry.worldBoundingBox(
             provider.placementCollisionSize,
@@ -568,7 +589,7 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
             return CompoundTag() //?
         }
 
-        val tag = saveParts()
+        val tag = saveParts(true)
 
         parts.values.forEach {
             it.onSyncSuggested()
@@ -641,7 +662,7 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
 
             when (update.type) {
                 PartUpdateType.Add -> {
-                    updateTag.put("NewPart", savePart(part))
+                    updateTag.put("NewPart", savePartCommon(part))
                 }
 
                 PartUpdateType.Remove -> {
@@ -802,7 +823,7 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
         }
 
         try {
-            saveParts(pTag)
+            saveParts(pTag, false)
         } catch (t: Throwable) {
             LOG.error("MULTIPART SAVE EX $t")
         }
@@ -866,7 +887,7 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
      * Saves all the data associated with a part to a CompoundTag.
      * */
     @ServerOnly
-    private fun savePart(part: Part<*>): CompoundTag {
+    private fun savePartCommon(part: Part<*>): CompoundTag {
         val tag = CompoundTag()
 
         tag.putResourceLocation("ID", part.id)
@@ -887,10 +908,10 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
      * Saves the entire part set to a CompoundTag.
      * */
     @ServerOnly
-    private fun saveParts(): CompoundTag {
+    private fun saveParts(initial: Boolean): CompoundTag {
         val tag = CompoundTag()
 
-        saveParts(tag)
+        saveParts(tag, initial)
 
         return tag
     }
@@ -899,15 +920,24 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
      * Saves the entire part set to the provided CompoundTag.
      * */
     @ServerOnly
-    private fun saveParts(tag: CompoundTag) {
+    private fun saveParts(tag: CompoundTag, initial: Boolean) {
         assert(!level!!.isClientSide)
 
         val partsTag = ListTag()
 
         parts.keys.forEach { face ->
             val part = parts[face]
+            val commonTag = savePartCommon(part!!)
 
-            partsTag.add(savePart(part!!))
+            if(initial) {
+                val initialTag = part.getInitialSyncTag()
+
+                if(initialTag != null) {
+                    commonTag.put("Initial", initialTag)
+                }
+            }
+
+            partsTag.add(commonTag)
         }
 
         tag.put("Parts", partsTag)
@@ -922,9 +952,16 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
         if (tag.contains("Parts")) {
             val partsTag = tag.get("Parts") as ListTag
             partsTag.forEach { partTag ->
-                val part = unpackPart(partTag as CompoundTag)
+                val partCompoundTag = partTag as CompoundTag
+                val part = unpackPart(partCompoundTag)
 
                 addPart(part.placement.face, part)
+
+                val initialTag = partCompoundTag.get("Initial") as? CompoundTag
+
+                if(initialTag != null) {
+                    part.loadInitialSyncTag(initialTag)
+                }
             }
 
             rebuildCollider()
@@ -946,7 +983,7 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
         val customTag = tag.get("CustomTag") as? CompoundTag
 
         val provider = PartRegistry.tryGetProvider(id) ?: error("Failed to get part with id $id")
-        val part = provider.create(PartPlacementInfo(pos, face, facing, level!!, this))
+        val part = provider.create(PartPlacementInfo(pos, face, facing, level!!, this, provider))
 
         if (customTag != null) {
             part.loadFromTag(customTag)
@@ -1167,5 +1204,5 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
         }
     }
 
-    override val dataNode: DataNode = DataNode()
+    override val dataNode: HashDataNode = HashDataNode()
 }

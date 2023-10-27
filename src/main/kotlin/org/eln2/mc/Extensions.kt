@@ -1,8 +1,13 @@
 package org.eln2.mc
 
 import com.jozufozu.flywheel.core.materials.model.ModelData
+import com.jozufozu.flywheel.util.transform.Translate
 import com.mojang.math.*
+import it.unimi.dsi.fastutil.ints.IntSet
 import mcp.mobius.waila.api.IPluginConfig
+import net.minecraft.client.renderer.block.model.BakedQuad
+import net.minecraft.client.resources.model.BakedModel
+import net.minecraft.client.resources.model.SimpleBakedModel
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
 import net.minecraft.core.Vec3i
@@ -48,7 +53,6 @@ import org.ageseries.libage.sim.thermal.ConnectionParameters
 import org.ageseries.libage.sim.thermal.Simulator
 import org.ageseries.libage.sim.thermal.Temperature
 import org.ageseries.libage.sim.thermal.ThermalMass
-import org.apache.commons.math3.geometry.euclidean.threed.Vector3D
 import org.eln2.mc.common.blocks.foundation.MultipartBlockEntity
 import org.eln2.mc.common.cells.foundation.ComponentHolder
 import org.eln2.mc.common.cells.foundation.ElectricalComponentInfo
@@ -65,6 +69,7 @@ import java.io.InputStream
 import java.io.OutputStream
 import java.nio.ByteBuffer
 import java.util.*
+import kotlin.collections.ArrayList
 import kotlin.math.abs
 
 fun AABB.viewClip(entity: LivingEntity): Optional<Vec3> {
@@ -198,10 +203,6 @@ val Base6Direction3d.alias: Direction
 
 fun Direction.index(): Int {
     return this.get3DDataValue()
-}
-
-fun Direction.toVector3D(): Vector3D {
-    return Vector3D(this.stepX.toDouble(), this.stepY.toDouble(), this.stepZ.toDouble())
 }
 
 fun Direction.toVector3d(): Vector3d {
@@ -354,9 +355,9 @@ inline fun <reified TEntity : BlockEntity> Level.constructMenu(
     }
 }
 
-fun Level.getDataAccess(pos: BlockPos): DataNode? {
+fun Level.getDataAccess(pos: BlockPos): HashDataNode? {
     return ((this.getBlockEntity(pos) ?: return null)
-        as? DataEntity ?: return null)
+        as? DataContainer ?: return null)
         .dataNode
 }
 /*
@@ -462,12 +463,12 @@ fun CompoundTag.getBlockPos(key: String): BlockPos {
     return BlockPos(x, y, z)
 }
 
-fun CompoundTag.putLocatorSet(id: String, descriptor: LocatorSet) {
-    this.put(id, descriptor.toNbt())
+fun CompoundTag.putLocatorSet(id: String, locator: Location) {
+    this.put(id, locator.toNbt())
 }
 
-fun CompoundTag.getLocatorSet(id: String): LocatorSet {
-    return LocatorSet.fromNbt(this.getCompound(id))
+fun CompoundTag.getLocatorSet(id: String): Location {
+    return Location.fromNbt(this.getCompound(id))
 }
 
 fun CompoundTag.getStringList(key: String): List<String> {
@@ -980,3 +981,75 @@ fun InputStream.getStringList() = this.getList { it.getString() }
 fun Quaternion.toJoml() = Quaternionf(this.i(), this.j(), this.k(), this.r())
 fun Quaternionf.toMinecraft() = Quaternion(this.x, this.y, this.z, this.w)
 fun Vec3.toJoml() = Vector3f(this.x.toFloat(), this.y.toFloat(), this.z.toFloat())
+
+fun <Self : Translate<Self>> Self.translateNormal(normal: Vec3, distance: Double) : Self {
+    this.translate(normal * distance)
+    return this
+}
+
+fun <Self : Translate<Self>> Self.translateNormal(normal: Vec3i, distance: Double) : Self {
+    this.translate(normal.toVec3() * distance)
+    return this
+}
+
+fun <Self : Translate<Self>> Self.translateNormal(normalDirection: Direction, distance: Double) : Self {
+    return this.translateNormal(normalDirection.normal, distance)
+}
+
+fun BakedQuad.bind() = BakedQuad(
+    this.vertices.copyOf(),
+    this.tintIndex,
+    this.direction,
+    this.sprite,
+    this.isShade,
+    this.hasAmbientOcclusion()
+)
+
+@Suppress("DEPRECATION", "NULLABILITY_MISMATCH_BASED_ON_JAVA_ANNOTATIONS")
+fun BakedModel.bind() : SimpleBakedModel {
+    val quads = HashMap<BakedQuad, BakedQuad>()
+
+    return SimpleBakedModel(
+        this.getQuads(null, null, null)
+        .map { quad ->
+            quad.bind().also { boundQuad ->
+                quads[quad] = boundQuad
+            }
+        },
+        let {
+            val cull = HashMap<Direction, List<BakedQuad>>()
+
+            Direction.values().forEach { dir ->
+                cull[dir] = this.getQuads(null, dir, null).map {
+                    quads[it]!!
+                }
+            }
+
+            cull
+        },
+        this.useAmbientOcclusion(),
+        this.usesBlockLight(),
+        this.isGui3d,
+        this.particleIcon,
+        this.transforms,
+        this.overrides
+    )
+}
+
+fun IntSet.minInt(): Int {
+    if(this.isEmpty()) {
+        error("The set is empty")
+    }
+
+    val iterator = this.intIterator()
+    var result = Int.MAX_VALUE
+
+    while (iterator.hasNext()) {
+        val i = iterator.nextInt()
+        if(i < result) {
+            result = i
+        }
+    }
+
+    return result
+}

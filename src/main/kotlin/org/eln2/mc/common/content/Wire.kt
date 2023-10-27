@@ -2,16 +2,24 @@
 
 package org.eln2.mc.common.content
 
+import com.jozufozu.flywheel.backend.Backend
 import com.jozufozu.flywheel.core.Materials
 import com.jozufozu.flywheel.core.PartialModel
-import com.jozufozu.flywheel.core.materials.FlatLit
 import com.jozufozu.flywheel.core.materials.model.ModelData
 import com.jozufozu.flywheel.util.Color
+import com.jozufozu.flywheel.util.transform.Transform
+import it.unimi.dsi.fastutil.ints.Int2DoubleOpenHashMap
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet
 import kotlinx.serialization.Serializable
 import mcp.mobius.waila.api.IPluginConfig
+import net.minecraft.client.renderer.block.model.BakedQuad
+import net.minecraft.client.resources.model.BakedModel
+import net.minecraft.core.Direction
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.nbt.ListTag
 import net.minecraft.resources.ResourceLocation
+import net.minecraft.world.level.LightLayer
 import net.minecraft.world.phys.Vec3
 import net.minecraftforge.api.distmarker.Dist
 import net.minecraftforge.fml.DistExecutor
@@ -21,13 +29,10 @@ import org.ageseries.libage.sim.electrical.mna.Circuit
 import org.ageseries.libage.sim.thermal.*
 import org.eln2.mc.*
 import org.eln2.mc.client.render.PartialModels
-import org.eln2.mc.client.render.foundation.MultipartBlockEntityInstance
-import org.eln2.mc.client.render.foundation.RadiantBodyColor
-import org.eln2.mc.client.render.foundation.defaultRadiantBodyColor
+import org.eln2.mc.client.render.foundation.*
 import org.eln2.mc.common.cells.CellRegistry
 import org.eln2.mc.common.cells.foundation.*
 import org.eln2.mc.common.events.AtomicUpdate
-import org.eln2.mc.common.events.schedulePre
 import org.eln2.mc.common.network.serverToClient.PacketHandlerBuilder
 import org.eln2.mc.common.parts.PartRegistry
 import org.eln2.mc.common.parts.foundation.*
@@ -35,16 +40,16 @@ import org.eln2.mc.data.*
 import org.eln2.mc.integration.WailaEntity
 import org.eln2.mc.integration.WailaTooltipBuilder
 import org.eln2.mc.mathematics.*
-import org.joml.AxisAngle4f
-import org.joml.Quaternionf
-import org.joml.Vector3f
+import java.nio.ByteBuffer
+import java.nio.IntBuffer
 import java.util.function.Supplier
 import kotlin.math.PI
+import kotlin.math.max
 
 /**
- * Represents a thermal wire, in the form of a thermal body. This body gets connected to all neighbor cells.
+ * Generalized thermal conductor, in the form of a single thermal body that gets connected to all neighbor cells.
  * */
-class ThermalWireObject(cell: Cell, thermalDefinition: ThermalBodyDef) : ThermalObject(cell), WailaEntity, DataEntity, PersistentObject {
+class ThermalWireObject(cell: Cell, thermalDefinition: ThermalBodyDef) : ThermalObject(cell), WailaEntity, DataContainer, PersistentObject {
     companion object {
         // Storing temperature. If I change the properties of the material, it will be the same temperature in game.
         private const val TEMPERATURE = "temperature"
@@ -75,16 +80,18 @@ class ThermalWireObject(cell: Cell, thermalDefinition: ThermalBodyDef) : Thermal
 
     var thermalBody = thermalDefinition.create().also { body ->
         if (thermalDefinition.energy == null) {
-            cell.environmentData.getOrNull<EnvironmentalTemperatureField>()?.readTemperature()?.also {
-                body.temperature = it
-            }
+            cell.environmentData.getOrNull<EnvironmentalTemperatureField>()?.readInto(body)
         }
     }
+
+    fun readTemperature(): Double = thermalBody.thermal.temperature.kelvin
 
     override fun offerComponent(neighbour: ThermalObject) = ThermalComponentInfo(thermalBody)
 
     override fun addComponents(simulator: Simulator) {
         simulator.add(thermalBody)
+
+        // Connect to environment if it has a temperature and thermal conductivity:
 
         val temperature = cell.environmentData.getOrNull<EnvironmentalTemperatureField>()?.readTemperature() ?: return
         val thermalConductivity = cell.environmentData.getOrNull<EnvironmentalThermalConductivityField>()?.readConductivity() ?: return
@@ -106,9 +113,10 @@ class ThermalWireObject(cell: Cell, thermalDefinition: ThermalBodyDef) : Thermal
 }
 
 /**
- * Represents an electrical wire, created by joining "internal" pins of a [ResistorBundle]. The "external" pins are exported to other cells.
+ * Generalized electrical wire, created by joining the "internal" pins of a [ResistorBundle].
+ * The "external" pins are offered to other cells.
  * */
-class ElectricalWireObject(cell: Cell) : ElectricalObject(cell), WailaEntity, DataEntity {
+class ElectricalWireObject(cell: Cell) : ElectricalObject(cell), WailaEntity, DataContainer {
     override val dataNode = data {
         it.withField(ResistanceField {
             resistance
@@ -138,12 +146,10 @@ class ElectricalWireObject(cell: Cell) : ElectricalObject(cell), WailaEntity, Da
     override fun addComponents(circuit: Circuit) = resistors.register(connections, circuit)
 
     override fun build() {
-        resistors.connect(connections, this)
-
-        // Is there a better way to do this?
-
         // The Wire uses a bundle of 4 resistors. Every resistor's "Internal Pin" is connected to every
-        // other resistor's internal pin. "External Pins" are offered to connection candidates.
+        // other resistor's internal pin. "External Pins" are offered to connection candidates:
+
+        resistors.connect(connections, this)
 
         resistors.forEach { a ->
             resistors.forEach { b ->
@@ -156,13 +162,142 @@ class ElectricalWireObject(cell: Cell) : ElectricalObject(cell), WailaEntity, Da
 }
 
 /**
- * Holds information needed to render a wire.
- * @param meshes The 3D models for every possible wire configuration.
+ * Holds variants of a wire connection model.
+ * @param hubConnectionPlanar Planar variant of junction-hub connection
+ * @param hubConnectionInner Inner variant of junction-hub connection
+ * @param hubConnectionWrapped Wrapped variant of junction-hub connection
+ * @param fullConnectionPlanar Planar variant of junction-center connection
+ * @param fullConnectionInner Inner variant of junction-center connection
+ * @param fullConnectionWrapped Wrapped variant of junction-center connection
+ * */
+class WireConnectionModel(
+    hubConnectionPlanar: PolarModel,
+    hubConnectionInner: PolarModel,
+    hubConnectionWrapped: PolarModel,
+    fullConnectionPlanar: PolarModel,
+    fullConnectionInner: PolarModel,
+    fullConnectionWrapped: PolarModel
+) {
+    /**
+     * Gets the Planar, Inner and Wrapped variants by fullness.
+     * */
+    val variants = mapOf(
+        false to mapOf(
+            CellPartConnectionMode.Planar to hubConnectionPlanar,
+            CellPartConnectionMode.Inner to hubConnectionInner,
+            CellPartConnectionMode.Wrapped to hubConnectionWrapped
+        ),
+        true to mapOf(
+            CellPartConnectionMode.Planar to fullConnectionPlanar,
+            CellPartConnectionMode.Inner to fullConnectionInner,
+            CellPartConnectionMode.Wrapped to fullConnectionWrapped
+        )
+    )
+}
+
+/**
+ * Holds all data required to render a wire connection.
+ * @param hub Hub (junction) model
+ * @param hubHeight The real height of the hub model (for BlockBench, it is **size along Y / 16.0**)
+ * @param connection The connection models
+ * @param connectionHeight The real height of the connection model (for BlockBench, it is **size along Y / 16.0**)
  * */
 data class WireRenderInfo(
-    val meshes: Map<Base6Direction3dMask, PartialModel>,
-    val color: RadiantBodyColor
+    val hub: PartialModel,
+    val hubHeight: Double,
+    val connection: WireConnectionModel,
+    val connectionHeight: Double,
+    val tintColor: ThermalTint
 )
+
+enum class WirePatchType {
+    /**
+     * Patches the chosen face to wrap around the corner of a block by translating vertices forward to create a sleeve
+     * */
+    Wrapped,
+    /**
+     * Patches the chosen face to pack in the corner of a block by translating vertices backward to create a slit
+     * */
+    Inner
+}
+
+class WirePolarPatchModel(modelLocation: ResourceLocation, val patchType: WirePatchType) : PolarModel(modelLocation) {
+    override fun set(bakedModelSource: BakedModel) {
+        super.set(bakedModelSource)
+
+        applyChanges() // the super set the bound model as the field, so we will mutate that in applyChanges
+    }
+
+    private fun applyChanges() {
+        val bakedModelSource = this.bakedModel
+
+        @Suppress("NULLABILITY_MISMATCH_BASED_ON_JAVA_ANNOTATIONS")
+        val quads = bakedModelSource.getQuads(null, null, null).map {
+            if(it.direction == Direction.NORTH || it.direction == Direction.SOUTH) {
+                error("Invalid connection model")
+            }
+
+            it
+        }.associateBy { it.direction }
+
+        val headPositions = let {
+            val results = HashMap<BakedQuad, List<Pair<Int, Vector3d>>>()
+
+            quads.values.forEach { quad ->
+                val positionList = ArrayList<Pair<Int, Vector3d>>(2)
+                val buffer = ByteBuffer.allocate(32)
+                val intView = buffer.asIntBuffer()
+
+                for (i in 0 until 2) {
+                    intView.clear()
+                    intView.put(quad.vertices, i * 8, 8)
+
+                    val vector = Vector3d(
+                        buffer.getFloat(0).toDouble(),
+                        buffer.getFloat(4).toDouble(),
+                        buffer.getFloat(8).toDouble(),
+                    )
+
+                    positionList.add(i to vector)
+                }
+
+                positionList.sortBy { it.second.y }
+
+                results[quad] = positionList
+            }
+
+            results
+        }
+
+        val size = headPositions[quads[Direction.EAST]!!]!!.let {
+            it[1].second.y - it[0].second.y
+        }
+
+        require(size > 0.0)
+
+        fun write(quad: BakedQuad, i: Int, value: Double) {
+            val writer = IntBuffer.wrap(quad.vertices)
+            writer.position(8 * i + 2)
+            writer.put(value.toFloat().toBits())
+        }
+
+        val dz = when(patchType) {
+            WirePatchType.Wrapped -> -size
+            WirePatchType.Inner -> +size
+        }
+
+        quads[Direction.UP]!!.also { roof ->
+            headPositions[roof]!!.forEach { p ->
+                write(roof, p.first, p.second.z + dz)
+            }
+        }
+
+        listOf(Direction.EAST, Direction.WEST).map { quads[it]!! }.forEach { wall ->
+            val hVertex = headPositions[wall]!![1]
+            write(wall, hVertex.first, hVertex.second.z + dz)
+        }
+    }
+}
 
 /**
  * Holds information regarding a registered thermal wire.
@@ -171,7 +306,7 @@ data class WireRenderInfo(
  * */
 data class ThermalWireRegistryObject(
     val thermalProperties: WireThermalProperties,
-    val id: ResourceLocation
+    val id: ResourceLocation,
 )
 
 /**
@@ -183,15 +318,15 @@ data class ThermalWireRegistryObject(
 data class ElectricalWireRegistryObject(
     val thermalProperties: WireThermalProperties,
     val electricalProperties: WireElectricalProperties,
-    val id: ResourceLocation
+    val id: ResourceLocation,
 )
 
 abstract class WireBuilder<C : Cell>(val id: String) {
-    var material = ThermalBodyDef(Material.COPPER, 1.0, cylinderSurfaceArea(1.0, 0.1))
-
+    var material = ThermalBodyDef(Material.COPPER, 1.0, cylinderSurfaceArea(1.0, 0.05))
     var damageOptions = TemperatureExplosionBehaviorOptions()
-    var radiatesLight: Boolean = true
+    var incandescent: Boolean = true
     var size = Vec3(0.1, 0.1, 0.1)
+    var tint = defaultRadiantBodyColor()
 
     private var renderInfo: Supplier<WireRenderInfo>? = null
 
@@ -206,7 +341,7 @@ abstract class WireBuilder<C : Cell>(val id: String) {
 
     protected abstract fun defaultRender() : WireRenderInfo
 
-    protected fun createMaterialProperties() = WireThermalProperties(material, damageOptions, radiatesLight)
+    protected fun createMaterialProperties() = WireThermalProperties(material, damageOptions, incandescent, incandescent)
 
     protected fun registerPart(properties: WireThermalProperties, provider: RegistryObject<CellProvider<C>>) {
         PartRegistry.part(
@@ -216,7 +351,7 @@ abstract class WireBuilder<C : Cell>(val id: String) {
                     id = ix,
                     context = ctx,
                     cellProvider = provider.get(),
-                    radiatesLight,
+                    incandescent,
                     renderInfo = renderInfo ?: Supplier {
                         defaultRender()
                     }
@@ -233,7 +368,13 @@ class ThermalWireBuilder(id: String) : WireBuilder<ThermalWireCell>(id) {
         return ThermalWireRegistryObject(material, cell.id)
     }
 
-    override fun defaultRender() = WireRenderInfo(WireMeshSets.thermalWireMap, defaultRadiantBodyColor())
+    override fun defaultRender() = WireRenderInfo(
+        PartialModels.THERMAL_WIRE_HUB,
+        1.5 / 16.0,
+        PartialModels.THERMAL_WIRE_CONNECTION,
+        1.5 / 16.0,
+        tint
+    )
 }
 
 class ElectricalWireBuilder(id: String) : WireBuilder<ElectricalWireCell>(id) {
@@ -247,19 +388,27 @@ class ElectricalWireBuilder(id: String) : WireBuilder<ElectricalWireCell>(id) {
         return ElectricalWireRegistryObject(material, electrical, cell.id)
     }
 
-    override fun defaultRender() = WireRenderInfo(WireMeshSets.electricalWireMap, defaultRadiantBodyColor())
+    override fun defaultRender() = WireRenderInfo(
+        PartialModels.ELECTRICAL_WIRE_HUB,
+        1.5 / 16.0,
+        PartialModels.ELECTRICAL_WIRE_CONNECTION,
+        1.5 / 16.0,
+        tint
+    )
 }
 
 /**
  * Thermal properties of a wire.
- * @param def The definition used to create the thermal body of the wire.
- * @param damageOptions The damage config, paseed to the [TemperatureExplosionBehavior]
- * @param radiatesLight Indicates whether the wire glows (is incandescent) when heated to high temperatures.
+ * @param thermalDef The definition used to create the thermal body of the wire.
+ * @param damageOptions The damage config, passed to the [TemperatureExplosionBehavior]
+ * @param replicatesInternalTemperature Indicates if the wire should replicate the internal temperature (temperature of the wire's thermal body)
+ * @param replicatesExternalTemperature Indicates if the wire should replicate the external temperatures (temperatures of connected thermal objects)
  * */
 data class WireThermalProperties(
-    val def: ThermalBodyDef,
+    val thermalDef: ThermalBodyDef,
     val damageOptions: TemperatureExplosionBehaviorOptions,
-    val radiatesLight: Boolean
+    val replicatesInternalTemperature: Boolean,
+    val replicatesExternalTemperature: Boolean
 )
 
 /**
@@ -267,38 +416,59 @@ data class WireThermalProperties(
  * @param electricalResistance The electrical resistance.
  * */
 data class WireElectricalProperties(
-    val electricalResistance: Double
+    val electricalResistance: Double,
 )
 
 open class ThermalWireCell(ci: CellCreateInfo, val thermalProperties: WireThermalProperties) : Cell(ci) {
-    @SimObject @Inspect
+    @SimObject
     val thermalWire = ThermalWireObject(this)
 
     @Behavior
     val explosion = TemperatureExplosionBehavior(
-        {thermalWire.thermalBody.temperature.kelvin },
+        thermalWire::readTemperature,
         thermalProperties.damageOptions,
         this
     )
 
+    init {
+        dataNode.pull<TemperatureField>(thermalWire)
+    }
+
+    /**
+     * Replicates the temperature of [thermalWire] if [WireThermalProperties.replicatesInternalTemperature]
+     * */
     @Replicator
-    fun temperatureReplicator(thermalReplicator: TemperatureReplicator) =
-        if (thermalProperties.radiatesLight)
-            ThermalReplicatorBehavior(listOf(thermalWire.thermalBody), thermalReplicator)
+    fun internalTemperatureReplicator(consumer: InternalTemperatureConsumer) =
+        if (thermalProperties.replicatesInternalTemperature)
+            InternalTemperatureReplicatorBehavior(listOf(thermalWire.thermalBody), consumer)
+        else null
+
+    /**
+     * Replicates the external temperatures if [WireThermalProperties.replicatesExternalTemperature]
+     * */
+    @Replicator
+    fun externalTemperatureReplicator(consumer: ExternalTemperatureConsumer) =
+        if(thermalProperties.replicatesExternalTemperature)
+            ExternalTemperatureReplicatorBehavior(this, consumer)
         else null
 }
 
-class ElectricalWireCell(ci: CellCreateInfo, thermalProperties: WireThermalProperties, val electricalProperties: WireElectricalProperties) : ThermalWireCell(ci, thermalProperties) {
-    @SimObject @Inspect
+open class ElectricalWireCell(ci: CellCreateInfo, thermalProperties: WireThermalProperties, val electricalProperties: WireElectricalProperties) : ThermalWireCell(ci, thermalProperties) {
+    @SimObject
     val electricalWire = ElectricalWireObject(this).also {
         it.resistance = electricalProperties.electricalResistance
     }
 
     @Behavior
     val heater = PowerHeatingBehavior(
-        { electricalWire.totalPower },
+        electricalWire::totalPower,
         thermalWire.thermalBody
     )
+
+    init {
+        dataNode.pull<ResistanceField>(electricalWire)
+        dataNode.pull<PowerField>(electricalWire)
+    }
 
     override fun appendWaila(builder: WailaTooltipBuilder, config: IPluginConfig?) {
         builder.text("Connections", connections.size)
@@ -311,65 +481,31 @@ class WirePart<C : Cell>(
     id: ResourceLocation,
     context: PartPlacementInfo,
     cellProvider: CellProvider<C>,
-    val radiatesGameLight: Boolean,
-    val renderInfo: Supplier<WireRenderInfo>?
-) : CellPart<C, WirePartRenderer>(id, context, cellProvider), TemperatureReplicator {
+    val isIncandescent: Boolean,
+    val renderInfo: Supplier<WireRenderInfo>?,
+) : CellPart<C, WireRenderer<*>>(id, context, cellProvider), InternalTemperatureConsumer, ExternalTemperatureConsumer {
     companion object {
         private const val DIRECTIONS = "directions"
-        private const val COLD_LIGHT_LEVEL = 0.0
-        private const val COLD_LIGHT_TEMPERATURE = 500.0
-        private const val HOT_LIGHT_LEVEL = 5.0
-        private const val HOT_LIGHT_TEMPERATURE = 1000.0
     }
 
     override val partSize = bbVec(8.0, 2.0, 8.0)
 
-    private data class Connection(val info: CellPartConnectionInfo, val locator: LocatorSet) {
-        fun toNbt(): CompoundTag {
-            val tag = CompoundTag()
+    @ClientOnly
+    override fun createRenderer(): WireRenderer<*> {
+        val supplier = renderInfo ?: error("Render info is null")
+        val renderInfo = supplier.get()
 
-            tag.putBase6Direction(DIR, info.actualDirActualPlr)
-            tag.putConnectionMode(MODE, info.mode)
-            tag.putLocatorSet(POS, locator)
-
-            return tag
-        }
-
-        companion object {
-            private const val DIR = "dir"
-            private const val MODE = "mode"
-            private const val POS = "pos"
-
-            fun fromNbt(tag: CompoundTag): Connection {
-                return Connection(
-                    CellPartConnectionInfo(
-                        tag.getConnectionMode(MODE),
-                        tag.getDirectionActual(DIR),
-                    ),
-                    tag.getLocatorSet(POS)
-                )
+        return if(isIncandescent) {
+            if(Backend.canUseInstancing(placement.level)) {
+                // Instancing is supported, so use good renderer:
+                IncandescentInstancedWireRenderer(this, renderInfo)
+            } else {
+                // Maybe make batched fallback, not worth investing time into
+                FlatWireRenderer(this, renderInfo)
             }
+        } else {
+            FlatWireRenderer(this, renderInfo)
         }
-    }
-
-    private val connections = HashSet<Connection>()
-    private var temperature = 0.0
-    private var connectionsChanged = true
-
-    override fun createRenderer(): WirePartRenderer {
-        val renderInfo = (renderInfo ?: error("Render info is null")).get()
-        return WirePartRenderer(this, renderInfo.meshes, renderInfo.color, radiatesGameLight)
-    }
-
-    override fun initializeRenderer() {
-        val directionArray = IntArray(connections.size)
-
-        var i = 0
-        connections.forEach {
-            directionArray[i++] = it.info.data
-        }
-
-        renderer.updateDirections(directionArray)
     }
 
     override fun onPlaced() {
@@ -380,249 +516,540 @@ class WirePart<C : Cell>(
         }
     }
 
-    override fun loadFromTag(tag: CompoundTag) {
-        super.loadFromTag(tag)
-
-        loadConnectionsTag(tag)
-    }
-
-    override fun getSaveTag(): CompoundTag? {
-        val tag = super.getSaveTag() ?: return null
-
-        saveConnections(tag)
-
-        return tag
-    }
-
-    override fun getSyncTag(): CompoundTag? {
-        if (!connectionsChanged) {
-            return null
-        }
-
+    /**
+     * Called when sending the connections to the client.
+     * */
+    @ServerOnly
+    override fun getSyncTag(): CompoundTag {
         return CompoundTag().also { tag ->
-            saveConnections(tag)
+            val directionList = ListTag()
+
+            for (it in cell.connections) {
+                val solution = getPartConnectionOrNull(cell.locator, it.locator)
+                    ?: continue
+
+                directionList.add(solution.toNbt())
+            }
+
+            tag.put(DIRECTIONS, directionList)
         }
     }
 
+    /**
+     * Called when the client is loading the connections.
+     * */
+    @ClientOnly
     override fun handleSyncTag(tag: CompoundTag) {
         if (tag.contains(DIRECTIONS)) {
-            loadConnectionsTag(tag)
+            val directionList = tag.get(DIRECTIONS) as ListTag
+            val data = IntArray(directionList.size)
+
+            directionList.forEachIndexed { i, t ->
+                data[i] = PartConnectionDirection.fromNbt(t as CompoundTag).data
+            }
+
+            renderer.updateDirections(data)
         }
-    }
-
-    private fun updateLight() {
-        if (!radiatesGameLight) {
-            return
-        }
-
-        val baseLevel = lerp(
-            COLD_LIGHT_LEVEL,
-            HOT_LIGHT_LEVEL,
-            map(
-                temperature.coerceIn(COLD_LIGHT_TEMPERATURE, HOT_LIGHT_TEMPERATURE),
-                COLD_LIGHT_TEMPERATURE,
-                HOT_LIGHT_TEMPERATURE,
-                0.0,
-                1.0
-            )
-        )
-        // todo
-        //updateBrightness(baseLevel.toInt().coerceIn(0, 15))
-    }
-
-    private fun saveConnections(tag: CompoundTag) {
-        val directionList = ListTag()
-
-        connections.forEach { directionList.add(it.toNbt()) }
-
-        tag.put(DIRECTIONS, directionList)
-    }
-
-    private fun loadConnectionsTag(tag: CompoundTag) {
-        connections.clear()
-
-        val directionList = tag.get(DIRECTIONS) as ListTag
-
-        directionList.forEach {
-            connections.add(Connection.fromNbt(it as CompoundTag))
-        }
-
-        if (placement.level.isClientSide) {
-            initializeRenderer()
-        }
-    }
-
-    override fun onConnected(remoteCell: Cell) {
-        connectionsChanged = true
-
-        val connectionInfo = solveCellPartConnection(cell, remoteCell)
-
-        if (connectionInfo.mode == CellPartConnectionMode.Unknown) {
-            error("Unhandled connection mode")
-        }
-
-        connections.add(Connection(connectionInfo, remoteCell.locator))
-
-        setSyncAndSaveDirty()
-    }
-
-    override fun onDisconnected(remoteCell: Cell) {
-        if(cell.isBeingRemoved) {
-            // Don't send updates if we're being removed
-            return
-        }
-
-        connectionsChanged = true
-        connections.removeIf { it.locator == remoteCell.locator }
-        setSyncAndSaveDirty()
-    }
-
-    override fun onCellAcquired() {
-        startGameLightUpdates()
     }
 
     @ServerOnly
-    private fun startGameLightUpdates() {
-        if (!isAlive) {
+    override fun getInitialSyncTag() = getSyncTag()
+
+    @ClientOnly
+    override fun loadInitialSyncTag(tag: CompoundTag) = handleSyncTag(tag)
+
+    @ServerOnly
+    override fun onConnected(remoteCell: Cell) {
+        setSyncDirty()
+    }
+
+    @ServerOnly
+    override fun onDisconnected(remoteCell: Cell) {
+        if(!cell.isBeingRemoved) {
+            // Don't send updates if we're being removed
+            setSyncDirty()
             return
         }
-
-        updateLight()
-
-        schedulePre(20, this::startGameLightUpdates)
     }
 
+    @ClientOnly
     override fun registerPackets(builder: PacketHandlerBuilder) {
-        builder.withHandler<Sync> {
-            renderer.updateTemperature(it.temperature)
+        if(isIncandescent) {
+            // The solution to prevent unhandled packets would be to send some render capabilities info
+            // from client to server. Maybe in the future
+            builder.withHandler<InternalTemperaturePacket> {
+                (this.renderer as? InternalTemperatureConsumerWire)?.updateInternalTemperature(it.temperature)
+            }
+            builder.withHandler<ExternalTemperaturesPacket> {
+                (this.renderer as? ExternalTemperatureConsumerWire)?.updateExternalTemperatures(it.temperatures)
+            }
         }
     }
 
-    override fun streamTemperatureChanges(bodies: List<ThermalBody>, dirty: List<ThermalBody>) {
-        sendBulkPacket(Sync(bodies.first().temperatureKelvin))
+    @ServerOnly
+    override fun onInternalTemperatureChanges(dirty: List<ThermalBody>) {
+        sendBulkPacket(InternalTemperaturePacket(dirty.first().temperatureKelvin))
+    }
+
+    /**
+     * Receives the temperatures of neighbor cells, from the simulation thread.
+     * The cell neighbor cache is updated with newly discovered thermal objects, the updates are organised and then sent to the client with [ExternalTemperaturesPacket]
+     * */
+    @ServerOnly @OnSimulationThread
+    override fun onExternalTemperatureChanges(removed: HashSet<ThermalObject>, dirty: HashMap<ThermalObject, Double>) {
+        val temperatures = Int2DoubleOpenHashMap()
+
+        for ((thermalObject, temperature) in dirty) {
+            val solution = getPartConnectionOrNull(cell.locator, thermalObject.cell.locator)
+                ?: continue
+
+            temperatures.put(solution.data, temperature)
+        }
+
+        sendBulkPacket(ExternalTemperaturesPacket(temperatures))
+    }
+
+    /**
+     * Sends the latest internal temperature (from reading the cell's temperature field) and the latest neighbor temperatures (from [cellNeighborCache])
+     * */
+    @ServerOnly
+    override fun onSyncSuggested() {
+        if(isIncandescent) {
+            cell.data.getOrNull<TemperatureField>()?.also {
+                sendBulkPacket(InternalTemperaturePacket(it.readKelvin()))
+            }
+
+            val externalTemperatures = Int2DoubleOpenHashMap()
+
+            ExternalTemperatureReplicatorBehavior.scanNeighbors(cell) { remoteThermalObject, field ->
+                val solution = getPartConnectionOrNull(this.cell.locator, remoteThermalObject.cell.locator)
+                    ?: return@scanNeighbors
+
+                externalTemperatures.put(solution.data, field.readKelvin())
+            }
+
+           if(externalTemperatures.isNotEmpty()) {
+               sendBulkPacket(ExternalTemperaturesPacket(externalTemperatures))
+           }
+        }
     }
 
     @Serializable
-    private data class Sync(val temperature: Double)
+    private data class InternalTemperaturePacket(val temperature: Double)
+
+    @Serializable
+    private data class ExternalTemperaturesPacket(val temperatures: Map<Int, Double>)
 }
 
-object WireMeshSets {
-    // todo replace when models are available
-
-    val electricalWireMap = mapOf(
-        (Base6Direction3dMask.EMPTY) to PartialModels.ELECTRICAL_WIRE_CROSSING_EMPTY,
-        (Base6Direction3dMask.FRONT) to PartialModels.ELECTRICAL_WIRE_CROSSING_SINGLE_WIRE,
-        (Base6Direction3dMask.FRONT + Base6Direction3dMask.BACK) to PartialModels.ELECTRICAL_WIRE_STRAIGHT,
-        (Base6Direction3dMask.FRONT + Base6Direction3dMask.LEFT) to PartialModels.ELECTRICAL_WIRE_CORNER,
-        (Base6Direction3dMask.LEFT + Base6Direction3dMask.FRONT + Base6Direction3dMask.RIGHT) to PartialModels.ELECTRICAL_WIRE_CROSSING,
-        (Base6Direction3dMask.HORIZONTALS) to PartialModels.ELECTRICAL_WIRE_CROSSING_FULL
-    )
-
-    val thermalWireMap = mapOf(
-        (Base6Direction3dMask.EMPTY) to PartialModels.THERMAL_WIRE_CROSSING_EMPTY,
-        (Base6Direction3dMask.FRONT) to PartialModels.THERMAL_WIRE_CROSSING_SINGLE_WIRE,
-        (Base6Direction3dMask.FRONT + Base6Direction3dMask.BACK) to PartialModels.THERMAL_WIRE_STRAIGHT,
-        (Base6Direction3dMask.FRONT + Base6Direction3dMask.LEFT) to PartialModels.THERMAL_WIRE_CORNER,
-        (Base6Direction3dMask.LEFT + Base6Direction3dMask.FRONT + Base6Direction3dMask.RIGHT) to PartialModels.THERMAL_WIRE_CROSSING,
-        (Base6Direction3dMask.HORIZONTALS) to PartialModels.THERMAL_WIRE_CROSSING_FULL
-    )
+/**
+ * Trait for a wire renderer that displays the **Internal Temperature** (temperature of the cell being rendered)
+ * */
+interface InternalTemperatureConsumerWire {
+    /**
+     * Called when the core temperature has changed.
+     * */
+    fun updateInternalTemperature(temperature: Double)
 }
 
-class WirePartRenderer(
+/**
+ * Trait for a wire renderer that displays the **External Temperatures** (temperatures at the junction with other cells)
+ * */
+interface ExternalTemperatureConsumerWire {
+    /**
+     * Called when junction temperatures have changed.
+     * */
+    fun updateExternalTemperatures(temperatures: Map<Int, Double>)
+}
+
+abstract class WireRenderer<I>(
     val part: WirePart<*>,
-    val meshes: Map<Base6Direction3dMask, PartialModel>,
-    val radiantColor: RadiantBodyColor,
-    val radiates: Boolean
+    val renderInfo: WireRenderInfo
 ) : PartRenderer() {
-    private var modelInstance: ModelData? = null
-    private var directionsUpdate = AtomicUpdate<IntArray>()
-    private val temperatureUpdate = AtomicUpdate<Double>()
+    private var connectionsUpdate = AtomicUpdate<IntArray>()
+    protected var hubInstance: ModelData? = null
+    protected var connectionInstances = Int2ObjectOpenHashMap<I>(4)
 
-    fun updateTemperature(value: Double) = temperatureUpdate.setLatest(value)
+    protected fun putUniqueConnection(key: Int, instance: I) {
+        require(connectionInstances.put(key, instance) == null) {
+            "Duplicate $this wire renderer direction"
+        }
+    }
 
-    fun updateDirections(directions: IntArray) = directionsUpdate.setLatest(directions)
+    protected fun<T : Transform<T>> T.poseHub(): T =
+        this.translateNormal(part.placement.face, -renderInfo.hubHeight * (2f / 3f))
+        .translate(0.5, 0.0, 0.5)
+        .translate(part.worldBoundingBox.center)
+        .multiply(
+            part.placement.face.rotation.toJoml()
+                .mul(part.facingRotation)
+            .toMinecraft()
+        )
+        .translate(-0.5, 0.0, -0.5)
+
+    protected fun<T : Transform<T>> T.poseConnection(info: PartConnectionDirection): T =
+        this.translateNormal(part.placement.face, -renderInfo.connectionHeight * (2f / 3f))
+        .translate(0.5, 0.0, 0.5)
+        .translate(part.worldBoundingBox.center)
+        .multiply(
+            part.placement.face.rotation.toJoml()
+                .mul(part.facingRotation)
+                .rotateY(
+                    when (info.directionPart) {
+                        Base6Direction3d.Front -> 0.0
+                        Base6Direction3d.Back -> PI
+                        Base6Direction3d.Left -> PI / 2.0
+                        Base6Direction3d.Right -> -PI / 2.0
+                        else -> error("Invalid wire direction ${info.directionPart}")
+                    }.toFloat()
+                )
+            .toMinecraft()
+        )
+        .translate(-0.5, 0.0, -0.5)
+
+    fun updateDirections(partConnections: IntArray) = connectionsUpdate.setLatest(partConnections)
+
+    // We don't do any initialization here, but we re-create the models because it gets called when the pipeline changes.s
+    override fun setupRendering() {
+        // Re-load models:
+        applyConnectionData(connectionInstances.keys.toIntArray())
+    }
 
     override fun beginFrame() {
-        selectModel()
-        setTemperatureTint()
-    }
-
-    private fun selectModel() {
-        directionsUpdate.consume { connections ->
-            var mask = Base6Direction3dMask.EMPTY
-
-            connections.forEach { connection ->
-                mask += CellPartConnectionInfo(connection).actualDirActualPlr
-            }
-
-            // Here, we search for the correct configuration by just rotating all the cases we know.
-            for ((mappingMask, model) in meshes) {
-                val match = mappingMask.matchCounterClockWise(mask)
-
-                if (match == -1) {
-                    continue
-                }
-
-                val currentModel = this.modelInstance
-
-                val tint = if(currentModel != null) {
-                    Color(currentModel.r.toInt(), currentModel.g.toInt(), currentModel.b.toInt(), currentModel.a.toInt())
-                } else {
-                    null
-                }
-
-                createInstance(model, Quaternionf(AxisAngle4f((PI / 2.0 * match).toFloat(), Vector3f(0.0f, 1.0f, 0.0f))))
-
-                if(radiates && tint != null) {
-                    this.modelInstance?.setColor(tint)
-                }
-
-                return@consume
-            }
-
-            LOG.error("Wire did not handle cases: $mask")
+        connectionsUpdate.consume { directions ->
+            applyConnectionData(directions)
         }
     }
 
-    private fun setTemperatureTint() {
-        if (!radiates) {
-            return
-        }
+    /**
+     * Applies the received directions by creating a hub instance and connection instances.
+     * @param partConnections An array of [PartConnectionDirection]. If empty, no connection instances will be created.
+     * */
+    protected abstract fun applyConnectionData(partConnections: IntArray)
 
-        temperatureUpdate.consume {
-            modelInstance?.setColor(radiantColor.evaluate(Temperature(it)))
+    override fun relight(source: RelightSource) {
+        multipart.relightModels(hubInstance)
+
+        for (instance in connectionInstances.values) {
+            relightConnection(instance, source)
         }
     }
 
-    private fun createInstance(model: PartialModel, rotation: Quaternionf) {
-        modelInstance?.delete()
+    protected abstract fun relightConnection(instance: I, source: RelightSource)
 
-        val size = 1.5 / 16
+    override fun remove() {
+        deleteInstances()
+    }
 
-        modelInstance = multipart.materialManager
+    protected open fun deleteInstances() {
+        hubInstance?.delete()
+        hubInstance = null
+
+        for (instance in connectionInstances.values) {
+            deleteConnection(instance)
+        }
+
+        connectionInstances.clear()
+    }
+
+    protected abstract fun deleteConnection(instance: I)
+
+    companion object {
+        fun checkIsFilledVariant(connections: IntArray) = if (connections.size == 2) {
+            // Check for full connection:
+
+            val c1 = PartConnectionDirection(connections[0])
+            val c2 = PartConnectionDirection(connections[1])
+
+            c1.directionPart == c2.directionPart.opposite
+        } else false
+    }
+}
+
+/**
+ * Wire renderer without any temperature visualization.
+ * To be used for insulated wires or as fallback.
+ * */
+class FlatWireRenderer(
+    part: WirePart<*>,
+    renderInfo: WireRenderInfo
+) : WireRenderer<ModelData>(part, renderInfo) {
+    private fun createHubInstance(): ModelData =
+        multipart.materialManager
+            .defaultSolid()
+            .material(Materials.TRANSFORMED)
+            .getModel(renderInfo.hub)
+            .createInstance()
+            .loadIdentity()
+            .poseHub()
+
+    private fun createConnectionInstance(info: PartConnectionDirection, model: PolarModel) =
+        multipart.materialManager
             .defaultSolid()
             .material(Materials.TRANSFORMED)
             .getModel(model)
             .createInstance()
             .loadIdentity()
-            .translate(part.placement.face.opposite.normal.toVec3() * size)
-            .blockCenter()
-            .translate(part.worldBoundingBox.center)
-            .multiply(part.placement.face.rotation.toJoml().mul(part.facingRotation).mul(rotation).toMinecraft())
-            .zeroCenter()
+            .poseConnection(info)
 
-        multipart.relightPart(part)
-    }
+    override fun applyConnectionData(partConnections: IntArray) {
+        // We can afford to be wasteful and always re-create everything because this happens only when wires
+        // are placed and removed.
+        deleteInstances()
 
-    override fun getModelsToRelight(): List<FlatLit<*>> {
-        if (modelInstance != null) {
-            return listOf(modelInstance!!)
+        val isFilledVariant = checkIsFilledVariant(partConnections)
+
+        if (!isFilledVariant) {
+            // If not filled, it means we need a hub (junction):
+            hubInstance = createHubInstance()
         }
 
-        return listOf()
+        val variants = renderInfo.connection.variants[isFilledVariant]!!
+
+        for (connection in partConnections) {
+            val info = PartConnectionDirection(connection)
+            val connectionInstance = createConnectionInstance(info, variants[info.mode]!!)
+            putUniqueConnection(info.data, connectionInstance)
+        }
+
+        // We re-created the models, so we need to re-upload lights:
+        relight(RelightSource.Setup)
     }
 
-    override fun remove() {
-        modelInstance?.delete()
+    override fun relightConnection(instance: ModelData, source: RelightSource) {
+        multipart.relightModels(instance)
+    }
+
+    override fun deleteConnection(instance: ModelData) {
+        instance.delete()
+    }
+}
+
+/**
+ * Wire renderer that implements [InternalTemperatureConsumerWire] and [ExternalTemperatureConsumerWire]. It depends on instanced rendering.
+ * Terminology:
+ *  - Core (Internal) Temperature - the temperature of the game object this renderer is bound to.
+ *  - External Temperatures - the temperatures of the game objects adjacent to the wire this renderer is bound to.
+ *
+ * Technique:
+ *  - The hub is tinted using our core temperature
+ *  - Connections are implemented as [PolarModel]s
+ *  1. The poles visually adjacent to our hub are tinted with the color of our hub
+ *  2. The pole of a connection that is adjacent to another thermal object is tinted using a geometric rule:
+ *      - The desired look is basically like 1 big connection that joins the two hubs
+ *      - The poles adjacent to the two hubs are tinted with the color of the respective hubs (1)
+ *      - [PolarData] uses linear fragment interpolation, so the interpolated color at the "middle" of the imaginary big connection can be applied by setting this color at the adjacent external poles of the two actual connections.
+ *          This rule doesn't behave exactly as expected if the remote game object is not a wire, but it is fine for now.
+ *
+ * */
+class IncandescentInstancedWireRenderer(
+    part: WirePart<*>,
+    renderInfo: WireRenderInfo
+) : WireRenderer<PolarData>(part, renderInfo), InternalTemperatureConsumerWire, ExternalTemperatureConsumerWire {
+    private val internalTemperatureUpdates = AtomicUpdate<Double>()
+    private val externalTemperatureUpdates = AtomicUpdate<Map<Int, Double>>()
+    private var internalTemperature = 0.0
+    private val externalTemperatures = Int2DoubleOpenHashMap()
+
+    override fun relightConnection(instance: PolarData, source: RelightSource) {
+        instance.setSkyLight(multipart.readSkyBrightness())
+        uploadCoreData()
+        uploadRemoteData(externalTemperatures)
+    }
+
+    override fun deleteConnection(instance: PolarData) {
+        instance.delete()
+    }
+
+    /**
+     * Evaluates the color as R, G, B and light override.
+     * @param temperature The temperature of the material.
+     * @param light The lower bound of the light value [[0, 15]]
+     * @return The tint color to be rendered.
+     * */
+    private fun evaluateRGBL(temperature: Double, light: Double = 0.0): Color {
+        val rgb = renderInfo.tintColor.evaluate(temperature)
+
+        return Color(
+            rgb.red,
+            rgb.green,
+            rgb.blue,
+            max(
+                map(
+                    light,
+                    0.0,
+                    15.0,
+                    0.0,
+                    255.0
+                ),
+                map(
+                    temperature,
+                    renderInfo.tintColor.coldTemperature.kelvin,
+                    renderInfo.tintColor.hotTemperature.kelvin,
+                    0.0,
+                    255.0
+                )
+            ).toInt().coerceIn(0, 255)
+        )
+    }
+
+    private fun createHubInstance(): ModelData =
+        multipart.materialManager
+            .defaultSolid()
+            .material(ModelLightOverrideType)
+            .getModel(renderInfo.hub)
+            .createInstance()
+            .loadIdentity()
+            .poseHub()
+            .also {
+                it.setColor(colorF(1.0f, 1.0f, 1.0f, 0.0f))
+            }
+
+    private fun createConnectionInstance(info: PartConnectionDirection, model: PolarModel) =
+        multipart.materialManager
+            .defaultSolid()
+            .material(PolarType)
+            .getModel(model)
+            .createInstance()
+            .loadIdentity()
+            .poseConnection(info)
+            .also {
+                it.setColor1(colorF(1.0f, 1.0f, 1.0f, 0.0f))
+                it.setColor2(colorF(1.0f, 1.0f, 1.0f, 0.0f))
+            }
+
+    /**
+     * Enqueues an update for the core temperature (the actual temperature of this thermal object)
+     * */
+    override fun updateInternalTemperature(temperature: Double) {
+        internalTemperatureUpdates.setLatest(temperature)
+    }
+
+    /**
+     * Enqueues an update for the external temperatures (the temperatures of neighbor thermal objects)
+     * */
+    override fun updateExternalTemperatures(temperatures: Map<Int, Double>) {
+        externalTemperatureUpdates.setLatest(temperatures)
+    }
+
+    override fun applyConnectionData(partConnections: IntArray) {
+        deleteInstances()
+
+        val isFilledVariant = checkIsFilledVariant(partConnections)
+
+        if (!isFilledVariant) {
+            // If not filled, it means we need a hub (junction):
+            hubInstance = createHubInstance()
+        }
+
+        val models = renderInfo.connection.variants[isFilledVariant]!!
+        val removedNeighbors = IntOpenHashSet(externalTemperatures.keys)
+
+        for (connection in partConnections) {
+            val info = PartConnectionDirection(connection)
+
+            putUniqueConnection(
+                info.data,
+                createConnectionInstance(info, models[info.mode]!!)
+            )
+
+            // Mark the connection as still existing:
+            removedNeighbors.remove(info.data)
+        }
+
+        // Remove cached temperatures of objects that are not connected.
+        // Doing this instead of clearing might prevent some micro-flickers.
+        if(removedNeighbors.isNotEmpty()) {
+            val iterator = removedNeighbors.intIterator()
+            while(iterator.hasNext()) {
+                externalTemperatures.remove(iterator.nextInt())
+            }
+        }
+
+        // We re-created the models, so we need to re-upload lights:
+        relight(RelightSource.Setup)
+        // Re-upload saved core temperature:
+        uploadCoreData()
+        // Re-upload saved external temperatures
+        uploadRemoteData(externalTemperatures)
+    }
+
+    override fun beginFrame() {
+        super.beginFrame()
+
+        internalTemperatureUpdates.consume { internalTemperature ->
+            this.internalTemperature = internalTemperature
+            uploadCoreData()
+        }
+
+        externalTemperatureUpdates.consume { updates ->
+            this.externalTemperatures.putAll(updates)
+            uploadRemoteData(updates)
+        }
+    }
+
+    private fun setExteriorPoleColor(instance: PolarData, core: Color, pole: Color) {
+        instance.setColor1(colorLerp(core, pole, 0.5f))
+    }
+
+    private fun setExteriorPoleColor(instance: PolarData, coreColor: Color, remoteInfo: Int, remoteTemperature: Double) {
+        setExteriorPoleColor(instance, coreColor, evaluateRemoteColor(remoteInfo, remoteTemperature))
+    }
+
+    /**
+     * Evaluates the color of the hub and hub-connection junctions.
+     * */
+    private fun evaluateCoreColor() : Color {
+        val coreLightLevel = multipart.readBlockBrightness().toDouble()
+
+        return evaluateRGBL(internalTemperature, coreLightLevel)
+    }
+
+    /**
+     * Evaluates the color at the junction between this wire and the remote wire at [remoteInfo], with the [remoteTemperature].
+     * */
+    private fun evaluateRemoteColor(remoteInfo: Int, remoteTemperature: Double) : Color {
+        val remotePositionWorld = part.placement.position + PartConnectionDirection(remoteInfo).getIncrement(
+            part.placement.horizontalFacing,
+            part.placement.face
+        )
+
+        val remoteLightLevel = multipart.world.getBrightness(
+            LightLayer.BLOCK,
+            remotePositionWorld
+        )
+
+        return evaluateRGBL(remoteTemperature, remoteLightLevel.toDouble())
+    }
+
+    /**
+     * Updates the core color (the tint of the hub), based on the [internalTemperature].
+     * Also adjusts the core contact colors for all [connectionInstances]
+     * */
+    private fun uploadCoreData() {
+        val coreColor = evaluateCoreColor()
+
+        hubInstance?.setColor(coreColor)
+
+        for ((remoteInfo, instance) in connectionInstances) {
+            instance.setColor2(coreColor)
+
+            // Since the pole color depends on core color, we need to update that as well:
+            setExteriorPoleColor(instance, coreColor, remoteInfo, externalTemperatures.get(remoteInfo))
+        }
+    }
+
+    /**
+     * Updates the remote/external colors (the tint of the outer poles of the [connectionInstances]),
+     * for the instances corresponding to entries in [temperatures].
+     * */
+    private fun uploadRemoteData(temperatures: Map<Int, Double>) {
+        val coreColor = evaluateCoreColor()
+
+        for ((remoteInfo, remoteTemperature) in temperatures) {
+            val instances = connectionInstances.get(remoteInfo)
+                ?: continue
+
+            setExteriorPoleColor(instances, coreColor, remoteInfo, remoteTemperature)
+        }
     }
 }
