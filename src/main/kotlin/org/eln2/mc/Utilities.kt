@@ -34,7 +34,10 @@ import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.random.Random
 import kotlin.system.measureNanoTime
+
+fun randomFloat(min: Float, max: Float) = map(Random.nextFloat(), 0f, 1f, min, max)
 
 fun <T> all(vararg items: T, condition: (T) -> Boolean) = items.asList().all(condition)
 

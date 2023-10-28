@@ -9,6 +9,7 @@ import net.minecraft.core.Vec3i
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.level.ServerLevel
+import net.minecraft.util.RandomSource
 import net.minecraft.world.InteractionHand
 import net.minecraft.world.InteractionResult
 import net.minecraft.world.entity.player.Player
@@ -40,6 +41,7 @@ import org.joml.Quaternionf
 import org.joml.Vector3f
 import java.util.*
 import kotlin.math.PI
+import net.minecraft.world.level.block.Block
 
 /**
  * Encapsulates all the data associated with a part's placement.
@@ -950,10 +952,21 @@ fun getPartConnection(
 /**
  * Represents a part that can be ticked by the multipart block entity.
  * @see MultipartBlockEntity.addTicker
- * @see MultipartBlockEntity.removeTicker
+ * @see MultipartBlockEntity.hasTicker
+ * @see MultipartBlockEntity.markRemoveTicker
  * */
 interface TickablePart {
     fun tick()
+}
+
+/**
+ * Represents a part that receives block animation ticks ([Block.animateTick]).
+ * @see MultipartBlockEntity.addAnimated
+ * @see MultipartBlockEntity.hasAnimated
+ * @see MultipartBlockEntity.markRemoveAnimated
+ * */
+interface AnimatedPart {
+    fun animationTick(random: RandomSource)
 }
 
 enum class ItemPersistentPartLoadOrder {

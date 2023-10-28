@@ -19,6 +19,8 @@ import net.minecraft.server.level.ServerLevel
 import net.minecraft.server.level.ServerPlayer
 import net.minecraft.sounds.SoundEvent
 import net.minecraft.sounds.SoundSource
+import net.minecraft.util.Mth
+import net.minecraft.util.RandomSource
 import net.minecraft.world.InteractionResult
 import net.minecraft.world.MenuProvider
 import net.minecraft.world.entity.Entity
@@ -1053,3 +1055,5 @@ fun IntSet.minInt(): Int {
 
     return result
 }
+
+fun RandomSource.nextDouble(min: Double, max: Double) = Mth.nextDouble(this, min, max)

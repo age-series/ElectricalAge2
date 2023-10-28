@@ -13,6 +13,7 @@ import net.minecraft.network.protocol.game.ClientGamePacketListener
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.level.ServerLevel
+import net.minecraft.util.RandomSource
 import net.minecraft.world.InteractionHand
 import net.minecraft.world.InteractionResult
 import net.minecraft.world.entity.Entity
@@ -275,8 +276,14 @@ class MultipartBlock : BaseEntityBlock(
         return createTickerHelper(
             pBlockEntityType,
             BlockRegistry.MULTIPART_BLOCK_ENTITY.get(),
-            MultipartBlockEntity.Companion::blockTick
+            MultipartBlockEntity.Companion::serverTick
         )
+    }
+
+    override fun animateTick(pState: BlockState, pLevel: Level, pPos: BlockPos, pRandom: RandomSource) {
+        val entity = pLevel.getBlockEntity(pPos) as? MultipartBlockEntity
+
+        entity?.animateTick(pRandom)
     }
 
     override fun getCloneItemStack(
@@ -328,11 +335,13 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
     // Used for disk loading:
     private var savedTag: CompoundTag? = null
 
-    private var tickingParts = ArrayList<TickablePart>()
+    private var tickingParts = HashSet<TickablePart>()
+    private var animatedParts = HashSet<AnimatedPart>()
 
     // This is useful, because a part might remove its ticker whilst being ticked
     // (which would cause our issues with iteration)
-    private var tickingRemoveQueue = ArrayDeque<TickablePart>()
+    private var tickingRemoveQueue = HashSet<TickablePart>()
+    private var animationRemoveQueue = HashSet<AnimatedPart>()
 
     val isEmpty get() = parts.isEmpty()
 
@@ -357,6 +366,10 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
         dataNode.children.removeIf { it == result.dataNode }
 
         tickingParts.removeIf { it == result }
+
+        if(level?.isClientSide != false) {
+            animatedParts.removeIf { it == result }
+        }
 
         result.onRemoved()
 
@@ -405,7 +418,7 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
         face: Direction,
         provider: PartProvider,
         saveTag: CompoundTag? = null,
-        orientation: Direction? = null
+        orientation: Direction? = null,
     ): Boolean {
         if(orientation != null &&! orientation.isHorizontal()) {
             error("Invalid orientation $orientation")
@@ -1118,7 +1131,7 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
 
     }
 
-    fun addTicker(part: TickablePart) {
+    fun addTicker(part: TickablePart) : Boolean {
         if (level == null) {
             error("Illegal ticker add before level is available")
         }
@@ -1127,29 +1140,62 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
             error("Cannot register ticker for a part that is not added!")
         }
 
-        if (tickingParts.contains(part)) {
-            error("Duplicate add ticking part $part")
+        val result = tickingParts.add(part)
+
+        if(!result) {
+            return false
         }
 
-        tickingParts.add(part)
-
-        if (!worldLoaded) {
-            return
+        if (worldLoaded) {
+            val chunk = level!!.getChunkAt(pos)
+            chunk.updateBlockEntityTicker(this)
         }
 
-        val chunk = level!!.getChunkAt(pos)
-
-        chunk.updateBlockEntityTicker(this)
+        return true
     }
 
-    fun removeTicker(part: TickablePart) {
-        tickingRemoveQueue.add(part)
+    fun hasTicker(part: TickablePart) = tickingParts.contains(part)
+
+    fun markRemoveTicker(part: TickablePart) = tickingRemoveQueue.add(part)
+
+    @ClientOnly
+    fun hasAnimated(part: AnimatedPart) : Boolean {
+        requireIsOnRenderThread { "Tried to check if part $part has animate ticker on ${Thread.currentThread()}" }
+        return animatedParts.contains(part)
+    }
+
+    @ClientOnly
+    fun addAnimated(part: AnimatedPart) : Boolean {
+        requireIsOnRenderThread { "Tried to add part $part as animate on ${Thread.currentThread()}" }
+
+        if (!parts.values.any { it == part }) {
+            error("Cannot register animate for a part that is not added!")
+        }
+
+        return animatedParts.add(part)
+    }
+
+    fun markRemoveAnimated(part: AnimatedPart) : Boolean {
+        requireIsOnRenderThread { "Tried to remove part $part as animate on ${Thread.currentThread()}" }
+        return animationRemoveQueue.add(part)
+    }
+
+    fun animateTick(randomSource: RandomSource) {
+        for(part in animatedParts) {
+            part.animationTick(randomSource)
+        }
+
+        for (removed in animationRemoveQueue) {
+            animatedParts.remove(removed)
+        }
+
+        animationRemoveQueue.clear()
     }
 
     val needsTicks get() = tickingParts.isNotEmpty()
 
     companion object {
-        fun <T : BlockEntity> blockTick(level: Level?, pos: BlockPos?, state: BlockState?, entity: T?) {
+        fun <T : BlockEntity> serverTick(level: Level?, pos: BlockPos?, state: BlockState?, entity: T?) {
             if (entity !is MultipartBlockEntity) {
                 LOG.error("Block tick entity is not a multipart!")
                 return
@@ -1184,13 +1230,11 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
 
             entity.tickingParts.forEach { it.tick() }
 
-            while (entity.tickingRemoveQueue.isNotEmpty()) {
-                val removed = entity.tickingRemoveQueue.removeFirst()
-
-                if (!entity.tickingParts.remove(removed)) {
-                    error("Tried to remove part ticker $removed that was not registered")
-                }
+            for(removed in entity.tickingRemoveQueue) {
+                entity.tickingParts.remove(removed)
             }
+
+            entity.tickingRemoveQueue.clear()
         }
     }
 

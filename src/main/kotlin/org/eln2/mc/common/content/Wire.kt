@@ -16,9 +16,11 @@ import mcp.mobius.waila.api.IPluginConfig
 import net.minecraft.client.renderer.block.model.BakedQuad
 import net.minecraft.client.resources.model.BakedModel
 import net.minecraft.core.Direction
+import net.minecraft.core.particles.ParticleTypes
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.nbt.ListTag
 import net.minecraft.resources.ResourceLocation
+import net.minecraft.util.RandomSource
 import net.minecraft.world.level.LightLayer
 import net.minecraft.world.phys.Vec3
 import net.minecraftforge.api.distmarker.Dist
@@ -176,7 +178,7 @@ class WireConnectionModel(
     hubConnectionWrapped: PolarModel,
     fullConnectionPlanar: PolarModel,
     fullConnectionInner: PolarModel,
-    fullConnectionWrapped: PolarModel
+    fullConnectionWrapped: PolarModel,
 ) {
     /**
      * Gets the Planar, Inner and Wrapped variants by fullness.
@@ -207,7 +209,7 @@ data class WireRenderInfo(
     val hubHeight: Double,
     val connection: WireConnectionModel,
     val connectionHeight: Double,
-    val tintColor: ThermalTint
+    val tintColor: ThermalTint,
 )
 
 enum class WirePatchType {
@@ -324,10 +326,11 @@ data class ElectricalWireRegistryObject(
 abstract class WireBuilder<C : Cell>(val id: String) {
     var material = ThermalBodyDef(Material.COPPER, 1.0, cylinderSurfaceArea(1.0, 0.05))
     var damageOptions = TemperatureExplosionBehaviorOptions()
-    var incandescent: Boolean = true
+    var replicatesInternalTemperature = true
+    var isIncandescent: Boolean = true
     var size = Vec3(0.1, 0.1, 0.1)
     var tint = defaultRadiantBodyColor()
-
+    var smokeTemperature: Double? = null
     private var renderInfo: Supplier<WireRenderInfo>? = null
 
     fun renderer(supplier: Supplier<WireRenderInfo>) {
@@ -341,7 +344,7 @@ abstract class WireBuilder<C : Cell>(val id: String) {
 
     protected abstract fun defaultRender() : WireRenderInfo
 
-    protected fun createMaterialProperties() = WireThermalProperties(material, damageOptions, incandescent, incandescent)
+    protected fun createMaterialProperties() = WireThermalProperties(material, damageOptions, replicatesInternalTemperature, isIncandescent)
 
     protected fun registerPart(properties: WireThermalProperties, provider: RegistryObject<CellProvider<C>>) {
         PartRegistry.part(
@@ -351,12 +354,14 @@ abstract class WireBuilder<C : Cell>(val id: String) {
                     id = ix,
                     context = ctx,
                     cellProvider = provider.get(),
-                    incandescent,
+                    isIncandescent,
+                    smokeTemperature ?: (!properties.damageOptions.temperatureThreshold * 0.9),
                     renderInfo = renderInfo ?: Supplier {
                         defaultRender()
                     }
                 )
-            }, size))
+            }, size)
+        )
     }
 }
 
@@ -408,7 +413,7 @@ data class WireThermalProperties(
     val thermalDef: ThermalBodyDef,
     val damageOptions: TemperatureExplosionBehaviorOptions,
     val replicatesInternalTemperature: Boolean,
-    val replicatesExternalTemperature: Boolean
+    val replicatesExternalTemperature: Boolean,
 )
 
 /**
@@ -482,8 +487,9 @@ class WirePart<C : Cell>(
     context: PartPlacementInfo,
     cellProvider: CellProvider<C>,
     val isIncandescent: Boolean,
+    val smokeTemperature: Double,
     val renderInfo: Supplier<WireRenderInfo>?,
-) : CellPart<C, WireRenderer<*>>(id, context, cellProvider), InternalTemperatureConsumer, ExternalTemperatureConsumer {
+) : CellPart<C, WireRenderer<*>>(id, context, cellProvider), InternalTemperatureConsumer, ExternalTemperatureConsumer, AnimatedPart {
     companion object {
         private const val DIRECTIONS = "directions"
     }
@@ -574,12 +580,22 @@ class WirePart<C : Cell>(
 
     @ClientOnly
     override fun registerPackets(builder: PacketHandlerBuilder) {
+        builder.withHandler<InternalTemperaturePacket> {
+            if(isIncandescent) {
+                (this.renderer as? InternalTemperatureConsumerWire)?.updateInternalTemperature(it.temperature)
+            }
+
+            if(it.temperature >= smokeTemperature) {
+                placement.multipart.addAnimated(this)
+            }
+            else {
+                placement.multipart.markRemoveAnimated(this)
+            }
+        }
+
         if(isIncandescent) {
             // The solution to prevent unhandled packets would be to send some render capabilities info
             // from client to server. Maybe in the future
-            builder.withHandler<InternalTemperaturePacket> {
-                (this.renderer as? InternalTemperatureConsumerWire)?.updateInternalTemperature(it.temperature)
-            }
             builder.withHandler<ExternalTemperaturesPacket> {
                 (this.renderer as? ExternalTemperatureConsumerWire)?.updateExternalTemperatures(it.temperatures)
             }
@@ -639,6 +655,20 @@ class WirePart<C : Cell>(
 
     @Serializable
     private data class ExternalTemperaturesPacket(val temperatures: Map<Int, Double>)
+
+    override fun animationTick(random: RandomSource) {
+        repeat(5) {
+            placement.level.addParticle(
+                ParticleTypes.SMOKE,
+                placement.position.x + 0.5 + random.nextDouble(-0.25, 0.25),
+                placement.position.y + random.nextDouble(0.05, 0.15),
+                placement.position.z + 0.5 + random.nextDouble(-0.25, 0.25),
+                random.nextDouble(-0.01, 0.01),
+                random.nextDouble(0.01, 0.1),
+                random.nextDouble(-0.01, 0.01)
+            )
+        }
+    }
 }
 
 /**
@@ -663,7 +693,7 @@ interface ExternalTemperatureConsumerWire {
 
 abstract class WireRenderer<I>(
     val part: WirePart<*>,
-    val renderInfo: WireRenderInfo
+    val renderInfo: WireRenderInfo,
 ) : PartRenderer() {
     private var connectionsUpdate = AtomicUpdate<IntArray>()
     protected var hubInstance: ModelData? = null
@@ -771,7 +801,7 @@ abstract class WireRenderer<I>(
  * */
 class FlatWireRenderer(
     part: WirePart<*>,
-    renderInfo: WireRenderInfo
+    renderInfo: WireRenderInfo,
 ) : WireRenderer<ModelData>(part, renderInfo) {
     private fun createHubInstance(): ModelData =
         multipart.materialManager
@@ -843,7 +873,7 @@ class FlatWireRenderer(
  * */
 class IncandescentInstancedWireRenderer(
     part: WirePart<*>,
-    renderInfo: WireRenderInfo
+    renderInfo: WireRenderInfo,
 ) : WireRenderer<PolarData>(part, renderInfo), InternalTemperatureConsumerWire, ExternalTemperatureConsumerWire {
     private val internalTemperatureUpdates = AtomicUpdate<Double>()
     private val externalTemperatureUpdates = AtomicUpdate<Map<Int, Double>>()

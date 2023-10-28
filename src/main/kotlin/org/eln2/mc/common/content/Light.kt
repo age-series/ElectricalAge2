@@ -1114,10 +1114,6 @@ class LightPart(
                                 cell.handle.setBrightness(cell.desiredBrightness)
                             }
                         }
-                        // It should always remove. But I think it is harsh to crash the game if we don't, we'll log instead:
-                        else {
-                            LOG.error("Failed to remove obstruction $voxelPositionVolume")
-                        }
                     }
                 }
             }

@@ -135,7 +135,7 @@ object BatteryModels {
 
             damage += dt * (1.0 / 3.0) * 1e-6 // 1 month
             damage += !(abs(battery.energyIncrement) / (!battery.model.energyCapacity * 50.0))
-            damage += dt * abs(battery.current).pow(1.25) * 1e-6 *
+            damage += dt * abs(battery.current).pow(1.12783256261) * 1e-7 *
                 if(battery.safeCharge > 0.0) 1.0
                 else map(battery.charge, 0.0, battery.model.damageChargeThreshold, 1.0, 5.0)
 

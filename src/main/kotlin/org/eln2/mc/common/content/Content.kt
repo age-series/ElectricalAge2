@@ -24,9 +24,7 @@ import org.eln2.mc.common.parts.foundation.BasicCellPart
 import org.eln2.mc.common.parts.foundation.BasicPartProvider
 import org.eln2.mc.common.parts.foundation.basicPartRenderer
 import org.eln2.mc.data.*
-import org.eln2.mc.formatted
 import org.eln2.mc.mathematics.*
-import org.eln2.mc.measureDuration
 
 /**
  * Joint registry for content classes.
@@ -51,7 +49,7 @@ object Content {
 
     val ELECTRICAL_WIRE_COPPER = ElectricalWireBuilder("electrical_cable_copper")
         .apply {
-            incandescent = false
+            isIncandescent = false
         }
         .register()
 
@@ -154,7 +152,7 @@ object Content {
                 //dt * 0.01 * (v.power / 100.0)
                 0.0
             },
-            volumeProvider = LightFieldPrimitives.cone(32, 32.0, Math.toRadians(45.0), 1)
+            volumeProvider = LightFieldPrimitives.cone(32, 48.0, Math.toRadians(45.0), 1)
         ))
     }
 
