@@ -6,7 +6,7 @@ import org.ageseries.libage.sim.electrical.mna.component.Component
 import org.ageseries.libage.sim.thermal.ConnectionParameters
 import org.ageseries.libage.sim.thermal.Simulator
 import org.eln2.mc.ThermalBody
-import org.eln2.mc.data.Location
+import org.eln2.mc.data.Locator
 import org.eln2.mc.data.LocatorRelationRuleSet
 
 /**
@@ -41,7 +41,7 @@ abstract class SimulationObject(val cell: Cell) {
      * */
     abstract fun destroy()
 
-    open fun acceptsRemoteLocation(remoteDesc: Location): Boolean {
+    open fun acceptsRemoteLocation(remoteDesc: Locator): Boolean {
         return ruleSet.accepts(cell.locator, remoteDesc)
     }
 }

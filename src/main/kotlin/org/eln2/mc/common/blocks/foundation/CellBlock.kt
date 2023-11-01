@@ -215,7 +215,7 @@ open class CellBlockEntity<C : Cell>(pos: BlockPos, state: BlockState, targetTyp
 
             cell = graph.getCell(createCellLocator()) as C
 
-            cellProvider = CellRegistry.getProvider(cell!!.id) as CellProvider<C>
+            cellProvider = CellRegistry.getCellProvider(cell!!.id) as CellProvider<C>
             cell!!.container = this
             cell!!.onContainerLoaded()
             cell!!.bindGameObjects(createObjectList())
@@ -224,7 +224,7 @@ open class CellBlockEntity<C : Cell>(pos: BlockPos, state: BlockState, targetTyp
 
     //#endregion
 
-    private fun createCellLocator() = LocatorSetb().apply {
+    private fun createCellLocator() = LocatorSetBuilder().apply {
         withLocator(blockPos)
         withLocator(cellFace)
         withLocator(FacingLocator(blockState.getValue(HorizontalDirectionalBlock.FACING)))

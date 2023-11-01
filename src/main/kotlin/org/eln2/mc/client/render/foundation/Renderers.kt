@@ -133,8 +133,8 @@ class ThermalTint(
                 ),
                 coldTemperature.kelvin,
                 hotTemperature.kelvin,
-            0.0,
-            1.0
+                0.0,
+                1.0
             ).toFloat()
         )
 

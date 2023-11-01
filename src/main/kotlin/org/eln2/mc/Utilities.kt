@@ -29,6 +29,7 @@ import org.eln2.mc.mathematics.*
 import org.eln2.mc.mathematics.arrayKDGridDOf
 import org.joml.Vector3f
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
@@ -347,3 +348,12 @@ fun<T> clientOnlyHolder(factory: () -> T) = SidedLazy(factory, Dist.CLIENT)
 fun<T> serverOnlyHolder(factory: () -> T) = SidedLazy(factory, Dist.DEDICATED_SERVER)
 fun<T> clientOnlyField(value: T) = SidedHolder(value, Dist.CLIENT)
 fun<T> serverOnlyField(value: T) = SidedHolder(value, Dist.DEDICATED_SERVER)
+
+private val UNIQUE_ID_ATOMIC = AtomicInteger()
+
+fun getUniqueId() = UNIQUE_ID_ATOMIC.getAndIncrement()
+
+inline fun<T> T?.requireNotNull(message: () -> String) : T {
+    require(this != null, message)
+    return this
+}

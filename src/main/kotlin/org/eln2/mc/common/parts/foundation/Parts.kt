@@ -42,6 +42,7 @@ import org.joml.Vector3f
 import java.util.*
 import kotlin.math.PI
 import net.minecraft.world.level.block.Block
+import org.eln2.mc.common.cells.foundation.CellNeighborInfo
 
 /**
  * Encapsulates all the data associated with a part's placement.
@@ -54,7 +55,7 @@ data class PartPlacementInfo(
     val multipart: MultipartBlockEntity,
     val provider: PartProvider
 ) {
-    fun createLocator() = LocatorSetb().apply {
+    fun createLocator() = LocatorSetBuilder().apply {
         withLocator(position)
         withLocator(FacingLocator(horizontalFacing)) // is this right?
         withLocator(face)
@@ -280,7 +281,7 @@ abstract class Part<Renderer : PartRenderer>(val id: ResourceLocation, val place
      * Called when the part is right-clicked by a living entity.
      * */
     open fun onUsedBy(context: PartUseInfo): InteractionResult {
-        return InteractionResult.SUCCESS
+        return InteractionResult.FAIL
     }
 
     /**
@@ -303,7 +304,7 @@ abstract class Part<Renderer : PartRenderer>(val id: ResourceLocation, val place
      * when the initial chunk synchronization happens.
      * @param tag The custom data tag, as created by getSaveTag.
      * */
-    open fun loadFromTag(tag: CompoundTag) {}
+    open fun loadFromTag(tag: CompoundTag) { }
 
     /**
      * Loads the synced data that was sent when the client first loaded this part, from [getInitialSyncTag].
@@ -327,8 +328,7 @@ abstract class Part<Renderer : PartRenderer>(val id: ResourceLocation, val place
      * @param tag The custom data tag, as returned by the getSyncTag method on the server.
      * */
     @ClientOnly
-    open fun handleSyncTag(tag: CompoundTag) {
-    }
+    open fun handleSyncTag(tag: CompoundTag) { }
 
     /**
      * This method invalidates the saved data of the part.
@@ -528,7 +528,10 @@ interface PartCellContainer<C : Cell> {
     val allowWrappedConnections: Boolean
 
     fun onConnected(remoteCell: Cell)
+
     fun onDisconnected(remoteCell: Cell)
+
+    fun addExtraConnections(results: MutableSet<CellNeighborInfo>) { }
 }
 
 /**
@@ -854,7 +857,7 @@ fun getPartConnection(actualCell: Cell, remoteCell: Cell): PartConnectionDirecti
     return getPartConnection(actualCell.locator, remoteCell.locator)
 }
 
-fun getPartConnection(actualCell: Location, remoteCell: Location): PartConnectionDirection {
+fun getPartConnection(actualCell: Locator, remoteCell: Locator): PartConnectionDirection {
     val actualPosWorld = actualCell.requireLocator<BlockLocator>()
     val remotePosWorld = remoteCell.requireLocator<BlockLocator>()
     val actualFaceWorld = actualCell.requireLocator<FaceLocator>()
@@ -870,7 +873,7 @@ fun getPartConnection(actualCell: Location, remoteCell: Location): PartConnectio
     )
 }
 
-fun getPartConnectionOrNull(actualCell: Location, remoteCell: Location): PartConnectionDirection? {
+fun getPartConnectionOrNull(actualCell: Locator, remoteCell: Locator): PartConnectionDirection? {
     val actualPosWorld = actualCell.get<BlockLocator>() ?: return null
     val remotePosWorld = remoteCell.get<BlockLocator>() ?: return null
     val actualFaceWorld = actualCell.get<FaceLocator>() ?: return null

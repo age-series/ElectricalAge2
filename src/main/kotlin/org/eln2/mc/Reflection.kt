@@ -7,7 +7,7 @@ import kotlin.reflect.full.isSubclassOf
 import kotlin.reflect.full.memberProperties
 import kotlin.reflect.jvm.javaField
 
-fun noop() {}
+fun noop(){}
 
 /**
  * Scans the target class [I] for fields annotated with [FA], and creates a list of [FieldReader]s, caching the result in [target].

@@ -22,9 +22,6 @@ import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.locks.ReentrantLock
-import kotlin.collections.ArrayList
-import kotlin.collections.HashMap
-import kotlin.collections.HashSet
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.contract
 
@@ -51,7 +48,7 @@ class TrackedSubscriberCollection(private val underlyingCollection: SubscriberCo
     }
 }
 
-data class CellCreateInfo(val locator: Location, val id: ResourceLocation, val environment: HashDataTable)
+data class CellCreateInfo(val locator: Locator, val id: ResourceLocation, val environment: HashDataTable)
 
 /**
  * Marks a field in a [Cell] as [SimulationObject]. The object will be registered automatically.
@@ -77,7 +74,7 @@ annotation class Inspect
  * Cells create connections with other cells, and objects create connections with other objects of the same simulation type.
  * */
 @ServerOnly
-abstract class Cell(val locator: Location, val id: ResourceLocation, val environmentData: HashDataTable) : WailaEntity, DataContainer {
+abstract class Cell(val locator: Locator, val id: ResourceLocation, val environmentData: HashDataTable) : WailaEntity, DataContainer {
     companion object {
         private val OBJECT_READERS = ConcurrentHashMap<Class<*>, List<FieldInfo<Cell>>>()
         private val BEHAVIOR_READERS = ConcurrentHashMap<Class<*>, List<FieldInfo<Cell>>>()
@@ -408,6 +405,7 @@ abstract class Cell(val locator: Location, val id: ResourceLocation, val environ
     /**
      * Called while the cell is being destroyed, just after the simulation was stopped.
      * Subscribers may be cleaned up here.
+     * *Almost* guaranteed to be on the game thread.
      * */
     protected open fun onRemoving() {}
 
@@ -436,8 +434,8 @@ abstract class Cell(val locator: Location, val id: ResourceLocation, val environ
             persistentPool?.clear()
             transientPool?.clear()
 
-            persistentPool = TrackedSubscriberCollection(graph.subscribers)
-            transientPool = TrackedSubscriberCollection(graph.subscribers)
+            persistentPool = TrackedSubscriberCollection(graph.simulationSubscribers)
+            transientPool = TrackedSubscriberCollection(graph.simulationSubscribers)
 
             behaviors.behaviors.forEach {
                 it.subscribe(persistentPool!!)
@@ -672,6 +670,10 @@ object CellConnections {
 
         val graph = actualCell.graph
 
+        if(!graph.isSimRunning) {
+            noop()
+        }
+
         // Stop Simulation
         graph.stopSimulation()
 
@@ -882,7 +884,11 @@ interface CellContainer {
 /**
  * Encapsulates information about a neighbor cell.
  * */
-data class CellNeighborInfo(val neighbor: Cell, val neighborContainer: CellContainer)
+data class CellNeighborInfo(val neighbor: Cell, val neighborContainer: CellContainer) {
+    companion object {
+        fun of(cell: Cell) = CellNeighborInfo(cell, cell.container ?: error("Cannot create CellNeighborInfo of $cell"))
+    }
+}
 
 /**
  * The cell graph represents a physical network of cells.
@@ -893,7 +899,7 @@ data class CellNeighborInfo(val neighbor: Cell, val neighborContainer: CellConta
 class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLevel) {
     val cells = ArrayList<Cell>()
 
-    private val posCells = HashMap<Location, Cell>()
+    private val cellsByLocator = HashMap<Locator, Cell>()
 
     private val electricalSims = ArrayList<Circuit>()
     private val thermalSims = ArrayList<Simulator>()
@@ -910,7 +916,7 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
 
     private var updatesCheckpoint = 0L
 
-    val subscribers = SubscriberPool()
+    val simulationSubscribers = SubscriberPool()
 
     @CrossThreadAccess
     var lastTickTime = 0.0
@@ -976,7 +982,7 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
             val fixedDt = 1.0 / 100.0
 
             stage = UpdateStep.UpdateSubsPre
-            subscribers.update(fixedDt, SubscriberPhase.Pre)
+            simulationSubscribers.update(fixedDt, SubscriberPhase.Pre)
 
             lastTickTime = !measureDuration {
                 isElectricalSuccessful = true
@@ -1003,7 +1009,7 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
             }
 
             stage = UpdateStep.UpdateSubsPost
-            subscribers.update(fixedDt, SubscriberPhase.Post)
+            simulationSubscribers.update(fixedDt, SubscriberPhase.Post)
 
             updates++
 
@@ -1145,16 +1151,18 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
      * Gets the cell at the specified CellPos.
      * @return The cell, if found, or throws an exception, if the cell does not exist.
      * */
-    fun getCell(pos: Location): Cell {
-        val result = posCells[pos]
+    fun getCell(locator: Locator): Cell {
+        val result = cellsByLocator[locator]
 
         if (result == null) {
-            LOG.error("Could not get cell at $pos") // exception may be swallowed
-            error("Could not get cell at $pos")
+            LOG.error("Could not get cell at $locator") // exception may be swallowed
+            error("Could not get cell at $locator")
         }
 
         return result
     }
+
+    fun hasCell(locator: Locator) = cellsByLocator.containsKey(locator)
 
     /**
      * Removes a cell from the internal sets, and invalidates the saved data.
@@ -1167,7 +1175,7 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
         validateMutationAccess()
 
         cells.remove(cell)
-        posCells.remove(cell.locator)
+        cellsByLocator.remove(cell.locator)
         manager.setDirty()
     }
 
@@ -1183,7 +1191,7 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
 
         cells.add(cell)
         cell.graph = this
-        posCells[cell.locator] = cell
+        cellsByLocator[cell.locator] = cell
         manager.setDirty()
     }
 
@@ -1351,8 +1359,8 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
         )
 
         fun fromNbt(graphCompound: CompoundTag, manager: CellGraphManager, level: ServerLevel): CellGraph {
-            val id = graphCompound.getUUID(NBT_ID)
-            val result = CellGraph(id, manager, level)
+            val graphId = graphCompound.getUUID(NBT_ID)
+            val result = CellGraph(graphId, manager, level)
 
             result.isLoading = true
 
@@ -1361,7 +1369,7 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
                 return result
 
             // Used to assign the connections after all cells have been loaded:
-            val cellConnections = HashMap<Cell, ArrayList<Location>>()
+            val cellConnections = HashMap<Cell, ArrayList<Locator>>()
 
             // Used to load cell custom data:
             val cellData = HashMap<Cell, CompoundTag>()
@@ -1371,7 +1379,7 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
                 val pos = cellCompound.getLocatorSet(NBT_POSITION)
                 val cellId = ResourceLocation.tryParse(cellCompound.getString(NBT_ID))!!
 
-                val connectionPositions = ArrayList<Location>()
+                val connectionPositions = ArrayList<Locator>()
                 val connectionsTag = cellCompound.get(NBT_CONNECTIONS) as ListTag
 
                 connectionsTag.forEach {
@@ -1380,7 +1388,7 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
                     connectionPositions.add(connectionPos)
                 }
 
-                val cell = CellRegistry.getProvider(cellId).create(
+                val cell = CellRegistry.getCellProvider(cellId).create(
                     pos,
                     BiomeEnvironments.getInformationForBlock(level, pos).fieldMap()
                 )
@@ -1398,7 +1406,7 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
 
                 connectionPositions.forEach { connections.add(result.getCell(it)) }
 
-                // now set graph and connection
+                // Now set graph and connection
                 cell.graph = result
                 cell.connections = connections
                 cell.update(connectionsChanged = true, graphChanged = true)
@@ -1408,10 +1416,9 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
                 } catch (t: Throwable) {
                     LOG.error("Cell loading exception: $t")
                 }
-
-                cell.onLoadedFromDisk()
             }
 
+            result.cells.forEach { it.onLoadedFromDisk() }
             result.cells.forEach { it.create() }
 
             result.isLoading = false
@@ -1585,14 +1592,14 @@ abstract class CellProvider<T : Cell> {
     /**
      * Gets the resource ID of this cell.
      * */
-    val id get() = CellRegistry.getId(this)
+    val id get() = CellRegistry.getCellId(this)
 
     /**
      * Creates a new instance of the cell.
      * */
     abstract fun create(ci: CellCreateInfo): T
 
-    fun create(locator: Location, environment: HashDataTable) = create(CellCreateInfo(locator, id, environment))
+    fun create(locator: Locator, environment: HashDataTable) = create(CellCreateInfo(locator, id, environment))
 }
 
 class BasicCellProvider<T : Cell>(val factory: (CellCreateInfo) -> T) : CellProvider<T>() {

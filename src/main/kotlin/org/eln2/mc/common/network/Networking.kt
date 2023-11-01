@@ -10,6 +10,8 @@ import org.eln2.mc.LOG
 import org.eln2.mc.MODID
 import org.eln2.mc.common.blocks.foundation.GhostLightChunkDataMessage
 import org.eln2.mc.common.blocks.foundation.GhostLightCommandMessage
+import org.eln2.mc.common.content.GridConnectionCreateMessage
+import org.eln2.mc.common.content.GridConnectionDeleteMessage
 import org.eln2.mc.common.network.serverToClient.*
 import java.util.*
 
@@ -53,6 +55,24 @@ object Networking {
             GhostLightChunkDataMessage::encode,
             GhostLightChunkDataMessage::decode,
             GhostLightChunkDataMessage::handle,
+            Optional.of(NetworkDirection.PLAY_TO_CLIENT)
+        )
+
+        channel.registerMessage(
+            id(),
+            GridConnectionCreateMessage::class.java,
+            GridConnectionCreateMessage::encode,
+            GridConnectionCreateMessage::decode,
+            GridConnectionCreateMessage::handle,
+            Optional.of(NetworkDirection.PLAY_TO_CLIENT)
+        )
+
+        channel.registerMessage(
+            id(),
+            GridConnectionDeleteMessage::class.java,
+            GridConnectionDeleteMessage::encode,
+            GridConnectionDeleteMessage::decode,
+            GridConnectionDeleteMessage::handle,
             Optional.of(NetworkDirection.PLAY_TO_CLIENT)
         )
     }

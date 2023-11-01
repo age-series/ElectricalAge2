@@ -9,9 +9,7 @@ import net.minecraftforge.registries.RegistryObject
 import org.ageseries.libage.data.mutableBiMapOf
 import org.eln2.mc.LOG
 import org.eln2.mc.MODID
-import org.eln2.mc.common.cells.foundation.Cell
-import org.eln2.mc.common.cells.foundation.CellProvider
-import org.eln2.mc.common.cells.foundation.InjectCellProvider
+import org.eln2.mc.common.cells.foundation.*
 import org.eln2.mc.resource
 import java.util.function.Supplier
 
@@ -29,11 +27,8 @@ object CellRegistry {
 
     private val cells = mutableBiMapOf<CellProvider<*>, ResourceLocation>()
 
-    fun getId(provider: CellProvider<*>) = cells.forward[provider] ?: error("Failed to get cell id $provider")
+    fun getCellId(provider: CellProvider<*>) = cells.forward[provider] ?: error("Failed to get cell id $provider")
 
-    /**
-     * Registers a cell using the specified ID and Provider.
-     * */
     fun<T : Cell> cell(id: String, provider: CellProvider<T>): RegistryObject<CellProvider<T>> {
         val result = CELLS.register(id) { provider }
 
@@ -45,10 +40,7 @@ object CellRegistry {
     inline fun <reified T : Cell> injCell(id: String, vararg extraParams: Any): RegistryObject<CellProvider<T>> =
         cell(id, InjectCellProvider(T::class.java, extraParams.asList()))
 
-    /**
-     * Gets the Cell Provider with the specified ID, or produces an error.
-     * */
-    fun getProvider(id: ResourceLocation): CellProvider<*> {
+    fun getCellProvider(id: ResourceLocation): CellProvider<*> {
         return cellRegistry.get().getValue(id) ?: error("Could not get cell provider with id $id")
     }
 }

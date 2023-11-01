@@ -448,6 +448,24 @@ private const val NBT_MATERIAL_NAME = "materialName"
 private const val NBT_ENERGY = "energy"
 private const val NBT_MASS = "mass"
 private const val NBT_MATERIAL = "material"
+
+fun CompoundTag.putVector3d(key: String, v: Vector3d) {
+    val dataTag = CompoundTag()
+    dataTag.putDouble("X", v.x)
+    dataTag.putDouble("Y", v.y)
+    dataTag.putDouble("Z", v.z)
+    this.put(key, dataTag)
+}
+
+fun CompoundTag.getVector3d(key: String) : Vector3d {
+    val dataTag = this.get(key) as CompoundTag
+    val x = dataTag.getDouble("X")
+    val y = dataTag.getDouble("Y")
+    val z = dataTag.getDouble("Z")
+
+    return Vector3d(x, y, z)
+}
+
 fun CompoundTag.putBlockPos(key: String, pos: BlockPos) {
     val dataTag = CompoundTag()
     dataTag.putInt("X", pos.x)
@@ -465,12 +483,12 @@ fun CompoundTag.getBlockPos(key: String): BlockPos {
     return BlockPos(x, y, z)
 }
 
-fun CompoundTag.putLocatorSet(id: String, locator: Location) {
+fun CompoundTag.putLocatorSet(id: String, locator: Locator) {
     this.put(id, locator.toNbt())
 }
 
-fun CompoundTag.getLocatorSet(id: String): Location {
-    return Location.fromNbt(this.getCompound(id))
+fun CompoundTag.getLocatorSet(id: String): Locator {
+    return Locator.fromNbt(this.getCompound(id))
 }
 
 fun CompoundTag.getStringList(key: String): List<String> {

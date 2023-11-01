@@ -38,18 +38,6 @@ import java.nio.ByteBuffer
 import kotlin.math.*
 import kotlin.random.Random
 
-private val DIRECTIONS = Direction.values().map { it.normal }.let {
-    val result = ArrayList<Byte>()
-
-    it.forEach { vec ->
-        result.add(vec.x.toByte())
-        result.add(vec.y.toByte())
-        result.add(vec.z.toByte())
-    }
-
-    result.toByteArray()
-}
-
 // Unfortunately, vanilla rendering has a problem which causes some smooth lighting to break
 // Nothing I can do
 
@@ -96,7 +84,6 @@ private inline fun rayIntersectionAnalyzer(voxel: Int, crossinline predicate: (I
 
     val queue = IntArrayFIFOQueue()
     val results = IntOpenHashSet()
-    val directions = DIRECTIONS
 
     queue.enqueue(voxel)
 
@@ -112,9 +99,9 @@ private inline fun rayIntersectionAnalyzer(voxel: Int, crossinline predicate: (I
         val z = BlockPosInt.unpackZ(front)
 
         for (i in 0..5) {
-            val nx = x + directions[i * 3 + 0]
-            val ny = y + directions[i * 3 + 1]
-            val nz = z + directions[i * 3 + 2]
+            val nx = x + directionIncrementX(i)
+            val ny = y + directionIncrementY(i)
+            val nz = z + directionIncrementZ(i)
 
             val cx = nx + 0.5
             val cy = ny + 0.5
@@ -160,7 +147,7 @@ class FaceOrientedLightVolumeProvider(variantsByFace: Map<FaceLocator, Map<Int, 
         LightVolume(variantsByState)
     }
 
-    override fun getVolume(locatorSet: Location): LightVolume {
+    override fun getVolume(locatorSet: Locator): LightVolume {
         val face = locatorSet.requireLocator<FaceLocator> {
             "Face-oriented lights require a face locator"
         }
@@ -486,7 +473,7 @@ fun interface LightResistanceFunction {
  * Provider for a [LightVolume], parameterized on the spatial configuration of the light emitter.
  * */
 fun interface LightVolumeProvider {
-    fun getVolume(locatorSet: Location) : LightVolume
+    fun getVolume(locatorSet: Locator) : LightVolume
 }
 
 /**

@@ -1,33 +1,30 @@
+@file:Suppress("NOTHING_TO_INLINE")
+
 package org.eln2.mc.mathematics
 
 import net.minecraft.world.phys.Vec3
+import org.jetbrains.annotations.ApiStatus.Internal
 import org.joml.Vector4f
 import kotlin.math.*
 
-fun lerp(from: Double, to: Double, factor: Double): Double {
-    return (1.0 - factor) * from + factor * to
-}
+const val DUAL_COMPARE_EPS = 1e-7
 
-fun lerp(from: Float, to: Float, factor: Float): Float {
-    return (1f - factor) * from + factor * to
-}
+inline fun lerp(from: Double, to: Double, factor: Double) = (1.0 - factor) * from + factor * to
 
-fun lerp(from: Double, to: Double, factor: Dual): Dual {
-    return (1.0 - factor) * from + factor * to
-}
+inline fun lerp(from: Float, to: Float, factor: Float) = (1f - factor) * from + factor * to
 
-fun lerp(from: Dual, to: Dual, factor: Dual): Dual {
-    return (1.0 - factor) * from + factor * to
-}
+inline fun lerp(from: Double, to: Double, factor: Dual) = (1.0 - factor) * from + factor * to
 
-fun rsb(v: Int) = (v ushr 31)
+inline fun lerp(from: Dual, to: Dual, factor: Dual) = (1.0 - factor) * from + factor * to
 
-fun rsbu(v: Int) = (v ushr 31).toUInt()
+inline fun rsb(v: Int) = (v ushr 31)
+
+inline fun rsbu(v: Int) = (v ushr 31).toUInt()
 
 /**
- * Computes the [base] with the specified power [exponent] efficiently.
+ * Computes the [base] raised to the specified power [exponent] efficiently.
  * Optimized cases:
- *  - -1
+ *  - -1 (constant time)
  * */
 fun powi(base: Int, exponent: Int): Int {
     if (base == -1) {
@@ -88,6 +85,14 @@ fun map(v: Float, srcMin: Float, srcMax: Float, dstMin: Float, dstMax: Float): F
     return dstMin + (v - srcMin) * (dstMax - dstMin) / (srcMax - srcMin)
 }
 
+/**
+ * Maps [v] from a source range to a destination range.
+ * @param srcMin The minimum value in [v]'s range.
+ * @param srcMax The maximum value in [v]'s range.
+ * @param dstMin The resulting range minimum.
+ * @param dstMax The resulting range maximum.
+ * @return [v] mapped from the source range to the destination range.
+ * */
 fun map(v: Dual, srcMin: Dual, srcMax: Dual, dstMin: Dual, dstMax: Dual): Dual {
     return dstMin + (v - srcMin) * (dstMax - dstMin) / (srcMax - srcMin)
 }
@@ -180,23 +185,14 @@ fun unmapNormalizedDoubleShort(value: Int): Double {
     )
 }
 
-/**
- * Computes the arithmetic mean of [a] and [b].
- * */
 fun avg(a: Double, b: Double): Double = (a + b) / 2.0
-
-/**
- * Computes the arithmetic mean of [a], [b] and [c].
- * */
 fun avg(a: Double, b: Double, c: Double): Double = (a + b + c) / 3.0
 fun avg(a: Double, b: Double, c: Double, d: Double): Double = (a + b + c + d) / 4.0
 fun avg(values: List<Double>) = values.sum() / values.size.toDouble()
 
-fun Double.mappedTo(srcMin: Double, srcMax: Double, dstMin: Double, dstMax: Double): Double =
-    map(this, srcMin, srcMax, dstMin, dstMax)
+fun Double.mappedTo(srcMin: Double, srcMax: Double, dstMin: Double, dstMax: Double) = map(this, srcMin, srcMax, dstMin, dstMax)
 
-fun Dual.mappedTo(srcMin: Dual, srcMax: Dual, dstMin: Dual, dstMax: Dual): Dual =
-    map(this, srcMin, srcMax, dstMin, dstMax)
+fun Dual.mappedTo(srcMin: Dual, srcMax: Dual, dstMin: Dual, dstMax: Dual) = map(this, srcMin, srcMax, dstMin, dstMax)
 
 fun approxEqual(a: Double, b: Double, epsilon: Double = 1e-6): Boolean = abs(a - b) < epsilon
 fun approxEqual(a: Float, b: Float, epsilon: Float = 1e-6f): Boolean = abs(a - b) < epsilon
@@ -392,7 +388,7 @@ fun Float.nnz() = this + nsnzE(this)
 private const val ADAPTLOB_ALPHA = 0.816496580927726
 private const val ADAPTLOB_BETA = 0.447213595499958
 
-private fun adaptlobStp(f: ((Double) -> Double), a: Double, b: Double, fa: Double, fb: Double, `is`: Double): Double {
+private fun adaptlobStp(f: (Double) -> Double, a: Double, b: Double, fa: Double, fb: Double, `is`: Double): Double {
     val h = (b - a) / 2.0
     val m = (a + b) / 2.0
     val mll = m - ADAPTLOB_ALPHA * h
@@ -408,18 +404,19 @@ private fun adaptlobStp(f: ((Double) -> Double), a: Double, b: Double, fa: Doubl
     val i2 = h / 6.0 * (fa + fb + 5.0 * (fml + fmr))
     val i1 = h / 1470.0 * (77.0 * (fa + fb) + 432.0 * (fmll + fmrr) + 625.0 * (fml + fmr) + 672.0 * fm)
 
-    return if (`is` + (i1 - i2) == `is` || mll <= a || b <= mrr)
+    return if (`is` + (i1 - i2) == `is` || mll <= a || b <= mrr) {
         i1
-    else
+    } else {
         adaptlobStp(f, a, mll, fa, fmll, `is`) +
-            adaptlobStp(f, mll, ml, fmll, fml, `is`) +
-            adaptlobStp(f, ml, m, fml, fm, `is`) +
-            adaptlobStp(f, m, mr, fm, fmr, `is`) +
-            adaptlobStp(f, mr, mrr, fmr, fmrr, `is`) +
-            adaptlobStp(f, mrr, b, fmrr, fb, `is`)
+        adaptlobStp(f, mll, ml, fmll, fml, `is`) +
+        adaptlobStp(f, ml, m, fml, fm, `is`) +
+        adaptlobStp(f, m, mr, fm, fmr, `is`) +
+        adaptlobStp(f, mr, mrr, fmr, fmrr, `is`) +
+        adaptlobStp(f, mrr, b, fmrr, fb, `is`)
+    }
 }
 
-fun integralScan(a: Double, b: Double, tolerance: Double = 1e-15, f: ((Double) -> Double)): Double {
+fun integralScan(a: Double, b: Double, tolerance: Double = 1e-15, f: (Double) -> Double): Double {
     var tol = tolerance
 
     val eps = 1e-15
@@ -450,13 +447,13 @@ fun integralScan(a: Double, b: Double, tolerance: Double = 1e-15, f: ((Double) -
 
     var `is` = h * (
         0.0158271919734802 * (y1 + y13) +
-            0.0942738402188500 * (y2 + y12) +
-            0.155071987336585 * (y3 + y11) +
-            0.188821573960182 * (y4 + y10) +
-            0.199773405226859 * (y5 + y9) +
-            0.224926465333340 * (y6 + y8) +
-            0.242611071901408 * y7
-        )
+        0.0942738402188500 * (y2 + y12) +
+        0.155071987336585 * (y3 + y11) +
+        0.188821573960182 * (y4 + y10) +
+        0.199773405226859 * (y5 + y9) +
+        0.224926465333340 * (y6 + y8) +
+        0.242611071901408 * y7
+    )
 
     val s = snz(`is`)
     val erri1 = abs(i1 - `is`)
@@ -470,6 +467,7 @@ fun integralScan(a: Double, b: Double, tolerance: Double = 1e-15, f: ((Double) -
     if (r > 0.0 && r < 1.0) {
         tol /= r
     }
+
     `is` = s * abs(`is`) * tol / eps
 
     if (`is` == 0.0) {
@@ -479,8 +477,10 @@ fun integralScan(a: Double, b: Double, tolerance: Double = 1e-15, f: ((Double) -
     return adaptlobStp(f, a, b, y1, y13, `is`)
 }
 
-class Dual private constructor(private val values: DoubleArray) {
+class Dual private constructor(private val values: DoubleArray) : AbstractList<Double>() {
     constructor(values: List<Double>) : this(values.toDoubleArray())
+
+    fun bind() = values.clone()
 
     /**
      * Constructs a [Dual] from the value [x] and the [tail].
@@ -495,9 +495,9 @@ class Dual private constructor(private val values: DoubleArray) {
         }
     )
 
-    operator fun get(index: Int) = values[index]
+    override operator fun get(index: Int) = values[index]
 
-    val size get() = values.size
+    override val size get() = values.size
 
     val isReal get() = values.size == 1
 
@@ -516,9 +516,7 @@ class Dual private constructor(private val values: DoubleArray) {
      * */
     fun tail(n: Int = 1) = Dual(DoubleArray(size - n) { values[it + n] })
 
-    operator fun unaryPlus(): Dual {
-        return this
-    }
+    operator fun unaryPlus() = this
 
     operator fun unaryMinus() = Dual(
         DoubleArray(size).also {
@@ -548,17 +546,50 @@ class Dual private constructor(private val values: DoubleArray) {
         if (this.isReal) const(x(this.value))
         else Dual(x(this.value), dx(this.head()) * this.tail())
 
-    operator fun plus(const: Double) = Dual(values.clone().also { it[0] += const })
+    inline fun mapValue(transform: (Double) -> Double) : Dual {
+        val values = bind()
 
-    operator fun minus(const: Double) = Dual(values.clone().also { it[0] -= const })
+        if(values.isNotEmpty()) {
+            values[0] = transform(values[0])
+        }
 
-    private inline fun mapValues(transform: ((Double) -> Double)) = Dual(DoubleArray(values.size) { i ->
-        transform(values[i]) }
-    )
+        return castFromArray(values)
+    }
 
-    operator fun times(constant: Double) = mapValues { v -> v * constant }
+    inline fun mapValueAndTail(transformValue: (Double) -> Double, transformTail: (Double) -> Double) : Dual {
+        val values = bind()
+        val size = values.size
 
-    operator fun div(constant: Double) = mapValues { v -> v / constant }
+        if(size > 0) {
+            values[0] = transformValue(values[0])
+
+            var i = 1
+            while (i < size) {
+                values[i] = transformTail(values[i])
+                i++
+            }
+        }
+
+        return castFromArray(values)
+    }
+
+    inline fun map(transform: (Double) -> Double) : Dual {
+        val values = bind()
+        val size = values.size
+
+        var i = 0
+        while(i < size) {
+            values[i] = transform(values[i])
+            i++
+        }
+
+        return castFromArray(values)
+    }
+
+    operator fun plus(const: Double) = mapValue { it + const }
+    operator fun minus(const: Double) = mapValue { it - const }
+    operator fun times(constant: Double) = map { v -> v * constant }
+    operator fun div(constant: Double) = map { v -> v / constant }
 
     override fun equals(other: Any?): Boolean {
         if (this === other) {
@@ -578,9 +609,26 @@ class Dual private constructor(private val values: DoubleArray) {
         return true
     }
 
-    override fun hashCode(): Int {
-        return values.contentHashCode()
+    fun approxEq(other: Dual, eps: Double = DUAL_COMPARE_EPS) : Boolean {
+        val size = this.size
+
+        if(size != other.size) {
+            return false
+        }
+
+        var i = 0
+        while (i < size) {
+            if(!this[i].approxEq(other[i], eps)) {
+                return false
+            }
+
+            i++
+        }
+
+        return true
     }
+
+    override fun hashCode() = values.contentHashCode()
 
     override fun toString(): String {
         if (values.isEmpty()) {
@@ -605,26 +653,39 @@ class Dual private constructor(private val values: DoubleArray) {
         )
 
         fun of(vararg values: Double) = Dual(values.asList())
+
+        @Internal
+        fun castFromArray(array: DoubleArray) = Dual(array)
     }
 }
 
-operator fun Double.plus(dual: Dual) = Dual.const(this, dual.size) + dual
-operator fun Double.minus(dual: Dual) = Dual.const(this, dual.size) - dual
-operator fun Double.times(dual: Dual) = Dual.const(this, dual.size) * dual
-operator fun Double.div(dual: Dual) = Dual.const(this, dual.size) / dual
+operator fun Double.plus(dual: Dual) = dual.mapValue { this + it }
+operator fun Double.minus(dual: Dual) = dual.mapValueAndTail({ this - it }, { -it })
+operator fun Double.times(dual: Dual) = dual.map { this * it }
+operator fun Double.div(dual: Dual) = this * (pow(dual, -1)) // Found that using the power then product is much quicker to compute! But it introduces some extra numerical error...
 
-fun sin(d: Dual): Dual = d.function({ sin(it) }) { cos(it) }
-fun cos(d: Dual): Dual = d.function({ cos(it) }) { -sin(it) }
-fun sinh(d: Dual): Dual = d.function({ sinh(it) }) { cosh(it) }
-fun cosh(d: Dual): Dual = d.function({ cosh(it) }) { sinh(it) }
+/**
+ * Future implementors (Grissess), do:
+ * - Generate derivatives for sin, cos, pow, etc. instead of using dual for it
+ * - Replace tan, tanh etc. to calls to the function itself and generate derivatives
+ * */
+
+fun sin(x: Dual): Dual = x.function({ sin(it) }) { cos(it) }
+fun cos(x: Dual): Dual = x.function({ cos(it) }) { -sin(it) }
+fun tan(x: Dual) = sin(x) / cos(x)
+fun cot(x: Dual) = cos(x) / sin(x)
+fun sinh(x: Dual): Dual = x.function({ sinh(it) }) { cosh(it) }
+fun cosh(x: Dual): Dual = x.function({ cosh(it) }) { sinh(it) }
+fun tanh(x: Dual) = sinh(x) / cosh(x)
 fun coth(x: Dual) = cosh(x) / sinh(x)
-fun pow(d: Dual, n: Double): Dual = d.function({ it.pow(n) }) { n * pow(it, n - 1) }
-fun sqrt(d: Dual): Dual = d.function({ sqrt(it) }) { (Dual.const(1.0, d.size) / (Dual.const(2.0, d.size) * sqrt(it))) }
-fun ln(d: Dual): Dual = d.function({ ln(it) }) { Dual.const(1.0, d.size) / it }
-fun exp(d: Dual): Dual = d.function({ exp(it) }) { exp(it) }
+fun pow(x: Dual, n: Double): Dual = x.function({ it.pow(n) }) { n * pow(it, n - 1) }
+fun pow(x: Dual, n: Int): Dual = x.function({ it.pow(n) }) { n.toDouble() * pow(it, n - 1) }
+fun sqrt(x: Dual): Dual = x.function({ sqrt(it) }) { 1.0 / (2.0 * sqrt(it)) }
+fun ln(x: Dual): Dual = x.function({ ln(it) }) { 1.0 / it }
+fun exp(x: Dual): Dual = x.function({ exp(it) }) { exp(it) }
 
-data class DualArray(val values: List<DoubleArray>) {
-    val size: Int
+data class DualArray(val values: List<DoubleArray>) : AbstractList<Dual>() {
+    override val size: Int
 
     init {
         if (values.isNotEmpty()) {
@@ -636,32 +697,26 @@ data class DualArray(val values: List<DoubleArray>) {
     }
 
 
-    operator fun get(index: Int) = Dual(values.map { it[index] })
+    override operator fun get(index: Int) = Dual(values.map { it[index] })
     operator fun set(index: Int, dual: Dual) = values.forEachIndexed { iDual, arr -> arr[index] = dual[iDual] }
 
-    fun toArrayList(): ArrayList<Dual> = ArrayList<Dual>(size).also {
+    fun toList(): ArrayList<Dual> {
+        val result =  ArrayList<Dual>(size)
+
         for (i in 0 until size) {
-            it.add(this[i])
+            result.add(this[i])
         }
+
+        return result
     }
 
-    fun toMutableList(): MutableList<Dual> = toArrayList()
-    fun toList(): List<Dual> = toArrayList()
-
     companion object {
-        fun ofZeros(cArr: Int, cDual: Int) = DualArray(
-            ArrayList<DoubleArray>(cDual).apply {
-                repeat(cDual) {
-                    this.add(DoubleArray(cArr))
+        fun ofZeros(count: Int, dualSize: Int) = DualArray(
+            ArrayList<DoubleArray>(dualSize).apply {
+                repeat(dualSize) {
+                    this.add(DoubleArray(count))
                 }
             }
         )
     }
-}
-
-/**
- * Computes the surface area of a cylinder with specified [length] and [radius].
- * */
-fun cylinderSurfaceArea(length: Double, radius: Double): Double {
-    return 2 * PI * radius * length + 2 * PI * radius * radius
 }

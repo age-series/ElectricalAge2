@@ -1,8 +1,11 @@
+@file:Suppress("NOTHING_TO_INLINE")
+
 package org.eln2.mc.mathematics
 
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap
 import net.minecraft.core.Direction
 import org.eln2.mc.alias
+import org.eln2.mc.data.ImmutableByteArrayView
 import org.eln2.mc.index
 import org.eln2.mc.isHorizontal
 import org.eln2.mc.isVertical
@@ -480,3 +483,24 @@ value class Base6Direction3dMask(val mask: Int) {
     operator fun minus(direction: Base6Direction3d) = Base6Direction3dMask(this.mask and getBit(direction.alias).inv())
     operator fun minus(mask: Base6Direction3dMask) = Base6Direction3dMask(this.mask and mask.mask.inv())
 }
+
+
+/**
+ * Gets the x, y, z components in order from [Direction.values]
+ * */
+val DIRECTION_COMPONENTS = Direction.values().let {
+    val result = ArrayList<Byte>()
+
+    it.forEach { direction ->
+        result.add(direction.stepX.toByte())
+        result.add(direction.stepY.toByte())
+        result.add(direction.stepZ.toByte())
+    }
+
+    ImmutableByteArrayView(result.toByteArray())
+}
+
+inline fun directionIncrementX(dir3dDataValue: Int) = DIRECTION_COMPONENTS[dir3dDataValue * 3 + 0]
+inline fun directionIncrementY(dir3dDataValue: Int) = DIRECTION_COMPONENTS[dir3dDataValue * 3 + 1]
+inline fun directionIncrementZ(dir3dDataValue: Int) = DIRECTION_COMPONENTS[dir3dDataValue * 3 + 2]
+

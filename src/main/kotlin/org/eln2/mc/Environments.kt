@@ -6,7 +6,7 @@ import org.ageseries.libage.sim.thermal.Temperature
 import org.ageseries.libage.sim.thermal.ThermalUnits
 import org.eln2.mc.data.BlockLocator
 import org.eln2.mc.data.HashDataTable
-import org.eln2.mc.data.Location
+import org.eln2.mc.data.Locator
 import org.eln2.mc.data.requireLocator
 import java.util.concurrent.ConcurrentHashMap
 
@@ -37,7 +37,7 @@ object BiomeEnvironments {
     private val AIR_THERMAL_CONDUCTIVITY = loadCsvSpline("air_thermal_conductivity/ds.csv", 0, 2)
     private val MINECRAFT_TEMPERATURE_CELSIUS = loadCsvSpline("minecraft_temperature/ds.csv", 0, 1)
 
-    fun getInformationForBlock(level: Level, pos: Location): EnvironmentInformation {
+    fun getInformationForBlock(level: Level, pos: Locator): EnvironmentInformation {
         val biome = level.getBiome(pos.requireLocator<BlockLocator> {
             "Biome Environments need a block pos locator"
         }).value()

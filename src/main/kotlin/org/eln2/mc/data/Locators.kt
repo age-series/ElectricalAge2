@@ -76,14 +76,14 @@ fun getLocatorSerializer(locatorClass: Class<*>): LocatorSerializer {
     return locatorSerializers.forward[locatorClass] ?: error("Failed to find serializer definition for $locatorClass")
 }
 
-class LocatorSetb {
+class LocatorSetBuilder {
     val locatorMap = HashMap<Class<*>, Any>()
 
     val locators: Collection<Any> get() = locatorMap.values
 
     fun bindLocators(): HashMap<Class<*>, Any> = locatorMap.bind()
 
-    fun withLocator(locator: Any): LocatorSetb {
+    fun withLocator(locator: Any): LocatorSetBuilder {
         if (locatorMap.put(locator.javaClass, locator) != null) {
             error("Duplicate locator $locator")
         }
@@ -91,10 +91,10 @@ class LocatorSetb {
         return this
     }
 
-    fun build() = Location.createImmutable(locatorMap)
+    fun build() = Locator.createImmutable(locatorMap)
 }
 
-class Location private constructor(val locatorMap: Map<Class<*>, Any>) {
+class Locator private constructor(val locatorMap: Map<Class<*>, Any>) {
     fun <T> get(c: Class<T>): T? = locatorMap[c] as? T
 
     inline fun <reified T> get(): T? = get(T::class.java)
@@ -112,7 +112,7 @@ class Location private constructor(val locatorMap: Map<Class<*>, Any>) {
             return false
         }
 
-        other as Location
+        other as Locator
 
         if (locatorMap.size != other.locatorMap.size) {
             return false
@@ -158,8 +158,8 @@ class Location private constructor(val locatorMap: Map<Class<*>, Any>) {
     }
 
     companion object {
-        fun fromNbt(compoundTag: CompoundTag): Location {
-            val builder = LocatorSetb()
+        fun fromNbt(compoundTag: CompoundTag): Locator {
+            val builder = LocatorSetBuilder()
             val list = compoundTag.get("Locators") as ListTag
 
             list.forEach { tag ->
@@ -175,14 +175,14 @@ class Location private constructor(val locatorMap: Map<Class<*>, Any>) {
                 builder.withLocator(serializer.fromNbt(locatorCompound.getCompound("Locator")))
             }
 
-            return Location(builder.locatorMap)
+            return Locator(builder.locatorMap)
         }
 
-        fun createImmutable(source: Map<Class<*>, Any>) = Location(source.toMap())
+        fun createImmutable(source: Map<Class<*>, Any>) = Locator(source.toMap())
     }
 }
 
-inline fun <reified T> Location.requireLocator(noinline message: (() -> Any)? = null): T {
+inline fun <reified T> Locator.requireLocator(noinline message: (() -> Any)? = null): T {
     val result = this.get<T>()
 
     if (message != null) require(result != null, message)
@@ -192,7 +192,7 @@ inline fun <reified T> Location.requireLocator(noinline message: (() -> Any)? = 
 }
 
 fun interface LocationRelationshipRule {
-    fun acceptsRelationship(descriptor: Location, target: Location): Boolean
+    fun acceptsRelationship(descriptor: Locator, target: Locator): Boolean
 }
 
 class LocatorRelationRuleSet {
@@ -203,7 +203,7 @@ class LocatorRelationRuleSet {
         return this
     }
 
-    fun accepts(descriptor: Location, target: Location): Boolean {
+    fun accepts(descriptor: Locator, target: Locator): Boolean {
         return rules.all { r -> r.acceptsRelationship(descriptor, target) }
     }
 }
@@ -214,7 +214,7 @@ fun LocatorRelationRuleSet.withDirectionRulePlanar(mask: Base6Direction3dMask): 
     }
 }
 
-fun Location.findDirActualPlanarOrNull(other: Location): Base6Direction3d? {
+fun Locator.findDirActualPlanarOrNull(other: Locator): Base6Direction3d? {
     val actualPosWorld = this.get<BlockLocator>() ?: return null
     val actualIdWorld = this.get<FacingLocator>() ?: return null
     val actualFaceWorld = this.get<FaceLocator>() ?: return null
@@ -224,15 +224,15 @@ fun Location.findDirActualPlanarOrNull(other: Location): Base6Direction3d? {
     return Base6Direction3d.fromForwardUp(actualIdWorld.forwardWorld, actualFaceWorld, dir)
 }
 
-fun Location.findDirActualPartOrNull(other: Location): Base6Direction3d? {
+fun Locator.findDirActualPartOrNull(other: Locator): Base6Direction3d? {
     return getPartConnectionOrNull(this, other)?.directionPart
 }
 
-fun Location.findDirActualPlanar(other: Location): Base6Direction3d {
+fun Locator.findDirActualPlanar(other: Locator): Base6Direction3d {
     return this.findDirActualPlanarOrNull(other) ?: error("Failed to get relative rotation direction")
 }
 
-fun Location.findDirActualPart(other: Location): Base6Direction3d {
+fun Locator.findDirActualPart(other: Locator): Base6Direction3d {
     return this.findDirActualPartOrNull(other) ?: error("Failed to get relative rotation direction (part)")
 }
 
@@ -248,7 +248,7 @@ fun interface PoleMap {
      * @param targetLocator The target's location.
      * @return The pole [targetLocator] corresponds to.
      * */
-    fun evaluate(sourceLocator: Location, targetLocator: Location): Pole
+    fun evaluate(sourceLocator: Locator, targetLocator: Locator): Pole
 }
 
 /**
