@@ -8,6 +8,7 @@ import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.saveddata.SavedData
 import net.minecraftforge.server.ServerLifecycleHooks
+import org.ageseries.libage.data.MutableMapPairBiMap
 import org.ageseries.libage.sim.electrical.mna.Circuit
 import org.ageseries.libage.sim.electrical.mna.component.VoltageSource
 import org.ageseries.libage.sim.thermal.Simulator
@@ -22,6 +23,7 @@ import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.locks.ReentrantLock
+import kotlin.collections.ArrayList
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.contract
 
@@ -632,7 +634,7 @@ object CellConnections {
                 * Connections of the remote cells have changed only if the remote cell is a neighbor of the inserted cell.
                 * This is because inserting a cell cannot remove connections, and new connections appear only between the new cell and cells from other circuits (the inserted cell is a cut vertex)
                 * */
-                existingGraph.cells.forEach { cell ->
+                existingGraph.forEach { cell ->
                     cell.graph = graph
 
                     cell.update(
@@ -670,7 +672,7 @@ object CellConnections {
 
         val graph = actualCell.graph
 
-        if(!graph.isSimRunning) {
+        if(!graph.isSimulating) {
             noop()
         }
 
@@ -702,7 +704,7 @@ object CellConnections {
             // Case 1. Destroy this circuit.
 
             // Make sure we don't make any logic errors somewhere else.
-            assert(graph.cells.size == 1)
+            assert(graph.size == 1)
 
             graph.destroy()
         } else if (actualNeighborCells.size == 1) {
@@ -807,7 +809,7 @@ object CellConnections {
             assert(bfsQueue.isEmpty())
 
             // Refit cells
-            graph.cells.forEach { cell ->
+            graph.forEach { cell ->
                 val isNeighbor = neighbors.contains(cell)
 
                 cell.update(connectionsChanged = isNeighbor, graphChanged = true)
@@ -890,26 +892,43 @@ data class CellNeighborInfo(val neighbor: Cell, val neighborContainer: CellConta
     }
 }
 
+class CellList : Iterable<Cell> {
+    private val cells = MutableMapPairBiMap<Cell, Locator>()
+
+    val size get() = cells.size
+
+    fun add(cell: Cell) = cells.add(cell, cell.locator)
+
+    fun remove(cell: Cell) = check(cells.removeForward(cell)) { "Cell $cell ${cell.locator} was not present"}
+
+    fun contains(cell: Cell) = cells.forward.contains(cell)
+
+    fun contains(locator: Locator) = cells.backward.contains(locator)
+
+    fun getByLocator(locator: Locator) = cells.backward[locator]
+
+    fun addAll(source: CellList) = source.forEach { this.add(it) }
+
+    override fun iterator(): Iterator<Cell> = cells.forward.keys.iterator()
+}
+
 /**
  * The cell graph represents a physical network of cells.
  * It may have multiple simulation subsets, formed between objects in the cells of this graph.
  * The cell graph manages the solver and simulation.
  * It also has serialization/deserialization logic for saving to the disk using NBT.
  * */
-class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLevel) {
-    val cells = ArrayList<Cell>()
-
-    private val cellsByLocator = HashMap<Locator, Cell>()
-
+class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLevel) : Iterable<Cell> {
+    private val cells = CellList()
     private val electricalSims = ArrayList<Circuit>()
     private val thermalSims = ArrayList<Simulator>()
 
-    private val simStopLock = ReentrantLock()
+    private val simulationStopLock = ReentrantLock()
 
     // This is the simulation task. It will be null if the simulation is stopped
-    private var simTask: ScheduledFuture<*>? = null
+    private var simulationTask: ScheduledFuture<*>? = null
 
-    val isSimRunning get() = simTask != null
+    val isSimulating get() = simulationTask != null
 
     @CrossThreadAccess
     private var updates = 0L
@@ -925,6 +944,77 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
     var isLoading = false
         private set
 
+    /**
+     * Gets an iterator over the cells in this graph.
+     * */
+    override fun iterator(): Iterator<Cell> = cells.iterator()
+
+    /**
+     * Gets the number of cells in the graph.
+     * */
+    val size get() = cells.size
+
+    fun isEmpty() = size == 0
+    fun isNotEmpty() = !isEmpty()
+
+    /**
+     * Adds a cell to the internal sets, assigns its graph, and invalidates the saved data.
+     * **This does not update the solver!
+     * It is assumed that multiple operations of this type will be performed, then, the solver update will occur explicitly.**
+     * The simulation must be stopped before calling this.
+     * */
+    fun addCell(cell: Cell) {
+        validateMutationAccess()
+        cells.add(cell)
+        cell.graph = this
+        manager.setDirty()
+    }
+
+    /**
+     * Removes a cell from the internal sets, and invalidates the saved data.
+     * **This does not update the solver!
+     * It is assumed that multiple operations of this type will be performed, then,
+     * the solver update will occur explicitly.**
+     * The simulation must be stopped before calling this.
+     * */
+    fun removeCell(cell: Cell) {
+        validateMutationAccess()
+        cells.remove(cell)
+        manager.setDirty()
+    }
+
+    /**
+     * Copies the cells of this graph to the other graph, and invalidates the saved data.
+     * The simulation must be stopped before calling this.
+     * */
+    fun copyTo(graph: CellGraph) {
+        this.validateMutationAccess()
+        graph.validateMutationAccess()
+        graph.cells.addAll(this.cells)
+        graph.manager.setDirty()
+    }
+
+    /**
+     * Gets the cell with the specified [locator].
+     * @return The cell, if found, or throws an exception, if the cell does not exist.
+     * */
+    fun getCellByLocator(locator: Locator): Cell {
+        val result = cells.getByLocator(locator)
+
+        if (result == null) {
+            LOG.error("Could not get cell at $locator") // exception may be swallowed
+            error("Could not get cell at $locator")
+        }
+
+        return result
+    }
+
+    /**
+     * Checks if the graph contains a cell with the specified [locator].
+     * @return True if a cell with the [locator] exists in this graph. Otherwise, false.
+     * */
+    fun containsCellByLocator(locator: Locator) = cells.contains(locator)
+
     fun setChanged() {
         if(!isLoading) {
             manager.setDirty()
@@ -937,22 +1027,15 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
     fun sampleElapsedUpdates(): Long {
         val elapsed = updates - updatesCheckpoint
         updatesCheckpoint += elapsed
-
         return elapsed
     }
-
-    /**
-     * True, if the solution was found last simulation tick. Otherwise, false.
-     * */
-    var isElectricalSuccessful = false
-        private set
 
     /**
      * Checks if the simulation is running. Presumably, this is used by logic that wants to mutate the graph.
      * It also checks if the caller is the server thread.
      * */
     private fun validateMutationAccess() {
-        if (simTask != null) {
+        if (simulationTask != null) {
             error("Tried to mutate the simulation while it was running")
         }
 
@@ -974,7 +1057,7 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
      * */
     @CrossThreadAccess
     private fun update() {
-        simStopLock.lock()
+        simulationStopLock.lock()
 
         var stage = UpdateStep.Start
 
@@ -985,14 +1068,11 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
             simulationSubscribers.update(fixedDt, SubscriberPhase.Pre)
 
             lastTickTime = !measureDuration {
-                isElectricalSuccessful = true
 
                 stage = UpdateStep.UpdateElectricalSims
                 val electricalTime = measureDuration {
                     electricalSims.forEach {
                         val success = it.step(fixedDt)
-
-                        isElectricalSuccessful = isElectricalSuccessful && success
 
                         if (!success && !it.isFloating) {
                             LOG.error("Failed to update non-floating circuit!")
@@ -1017,7 +1097,7 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
             LOG.error("FAILED TO UPDATE SIMULATION at $stage: $t")
         } finally {
             // Maybe blow up the game instead of just allowing this to go on?
-            simStopLock.unlock()
+            simulationStopLock.unlock()
         }
     }
 
@@ -1148,65 +1228,6 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
     }
 
     /**
-     * Gets the cell at the specified CellPos.
-     * @return The cell, if found, or throws an exception, if the cell does not exist.
-     * */
-    fun getCell(locator: Locator): Cell {
-        val result = cellsByLocator[locator]
-
-        if (result == null) {
-            LOG.error("Could not get cell at $locator") // exception may be swallowed
-            error("Could not get cell at $locator")
-        }
-
-        return result
-    }
-
-    fun hasCell(locator: Locator) = cellsByLocator.containsKey(locator)
-
-    /**
-     * Removes a cell from the internal sets, and invalidates the saved data.
-     * **This does not update the solver!
-     * It is assumed that multiple operations of this type will be performed, then,
-     * the solver update will occur explicitly.**
-     * The simulation must be stopped before calling this.
-     * */
-    fun removeCell(cell: Cell) {
-        validateMutationAccess()
-
-        cells.remove(cell)
-        cellsByLocator.remove(cell.locator)
-        manager.setDirty()
-    }
-
-    /**
-     * Adds a cell to the internal sets, assigns its graph, and invalidates the saved data.
-     * **This does not update the solver!
-     * It is assumed that multiple operations of this type will be performed, then,
-     * the solver update will occur explicitly.**
-     * The simulation must be stopped before calling this.
-     * */
-    fun addCell(cell: Cell) {
-        validateMutationAccess()
-
-        cells.add(cell)
-        cell.graph = this
-        cellsByLocator[cell.locator] = cell
-        manager.setDirty()
-    }
-
-    /**
-     * Copies the cells of this graph to the other graph, and invalidates the saved data.
-     * The simulation must be stopped before calling this.
-     * */
-    fun copyTo(graph: CellGraph) {
-        validateMutationAccess()
-
-        graph.cells.addAll(cells)
-        manager.setDirty()
-    }
-
-    /**
      * Removes the graph from tracking and invalidates the saved data.
      * The simulation must be stopped before calling this.
      * */
@@ -1218,7 +1239,7 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
     }
 
     fun ensureStopped() {
-        if (isSimRunning) {
+        if (isSimulating) {
             stopSimulation()
         }
     }
@@ -1228,14 +1249,14 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
      * Will result in an error if it was not running.
      * */
     fun stopSimulation() {
-        if (simTask == null) {
+        if (simulationTask == null) {
             error("Tried to stop simulation, but it was not running")
         }
 
-        simStopLock.lock()
-        simTask!!.cancel(true)
-        simTask = null
-        simStopLock.unlock()
+        simulationStopLock.lock()
+        simulationTask!!.cancel(true)
+        simulationTask = null
+        simulationStopLock.unlock()
 
         LOG.info("Stopped simulation for $this")
     }
@@ -1244,11 +1265,11 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
      * Starts the simulation. Will result in an error if it is already running.,
      * */
     fun startSimulation() {
-        if (simTask != null) {
+        if (simulationTask != null) {
             error("Tried to start simulation, but it was already running")
         }
 
-        simTask = pool.scheduleAtFixedRate(this::update, 0, 10, TimeUnit.MILLISECONDS)
+        simulationTask = pool.scheduleAtFixedRate(this::update, 0, 10, TimeUnit.MILLISECONDS)
 
         LOG.info("Started simulation for $this")
     }
@@ -1264,7 +1285,7 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
             callsInPlace(action)
         }
 
-        val running = isSimRunning
+        val running = isSimulating
 
         if (running) {
             stopSimulation()
@@ -1282,7 +1303,7 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
     fun toNbt(): CompoundTag {
         val circuitCompound = CompoundTag()
 
-        require(!isSimRunning)
+        require(!isSimulating)
 
         circuitCompound.putUUID(NBT_ID, id)
 
@@ -1317,7 +1338,7 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
     }
 
     fun serverStop() {
-        if (simTask != null) {
+        if (simulationTask != null) {
             stopSimulation()
         }
     }
@@ -1404,7 +1425,7 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
             cellConnections.forEach { (cell, connectionPositions) ->
                 val connections = ArrayList<Cell>(connectionPositions.size)
 
-                connectionPositions.forEach { connections.add(result.getCell(it)) }
+                connectionPositions.forEach { connections.add(result.getCellByLocator(it)) }
 
                 // Now set graph and connection
                 cell.graph = result
@@ -1541,34 +1562,44 @@ class CellGraphManager(val level: ServerLevel) : SavedData() {
                 val graphCompound = circuitNbt as CompoundTag
                 val graph = CellGraph.fromNbt(graphCompound, manager, level)
 
-                if (graph.cells.isEmpty()) {
+                if (graph.isEmpty()) {
                     LOG.error("Loaded circuit with no cells!")
                     return@forEach
                 }
 
                 manager.addGraph(graph)
 
-                LOG.info("Loaded ${graph.cells.size} cells for ${graph.id}!")
+                LOG.info("Loaded ${graph.size} cells for ${graph.id}!")
             }
 
             manager.graphs.values.forEach {
-                it.cells.forEach { cell -> cell.onWorldLoadedPreSolver() }
+                it.forEach { cell ->
+                    cell.onWorldLoadedPreSolver()
+                }
             }
 
             manager.graphs.values.forEach { it.buildSolver() }
 
             manager.graphs.values.forEach {
-                it.cells.forEach { cell -> cell.onWorldLoadedPostSolver() }
+                it.forEach { cell ->
+                    cell.onWorldLoadedPostSolver()
+                }
             }
 
             manager.graphs.values.forEach {
-                it.cells.forEach { cell -> cell.onWorldLoadedPreSim() }
+                it.forEach { cell ->
+                    cell.onWorldLoadedPreSim()
+                }
             }
 
-            manager.graphs.values.forEach { it.startSimulation() }
+            manager.graphs.values.forEach {
+                it.startSimulation()
+            }
 
             manager.graphs.values.forEach {
-                it.cells.forEach { cell -> cell.onWorldLoadedPostSim() }
+                it.forEach { cell ->
+                    cell.onWorldLoadedPostSim()
+                }
             }
 
             return manager

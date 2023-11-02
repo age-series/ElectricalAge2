@@ -55,7 +55,6 @@ import kotlin.collections.HashSet
 import kotlin.concurrent.read
 import kotlin.concurrent.write
 import kotlin.math.PI
-import kotlin.math.floor
 import kotlin.math.min
 
 data class GridConnection(val id: Int, val catenary: WireCatenary) {
@@ -233,6 +232,11 @@ object GridConnectionManagerServer {
 
     private fun validateUsage() {
         requireIsOnServerThread { "Grid server must be on server thread" }
+    }
+
+    fun clear() {
+        validateUsage()
+        levels.clear()
     }
 
     private fun validateLevel(level: Level): ServerLevel {
@@ -452,9 +456,15 @@ object GridConnectionManagerServer {
 @ClientOnly
 object GridConnectionManagerClient {
     private val lock = ReentrantReadWriteLock()
-
     private val slicesByConnection = MutableSetMapMultiMap<Int, ConnectionSectionSlice>()
     private val slicesBySection = MutableSetMapMultiMap<SectionPos, ConnectionSectionSlice>()
+
+    fun clear() {
+        lock.write {
+            slicesByConnection.map.clear()
+            slicesBySection.map.clear()
+        }
+    }
 
     private fun scanUProgression(extrusion: SketchExtrusion, catenary: WireCatenary, u0: Double, u1: Double) : Double2DoubleOpenHashMap {
         var p0 = extrusion.rmfProgression.first()
@@ -667,7 +677,7 @@ class GridCell(ci: CellCreateInfo) : Cell(ci) {
         }
 
         endPoints.forEach { remoteEndPoint ->
-            val remoteCell = graph.getCell(remoteEndPoint.locator)
+            val remoteCell = graph.getCellByLocator(remoteEndPoint.locator)
 
             remoteCell as GridCell
 
@@ -701,7 +711,7 @@ class GridCell(ci: CellCreateInfo) : Cell(ci) {
 
     override fun onLoadedFromDisk() {
         endPoints.forEach { remoteEndPoint ->
-            if(!graph.hasCell(remoteEndPoint.locator)) {
+            if(!graph.containsCellByLocator(remoteEndPoint.locator)) {
                 LOG.error("Invalid end point $remoteEndPoint") // Break point here
             }
         }
@@ -735,7 +745,7 @@ abstract class GridCellPart<R : PartRenderer>(
             cell.endPoints.forEach { remoteEndPoint ->
                 results.add(
                     CellNeighborInfo.of(
-                        cell.graph.getCell(remoteEndPoint.locator)
+                        cell.graph.getCellByLocator(remoteEndPoint.locator)
                     )
                 )
             }
@@ -776,8 +786,15 @@ open class GridConnectItem : Item(Properties()) {
     override fun use(pLevel: Level, pPlayer: Player, pUsedHand: InteractionHand): InteractionResultHolder<ItemStack> {
         val actualStack = pPlayer.getItemInHand(pUsedHand)
 
-        fun fail() = InteractionResultHolder.fail(actualStack)
-        fun success() = InteractionResultHolder.success(actualStack)
+        fun fail() : InteractionResultHolder<ItemStack> {
+            actualStack.tag = null
+            return InteractionResultHolder.fail(actualStack)
+        }
+
+        fun success() : InteractionResultHolder<ItemStack> {
+            actualStack.tag = null
+            return InteractionResultHolder.success(actualStack)
+        }
 
         if (pLevel.isClientSide) {
             return fail()
@@ -789,40 +806,37 @@ open class GridConnectItem : Item(Properties()) {
             return fail()
         }
 
-        val targetMultipart = pLevel.getBlockEntity(hit.blockPos) as? MultipartBlockEntity
-            ?: return fail()
-
-        val targetPart = targetMultipart.pickPart(pPlayer) as? GridCellPart<*>
-            ?: return fail()
+        val targetMultipart = pLevel.getBlockEntity(hit.blockPos) as? MultipartBlockEntity ?: return fail()
+        val targetPart = targetMultipart.pickPart(pPlayer) as? GridCellPart<*> ?: return fail()
 
         if (actualStack.tag != null && actualStack.tag!!.contains(NBT_POS) && actualStack.tag!!.contains(NBT_FACE)) {
             val remoteMultipart = pLevel.getBlockEntity(actualStack.tag!!.getBlockPos(NBT_POS)) as? MultipartBlockEntity
-
-            if (remoteMultipart == null) {
-                actualStack.tag = null
-                return fail()
-            }
+                ?: return fail()
 
             val remotePart = remoteMultipart.getPart(actualStack.tag!!.getDirection(NBT_FACE)) as? GridCellPart<*>
 
-            if(remotePart == null) {
-                actualStack.tag = null
+            if(remotePart == null || remotePart == targetPart) {
                 return fail()
             }
 
-            CellConnections.disconnectCell(targetPart.cell, targetPart.placement.multipart, false)
+            if(targetPart.cell.endPoints.any { it.id == remotePart.cell.endpointId }) {
+                check(remotePart.cell.endPoints.any { it.id == targetPart.cell.endpointId })
+                return fail()
+            }
+            else {
+                check(remotePart.cell.endPoints.none { it.id == targetPart.cell.endpointId })
+            }
 
+            CellConnections.disconnectCell(targetPart.cell, targetPart.placement.multipart, false)
             targetPart.stagingCell = remotePart.cell
             remotePart.stagingCell = targetPart.cell
-
             CellConnections.connectCell(targetPart.cell, targetPart.placement.multipart)
 
-            if(targetPart.cell.graph != remotePart.cell.graph) {
-                noop()
-            }
 
             targetPart.stagingCell = null
             remotePart.stagingCell = null
+
+            require(targetPart.cell.graph == remotePart.cell.graph)
 
             targetPart.cell.endPoints.add(remotePart.createEndpointInfo())
             remotePart.cell.endPoints.add(targetPart.createEndpointInfo())
@@ -837,8 +851,15 @@ open class GridConnectItem : Item(Properties()) {
                 )
             )
 
-            actualStack.tag = null
             pPlayer.sendSystemMessage(Component.literal("Realized connection"))
+
+            if(
+                !targetPart.cell.graph.contains(targetPart.cell) ||
+                !targetPart.cell.graph.contains(remotePart.cell) ||
+                !remotePart.cell.graph.containsCellByLocator(targetPart.cell.locator) ||
+                !remotePart.cell.graph.containsCellByLocator(remotePart.cell.locator)) {
+                noop()
+            }
 
             return success()
         }
@@ -848,7 +869,7 @@ open class GridConnectItem : Item(Properties()) {
             putDirection(NBT_FACE, hit.direction)
         }
 
-        return success()
+        return InteractionResultHolder.success(actualStack)
     }
 
     companion object {
@@ -929,7 +950,6 @@ object GridRenderer {
         }
     }
 }
-
 
 /**
  * Models a cable using an arclength-parameterized catenary ([ArcReparamCatenary3d]).

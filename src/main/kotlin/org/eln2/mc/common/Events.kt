@@ -12,15 +12,13 @@ import net.minecraftforge.server.ServerLifecycleHooks
 import net.minecraftforge.client.event.TextureStitchEvent
 import net.minecraftforge.event.ServerChatEvent
 import net.minecraftforge.event.level.LevelEvent
+import net.minecraftforge.event.server.ServerStoppedEvent
 import org.eln2.mc.LOG
 import org.eln2.mc.common.blocks.foundation.GhostLightHackClient
 import org.eln2.mc.common.blocks.foundation.GhostLightServer
 import org.eln2.mc.common.cells.foundation.CellGraphManager
 import org.eln2.mc.common.cells.foundation.SubscriberPhase
-import org.eln2.mc.common.content.GridConnection
-import org.eln2.mc.common.content.GridConnectionManagerServer
-import org.eln2.mc.common.content.GridRenderer
-import org.eln2.mc.common.content.WireCatenary
+import org.eln2.mc.common.content.*
 import org.eln2.mc.common.events.schedulePost
 import org.eln2.mc.common.events.schedulePre
 import org.eln2.mc.data.AveragingList
@@ -74,31 +72,6 @@ object ForgeEvents {
     private var logCountdown = 0
     private const val logInterval = 100
 
-    @SubscribeEvent @JvmStatic
-    fun onChat(event: ServerChatEvent.Submitted) {
-        LOG.warn("CHAT: ${event.rawText}")
-        if(event.rawText.contains("grid")) {
-            val playerPos = Vector3d(event.player.x, event.player.y, event.player.z)
-            val endPos = playerPos + Vector3d(10.0, 5.0, 10.0)
-
-            schedulePre(1) {
-                GridConnectionManagerServer.createConnection(
-                    event.player.level,
-                    GridConnection(
-                        WireCatenary(
-                            playerPos,
-                            endPos
-                        )
-                    )
-                )
-
-                LOG.warn("Put conn $playerPos $endPos")
-            }
-
-
-        }
-    }
-
     private fun forEachGraphManager(user: (CellGraphManager) -> Unit) {
         ServerLifecycleHooks.getCurrentServer().allLevels.forEach {
             val graphManager = CellGraphManager.getFor(it)
@@ -149,6 +122,9 @@ object ForgeEvents {
             LOG.info("Stopping simulations for $it")
             CellGraphManager.getFor(it).serverStop()
         }
+
+        GhostLightServer.clear()
+        GridConnectionManagerServer.clear()
     }
 
     private fun scheduleGhostEvent(event: BlockEvent) {
@@ -177,6 +153,7 @@ object ForgeEvents {
     fun onClientLevelClosed(event: LevelEvent.Unload) {
         if(event.level.isClientSide) {
             GhostLightHackClient.clear()
+            GridConnectionManagerClient.clear()
         }
     }
 }

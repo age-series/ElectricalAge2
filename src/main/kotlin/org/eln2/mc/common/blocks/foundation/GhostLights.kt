@@ -225,6 +225,11 @@ object GhostLightServer {
         requireIsOnServerThread { "Ghost lights server must be on server thread" }
     }
 
+    fun clear() {
+        validateUsage()
+        levels.clear()
+    }
+
     private fun validateLevel(level: Level): ServerLevel {
         if(level !is ServerLevel) {
             error("Cannot use non server level $level")

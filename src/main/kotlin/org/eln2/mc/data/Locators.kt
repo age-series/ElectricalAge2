@@ -157,6 +157,12 @@ class Locator private constructor(val locatorMap: Map<Class<*>, Any>) {
         return result
     }
 
+    override fun toString() = buildString {
+        locatorMap.forEach { (locatorClass, locator) ->
+            appendLine("${locatorClass.name}: $locator")
+        }
+    }
+
     companion object {
         fun fromNbt(compoundTag: CompoundTag): Locator {
             val builder = LocatorSetBuilder()

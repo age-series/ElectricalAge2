@@ -655,7 +655,7 @@ abstract class CellPart<C: Cell, R : PartRenderer>(
         } else {
             CellGraphManager.getFor(placement.level as ServerLevel)
                 .getGraph(loadGraphId)
-                .getCell(cellPos) as C
+                .getCellByLocator(cellPos) as C
         }
 
         cell.container = placement.multipart

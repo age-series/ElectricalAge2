@@ -911,7 +911,6 @@ class LightPart(
         require(this.volume == event.volume)
 
         if(event.targetState == state) {
-            LOG.error("Same state") // not an error but it is interesting to see that the `place` api saves us time
             return
         }
 

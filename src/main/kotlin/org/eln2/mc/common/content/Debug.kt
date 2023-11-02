@@ -67,7 +67,7 @@ class OscillatorCell(ci: CellCreateInfo) : Cell(ci) {
     }
 
     private fun simulationTick(dt: Double, phase: SubscriberPhase) {
-        source.potential = sin(t * 4).absoluteValue * 12.0
+        source.potential = sin(t / 2.0).absoluteValue * 12.0
 
         t += dt
     }

@@ -213,7 +213,7 @@ open class CellBlockEntity<C : Cell>(pos: BlockPos, state: BlockState, targetTyp
             // fetch cell instance
             println("Loading cell at location $blockPos")
 
-            cell = graph.getCell(createCellLocator()) as C
+            cell = graph.getCellByLocator(createCellLocator()) as C
 
             cellProvider = CellRegistry.getCellProvider(cell!!.id) as CellProvider<C>
             cell!!.container = this
