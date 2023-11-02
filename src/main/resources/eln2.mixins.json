@@ -6,7 +6,8 @@
     "mixins": [
         "MixinLayerLightEngine",
         "MixinRebuildTask",
-        "MixinRenderType"
+        "MixinRenderType",
+        "MixinRenderRegionCache"
     ],
     "client": [
     ],

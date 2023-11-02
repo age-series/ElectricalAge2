@@ -13,6 +13,7 @@ import net.minecraft.client.renderer.texture.OverlayTexture
 import net.minecraft.core.SectionPos
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.nbt.ListTag
+import net.minecraft.core.BlockPos
 import net.minecraft.network.FriendlyByteBuf
 import net.minecraft.network.chat.Component
 import net.minecraft.resources.ResourceLocation
@@ -54,6 +55,7 @@ import kotlin.collections.HashSet
 import kotlin.concurrent.read
 import kotlin.concurrent.write
 import kotlin.math.PI
+import kotlin.math.floor
 import kotlin.math.min
 
 data class GridConnection(val id: Int, val catenary: WireCatenary) {
@@ -494,6 +496,8 @@ object GridConnectionManagerClient {
     }
 
     fun addConnection(connection: GridConnection) {
+        val sections = HashSet<SectionPos>()
+
         lock.write {
             val catenary = connection.catenary
             val (extrusion, quads) = catenary.mesh()
@@ -539,8 +543,12 @@ object GridConnectionManagerClient {
             quadsBySection.forEach { (sectionPos, sectionSlice) ->
                 slicesByConnection[connection.id].add(sectionSlice)
                 slicesBySection[sectionPos].add(sectionSlice)
-                setDirty(sectionPos)
+                sections.add(sectionPos)
             }
+        }
+
+        sections.forEach {
+            setDirty(it)
         }
     }
 
@@ -563,6 +571,28 @@ object GridConnectionManagerClient {
                 }
             }
         }
+    }
+
+    fun containsRange(pStart: BlockPos, pEnd: BlockPos) : Boolean {
+        var result = false
+
+        val i = SectionPos.blockToSectionCoord(pStart.x)
+        val j = SectionPos.blockToSectionCoord(pStart.y)
+        val k = SectionPos.blockToSectionCoord(pStart.z)
+        val l = SectionPos.blockToSectionCoord(pEnd.x)
+        val m = SectionPos.blockToSectionCoord(pEnd.y)
+        val n = SectionPos.blockToSectionCoord(pEnd.z)
+        // ~8 sections per range
+        lock.read {
+            for(sectionPos in SectionPos.betweenClosedStream(i, j, k, l, m, n)) {
+                if(slicesBySection.contains(sectionPos)) {
+                    result = true
+                    break
+                }
+            }
+        }
+
+        return result
     }
 
     // todo optimize storage
