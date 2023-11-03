@@ -22,7 +22,7 @@ import org.eln2.mc.mathematics.bbVec
  * The voltage source object has a bundle of resistors, whose External Pins are exported to other objects, and
  * a voltage source, connected to the Internal Pins of the bundle.
  * */
-class VoltageSourceObject(cell: Cell) : ElectricalObject(cell), WailaEntity, DataContainer {
+class VoltageSourceObject(cell: Cell) : ElectricalObject<Cell>(cell), WailaEntity, DataContainer {
     override val dataNode = data {
         it.withField(VoltageField {
             source.value?.potential ?: 0.0
@@ -56,7 +56,7 @@ class VoltageSourceObject(cell: Cell) : ElectricalObject(cell), WailaEntity, Dat
         get() = resistors.resistance
         set(value) { resistors.resistance = value }
 
-    override fun offerComponent(neighbour: ElectricalObject): ElectricalComponentInfo {
+    override fun offerComponent(neighbour: ElectricalObject<*>): ElectricalComponentInfo {
         return resistors.getOfferedResistor(neighbour)
     }
 

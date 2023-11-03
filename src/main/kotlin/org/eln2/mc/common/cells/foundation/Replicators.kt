@@ -61,7 +61,7 @@ fun interface InternalTemperatureConsumer {
 }
 
 fun interface ExternalTemperatureConsumer {
-    fun onExternalTemperatureChanges(removed: HashSet<ThermalObject>, dirty: HashMap<ThermalObject, Double>)
+    fun onExternalTemperatureChanges(removed: HashSet<ThermalObject<*>>, dirty: HashMap<ThermalObject<*>, Double>)
 }
 
 /**
@@ -110,8 +110,8 @@ class ExternalTemperatureReplicatorBehavior(
     var scanPhase: SubscriberPhase = SubscriberPhase.Pre
     var tolerance: Double = 1.0
 
-    private val tracked = HashMap<ThermalObject, Double>()
-    private val unmarked = HashSet<ThermalObject>()
+    private val tracked = HashMap<ThermalObject<*>, Double>()
+    private val unmarked = HashSet<ThermalObject<*>>()
 
     override fun subscribe(subscribers: SubscriberCollection) {
         subscribers.addSubscriber(SubscriberOptions(scanInterval, scanPhase), this::scan)
@@ -120,7 +120,7 @@ class ExternalTemperatureReplicatorBehavior(
     private fun scan(dt: Double, phase: SubscriberPhase) {
         unmarked.addAll(tracked.keys)
 
-        val dirty = HashMap<ThermalObject, Double>()
+        val dirty = HashMap<ThermalObject<*>, Double>()
 
         scanNeighbors(cell) { remoteThermalObject, field ->
             unmarked.remove(remoteThermalObject)
@@ -146,7 +146,7 @@ class ExternalTemperatureReplicatorBehavior(
     }
 
     companion object {
-        inline fun scanNeighbors(cell: Cell, crossinline consumer: (ThermalObject, TemperatureField) -> Unit) {
+        inline fun scanNeighbors(cell: Cell, crossinline consumer: (ThermalObject<*>, TemperatureField) -> Unit) {
             for(remoteCell in cell.connections) {
                 val remoteThermalObject = remoteCell.objects.getObjectOrNull(SimulationObjectType.Thermal) as? ThermalObject
                     ?: continue

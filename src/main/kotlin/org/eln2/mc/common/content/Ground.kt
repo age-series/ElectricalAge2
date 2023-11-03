@@ -12,7 +12,7 @@ import org.eln2.mc.data.withDirectionRulePlanar
 import org.eln2.mc.mathematics.Base6Direction3dMask
 import org.eln2.mc.mathematics.bbVec
 
-class GroundObject(cell: Cell) : ElectricalObject(cell) {
+class GroundObject(cell: Cell) : ElectricalObject<Cell>(cell) {
     private val resistors = ResistorBundle(0.01, this)
 
     var resistance: Double
@@ -21,7 +21,7 @@ class GroundObject(cell: Cell) : ElectricalObject(cell) {
             resistors.resistance = value
         }
 
-    override fun offerComponent(neighbour: ElectricalObject): ElectricalComponentInfo {
+    override fun offerComponent(neighbour: ElectricalObject<*>): ElectricalComponentInfo {
         return resistors.getOfferedResistor(neighbour)
     }
 

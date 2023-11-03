@@ -46,7 +46,7 @@ import kotlin.math.*
 /**
  * Generator model consisting of a Voltage Source + Resistor
  * */
-class VRGeneratorObject(cell: Cell, val map: PoleMap) : ElectricalObject(cell), WailaEntity, DataContainer {
+class VRGeneratorObject(cell: Cell, val map: PoleMap) : ElectricalObject<Cell>(cell), WailaEntity, DataContainer {
     private val resistor = ComponentHolder {
         Resistor().also { it.resistance = resistanceExact }
     }
@@ -118,7 +118,7 @@ class VRGeneratorObject(cell: Cell, val map: PoleMap) : ElectricalObject(cell), 
      * Gets the offered component by evaluating the map.
      * @return The resistor's external pin when the pole evaluates to *plus*. The source's negative pin when the pole evaluates to *minus*.
      * */
-    override fun offerComponent(neighbour: ElectricalObject): ElectricalComponentInfo =
+    override fun offerComponent(neighbour: ElectricalObject<*>): ElectricalComponentInfo =
         when (map.evaluate(this.cell.locator, neighbour.cell.locator)) {
             Pole.Plus -> resistor.offerExternal()
             Pole.Minus -> source.offerNegative()
@@ -167,7 +167,7 @@ interface ThermalBipole {
  * Thermal body with two connection sides.
  * */
 @NoInj
-class ThermalBipoleObject(cell: Cell, val map: PoleMap, b1Def: ThermalBodyDef, b2Def: ThermalBodyDef) : ThermalObject(cell), DataContainer, WailaEntity, ThermalBipole {
+class ThermalBipoleObject(cell: Cell, val map: PoleMap, b1Def: ThermalBodyDef, b2Def: ThermalBodyDef) : ThermalObject<Cell>(cell), DataContainer, WailaEntity, ThermalBipole {
     override var b1 = b1Def.create()
     override var b2 = b2Def.create()
 
@@ -178,7 +178,7 @@ class ThermalBipoleObject(cell: Cell, val map: PoleMap, b1Def: ThermalBodyDef, b
         }
     }
 
-    override fun offerComponent(neighbour: ThermalObject) = ThermalComponentInfo(
+    override fun offerComponent(neighbour: ThermalObject<*>) = ThermalComponentInfo(
         when (map.evaluate(cell.locator, neighbour.cell.locator)) {
             Pole.Plus -> b1
             Pole.Minus -> b2

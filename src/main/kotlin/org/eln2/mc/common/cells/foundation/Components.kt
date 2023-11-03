@@ -47,7 +47,7 @@ class ComponentHolder<T : Component>(private val factory: () -> T) {
         connectExternal(componentInfo.component, componentInfo.index)
     }
 
-    fun connectExternal(owner: ElectricalObject, connection: ElectricalObject) {
+    fun connectExternal(owner: ElectricalObject<*>, connection: ElectricalObject<*>) {
         connectExternal(connection.offerComponent(owner))
     }
 
@@ -59,7 +59,7 @@ class ComponentHolder<T : Component>(private val factory: () -> T) {
         connectPositive(componentInfo.component, componentInfo.index)
     }
 
-    fun connectPositive(owner: ElectricalObject, connection: ElectricalObject) {
+    fun connectPositive(owner: ElectricalObject<*>, connection: ElectricalObject<*>) {
         connectPositive(connection.offerComponent(owner))
     }
 
@@ -71,7 +71,7 @@ class ComponentHolder<T : Component>(private val factory: () -> T) {
         connectNegative(componentInfo.component, componentInfo.index)
     }
 
-    fun connectNegative(owner: ElectricalObject, connection: ElectricalObject) {
+    fun connectNegative(owner: ElectricalObject<*>, connection: ElectricalObject<*>) {
         connectNegative(connection.offerComponent(owner))
     }
 
@@ -129,14 +129,14 @@ class ComponentHolder<T : Component>(private val factory: () -> T) {
 /**
  * Utility class that holds a collection of resistors to be used as contact points for external components.
  * */
-class ResistorBundle(var resistance: Double, obj: ElectricalObject) {
+class ResistorBundle(var resistance: Double, obj: ElectricalObject<*>) {
     init {
         obj.cell.locator.requireLocator<BlockLocator>()
         obj.cell.locator.requireLocator<FacingLocator>()
         obj.cell.locator.requireLocator<FaceLocator>()
     }
 
-    private val resistors = HashMap<ElectricalObject, Resistor>()
+    private val resistors = HashMap<ElectricalObject<*>, Resistor>()
 
     private var prepared = false
 
@@ -145,7 +145,7 @@ class ResistorBundle(var resistance: Double, obj: ElectricalObject) {
      * This "prepares" the bundle, so future calls to *getOfferedResistor* that result in a new resistor being created will cause an error.
      * @see ElectricalObject.addComponents
      * */
-    fun register(connections: List<ElectricalObject>, circuit: Circuit) {
+    fun register(connections: List<ElectricalObject<*>>, circuit: Circuit) {
         if (prepared) {
             error("Already prepared")
         }
@@ -162,7 +162,7 @@ class ResistorBundle(var resistance: Double, obj: ElectricalObject) {
      * This must be called after "prepare", to finalize connections.
      * @see ElectricalObject.build
      * */
-    fun connect(connections: List<ElectricalObject>, sender: ElectricalObject) {
+    fun connect(connections: List<ElectricalObject<*>>, sender: ElectricalObject<*>) {
         if (!prepared) {
             error("Not prepared")
         }
@@ -174,7 +174,7 @@ class ResistorBundle(var resistance: Double, obj: ElectricalObject) {
         }
     }
 
-    private fun getResistor(remote: ElectricalObject): Resistor {
+    private fun getResistor(remote: ElectricalObject<*>): Resistor {
         return resistors.computeIfAbsent(remote) {
             if (prepared) {
                 error("Tried to create resistors after bundle was prepared")
@@ -193,7 +193,7 @@ class ResistorBundle(var resistance: Double, obj: ElectricalObject) {
      * unless *clear* is called.
      * If a resistor is not initialized for *direction*, and the bundle was prepared by *register*, an error will be produced.
      * */
-    fun getOfferedResistor(remote: ElectricalObject): ElectricalComponentInfo {
+    fun getOfferedResistor(remote: ElectricalObject<*>): ElectricalComponentInfo {
         return ElectricalComponentInfo(getResistor(remote), EXTERNAL_PIN)
     }
 

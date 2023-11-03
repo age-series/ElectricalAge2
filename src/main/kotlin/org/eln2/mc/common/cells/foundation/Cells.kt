@@ -231,10 +231,10 @@ abstract class Cell(val locator: Locator, val id: ResourceLocation, val environm
     private val objectsLazy = lazy {
         val objectFields = fieldScan(this.javaClass, SimulationObject::class, SimObject::class.java, OBJECT_READERS)
 
-        val fields = HashMap<SimulationObject, FieldInfo<Cell>>()
+        val fields = HashMap<SimulationObject<*>, FieldInfo<Cell>>()
 
         val set = SimulationObjectSet(objectFields.mapNotNull {
-            val o = it.reader.get(this) as? SimulationObject
+            val o = it.reader.get(this) as? SimulationObject<*>
 
             if(o != null) {
                 require(fields.put(o, it) == null) {
@@ -245,7 +245,7 @@ abstract class Cell(val locator: Locator, val id: ResourceLocation, val environm
             o
         })
 
-        set.process { obj ->
+        set.forEachObject { obj ->
             if (obj is DataContainer && fields[obj]!!.field.isAnnotationPresent(Inspect::class.java)) {
                 dataNode.withChild(obj.dataNode)
             }
@@ -320,7 +320,7 @@ abstract class Cell(val locator: Locator, val id: ResourceLocation, val environm
     open fun saveCellData(): CompoundTag? = null
 
     private fun saveObjectData(tag: CompoundTag) {
-        objects.process { obj ->
+        objects.forEachObject { obj ->
             if (obj is PersistentObject) {
                 tag.put(obj.type.domain, obj.saveObjectNbt())
             }
@@ -328,7 +328,7 @@ abstract class Cell(val locator: Locator, val id: ResourceLocation, val environm
     }
 
     private fun loadObjectData(tag: CompoundTag) {
-        objects.process { obj ->
+        objects.forEachObject { obj ->
             if (obj is PersistentObject) {
                 obj.loadObjectNbt(tag.getCompound(obj.type.domain))
             }
@@ -419,7 +419,7 @@ abstract class Cell(val locator: Locator, val id: ResourceLocation, val environm
      * Called after the cell was destroyed.
      */
     protected open fun onDestroyed() {
-        objects.process { it.destroy() }
+        objects.forEachObject { it.destroy() }
     }
 
     /**
@@ -464,14 +464,14 @@ abstract class Cell(val locator: Locator, val id: ResourceLocation, val environm
      * Called when the solver is being built, in order to clear and prepare the objects.
      * */
     fun clearObjectConnections() {
-        objects.process { it.clear() }
+        objects.forEachObject { it.clear() }
     }
 
     /**
      * Called when the solver is being built, in order to record all object-object connections.
      * */
     fun recordObjectConnections() {
-        objects.process { localObj ->
+        objects.forEachObject { localObj ->
             connections.forEach { remoteCell ->
                 if (!localObj.acceptsRemoteLocation(remoteCell.locator)) {
                     return@forEach
@@ -512,7 +512,7 @@ abstract class Cell(val locator: Locator, val id: ResourceLocation, val environm
      * Called when the solver is being built, in order to finish setting up the underlying components in the
      * simulation objects.
      * */
-    fun build() = objects.process { it.build() }
+    fun build() = objects.forEachObject { it.build() }
 
     /**
      * Checks if this cell has the specified simulation object type.
@@ -725,6 +725,12 @@ object CellConnections {
             graph.destroy()
             rebuildTopologies(actualNeighborCells, actualCell, manager)
         }
+    }
+
+    inline fun retopologize(cell: Cell, container: CellContainer, action: () -> Unit) {
+        disconnectCell(cell, container, false)
+        action()
+        connectCell(cell, container)
     }
 
     /**
@@ -1162,7 +1168,7 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
     private fun <TComponent> realizeComponents(
         type: SimulationObjectType,
         factory: ((HashSet<Cell>) -> TComponent),
-        extraCondition: ((SimulationObject, SimulationObject) -> Boolean)? = null,
+        extraCondition: ((SimulationObject<*>, SimulationObject<*>) -> Boolean)? = null,
     ) {
         val pending = HashSet(cells.filter { it.hasObject(type) })
         val queue = ArrayDeque<Cell>()

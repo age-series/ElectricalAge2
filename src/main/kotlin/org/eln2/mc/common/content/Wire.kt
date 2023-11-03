@@ -51,7 +51,7 @@ import kotlin.math.max
 /**
  * Generalized thermal conductor, in the form of a single thermal body that gets connected to all neighbor cells.
  * */
-class ThermalWireObject(cell: Cell, thermalDefinition: ThermalBodyDef) : ThermalObject(cell), WailaEntity, DataContainer, PersistentObject {
+class ThermalWireObject(cell: Cell, thermalDefinition: ThermalBodyDef) : ThermalObject<Cell>(cell), WailaEntity, DataContainer, PersistentObject {
     companion object {
         // Storing temperature. If I change the properties of the material, it will be the same temperature in game.
         private const val TEMPERATURE = "temperature"
@@ -88,7 +88,7 @@ class ThermalWireObject(cell: Cell, thermalDefinition: ThermalBodyDef) : Thermal
 
     fun readTemperature(): Double = thermalBody.thermal.temperature.kelvin
 
-    override fun offerComponent(neighbour: ThermalObject) = ThermalComponentInfo(thermalBody)
+    override fun offerComponent(neighbour: ThermalObject<*>) = ThermalComponentInfo(thermalBody)
 
     override fun addComponents(simulator: Simulator) {
         simulator.add(thermalBody)
@@ -118,7 +118,7 @@ class ThermalWireObject(cell: Cell, thermalDefinition: ThermalBodyDef) : Thermal
  * Generalized electrical wire, created by joining the "internal" pins of a [ResistorBundle].
  * The "external" pins are offered to other cells.
  * */
-class ElectricalWireObject(cell: Cell) : ElectricalObject(cell), WailaEntity, DataContainer {
+class ElectricalWireObject(cell: Cell) : ElectricalObject<Cell>(cell), WailaEntity, DataContainer {
     override val dataNode = data {
         it.withField(ResistanceField {
             resistance
@@ -141,7 +141,7 @@ class ElectricalWireObject(cell: Cell) : ElectricalObject(cell), WailaEntity, Da
         get() = resistors.resistance * 2.0
         set(value) { resistors.resistance = value / 2.0 }
 
-    override fun offerComponent(neighbour: ElectricalObject) = resistors.getOfferedResistor(neighbour)
+    override fun offerComponent(neighbour: ElectricalObject<*>) = resistors.getOfferedResistor(neighbour)
 
     override fun clearComponents() = resistors.clear()
 
@@ -612,7 +612,7 @@ class WirePart<C : Cell>(
      * The cell neighbor cache is updated with newly discovered thermal objects, the updates are organised and then sent to the client with [ExternalTemperaturesPacket]
      * */
     @ServerOnly @OnSimulationThread
-    override fun onExternalTemperatureChanges(removed: HashSet<ThermalObject>, dirty: HashMap<ThermalObject, Double>) {
+    override fun onExternalTemperatureChanges(removed: HashSet<ThermalObject<*>>, dirty: HashMap<ThermalObject<*>, Double>) {
         val temperatures = Int2DoubleOpenHashMap()
 
         for ((thermalObject, temperature) in dirty) {

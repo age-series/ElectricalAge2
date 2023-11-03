@@ -19,7 +19,7 @@ import org.eln2.mc.mathematics.approxEq
 import org.eln2.mc.mathematics.bbVec
 
 @NoInj
-class ResistorObject(cell: Cell, val poleMap: PoleMap) : ElectricalObject(cell), DataContainer, WailaEntity {
+class ResistorObject(cell: Cell, val poleMap: PoleMap) : ElectricalObject<Cell>(cell), DataContainer, WailaEntity {
     private val resistor = ComponentHolder {
         Resistor().also { it.resistance = resistanceExact }
     }
@@ -52,7 +52,7 @@ class ResistorObject(cell: Cell, val poleMap: PoleMap) : ElectricalObject(cell),
 
     override val maxConnections = 2
 
-    override fun offerComponent(neighbour: ElectricalObject) = ElectricalComponentInfo(
+    override fun offerComponent(neighbour: ElectricalObject<*>) = ElectricalComponentInfo(
         resistor.instance,
         poleMap.evaluate(cell.locator, neighbour.cell.locator).conventionalPin
     )

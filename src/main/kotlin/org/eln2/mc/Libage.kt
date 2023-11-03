@@ -3,6 +3,8 @@ package org.eln2.mc
 import mcp.mobius.waila.api.IPluginConfig
 import org.ageseries.libage.data.biMapOf
 import org.ageseries.libage.sim.Material
+import org.ageseries.libage.sim.electrical.mna.Circuit
+import org.ageseries.libage.sim.electrical.mna.component.Component
 import org.ageseries.libage.sim.thermal.Temperature
 import org.ageseries.libage.sim.thermal.ThermalMass
 import org.eln2.mc.data.HashDataTable
@@ -89,5 +91,11 @@ class ThermalBody(var thermal: ThermalMass, var area: Double) : WailaEntity {
                 }
             }
         }
+    }
+}
+
+fun Circuit.addAll(components: Iterable<Component>) {
+    components.forEach {
+        this.add(it)
     }
 }

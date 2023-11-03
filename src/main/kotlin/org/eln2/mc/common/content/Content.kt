@@ -160,9 +160,9 @@ object Content {
     val GRID_TAP_PART = part("grid_tap", BasicPartProvider( { a, b ->
         GridTapPart(a, b, GRID_CELL.get())
     }, Vec3(1.0, 1.0, 1.0)))
-    val GRID_CONNECT_COPPER = item("grid_connect_copper") { GridConnectItem(GridMaterials.COPPER) }
-    val GRID_CONNECT_STEEL = item("grid_connect_steel") { GridConnectItem(GridMaterials.NEUTRAL_AS_STEEL) }
-    val GRID_CONNECT_RUBBER = item("grid_connect_rubber") { GridConnectItem(GridMaterials.NEUTRAL_AS_RUBBER) }
+    val GRID_CONNECT_COPPER = item("grid_connect_copper") { GridConnectItem(GridMaterials.COPPER_AS_COPPER_COPPER) }
+    val GRID_CONNECT_STEEL = item("grid_connect_steel") { GridConnectItem(GridMaterials.NEUTRAL_AS_STEEL_IRON) }
+    val GRID_CONNECT_RUBBER = item("grid_connect_rubber") { GridConnectItem(GridMaterials.NEUTRAL_AS_RUBBER_COPPER) }
 
     fun clientWork() {
         MenuScreens.register(HEAT_GENERATOR_MENU.get(), ::HeatGeneratorScreen)

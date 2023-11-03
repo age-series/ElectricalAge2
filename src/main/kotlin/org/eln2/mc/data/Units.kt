@@ -163,6 +163,7 @@ interface ThermalConductivity
 interface Pressure
 interface Power
 interface Resistance
+interface Resistivity
 interface Voltage
 interface Current
 
@@ -371,6 +372,8 @@ val MILLIOHM = -OHM
 val VOLT = standardScale<Voltage>()
 val KILOVOLT = +VOLT
 val MILLIVOLT = -VOLT
+
+val OHM_METER = standardScale<Resistivity>()
 
 operator fun <U> Quantity<U>.rangeTo(other: Quantity<U>) = ClosedQuantityRange(this, other)
 

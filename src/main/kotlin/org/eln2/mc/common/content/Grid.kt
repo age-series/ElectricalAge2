@@ -23,7 +23,6 @@ import net.minecraft.server.level.ServerPlayer
 import net.minecraft.world.InteractionHand
 import net.minecraft.world.InteractionResultHolder
 import net.minecraft.world.entity.player.Player
-import net.minecraft.world.inventory.InventoryMenu
 import net.minecraft.world.item.Item
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.ChunkPos
@@ -34,6 +33,7 @@ import net.minecraft.world.phys.Vec3
 import net.minecraftforge.network.NetworkEvent
 import org.ageseries.libage.data.MutableMapPairBiMap
 import org.ageseries.libage.data.MutableSetMapMultiMap
+import org.ageseries.libage.sim.Material
 import org.ageseries.libage.sim.electrical.mna.Circuit
 import org.ageseries.libage.sim.electrical.mna.component.Resistor
 import org.eln2.mc.*
@@ -45,21 +45,23 @@ import org.eln2.mc.common.network.Networking
 import org.eln2.mc.common.parts.foundation.CellPart
 import org.eln2.mc.common.parts.foundation.PartPlacementInfo
 import org.eln2.mc.common.parts.foundation.PartRenderer
-import org.eln2.mc.data.DataContainer
-import org.eln2.mc.data.Locator
-import org.eln2.mc.data.ResistanceField
-import org.eln2.mc.data.data
+import org.eln2.mc.data.*
 import org.eln2.mc.mathematics.*
 import java.util.*
 import java.util.concurrent.locks.ReentrantReadWriteLock
 import java.util.function.Supplier
+import kotlin.collections.HashMap
 import kotlin.collections.HashSet
 import kotlin.concurrent.read
 import kotlin.concurrent.write
 import kotlin.math.PI
 import kotlin.math.min
 
-class GridMaterial(private val spriteSupplier: Lazy<TextureAtlasSprite>, val vertexColor: RGBFloat) {
+class GridMaterial(
+    private val spriteSupplier: Lazy<TextureAtlasSprite>,
+    val vertexColor: RGBFloat,
+    val physicalMaterial: Material
+) {
     val id get() = GridMaterials.getId(this)
 
     val sprite get() = spriteSupplier.value
@@ -68,27 +70,30 @@ class GridMaterial(private val spriteSupplier: Lazy<TextureAtlasSprite>, val ver
 object GridMaterials {
     private val materials = MutableMapPairBiMap<GridMaterial, ResourceLocation>()
 
-    val NEUTRAL_AS_RUBBER = register(
+    val NEUTRAL_AS_RUBBER_COPPER = register(
         "neutral_rubber",
         GridMaterial(
             Sprites.NEUTRAL_CABLE,
-            RGBFloat(0.2f, 0.2f, 0.2f)
+            RGBFloat(0.2f, 0.2f, 0.2f),
+            Material.COPPER
         )
     )
 
-    val NEUTRAL_AS_STEEL = register(
+    val NEUTRAL_AS_STEEL_IRON = register(
         "neutral_steel",
         GridMaterial(
             Sprites.NEUTRAL_CABLE,
-            RGBFloat(0.9f, 0.9f, 0.9f)
+            RGBFloat(0.9f, 0.9f, 0.9f),
+            Material.IRON
         )
     )
 
-    val COPPER = register(
+    val COPPER_AS_COPPER_COPPER = register(
         "copper",
         GridMaterial(
             Sprites.COPPER_CABLE,
-            RGBFloat(1f, 1f, 1f)
+            RGBFloat(1f, 1f, 1f),
+            Material.COPPER
         )
     )
 
@@ -100,6 +105,8 @@ object GridMaterials {
 
 data class GridConnectionCatenary(val id: Int, val wireCatenary: CatenaryCable3d, val material: GridMaterial) {
     constructor(catenary: CatenaryCable3d, material: GridMaterial) : this(getUniqueId(), catenary, material)
+
+    val resistance get() = material.physicalMaterial.electricalResistivity * (wireCatenary.arcLength / wireCatenary.crossSectionArea)
 
     fun toNbt() = CompoundTag().also {
         it.putInt(ID, id)
@@ -306,7 +313,7 @@ object GridConnectionManagerServer {
         unwatch(player, chunkPos)
     }
 
-    fun createPairIfAbsent(level: ServerLevel, pair: GridConnectionPair, material: GridMaterial) : Boolean = invoke(level) {
+    fun createPairIfAbsent(level: ServerLevel, pair: GridConnectionPair, material: GridMaterial) : GridConnectionCatenary = invoke(level) {
         createPairIfAbsent(pair, material)
     }
 
@@ -401,14 +408,16 @@ object GridConnectionManagerServer {
             handlesByPair[pair] = createHandle(connection)
         }
 
-        fun createPairIfAbsent(pair: GridConnectionPair, material: GridMaterial) : Boolean {
+        fun createPairIfAbsent(pair: GridConnectionPair, material: GridMaterial) : GridConnectionCatenary {
             if(pairMap.hasPair(pair)) {
-                return false
+                return handlesByPair[pair].requireNotNull { "Lingering pair in pair map" }.connection
             }
 
-            createPair(pair, createGridCatenary(pair, material))
+            val result = createGridCatenary(pair, material)
 
-            return true
+            createPair(pair, result)
+
+            return result
         }
 
         fun removeEndpointById(endPointId: UUID) {
@@ -687,55 +696,111 @@ object GridConnectionManagerClient {
     }
 }
 
-class GridElectricalObject(cell: GridCell) : ElectricalObject(cell), DataContainer {
-    private val resistor = ComponentHolder {
-        Resistor().also { it.resistance = resistanceExact }
+//
+// Grid Grid Grid  Tap  Grid Grid Grid
+//O-Rg---------Rg --O-- Rg------------ ...
+//                  |
+//                  E
+//                  |
+//                  |
+//               Consumer
+//
+
+class GridElectricalObject(cell: GridCell, val tapResistance: Double) : ElectricalObject<GridCell>(cell) {
+    private val gridResistors = HashMap<GridElectricalObject, Resistor>()
+
+    private val externalResistor = ComponentHolder {
+        Resistor().also {
+            it.resistance = tapResistance
+        }
     }
 
-    /**
-     * Gets the exact resistance of the [resistor].
-     * */
-    var resistanceExact: Double = 1.0
-        set(value) {
-            field = value
-            resistor.ifPresent { it.resistance = value }
+    override fun offerComponent(neighbour: ElectricalObject<*>) =
+        if (neighbour is GridElectricalObject) {
+            // Identify if adjacent or grid:
+
+            val contact = cell.getGridContactResistance(neighbour)
+
+            if(contact != null) {
+                // Part of grid:
+                ElectricalComponentInfo(
+                    gridResistors.computeIfAbsent(neighbour) {
+                        Resistor().also {
+                            it.resistance = contact / 2.0
+                        }
+                    },
+                    INTERNAL_PIN
+                )
+            }
+            else {
+                externalResistor.offerExternal()
+            }
         }
-
-    fun updateResistance(value: Double, eps: Double = LIBAGE_SET_EPS): Boolean {
-        if(resistanceExact.approxEq(value, eps)) {
-            return false
+        else {
+            externalResistor.offerExternal()
         }
-
-        resistanceExact = value
-
-        return true
-    }
-
-    override fun offerComponent(neighbour: ElectricalObject) =
-        if (neighbour is GridElectricalObject) resistor.offerInternal()
-        else resistor.offerExternal()
 
     override fun clearComponents() {
-        resistor.clear()
+        gridResistors.clear()
+        externalResistor.clear()
     }
 
-    override fun addComponents(circuit: Circuit) {
-        circuit.add(resistor)
-    }
+    override fun build() {
+        // Connects grids to grids, and external to external:
+        super.build()
 
-    override val dataNode = data {
-        it.withField(ResistanceField {
-            resistanceExact
-        })
+        if(externalResistor.isPresent) { // If not present, it is illegal to connect it (not in graph)
+            // Connects grid to external:
+            val externalInternalOffer = externalResistor.offerInternal()
+
+            gridResistors.values.forEach { gridResistor ->
+                gridResistor.connect(
+                    EXTERNAL_PIN,
+                    externalInternalOffer.component,
+                    externalInternalOffer.index
+                )
+            }
+        }
+        else {
+            gridResistors.values.forEach { gridResistor1 ->
+                gridResistors.values.forEach { gridResistor2 ->
+                    if(gridResistor1 != gridResistor2) {
+                        gridResistor1.connect(EXTERNAL_PIN, gridResistor2, EXTERNAL_PIN)
+                    }
+                }
+            }
+        }
     }
 }
 
+data class GridEndpointConnectionInfo(val material: GridMaterial, val resistance: Double)
+
+data class GridStagingInfo(val remoteCell: GridCell, val properties: GridEndpointConnectionInfo)
+
 class GridCell(ci: CellCreateInfo) : Cell(ci) {
     @SimObject @Inspect
-    val grid = GridElectricalObject(this)
+    val electricalObject = GridElectricalObject(this, 1e-5)
 
-    // Same grid:
-    val endPoints = HashMap<GridEndpointInfo, GridMaterial>()
+    // Same graph:
+    val endPoints = HashMap<GridEndpointInfo, GridEndpointConnectionInfo>()
+
+    // Other graph:
+    var stagingInfo: GridStagingInfo? = null
+
+    fun getGridContactResistance(remoteObject: GridElectricalObject) : Double? {
+        val stagingInfo = this.stagingInfo
+
+        if(stagingInfo != null) {
+            if(stagingInfo.remoteCell.electricalObject == remoteObject) {
+                return stagingInfo.properties.resistance
+            }
+        }
+
+        val remoteEndPoint = endPoints.keys.firstOrNull { it.id == remoteObject.cell.endpointId }
+            ?: return null
+
+        return endPoints[remoteEndPoint]!!.resistance
+    }
 
     var endpointId: UUID = UUID.randomUUID()
         private set
@@ -764,10 +829,11 @@ class GridCell(ci: CellCreateInfo) : Cell(ci) {
 
         val endpointList = ListTag()
 
-        endPoints.forEach { (remoteEndPoint, material) ->
+        endPoints.forEach { (remoteEndPoint, info) ->
             val endpointCompound = CompoundTag()
             endpointCompound.put(REMOTE_END_POINT, remoteEndPoint.toNbt())
-            endpointCompound.putResourceLocation(MATERIAL, material.id)
+            endpointCompound.putResourceLocation(MATERIAL, info.material.id)
+            endpointCompound.putDouble(RESISTANCE, info.resistance)
             endpointList.add(endpointCompound)
         }
 
@@ -780,7 +846,8 @@ class GridCell(ci: CellCreateInfo) : Cell(ci) {
         tag.getListTag(REMOTE_END_POINTS).forEachCompound { endpointCompound ->
             val remoteEndPoint = GridEndpointInfo.fromNbt(endpointCompound.get(REMOTE_END_POINT) as CompoundTag)
             val material = GridMaterials.getMaterial(endpointCompound.getResourceLocation(MATERIAL))
-            endPoints.putUnique(remoteEndPoint, material)
+            val resistance = endpointCompound.getDouble(RESISTANCE)
+            endPoints.putUnique(remoteEndPoint, GridEndpointConnectionInfo(material, resistance))
         }
     }
 
@@ -796,6 +863,7 @@ class GridCell(ci: CellCreateInfo) : Cell(ci) {
         private const val ENDPOINT_ID = "endpointId"
         private const val REMOTE_END_POINT = "remoteEndPoint"
         private const val MATERIAL = "material"
+        private const val RESISTANCE = "resistance"
         private const val REMOTE_END_POINTS = "remoteEndPoints"
     }
 }
@@ -808,18 +876,37 @@ abstract class GridCellPart<R : PartRenderer>(
     // Attachment in the fixed frame:
 
     open val attachment: Vector3d = placement.position.toVector3d() + Vector3d(0.5)
-    var stagingCell: GridCell? = null
+
+    fun setStaging(info: GridStagingInfo) {
+        require(hasCell) { "Cell wass not present to start staging" }
+
+        require(this.cell.stagingInfo == null) {
+            "Already staging"
+        }
+
+        this.cell.stagingInfo = info
+    }
+
+    fun clearStaging() {
+        require(hasCell) { "Cell was not present to clear staging" }
+
+        require(this.cell.stagingInfo != null) {
+            "Not staging"
+        }
+
+        this.cell.stagingInfo = null
+    }
 
     fun createEndpointInfo() = GridEndpointInfo(
         cell.endpointId, attachment, cell.locator
     )
 
     override fun addExtraConnections(results: MutableSet<CellNeighborInfo>) {
-        if(stagingCell != null) {
-            results.add(CellNeighborInfo.of(stagingCell!!))
+        if(hasCell && cell.stagingInfo != null) {
+            results.add(CellNeighborInfo.of(cell.stagingInfo!!.remoteCell))
         }
 
-        if(cell.hasGraph) {
+        if(hasCell && cell.hasGraph) {
             cell.endPoints.keys.forEach { remoteEndPoint ->
                 results.add(
                     CellNeighborInfo.of(
@@ -839,13 +926,13 @@ abstract class GridCellPart<R : PartRenderer>(
 
             placement.level as ServerLevel
 
-            cell.endPoints.forEach { (remoteEndPoint, material) ->
+            cell.endPoints.forEach { (remoteEndPoint, remoteEndPointInfo) ->
                 val pair = GridConnectionPair.create(localEndPoint, remoteEndPoint)
 
                 GridConnectionManagerServer.createPairIfAbsent(
                     placement.level,
                     pair,
-                    material
+                    remoteEndPointInfo.material
                 )
             }
         }
@@ -938,25 +1025,31 @@ open class GridConnectItem(val material: GridMaterial) : Item(Properties()) {
                 }
 
                 val state = pLevel.getBlockState(blockPos)
+
                 if(!state.isAir) {
                     return fail("Block $state is in the way at $blockPos")
                 }
             }
 
-            CellConnections.disconnectCell(targetPart.cell, targetPart.placement.multipart, false)
-            targetPart.stagingCell = remotePart.cell
-            remotePart.stagingCell = targetPart.cell
-            CellConnections.connectCell(targetPart.cell, targetPart.placement.multipart)
+            val connectionInfo = GridEndpointConnectionInfo(
+                gridCatenary.material,
+                gridCatenary.resistance
+            )
 
-            targetPart.stagingCell = null
-            remotePart.stagingCell = null
+            CellConnections.retopologize(targetPart.cell, targetPart.placement.multipart) {
+                targetPart.setStaging(GridStagingInfo(remotePart.cell, connectionInfo))
+                remotePart.setStaging(GridStagingInfo(targetPart.cell, connectionInfo))
+            }
+
+            targetPart.clearStaging()
+            remotePart.clearStaging()
 
             require(targetPart.cell.graph == remotePart.cell.graph) {
                 "Grid staging failed"
             }
 
-            targetPart.cell.endPoints.putUnique(remotePart.createEndpointInfo(), material)
-            remotePart.cell.endPoints.putUnique(targetPart.createEndpointInfo(), material)
+            targetPart.cell.endPoints.putUnique(remotePart.createEndpointInfo(), connectionInfo)
+            remotePart.cell.endPoints.putUnique(targetPart.createEndpointInfo(), connectionInfo)
 
             GridConnectionManagerServer.createPair(pLevel as ServerLevel, pair, gridCatenary)
 
@@ -1063,9 +1156,15 @@ class CatenaryCable3d(
 ) {
     //val ringSegmentSize = Rotation2d.exp(0.0).direction * radius .. Rotation2d.exp(2.0 * PI * (1.0 / circleVertices.toDouble())).direction * radius
     /**
-     * Gets the circumference of the catenary, according to [radius].
+     * Gets the circumference of the tube, according to [radius].
      * */
     val circumference = 2.0 * PI * radius
+
+    /**
+     * Gets the surface area of a cross-section.
+     * */
+    val crossSectionArea = PI * radius * radius
+
     /**
      * Gets the supports [a] and [b], sorted in ascending order by their vertical coordinate.
      * */

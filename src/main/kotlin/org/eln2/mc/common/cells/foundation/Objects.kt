@@ -13,7 +13,7 @@ import org.eln2.mc.data.LocatorRelationRuleSet
  * Represents a discrete simulation unit that participates in one simulation type.
  * It can connect to other objects of the same simulation type.
  * */
-abstract class SimulationObject(val cell: Cell) {
+abstract class SimulationObject<C : Cell>(val cell: C) {
     abstract val type: SimulationObjectType
 
     private val rsLazy = lazy { LocatorRelationRuleSet() }
@@ -47,17 +47,17 @@ abstract class SimulationObject(val cell: Cell) {
 }
 
 data class ThermalComponentInfo(val body: ThermalBody)
-abstract class ThermalObject(cell: Cell) : SimulationObject(cell) {
+abstract class ThermalObject<C : Cell>(cell: C) : SimulationObject<C>(cell) {
     var simulation: Simulator? = null
         private set
 
-    protected val connections = ArrayList<ThermalObject>()
+    protected val connections = ArrayList<ThermalObject<*>>()
 
     final override val type = SimulationObjectType.Thermal
 
     open val maxConnections = Int.MAX_VALUE
 
-    protected fun indexOf(obj: ThermalObject): Int {
+    protected fun indexOf(obj: ThermalObject<*>): Int {
         val index = connections.indexOf(obj)
 
         if (index == -1) {
@@ -70,7 +70,7 @@ abstract class ThermalObject(cell: Cell) : SimulationObject(cell) {
     /**
      * Called by the cell graph to fetch a connection candidate.
      * */
-    abstract fun offerComponent(neighbour: ThermalObject): ThermalComponentInfo
+    abstract fun offerComponent(neighbour: ThermalObject<*>): ThermalComponentInfo
 
     /**
      * Called by the building logic when the thermal object is made part of a simulation.
@@ -85,7 +85,7 @@ abstract class ThermalObject(cell: Cell) : SimulationObject(cell) {
     /**
      * Called by the cell when a valid connection candidate is discovered.
      * */
-    open fun addConnection(connectionInfo: ThermalObject) {
+    open fun addConnection(connectionInfo: ThermalObject<*>) {
         require(!connections.contains(connectionInfo)) { "Duplicate connection" }
         connections.add(connectionInfo)
 
@@ -130,7 +130,7 @@ abstract class ThermalObject(cell: Cell) : SimulationObject(cell) {
 }
 
 data class ElectricalComponentInfo(val component: Component, val index: Int)
-abstract class ElectricalObject(cell: Cell) : SimulationObject(cell) {
+abstract class ElectricalObject<C : Cell>(cell: C) : SimulationObject<C>(cell) {
     /**
      * The circuit this object is part of.
      * It is initialized while the solver is being built.
@@ -139,7 +139,7 @@ abstract class ElectricalObject(cell: Cell) : SimulationObject(cell) {
     var circuit: Circuit? = null
         private set
 
-    protected val connections = ArrayList<ElectricalObject>()
+    protected val connections = ArrayList<ElectricalObject<*>>()
 
     final override val type = SimulationObjectType.Electrical
 
@@ -149,7 +149,7 @@ abstract class ElectricalObject(cell: Cell) : SimulationObject(cell) {
      * */
     open val maxConnections = Int.MAX_VALUE
 
-    protected fun indexOf(obj: ElectricalObject): Int {
+    protected fun indexOf(obj: ElectricalObject<*>): Int {
         val index = connections.indexOf(obj)
 
         if (index == -1) {
@@ -161,8 +161,9 @@ abstract class ElectricalObject(cell: Cell) : SimulationObject(cell) {
 
     /**
      * Called by electrical objects to fetch a connection candidate.
+     * The same component and pin **must** be returned by subsequent calls to this method, during same re-building moment.
      * */
-    abstract fun offerComponent(neighbour: ElectricalObject): ElectricalComponentInfo
+    abstract fun offerComponent(neighbour: ElectricalObject<*>): ElectricalComponentInfo
 
     /**
      * Called by the building logic when the electrical object is made part of a circuit.
@@ -177,7 +178,7 @@ abstract class ElectricalObject(cell: Cell) : SimulationObject(cell) {
     /**
      * Called by the cell when a valid connection candidate is discovered.
      * */
-    open fun addConnection(remoteObj: ElectricalObject) {
+    open fun addConnection(remoteObj: ElectricalObject<*>) {
         require(!connections.contains(remoteObj)) { "Duplicate connection" }
 
         connections.add(remoteObj)
@@ -209,9 +210,26 @@ abstract class ElectricalObject(cell: Cell) : SimulationObject(cell) {
 
     /**
      * Called when the circuit must be updated with the components owned by this object.
+     * This is called before build.
+     * By default, offers for all [connections] are gathered using [offerComponent], and the offered components are all added to the [circuit]
      * */
-    protected abstract fun addComponents(circuit: Circuit)
+    protected open fun addComponents(circuit: Circuit) {
+        val components = HashSet<Component>(2)
 
+        connections.forEach { connection ->
+            val offer = offerComponent(connection)
+            components.add(offer.component)
+        }
+
+        components.forEach { component ->
+            circuit.add(component)
+        }
+    }
+
+    /**
+     * Builds the connections, after the circuit was acquired in [setNewCircuit] and the components were added in [addComponents].
+     * By default, offers for all [connections] are gathered using [offerComponent], and the components are connected using the pins indicated in the offers.
+     * */
     override fun build() {
         // Suggested by Grissess (and should have crossed my mind too, shame on me):
         connections.forEach { remote ->
@@ -230,10 +248,10 @@ interface PersistentObject {
     fun loadObjectNbt(tag: CompoundTag)
 }
 
-class SimulationObjectSet(objects: List<SimulationObject>) {
-    constructor(vararg objects: SimulationObject) : this(objects.asList())
+class SimulationObjectSet(objects: List<SimulationObject<*>>) {
+    constructor(vararg objects: SimulationObject<*>) : this(objects.asList())
 
-    private val objects = HashMap<SimulationObjectType, SimulationObject>()
+    private val objects = HashMap<SimulationObjectType, SimulationObject<*>>()
 
     init {
         objects.forEach {
@@ -247,11 +265,11 @@ class SimulationObjectSet(objects: List<SimulationObject>) {
         return objects.contains(type)
     }
 
-    private fun getObject(type: SimulationObjectType): SimulationObject {
+    private fun getObject(type: SimulationObjectType): SimulationObject<*> {
         return objects[type] ?: error("Object set does not have $type")
     }
 
-    fun getObjectOrNull(type: SimulationObjectType): SimulationObject? {
+    fun getObjectOrNull(type: SimulationObjectType): SimulationObject<*>? {
         return objects[type]
     }
 
@@ -259,11 +277,11 @@ class SimulationObjectSet(objects: List<SimulationObject>) {
 
     val thermalObject get() = getObject(SimulationObjectType.Thermal) as ThermalObject
 
-    fun process(function: ((SimulationObject) -> Unit)) {
+    fun forEachObject(function: ((SimulationObject<*>) -> Unit)) {
         objects.values.forEach(function)
     }
 
-    operator fun get(type: SimulationObjectType): SimulationObject {
+    operator fun get(type: SimulationObjectType): SimulationObject<*> {
         return objects[type] ?: error("Object set does not have $type")
     }
 }
