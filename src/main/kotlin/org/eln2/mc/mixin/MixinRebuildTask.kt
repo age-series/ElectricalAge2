@@ -50,7 +50,7 @@ abstract class MixinRebuildTask {
         pPoseStack: PoseStack,
         pRenderTypeSet: MutableSet<*>,
     ) {
-        GridRenderer.submitForChunk(
+        GridRenderer.submitForRenderSection(
             `this$1`!!,
             pChunkBufferBuilderPack,
             pRenderChunkRegion,

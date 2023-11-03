@@ -13,6 +13,7 @@ import net.minecraft.core.Direction
 import net.minecraft.core.Vec3i
 import net.minecraft.core.particles.ParticleOptions
 import net.minecraft.nbt.CompoundTag
+import net.minecraft.nbt.ListTag
 import net.minecraft.network.chat.Component
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.level.ServerLevel
@@ -1075,3 +1076,27 @@ fun IntSet.minInt(): Int {
 }
 
 fun RandomSource.nextDouble(min: Double, max: Double) = Mth.nextDouble(this, min, max)
+
+inline fun ListTag.forEachCompound(action: (CompoundTag) -> Unit) {
+    for (tag in this) {
+        val compound = (tag as? CompoundTag).requireNotNull {
+            "Failed to cast element in list tag to compound"
+        }
+
+        action(compound)
+    }
+}
+
+fun CompoundTag.getListTag(key: String) : ListTag = (this.get(key) as? ListTag).requireNotNull {
+    "Failed to get list tag from compound"
+}
+
+inline fun<K, V> MutableMap<K, V>.putUnique(key: K, value: V, error: () -> String) {
+    require(this.put(key, value) == null, error)
+}
+
+fun<K, V> MutableMap<K, V>.putUnique(key: K, value: V) {
+    putUnique(key, value) {
+        "Failed to put unique $key with value $value"
+    }
+}

@@ -10,10 +10,11 @@ import net.minecraft.client.renderer.RenderType
 import net.minecraft.client.renderer.chunk.ChunkRenderDispatcher
 import net.minecraft.client.renderer.chunk.RenderChunkRegion
 import net.minecraft.client.renderer.texture.OverlayTexture
+import net.minecraft.client.renderer.texture.TextureAtlasSprite
+import net.minecraft.core.BlockPos
 import net.minecraft.core.SectionPos
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.nbt.ListTag
-import net.minecraft.core.BlockPos
 import net.minecraft.network.FriendlyByteBuf
 import net.minecraft.network.chat.Component
 import net.minecraft.resources.ResourceLocation
@@ -31,6 +32,7 @@ import net.minecraft.world.level.Level
 import net.minecraft.world.phys.HitResult
 import net.minecraft.world.phys.Vec3
 import net.minecraftforge.network.NetworkEvent
+import org.ageseries.libage.data.MutableMapPairBiMap
 import org.ageseries.libage.data.MutableSetMapMultiMap
 import org.ageseries.libage.sim.electrical.mna.Circuit
 import org.ageseries.libage.sim.electrical.mna.component.Resistor
@@ -43,52 +45,87 @@ import org.eln2.mc.common.network.Networking
 import org.eln2.mc.common.parts.foundation.CellPart
 import org.eln2.mc.common.parts.foundation.PartPlacementInfo
 import org.eln2.mc.common.parts.foundation.PartRenderer
-import org.eln2.mc.data.*
+import org.eln2.mc.data.DataContainer
+import org.eln2.mc.data.Locator
+import org.eln2.mc.data.ResistanceField
+import org.eln2.mc.data.data
 import org.eln2.mc.mathematics.*
 import java.util.*
-import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.locks.ReentrantReadWriteLock
 import java.util.function.Supplier
-import kotlin.collections.ArrayList
-import kotlin.collections.HashMap
 import kotlin.collections.HashSet
 import kotlin.concurrent.read
 import kotlin.concurrent.write
 import kotlin.math.PI
 import kotlin.math.min
 
-data class GridConnection(val id: Int, val catenary: WireCatenary) {
-    constructor(catenary: WireCatenary) : this(ID_ATOMIC.getAndIncrement(), catenary)
+class GridMaterial(private val spriteSupplier: Lazy<TextureAtlasSprite>, val vertexColor: RGBFloat) {
+    val id get() = GridMaterials.getId(this)
+
+    val sprite get() = spriteSupplier.value
+}
+
+object GridMaterials {
+    private val materials = MutableMapPairBiMap<GridMaterial, ResourceLocation>()
+
+    val NEUTRAL_AS_RUBBER = register(
+        "neutral_rubber",
+        GridMaterial(
+            Sprites.NEUTRAL_CABLE,
+            RGBFloat(0.2f, 0.2f, 0.2f)
+        )
+    )
+
+    val NEUTRAL_AS_STEEL = register(
+        "neutral_steel",
+        GridMaterial(
+            Sprites.NEUTRAL_CABLE,
+            RGBFloat(0.9f, 0.9f, 0.9f)
+        )
+    )
+
+    val COPPER = register(
+        "copper",
+        GridMaterial(
+            Sprites.COPPER_CABLE,
+            RGBFloat(1f, 1f, 1f)
+        )
+    )
+
+    fun register(id: ResourceLocation, material: GridMaterial) = material.also { materials.add(material, id) }
+    private fun register(id: String, material: GridMaterial) = register(resource(id), material)
+    fun getId(material: GridMaterial) : ResourceLocation = materials.forward[material] ?: error("Failed to get grid material id $material")
+    fun getMaterial(resourceLocation: ResourceLocation) : GridMaterial = materials.backward[resourceLocation] ?: error("Failed to get grid material $resourceLocation")
+}
+
+data class GridConnectionCatenary(val id: Int, val wireCatenary: CatenaryCable3d, val material: GridMaterial) {
+    constructor(catenary: CatenaryCable3d, material: GridMaterial) : this(getUniqueId(), catenary, material)
 
     fun toNbt() = CompoundTag().also {
         it.putInt(ID, id)
-        it.put(CATENARY, catenary.toNbt())
+        it.put(CATENARY, wireCatenary.toNbt())
+        it.putResourceLocation(MATERIAL, GridMaterials.getId(material))
     }
 
     companion object {
-        private val ID_ATOMIC = AtomicInteger()
-
         private const val ID = "id"
         private const val CATENARY = "catenary"
+        private const val MATERIAL = "material"
 
-        fun fromNbt(tag: CompoundTag) = GridConnection(
+        fun fromNbt(tag: CompoundTag) = GridConnectionCatenary(
             tag.getInt(ID),
-            WireCatenary.fromNbt(tag.get(CATENARY) as CompoundTag)
+            CatenaryCable3d.fromNbt(tag.get(CATENARY) as CompoundTag),
+            GridMaterials.getMaterial(tag.getResourceLocation(MATERIAL))
         )
     }
 }
 
 interface GridConnectionHandle {
-    val connection: GridConnection
+    val connection: GridConnectionCatenary
     val level: ServerLevel
 
     fun destroy()
 }
-
-fun interface GridConnectionNotifier {
-    fun onObstructed(handle: GridConnectionHandle)
-}
-
 
 // Required that attachment and locator do not change if ID does not change
 class GridEndpointInfo(val id: UUID, val attachment: Vector3d, val locator: Locator) {
@@ -186,14 +223,14 @@ class GridConnectionPair private constructor(val a: GridEndpointInfo, val b: Gri
     }
 }
 
-data class GridConnectionCreateMessage(val connection: GridConnection) {
+data class GridConnectionCreateMessage(val connection: GridConnectionCatenary) {
     companion object {
         fun encode(message: GridConnectionCreateMessage, buf: FriendlyByteBuf) {
             buf.writeNbt(message.connection.toNbt())
         }
 
         fun decode(buf: FriendlyByteBuf) = GridConnectionCreateMessage(
-            GridConnection.fromNbt(buf.readNbt()!!)
+            GridConnectionCatenary.fromNbt(buf.readNbt()!!)
         )
 
         fun handle(message: GridConnectionCreateMessage, ctx: Supplier<NetworkEvent.Context>) {
@@ -228,6 +265,14 @@ data class GridConnectionDeleteMessage(val id: Int) {
 
 @ServerOnly
 object GridConnectionManagerServer {
+    fun createGridCatenary(pair: GridConnectionPair, material: GridMaterial) = GridConnectionCatenary(
+        CatenaryCable3d(
+            pair.a.attachment,
+            pair.b.attachment
+        ),
+        material
+    )
+
     private val levels = HashMap<ServerLevel, LevelGridData>()
 
     private fun validateUsage() {
@@ -239,42 +284,42 @@ object GridConnectionManagerServer {
         levels.clear()
     }
 
-    private fun validateLevel(level: Level): ServerLevel {
-        if(level !is ServerLevel) {
-            error("Cannot use non server level $level")
+    private inline fun<T> invoke(level: ServerLevel, action: LevelGridData.() -> T) : T {
+        validateUsage()
+
+        val data = levels.computeIfAbsent(level) {
+            LevelGridData(level)
         }
 
-        return level
+        return action.invoke(data)
     }
 
-    private fun getLevelData(level: Level) : LevelGridData {
-        val serverLevel = validateLevel(level)
-        return levels.computeIfAbsent(serverLevel) { LevelGridData(serverLevel) }
+    fun createHandle(level: ServerLevel, connection: GridConnectionCatenary) : GridConnectionHandle = invoke(level) {
+        createHandle(connection)
     }
 
-    fun createConnection(level: Level, connection: GridConnection, notifier: GridConnectionNotifier? = null) : GridConnectionHandle {
-        validateUsage()
-        return getLevelData(validateLevel(level)).createConnection(connection, notifier)
+    fun playerWatch(level: ServerLevel, player: ServerPlayer, chunkPos: ChunkPos) = invoke(level) {
+        watch(player, chunkPos)
     }
 
-    fun playerWatch(level: ServerLevel, player: ServerPlayer, chunkPos: ChunkPos) {
-        validateUsage()
-        getLevelData(level).watch(player, chunkPos)
+    fun playerUnwatch(level: ServerLevel, player: ServerPlayer, chunkPos: ChunkPos) = invoke(level) {
+        unwatch(player, chunkPos)
     }
 
-    fun playerUnwatch(level: ServerLevel, player: ServerPlayer, chunkPos: ChunkPos) {
-        validateUsage()
-        getLevelData(level).unwatch(player, chunkPos)
+    fun createPairIfAbsent(level: ServerLevel, pair: GridConnectionPair, material: GridMaterial) : Boolean = invoke(level) {
+        createPairIfAbsent(pair, material)
     }
 
-    fun createPairIfAbsent(level: ServerLevel, pair: GridConnectionPair) : Boolean {
-        validateUsage()
-        return getLevelData(level).createPairIfAbsent(pair)
+    fun createPair(level: ServerLevel, pair: GridConnectionPair, connection: GridConnectionCatenary) = invoke(level) {
+        createPair(pair, connection)
     }
 
-    fun removeEndpointById(level: ServerLevel, endpointId: UUID) {
-        validateUsage()
-        getLevelData(level).removeEndpointById(endpointId)
+    fun removeEndpointById(level: ServerLevel, endpointId: UUID) = invoke(level) {
+        removeEndpointById(endpointId)
+    }
+
+    fun clipsBlock(level: ServerLevel, blockPos: BlockPos) : Boolean = invoke(level) {
+        clips(blockPos)
     }
 
     class LevelGridData(val level: ServerLevel) {
@@ -311,19 +356,29 @@ object GridConnectionManagerServer {
             Networking.send(GridConnectionDeleteMessage(handle.connection.id), player)
         }
 
-        fun createConnection(connection: GridConnection, notifier: GridConnectionNotifier?) : GridConnectionHandle {
-            val handle = Handle(connection, notifier)
+        fun clips(blockPos: BlockPos) : Boolean {
+            for (handle in handlesByChunk[ChunkPos(blockPos)]) {
+                if(handle.connection.wireCatenary.blocks.contains(blockPos)) {
+                    return true
+                }
+            }
+
+            return false
+        }
+
+        fun createHandle(connection: GridConnectionCatenary) : GridConnectionHandle {
+            val handle = Handle(connection)
 
             handles.add(handle)
 
-            connection.catenary.chunks.keys.forEach { chunkPos ->
+            connection.wireCatenary.chunks.keys.forEach { chunkPos ->
                 handlesByChunk[chunkPos].add(handle)
             }
 
             watchedChunksByPlayer.map.forEach { (player, playerWatchedChunks) ->
                 val intersectedChunks = HashSet<ChunkPos>()
 
-                for (catenaryChunk in connection.catenary.chunks.keys) {
+                for (catenaryChunk in connection.wireCatenary.chunks.keys) {
                     if(playerWatchedChunks.contains(catenaryChunk)) {
                         intersectedChunks.add(catenaryChunk)
                     }
@@ -341,21 +396,17 @@ object GridConnectionManagerServer {
             return handle
         }
 
-        fun createPairIfAbsent(pair: GridConnectionPair) : Boolean {
+        fun createPair(pair: GridConnectionPair, connection: GridConnectionCatenary) {
+            pairMap.addPair(pair)
+            handlesByPair[pair] = createHandle(connection)
+        }
+
+        fun createPairIfAbsent(pair: GridConnectionPair, material: GridMaterial) : Boolean {
             if(pairMap.hasPair(pair)) {
                 return false
             }
 
-            pairMap.addPair(pair)
-            handlesByPair[pair] = createConnection(
-                GridConnection(
-                    WireCatenary(
-                        pair.a.attachment,
-                        pair.b.attachment
-                    )
-                ),
-                null
-            )
+            createPair(pair, createGridCatenary(pair, material))
 
             return true
         }
@@ -366,7 +417,7 @@ object GridConnectionManagerServer {
             }
         }
 
-        private inner class Handle(override val connection: GridConnection, val notifier: GridConnectionNotifier?) : GridConnectionHandle {
+        private inner class Handle(override val connection: GridConnectionCatenary) : GridConnectionHandle {
             private val players = MutableSetMapMultiMap<ServerPlayer, ChunkPos>()
 
             fun addPlayer(player: ServerPlayer, chunkPos: ChunkPos) : Boolean {
@@ -384,7 +435,7 @@ object GridConnectionManagerServer {
                 validateUsage()
 
                 if(handles.remove(this)) {
-                    connection.catenary.chunks.keys.forEach { chunk ->
+                    connection.wireCatenary.chunks.keys.forEach { chunk ->
                         handlesByChunk[chunk].remove(this)
                     }
 
@@ -466,7 +517,7 @@ object GridConnectionManagerClient {
         }
     }
 
-    private fun scanUProgression(extrusion: SketchExtrusion, catenary: WireCatenary, u0: Double, u1: Double) : Double2DoubleOpenHashMap {
+    private fun scanUProgression(extrusion: SketchExtrusion, catenary: CatenaryCable3d, u0: Double, u1: Double) : Double2DoubleOpenHashMap {
         var p0 = extrusion.rmfProgression.first()
         var arcLength = 0.0
         val uCoordinates = Double2DoubleOpenHashMap(extrusion.rmfProgression.size)
@@ -505,14 +556,14 @@ object GridConnectionManagerClient {
         )
     }
 
-    fun addConnection(connection: GridConnection) {
+    fun addConnection(connection: GridConnectionCatenary) {
         val sections = HashSet<SectionPos>()
 
         lock.write {
-            val catenary = connection.catenary
+            val catenary = connection.wireCatenary
             val (extrusion, quads) = catenary.mesh()
             LOG.info("Generated ${quads.size} quads")
-            val sprite = GridRenderer.WIRE_TEXTURE.value
+            val sprite = connection.material.sprite
 
             val uCoordinates = scanUProgression(
                 extrusion,
@@ -542,12 +593,14 @@ object GridConnectionManagerClient {
                     processedQuad.uvs[vertexIndex] = Pair(u.toFloat(), v.toFloat())
                 }
 
-                val sectionData = quadsBySection.computeIfAbsent(
-                    SectionPos.of(quadPos),
-                    ::ConnectionSectionSlice
-                )
+                val sectionPos = SectionPos.of(quadPos)
+
+                val sectionData = quadsBySection.computeIfAbsent(sectionPos) {
+                    ConnectionSectionSlice(connection.material, sectionPos)
+                }
 
                 sectionData.quads.add(processedQuad)
+                sectionData.blocks.add(quadPos)
             }
 
             quadsBySection.forEach { (sectionPos, sectionSlice) ->
@@ -573,11 +626,11 @@ object GridConnectionManagerClient {
         }
     }
 
-    fun read(sectionPos: SectionPos, user: (Quad) -> Unit) {
+    fun read(sectionPos: SectionPos, user: (GridMaterial, Quad) -> Unit) {
         lock.read {
             slicesBySection[sectionPos].forEach { slice ->
                 slice.quads.forEach { quad ->
-                    user(quad)
+                    user(slice.material, quad)
                 }
             }
         }
@@ -605,6 +658,21 @@ object GridConnectionManagerClient {
         return result
     }
 
+    fun clipsBlock(blockPos: BlockPos) : Boolean {
+        var result = false
+
+        lock.read {
+            for (slice in slicesBySection[SectionPos.of(blockPos)]) {
+                if(slice.blocks.contains(blockPos)) {
+                    result = true
+                    break
+                }
+            }
+        }
+
+        return result
+    }
+
     // todo optimize storage
 
     class Quad {
@@ -613,8 +681,9 @@ object GridConnectionManagerClient {
         val uvs = Array(4) { Pair(0f, 0f) }
     }
 
-    private class ConnectionSectionSlice(val sectionPos: SectionPos) {
+    private class ConnectionSectionSlice(val material: GridMaterial, val sectionPos: SectionPos) {
         val quads = ArrayList<Quad>()
+        val blocks = HashSet<BlockPos>()
     }
 }
 
@@ -666,9 +735,9 @@ class GridCell(ci: CellCreateInfo) : Cell(ci) {
     val grid = GridElectricalObject(this)
 
     // Same grid:
-    val endPoints = ArrayList<GridEndpointInfo>()
+    val endPoints = HashMap<GridEndpointInfo, GridMaterial>()
 
-    var endpointId = UUID.randomUUID()
+    var endpointId: UUID = UUID.randomUUID()
         private set
 
     override fun onRemoving() {
@@ -676,14 +745,15 @@ class GridCell(ci: CellCreateInfo) : Cell(ci) {
             "OnRemoving grid is not on the server thread"
         }
 
-        endPoints.forEach { remoteEndPoint ->
+        endPoints.keys.forEach { remoteEndPoint ->
             val remoteCell = graph.getCellByLocator(remoteEndPoint.locator)
 
             remoteCell as GridCell
 
-            require(remoteCell.endPoints.removeIf { it.id == this.endpointId }) {
-                "Failed to clean up remote end point"
-            }
+            val localEndPoint = remoteCell.endPoints.keys.firstOrNull { it.id == this.endpointId }
+                .requireNotNull { "Failed to solve grid ${this.endPoints} $this" }
+
+            check(remoteCell.endPoints.remove(localEndPoint) != null)
         }
 
         GridConnectionManagerServer.removeEndpointById(graph.level, this.endpointId)
@@ -694,8 +764,11 @@ class GridCell(ci: CellCreateInfo) : Cell(ci) {
 
         val endpointList = ListTag()
 
-        endPoints.forEach { remoteEndPoint ->
-            endpointList.add(remoteEndPoint.toNbt())
+        endPoints.forEach { (remoteEndPoint, material) ->
+            val endpointCompound = CompoundTag()
+            endpointCompound.put(REMOTE_END_POINT, remoteEndPoint.toNbt())
+            endpointCompound.putResourceLocation(MATERIAL, material.id)
+            endpointList.add(endpointCompound)
         }
 
         it.put(REMOTE_END_POINTS, endpointList)
@@ -704,13 +777,15 @@ class GridCell(ci: CellCreateInfo) : Cell(ci) {
     override fun loadCellData(tag: CompoundTag) {
         endpointId = tag.getUUID(ENDPOINT_ID)
 
-        (tag.get(REMOTE_END_POINTS) as? ListTag)?.forEach { endpointTag ->
-            endPoints.add(GridEndpointInfo.fromNbt(endpointTag as CompoundTag))
+        tag.getListTag(REMOTE_END_POINTS).forEachCompound { endpointCompound ->
+            val remoteEndPoint = GridEndpointInfo.fromNbt(endpointCompound.get(REMOTE_END_POINT) as CompoundTag)
+            val material = GridMaterials.getMaterial(endpointCompound.getResourceLocation(MATERIAL))
+            endPoints.putUnique(remoteEndPoint, material)
         }
     }
 
     override fun onLoadedFromDisk() {
-        endPoints.forEach { remoteEndPoint ->
+        endPoints.keys.forEach { remoteEndPoint ->
             if(!graph.containsCellByLocator(remoteEndPoint.locator)) {
                 LOG.error("Invalid end point $remoteEndPoint") // Break point here
             }
@@ -719,6 +794,8 @@ class GridCell(ci: CellCreateInfo) : Cell(ci) {
 
     companion object {
         private const val ENDPOINT_ID = "endpointId"
+        private const val REMOTE_END_POINT = "remoteEndPoint"
+        private const val MATERIAL = "material"
         private const val REMOTE_END_POINTS = "remoteEndPoints"
     }
 }
@@ -728,9 +805,10 @@ abstract class GridCellPart<R : PartRenderer>(
     placement: PartPlacementInfo,
     provider: CellProvider<GridCell>
 ) : CellPart<GridCell, R>(id, placement, provider) {
-    val attachment = placement.position.toVector3d() + Vector3d(0.5)
+    // Attachment in the fixed frame:
 
-    var stagingCell: Cell? = null
+    open val attachment: Vector3d = placement.position.toVector3d() + Vector3d(0.5)
+    var stagingCell: GridCell? = null
 
     fun createEndpointInfo() = GridEndpointInfo(
         cell.endpointId, attachment, cell.locator
@@ -742,7 +820,7 @@ abstract class GridCellPart<R : PartRenderer>(
         }
 
         if(cell.hasGraph) {
-            cell.endPoints.forEach { remoteEndPoint ->
+            cell.endPoints.keys.forEach { remoteEndPoint ->
                 results.add(
                     CellNeighborInfo.of(
                         cell.graph.getCellByLocator(remoteEndPoint.locator)
@@ -761,9 +839,14 @@ abstract class GridCellPart<R : PartRenderer>(
 
             placement.level as ServerLevel
 
-            cell.endPoints.forEach { remoteEndPoint ->
+            cell.endPoints.forEach { (remoteEndPoint, material) ->
                 val pair = GridConnectionPair.create(localEndPoint, remoteEndPoint)
-                GridConnectionManagerServer.createPairIfAbsent(placement.level, pair)
+
+                GridConnectionManagerServer.createPairIfAbsent(
+                    placement.level,
+                    pair,
+                    material
+                )
             }
         }
     }
@@ -782,17 +865,25 @@ class GridTapPart(
     }
 }
 
-open class GridConnectItem : Item(Properties()) {
+open class GridConnectItem(val material: GridMaterial) : Item(Properties()) {
     override fun use(pLevel: Level, pPlayer: Player, pUsedHand: InteractionHand): InteractionResultHolder<ItemStack> {
         val actualStack = pPlayer.getItemInHand(pUsedHand)
 
-        fun fail() : InteractionResultHolder<ItemStack> {
+        fun tell(text: String) {
+            if(text.isNotEmpty()) {
+                pPlayer.sendSystemMessage(Component.literal(text))
+            }
+        }
+
+        fun fail(reason: String = "") : InteractionResultHolder<ItemStack> {
             actualStack.tag = null
+            tell(reason)
             return InteractionResultHolder.fail(actualStack)
         }
 
-        fun success() : InteractionResultHolder<ItemStack> {
+        fun success(message: String = "") : InteractionResultHolder<ItemStack> {
             actualStack.tag = null
+            tell(message)
             return InteractionResultHolder.success(actualStack)
         }
 
@@ -803,28 +894,53 @@ open class GridConnectItem : Item(Properties()) {
         val hit = getPlayerPOVHitResult(pLevel, pPlayer, ClipContext.Fluid.SOURCE_ONLY)
 
         if (hit.type != HitResult.Type.BLOCK) {
-            return fail()
+            return fail("Cannot connect that!")
         }
+        // make generic grid game object
+        val targetMultipart = pLevel.getBlockEntity(hit.blockPos) as? MultipartBlockEntity
+            ?: return fail("Cannot connect that!")
 
-        val targetMultipart = pLevel.getBlockEntity(hit.blockPos) as? MultipartBlockEntity ?: return fail()
-        val targetPart = targetMultipart.pickPart(pPlayer) as? GridCellPart<*> ?: return fail()
+        val targetPart = targetMultipart.pickPart(pPlayer) as? GridCellPart<*>
+            ?: return fail("No valid part selected")
 
         if (actualStack.tag != null && actualStack.tag!!.contains(NBT_POS) && actualStack.tag!!.contains(NBT_FACE)) {
             val remoteMultipart = pLevel.getBlockEntity(actualStack.tag!!.getBlockPos(NBT_POS)) as? MultipartBlockEntity
-                ?: return fail()
+                ?: return fail("Cannot connect that!")
 
             val remotePart = remoteMultipart.getPart(actualStack.tag!!.getDirection(NBT_FACE)) as? GridCellPart<*>
+                ?: return fail("No valid part selected")
 
-            if(remotePart == null || remotePart == targetPart) {
-                return fail()
+            if(remotePart == targetPart) {
+                return fail("Can't connect an endpoint with itself")
             }
 
-            if(targetPart.cell.endPoints.any { it.id == remotePart.cell.endpointId }) {
-                check(remotePart.cell.endPoints.any { it.id == targetPart.cell.endpointId })
-                return fail()
+            if(targetPart.cell.endPoints.keys.any { it.id == remotePart.cell.endpointId }) {
+                check(remotePart.cell.endPoints.keys.any { it.id == targetPart.cell.endpointId })
+                return fail("Can't do that!")
             }
             else {
-                check(remotePart.cell.endPoints.none { it.id == targetPart.cell.endpointId })
+                check(remotePart.cell.endPoints.keys.none { it.id == targetPart.cell.endpointId })
+            }
+
+            val pair = GridConnectionPair.create(
+                targetPart.createEndpointInfo(),
+                remotePart.createEndpointInfo()
+            )
+
+            val gridCatenary = GridConnectionManagerServer.createGridCatenary(pair, material)
+
+            val startBlockPos = gridCatenary.wireCatenary.a.floorBlockPos()
+            val endBlockPos = gridCatenary.wireCatenary.b.floorBlockPos()
+
+            for (blockPos in gridCatenary.wireCatenary.blocks) {
+                if(blockPos == startBlockPos || blockPos == endBlockPos) {
+                    continue
+                }
+
+                val state = pLevel.getBlockState(blockPos)
+                if(!state.isAir) {
+                    return fail("Block $state is in the way at $blockPos")
+                }
             }
 
             CellConnections.disconnectCell(targetPart.cell, targetPart.placement.multipart, false)
@@ -832,42 +948,27 @@ open class GridConnectItem : Item(Properties()) {
             remotePart.stagingCell = targetPart.cell
             CellConnections.connectCell(targetPart.cell, targetPart.placement.multipart)
 
-
             targetPart.stagingCell = null
             remotePart.stagingCell = null
 
-            require(targetPart.cell.graph == remotePart.cell.graph)
-
-            targetPart.cell.endPoints.add(remotePart.createEndpointInfo())
-            remotePart.cell.endPoints.add(targetPart.createEndpointInfo())
-
-            check(
-                GridConnectionManagerServer.createPairIfAbsent(
-                    pLevel as ServerLevel,
-                    GridConnectionPair.create(
-                        targetPart.createEndpointInfo(),
-                        remotePart.createEndpointInfo()
-                    )
-                )
-            )
-
-            pPlayer.sendSystemMessage(Component.literal("Realized connection"))
-
-            if(
-                !targetPart.cell.graph.contains(targetPart.cell) ||
-                !targetPart.cell.graph.contains(remotePart.cell) ||
-                !remotePart.cell.graph.containsCellByLocator(targetPart.cell.locator) ||
-                !remotePart.cell.graph.containsCellByLocator(remotePart.cell.locator)) {
-                noop()
+            require(targetPart.cell.graph == remotePart.cell.graph) {
+                "Grid staging failed"
             }
 
-            return success()
+            targetPart.cell.endPoints.putUnique(remotePart.createEndpointInfo(), material)
+            remotePart.cell.endPoints.putUnique(targetPart.createEndpointInfo(), material)
+
+            GridConnectionManagerServer.createPair(pLevel as ServerLevel, pair, gridCatenary)
+
+            return success("Connected successfully!")
         }
 
         actualStack.tag = CompoundTag().apply {
             putBlockPos(NBT_POS, hit.blockPos)
             putDirection(NBT_FACE, hit.direction)
         }
+
+        tell("Start recorded")
 
         return InteractionResultHolder.success(actualStack)
     }
@@ -879,17 +980,7 @@ open class GridConnectItem : Item(Properties()) {
 }
 
 object GridRenderer {
-    val ATLAS_ID = InventoryMenu.BLOCK_ATLAS
-    val TEXTURE_ID = resource("cable/copper_cable")
-
-    val WIRE_TEXTURE = lazy {
-        Minecraft.getInstance()
-            .modelManager
-            .getAtlas(ATLAS_ID)
-            .getSprite(TEXTURE_ID)
-    }
-
-    fun submitForChunk(
+    fun submitForRenderSection(
         pRenderChunk: ChunkRenderDispatcher.RenderChunk,
         pChunkBufferBuilderPack: ChunkBufferBuilderPack,
         pRenderChunkRegion: RenderChunkRegion,
@@ -911,7 +1002,7 @@ object GridRenderer {
         val originY = pRenderChunk.origin.y.toDouble()
         val originZ = pRenderChunk.origin.z.toDouble()
 
-        GridConnectionManagerClient.read(section) { quad ->
+        GridConnectionManagerClient.read(section) { material, quad ->
             for (i in 0 until 4) {
                 val position = quad.positions[i]
                 val blockPosition = position.floorBlockPos()
@@ -923,6 +1014,10 @@ object GridRenderer {
                 neighborLights.load(blockPosition)
 
                 val normal = quad.normals[i]
+                val normalX = normal.x.toFloat()
+                val normalY = normal.y.toFloat()
+                val normalZ = normal.z.toFloat()
+
                 val (u, v) = quad.uvs[i]
 
                 val light = LightTexture.pack(
@@ -930,21 +1025,18 @@ object GridRenderer {
                     combineLight(1, neighborLights, normal, localSkyLight)
                 )
 
+                val xSection = (position.x - originX).toFloat()
+                val ySection = (position.y - originY).toFloat()
+                val zSection = (position.z - originZ).toFloat()
+
+                val (r, g, b) = material.vertexColor
+
                 builder.vertex(
-                    (position.x - originX).toFloat(),
-                    (position.y - originY).toFloat(),
-                    (position.z - originZ).toFloat(),
-                    1.0f,
-                    1.0f,
-                    1.0f,
-                    1.0f,
-                    u,
-                    v,
-                    OverlayTexture.NO_OVERLAY,
-                    light,
-                    normal.x.toFloat(),
-                    normal.y.toFloat(),
-                    normal.z.toFloat()
+                    xSection, ySection, zSection,
+                    r, g, b, 1f,
+                    u, v,
+                    OverlayTexture.NO_OVERLAY, light,
+                    normalX, normalY, normalZ
                 )
             }
         }
@@ -960,11 +1052,11 @@ object GridRenderer {
  * @param splitRotIncrementMax The maximum deviation between the tangents at consecutive vertex rings (for rendering)
  * @param radius The radius of the cable (for rendering)
  * */
-class WireCatenary(
+class CatenaryCable3d(
     val a: Vector3d,
     val b: Vector3d,
-    val slack: Double = 0.1,
-    val splitDistanceHint: Double = 0.2,
+    val slack: Double = 0.05,
+    val splitDistanceHint: Double = 0.5,
     val splitRotIncrementMax: Double = PI / 16.0,
     val circleVertices: Int = 8,
     val radius: Double = 0.1
@@ -983,7 +1075,7 @@ class WireCatenary(
     /**
      * Gets the arc length of the cable, factoring in the [slack].
      * */
-    val arcLength = (a .. b) * (1.0 + slack)
+    val arcLength = (a..b) * (1.0 + slack)
 
     /**
      * Gets the catenary spline that characterises the wire.
@@ -1015,7 +1107,7 @@ class WireCatenary(
     /**
      * Creates a mesh of the wire.
      * */
-    fun mesh() : WireMeshResult {
+    fun mesh() : CatenaryCableMesh {
         val samples = spline.adaptscan(
             0.0,
             1.0,
@@ -1033,7 +1125,7 @@ class WireCatenary(
             samples
         )
 
-        val quads = ArrayList<WireQuad>()
+        val quads = ArrayList<CatenaryCableQuad>()
 
         val mesh = extrusion.mesh
 
@@ -1049,29 +1141,29 @@ class WireCatenary(
             val ptv = if((ptvNormal o ptvNormalWinding) > 0.0) baseQuad
             else baseQuad.rewind()
 
-            fun vert(vertexId: Int) : WireVertex {
+            fun vert(vertexId: Int) : CatenaryCableVertex {
                 val vertexParametric = mesh.vertices[vertexId]
                 val vertexPosition = vertexParametric.value
                 val vertexNormal = (vertexPosition - (spline.evaluate(vertexParametric.t))).normalized()
 
-                return WireVertex(vertexPosition, vertexNormal, vertexParametric.t)
+                return CatenaryCableVertex(vertexPosition, vertexNormal, vertexParametric.t)
             }
 
             val vertices = listOf(vert(ptv.a), vert(ptv.b), vert(ptv.c), vert(ptv.d))
 
-            quads.add(WireQuad(ptvCenter, vertices))
+            quads.add(CatenaryCableQuad(ptvCenter, vertices))
         }
 
-        return WireMeshResult(extrusion, quads)
+        return CatenaryCableMesh(extrusion, quads)
     }
 
     override fun toString() =
         "from $a to $b, " +
-            "slack=$slack, " +
-            "splitDistance=$splitDistanceHint, " +
-            "splitRotIncrMax=$splitRotIncrementMax, " +
-            "circleVertices=$circleVertices, " +
-            "radius=$radius"
+        "slack=$slack, " +
+        "splitDistance=$splitDistanceHint, " +
+        "splitRotIncrMax=$splitRotIncrementMax, " +
+        "circleVertices=$circleVertices, " +
+        "radius=$radius"
 
     fun toNbt() = CompoundTag().also {
         it.putVector3d(A, a)
@@ -1092,7 +1184,7 @@ class WireCatenary(
         private const val CIRCLE_VERTICES = "circleVertices"
         private const val RADIUS = "radius"
 
-        fun fromNbt(tag: CompoundTag) = WireCatenary(
+        fun fromNbt(tag: CompoundTag) = CatenaryCable3d(
             tag.getVector3d(A),
             tag.getVector3d(B),
             tag.getDouble(SLACK),
@@ -1103,18 +1195,7 @@ class WireCatenary(
         )
     }
 }
-data class WireMeshResult(
-    val extrusion: SketchExtrusion,
-    val quads: ArrayList<WireQuad>
-)
 
-data class WireVertex(
-    val position: Vector3d,
-    val normal: Vector3d,
-    val param: Double
-)
-
-data class WireQuad(
-    val primitiveCenter: Vector3d,
-    val vertices: List<WireVertex>
-)
+data class CatenaryCableMesh(val extrusion: SketchExtrusion, val quads: ArrayList<CatenaryCableQuad>)
+data class CatenaryCableQuad(val primitiveCenter: Vector3d, val vertices: List<CatenaryCableVertex>)
+data class CatenaryCableVertex(val position: Vector3d, val normal: Vector3d, val param: Double)

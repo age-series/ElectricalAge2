@@ -10,19 +10,15 @@ import net.minecraftforge.eventbus.api.SubscribeEvent
 import net.minecraftforge.fml.common.Mod
 import net.minecraftforge.server.ServerLifecycleHooks
 import net.minecraftforge.client.event.TextureStitchEvent
-import net.minecraftforge.event.ServerChatEvent
+import net.minecraftforge.event.entity.player.PlayerInteractEvent
 import net.minecraftforge.event.level.LevelEvent
-import net.minecraftforge.event.server.ServerStoppedEvent
 import org.eln2.mc.LOG
 import org.eln2.mc.common.blocks.foundation.GhostLightHackClient
 import org.eln2.mc.common.blocks.foundation.GhostLightServer
 import org.eln2.mc.common.cells.foundation.CellGraphManager
-import org.eln2.mc.common.cells.foundation.SubscriberPhase
 import org.eln2.mc.common.content.*
 import org.eln2.mc.common.events.schedulePost
-import org.eln2.mc.common.events.schedulePre
 import org.eln2.mc.data.AveragingList
-import org.eln2.mc.mathematics.Vector3d
 
 data class LevelDataStorage(val map: HashMap<Any, Any>) {
     inline fun <K : Any, reified V : Any> read(key: K): V? {
@@ -141,12 +137,20 @@ object ForgeEvents {
 
     @SubscribeEvent @JvmStatic
     fun onBlockBreakEvent(event: BlockEvent.BreakEvent) {
-        scheduleGhostEvent(event)
+        if(!event.isCanceled) {
+            scheduleGhostEvent(event)
+        }
     }
 
     @SubscribeEvent @JvmStatic
-    fun onEntityPlaceEvent(event: BlockEvent.EntityPlaceEvent) {
-        scheduleGhostEvent(event)
+    fun onEntityPlaceEvent(event: BlockEvent.EntityPlaceEvent) { // not called client side?
+        if(!event.level.isClientSide && GridConnectionManagerServer.clipsBlock(event.level as ServerLevel, event.pos)) {
+            event.isCanceled = true
+        }
+
+        if(!event.isCanceled) {
+            scheduleGhostEvent(event)
+        }
     }
 
     @SubscribeEvent @JvmStatic
@@ -154,16 +158,6 @@ object ForgeEvents {
         if(event.level.isClientSide) {
             GhostLightHackClient.clear()
             GridConnectionManagerClient.clear()
-        }
-    }
-}
-
-@Mod.EventBusSubscriber(bus = Mod.EventBusSubscriber.Bus.MOD)
-object ModEvents {
-    @SubscribeEvent @JvmStatic
-    fun onTextureAtlasStitchPre(event: TextureStitchEvent.Pre) {
-        if(event.atlas.location() == GridRenderer.ATLAS_ID) {
-            event.addSprite(GridRenderer.TEXTURE_ID)
         }
     }
 }

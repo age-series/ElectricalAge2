@@ -3,7 +3,6 @@
 package org.eln2.mc.common.content
 
 import net.minecraft.client.gui.screens.MenuScreens
-import net.minecraft.world.entity.MobCategory
 import net.minecraft.world.phys.Vec3
 import org.ageseries.libage.sim.Material
 import org.eln2.mc.LOG
@@ -14,13 +13,11 @@ import org.eln2.mc.client.render.foundation.BasicPartRenderer
 import org.eln2.mc.client.render.foundation.defaultRadiantBodyColor
 import org.eln2.mc.common.blocks.BlockRegistry.block
 import org.eln2.mc.common.blocks.BlockRegistry.blockEntity
-import org.eln2.mc.common.cells.CellRegistry
 import org.eln2.mc.common.cells.CellRegistry.cell
 import org.eln2.mc.common.cells.CellRegistry.injCell
 import org.eln2.mc.common.cells.foundation.BasicCellProvider
 import org.eln2.mc.common.cells.foundation.TemperatureExplosionBehaviorOptions
 import org.eln2.mc.common.containers.ContainerRegistry.menu
-import org.eln2.mc.common.entities.EntityRegistry.entity
 import org.eln2.mc.common.items.ItemRegistry.item
 import org.eln2.mc.common.parts.PartRegistry.part
 import org.eln2.mc.common.parts.foundation.BasicCellPart
@@ -163,7 +160,9 @@ object Content {
     val GRID_TAP_PART = part("grid_tap", BasicPartProvider( { a, b ->
         GridTapPart(a, b, GRID_CELL.get())
     }, Vec3(1.0, 1.0, 1.0)))
-    val GRAPH_CONNECT_ITEM_TEST = item("grid_connect", ::GridConnectItem)
+    val GRID_CONNECT_COPPER = item("grid_connect_copper") { GridConnectItem(GridMaterials.COPPER) }
+    val GRID_CONNECT_STEEL = item("grid_connect_steel") { GridConnectItem(GridMaterials.NEUTRAL_AS_STEEL) }
+    val GRID_CONNECT_RUBBER = item("grid_connect_rubber") { GridConnectItem(GridMaterials.NEUTRAL_AS_RUBBER) }
 
     fun clientWork() {
         MenuScreens.register(HEAT_GENERATOR_MENU.get(), ::HeatGeneratorScreen)
