@@ -114,7 +114,7 @@ enum class Base6Direction3d(val id: Int) {
 }
 
 @JvmInline
-value class Base6Direction3dMask(val mask: Int) {
+value class Base6Direction3dMask(val value: Int) {
     companion object {
         /**
          * Gets the mask bit associated with the specified direction.
@@ -251,7 +251,7 @@ value class Base6Direction3dMask(val mask: Int) {
         }
 
         // These are all mask combinations.
-        private val allMasks = (0..FULL.mask)
+        private val allMasks = (0..FULL.value)
             .map { Base6Direction3dMask(it) }
             .toList()
             .toTypedArray()
@@ -297,16 +297,16 @@ value class Base6Direction3dMask(val mask: Int) {
      * Gets the index used in all caches.
      * This actually corresponds to the mask itself.
      * */
-    val index get() = mask
+    val index get() = value
 
-    val horizontalComponent get() = Base6Direction3dMask(mask and HORIZONTALS.mask)
-    val verticalComponent get() = Base6Direction3dMask(mask and VERTICALS.mask)
-    val isEmpty get() = (mask == 0)
+    val horizontalComponent get() = Base6Direction3dMask(value and HORIZONTALS.value)
+    val verticalComponent get() = Base6Direction3dMask(value and VERTICALS.value)
+    val isEmpty get() = (value == 0)
     val isNotEmpty get() = !isEmpty
-    fun hasFlag(direction: Direction) = (mask and getBit(direction)) > 0
+    fun hasFlag(direction: Direction) = (value and getBit(direction)) > 0
     fun hasFlag(direction: Base6Direction3d) = hasFlag(direction.alias)
-    fun hasAll(flags: Base6Direction3dMask) = (mask and flags.mask) == flags.mask
-    fun hasAny(flags: Base6Direction3dMask) = (mask and flags.mask) > 0
+    fun hasAll(flags: Base6Direction3dMask) = (value and flags.value) == flags.value
+    fun hasAny(flags: Base6Direction3dMask) = (value and flags.value) > 0
 
     infix fun has(direction: Direction) = hasFlag(direction)
     infix fun has(direction: Base6Direction3d) = hasFlag(direction)
@@ -332,7 +332,7 @@ value class Base6Direction3dMask(val mask: Int) {
     /**
      * Gets the cached list of directions in this mask.
      * */
-    val directionList get() = directionLists[this.mask]
+    val directionList get() = directionLists[this.value]
 
     override fun toString(): String {
         val sb = StringBuilder()
@@ -389,17 +389,17 @@ value class Base6Direction3dMask(val mask: Int) {
     /**
      * Gets the cached clockwise mask. Vertical directions are left unaffected.
      * */
-    val clockWise get() = clockwiseMasks[this.mask]
+    val clockWise get() = clockwiseMasks[this.value]
 
     /**
      * Gets the cached counterclockwise mask. Vertical directions are left unaffected.
      * */
-    val counterClockWise get() = counterClockwiseMasks[this.mask]
+    val counterClockWise get() = counterClockwiseMasks[this.value]
 
     /**
      * Gets the cached mask, with all directions inverted.
      * */
-    val opposite get() = oppositeMasks[this.mask]
+    val opposite get() = oppositeMasks[this.value]
 
     // P.S. when we use OPPOSITE here, we ensure that vertical directions don't get included.
     // We want these APIs to not affect vertical directions, and OPPOSITE would.
@@ -474,14 +474,14 @@ value class Base6Direction3dMask(val mask: Int) {
         }
     }
 
-    val count get() = mask.countOneBits()
+    val count get() = value.countOneBits()
 
-    operator fun plus(other: Base6Direction3dMask) = Base6Direction3dMask(this.mask or other.mask)
-    operator fun plus(direction: Direction) = Base6Direction3dMask(this.mask or getBit(direction))
-    operator fun plus(direction: Base6Direction3d) = Base6Direction3dMask(this.mask or getBit(direction.alias))
-    operator fun minus(direction: Direction) = Base6Direction3dMask(this.mask and getBit(direction).inv())
-    operator fun minus(direction: Base6Direction3d) = Base6Direction3dMask(this.mask and getBit(direction.alias).inv())
-    operator fun minus(mask: Base6Direction3dMask) = Base6Direction3dMask(this.mask and mask.mask.inv())
+    operator fun plus(other: Base6Direction3dMask) = Base6Direction3dMask(this.value or other.value)
+    operator fun plus(direction: Direction) = Base6Direction3dMask(this.value or getBit(direction))
+    operator fun plus(direction: Base6Direction3d) = Base6Direction3dMask(this.value or getBit(direction.alias))
+    operator fun minus(direction: Direction) = Base6Direction3dMask(this.value and getBit(direction).inv())
+    operator fun minus(direction: Base6Direction3d) = Base6Direction3dMask(this.value and getBit(direction.alias).inv())
+    operator fun minus(mask: Base6Direction3dMask) = Base6Direction3dMask(this.value and mask.value.inv())
 }
 
 

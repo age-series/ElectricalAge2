@@ -1,5 +1,3 @@
-@file:Suppress("NOTHING_TO_INLINE")
-
 package org.eln2.mc.common.content
 
 import it.unimi.dsi.fastutil.doubles.Double2DoubleOpenHashMap
@@ -34,7 +32,6 @@ import net.minecraftforge.network.NetworkEvent
 import org.ageseries.libage.data.MutableMapPairBiMap
 import org.ageseries.libage.data.MutableSetMapMultiMap
 import org.ageseries.libage.sim.Material
-import org.ageseries.libage.sim.electrical.mna.Circuit
 import org.ageseries.libage.sim.electrical.mna.component.Resistor
 import org.eln2.mc.*
 import org.eln2.mc.client.render.*
@@ -57,14 +54,16 @@ import kotlin.concurrent.write
 import kotlin.math.PI
 import kotlin.math.min
 
-class GridMaterial(
-    private val spriteSupplier: Lazy<TextureAtlasSprite>,
-    val vertexColor: RGBFloat,
-    val physicalMaterial: Material
-) {
+/**
+ * Grid connection material.
+ * @param spriteLazy Supplier for the texture. It must be in the block atlas.
+ * @param vertexColor Per-vertex color, applied when rendering.
+ * @param physicalMaterial The physical properties of the grid cable.
+ * */
+class GridMaterial(private val spriteLazy: Lazy<TextureAtlasSprite>, val vertexColor: RGBFloat, val physicalMaterial: Material) {
     val id get() = GridMaterials.getId(this)
 
-    val sprite get() = spriteSupplier.value
+    val sprite get() = spriteLazy.value
 }
 
 object GridMaterials {
@@ -103,10 +102,19 @@ object GridMaterials {
     fun getMaterial(resourceLocation: ResourceLocation) : GridMaterial = materials.backward[resourceLocation] ?: error("Failed to get grid material $resourceLocation")
 }
 
+/**
+ * [CatenaryCable3d] with extra information needed by grids.
+ * @param id The unique ID of the connection.
+ * @param wireCatenary Catenary that models the physical connection.
+ * @param material The physical properties of the grid cable.
+ * */
 data class GridConnectionCatenary(val id: Int, val wireCatenary: CatenaryCable3d, val material: GridMaterial) {
     constructor(catenary: CatenaryCable3d, material: GridMaterial) : this(getUniqueId(), catenary, material)
 
-    val resistance get() = material.physicalMaterial.electricalResistivity * (wireCatenary.arcLength / wireCatenary.crossSectionArea)
+    /**
+     * Gets the electrical resistance over the entire length of the cable.
+     * */
+    val resistance get() = Quantity(material.physicalMaterial.electricalResistivity * (wireCatenary.arcLength / wireCatenary.crossSectionArea), OHM)
 
     fun toNbt() = CompoundTag().also {
         it.putInt(ID, id)
@@ -136,6 +144,9 @@ interface GridConnectionHandle {
 
 // Required that attachment and locator do not change if ID does not change
 class GridEndpointInfo(val id: UUID, val attachment: Vector3d, val locator: Locator) {
+    /**
+     * Compares the objects for equality. If [other] is a [GridEndpointInfo], equality is evaluated only for [GridEndpointInfo.id]
+     * */
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (javaClass != other?.javaClass) return false
@@ -145,6 +156,9 @@ class GridEndpointInfo(val id: UUID, val attachment: Vector3d, val locator: Loca
         return id == other.id
     }
 
+    /**
+     * Gets the hash code of the [id].
+     * */
     override fun hashCode(): Int {
         return id.hashCode()
     }
@@ -168,6 +182,9 @@ class GridEndpointInfo(val id: UUID, val attachment: Vector3d, val locator: Loca
     }
 }
 
+/**
+ * Represents a sorted pair of [GridEndpointInfo].
+ * */
 class GridConnectionPair private constructor(val a: GridEndpointInfo, val b: GridEndpointInfo) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -204,6 +221,13 @@ class GridConnectionPair private constructor(val a: GridEndpointInfo, val b: Gri
         private const val A_LOCATOR = "locatorA"
         private const val B_LOCATOR = "locatorB"
 
+        /**
+         * Creates a sorted pair of [a] and [b].
+         * *It is true that:*
+         * ```
+         * create(a, b) = create(b, a)
+         * ```
+         * */
         fun create(a: GridEndpointInfo, b: GridEndpointInfo) : GridConnectionPair {
             require(a.id != b.id) { "End points $a and $b have same UUID ${a.id}"}
 
@@ -571,8 +595,9 @@ object GridConnectionManagerClient {
         lock.write {
             val catenary = connection.wireCatenary
             val (extrusion, quads) = catenary.mesh()
-            LOG.info("Generated ${quads.size} quads")
             val sprite = connection.material.sprite
+
+            LOG.info("Generated ${quads.size} quads")
 
             val uCoordinates = scanUProgression(
                 extrusion,
@@ -696,16 +721,10 @@ object GridConnectionManagerClient {
     }
 }
 
-//
-// Grid Grid Grid  Tap  Grid Grid Grid
-//O-Rg---------Rg --O-- Rg------------ ...
-//                  |
-//                  E
-//                  |
-//                  |
-//               Consumer
-//
-
+/**
+ * Represents an electrical object that can make connections with other remote objects, to create a grid.
+ * @param tapResistance The resistance of the connection between the grid and the neighboring objects.
+ * */
 class GridElectricalObject(cell: GridCell, val tapResistance: Double) : ElectricalObject<GridCell>(cell) {
     private val gridResistors = HashMap<GridElectricalObject, Resistor>()
 
@@ -751,17 +770,18 @@ class GridElectricalObject(cell: GridCell, val tapResistance: Double) : Electric
 
         if(externalResistor.isPresent) { // If not present, it is illegal to connect it (not in graph)
             // Connects grid to external:
-            val externalInternalOffer = externalResistor.offerInternal()
+            val offer = externalResistor.offerInternal()
 
             gridResistors.values.forEach { gridResistor ->
                 gridResistor.connect(
                     EXTERNAL_PIN,
-                    externalInternalOffer.component,
-                    externalInternalOffer.index
+                    offer.component,
+                    offer.index
                 )
             }
         }
         else {
+            // Connect the pins of the grid resistors so the grid circuit is closed (pass-trough):
             gridResistors.values.forEach { gridResistor1 ->
                 gridResistors.values.forEach { gridResistor2 ->
                     if(gridResistor1 != gridResistor2) {
@@ -773,20 +793,43 @@ class GridElectricalObject(cell: GridCell, val tapResistance: Double) : Electric
     }
 }
 
+/**
+ * Encapsulates information about a grid connection to a remote end point.
+ * @param material The material of the grid connection.
+ * @param resistance The electrical resistance of the connection, a value dependent on the physical configuration of the game object.
+ * */
 data class GridEndpointConnectionInfo(val material: GridMaterial, val resistance: Double)
 
+/**
+ * Encapsulates information about a grid connection that is in-progress.
+ * @param remoteCell The remote grid cell, that may or may not be directly (physically) connected to the actual cell container.
+ * @param properties The properties of the grid connection.
+ * */
 data class GridStagingInfo(val remoteCell: GridCell, val properties: GridEndpointConnectionInfo)
 
+/**
+ * Electrical-thermal cell that links power grids with standalone electrical circuits.
+ * */
 class GridCell(ci: CellCreateInfo) : Cell(ci) {
     @SimObject @Inspect
     val electricalObject = GridElectricalObject(this, 1e-5)
 
-    // Same graph:
+    /**
+     * Gets the connections to remote grid cells, and the properties of the respective connections.
+     * All these connections are with cells that are in the same graph (they are recorded after staging)
+     * */
     val endPoints = HashMap<GridEndpointInfo, GridEndpointConnectionInfo>()
 
-    // Other graph:
+    /**
+     * Gets or sets the staging information, used to link two disjoint graphs, when a grid connection is being made by the player.
+     * The remote cell is not part of this graph.
+     * */
     var stagingInfo: GridStagingInfo? = null
 
+    /**
+     * Gets the resistance of the grid connection to [remoteObject].
+     * @return The resistance of the grid connection or null, if the [remoteObject] is not connected via grid to this one.
+     * */
     fun getGridContactResistance(remoteObject: GridElectricalObject) : Double? {
         val stagingInfo = this.stagingInfo
 
@@ -802,9 +845,13 @@ class GridCell(ci: CellCreateInfo) : Cell(ci) {
         return endPoints[remoteEndPoint]!!.resistance
     }
 
+    // Set to another value when loading:
     var endpointId: UUID = UUID.randomUUID()
         private set
 
+    /**
+     * Cleans up the grid connections, by removing this end point from the remote end points.
+     * */
     override fun onRemoving() {
         requireIsOnServerThread { // Maybe we'll have such a situation in the future...
             "OnRemoving grid is not on the server thread"
@@ -851,6 +898,7 @@ class GridCell(ci: CellCreateInfo) : Cell(ci) {
         }
     }
 
+    // Extra validation:
     override fun onLoadedFromDisk() {
         endPoints.keys.forEach { remoteEndPoint ->
             if(!graph.containsCellByLocator(remoteEndPoint.locator)) {
@@ -874,7 +922,6 @@ abstract class GridCellPart<R : PartRenderer>(
     provider: CellProvider<GridCell>
 ) : CellPart<GridCell, R>(id, placement, provider) {
     // Attachment in the fixed frame:
-
     open val attachment: Vector3d = placement.position.toVector3d() + Vector3d(0.5)
 
     fun setStaging(info: GridStagingInfo) {
@@ -943,13 +990,22 @@ class GridTapPart(
     id: ResourceLocation,
     placement: PartPlacementInfo,
     provider: CellProvider<GridCell>
-) : GridCellPart<BasicPartRenderer>(id, placement, provider) {
-    override val partSize: Vec3
-        get() = Vec3(1.0, 1.0, 1.0)
+) : GridCellPart<ConnectedPartRenderer>(id, placement, provider) {
+    override val attachment: Vector3d = super.attachment - placement.face.toVector3d() * 0.15
 
-    override fun createRenderer(): BasicPartRenderer {
-        return BasicPartRenderer(this, PartialModels.GROUND)
-    }
+    override val partSize: Vec3
+        get() = Vec3(4.0 / 16.0, 0.5, 4.0 / 16.0)
+
+    override fun createRenderer() = ConnectedPartRenderer(
+        this,
+        PartialModels.GRID_TAP_BODY,
+        PartialModels.GRID_TAP_CONNECTION,
+        8.0 / 32.0
+    ).also { it.bodyDownOffset = 8.0 / 32.0 }
+
+    override fun getSyncTag() = this.getConnectedPartTag()
+    override fun handleSyncTag(tag: CompoundTag) = this.handleConnectedPartTag(tag)
+    override fun onConnectivityChanged() = this.setSyncDirty()
 }
 
 open class GridConnectItem(val material: GridMaterial) : Item(Properties()) {
@@ -1033,7 +1089,7 @@ open class GridConnectItem(val material: GridMaterial) : Item(Properties()) {
 
             val connectionInfo = GridEndpointConnectionInfo(
                 gridCatenary.material,
-                gridCatenary.resistance
+                !gridCatenary.resistance
             )
 
             CellConnections.retopologize(targetPart.cell, targetPart.placement.multipart) {
@@ -1215,7 +1271,7 @@ class CatenaryCable3d(
                 distMax = min(splitDistanceHint, circumference),
                 rotIncrMax = splitRotIncrementMax
             ),
-            iMax = 1024 * 32
+            iMax = 1024 * 32 // way too generous...
         ).requireNotNull { "Failed to mesh $this" }
 
         val extrusion = extrudeSketch(

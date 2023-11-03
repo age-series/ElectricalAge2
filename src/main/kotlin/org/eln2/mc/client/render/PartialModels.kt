@@ -32,6 +32,9 @@ object PartialModels {
 
     val SOLAR_PANEL_ONE_BLOCK = partialBlock("solar_panel_one_block")
 
+    val GRID_TAP_BODY = partialBlock("grid_tap_body")
+    val GRID_TAP_CONNECTION = partialBlock("grid_tap_connection")
+
     private fun partial(path: String): PartialModel {
         return PartialModel(resource(path))
     }

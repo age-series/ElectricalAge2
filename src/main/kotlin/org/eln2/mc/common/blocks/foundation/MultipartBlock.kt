@@ -710,7 +710,7 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
             val syncTag = part.getSyncTag()
 
             if (syncTag == null) {
-                LOG.error("Part $part had an update enqueued, but returned a null sync tag")
+                //LOG.error("Part $part had an update enqueued, but returned a null sync tag")
                 return@forEach
             }
 
@@ -1095,11 +1095,15 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
         val innerFace = actualCell.locator.requireLocator<FaceLocator>()
         val part = parts[innerFace] as PartCellContainer<*>
         part.onConnected(remoteCell)
+        part.onConnectivityChanged()
     }
 
     override fun onCellDisconnected(actualCell: Cell, remoteCell: Cell) {
         val part = parts[actualCell.locator.requireLocator<FaceLocator>()] as PartCellContainer<*>
         part.onDisconnected(remoteCell)
+        if(part.hasCell && !part.cell.isBeingRemoved) {
+            part.onConnectivityChanged()
+        }
     }
 
     override fun onTopologyChanged() {

@@ -43,6 +43,8 @@ import java.util.*
 import kotlin.math.PI
 import net.minecraft.world.level.block.Block
 import org.eln2.mc.common.cells.foundation.CellNeighborInfo
+import org.eln2.mc.common.events.Event
+import org.eln2.mc.common.events.EventManager
 
 /**
  * Encapsulates all the data associated with a part's placement.
@@ -296,7 +298,7 @@ abstract class Part<Renderer : PartRenderer>(val id: ResourceLocation, val place
      * @return A compound tag with all the data, or null, if no data needs to be sent.
      * */
     @ServerOnly
-    open fun getInitialSyncTag(): CompoundTag? = null
+    open fun getInitialSyncTag(): CompoundTag? = getSyncTag()
 
     /**
      * Restore the part data from the compound tag.
@@ -309,7 +311,7 @@ abstract class Part<Renderer : PartRenderer>(val id: ResourceLocation, val place
     /**
      * Loads the synced data that was sent when the client first loaded this part, from [getInitialSyncTag].
      * */
-    open fun loadInitialSyncTag(tag: CompoundTag) { }
+    open fun loadInitialSyncTag(tag: CompoundTag) = loadFromTag(tag)
 
     /**
      * This method is called when this part is invalidated, and in need of synchronization to clients.
@@ -409,7 +411,9 @@ abstract class Part<Renderer : PartRenderer>(val id: ResourceLocation, val place
      * Called when synchronization is suggested. This happens when a client enters the viewing area of the part.
      * */
     @ServerOnly
-    open fun onSyncSuggested() {}
+    open fun onSyncSuggested() {
+        this.setSyncDirty()
+    }
 
     @ClientOnly
     protected var cachedRenderer: Renderer? = null
@@ -527,9 +531,20 @@ interface PartCellContainer<C : Cell> {
      * */
     val allowWrappedConnections: Boolean
 
+    /**
+     * Called when the cell part is connected to another cell.
+     * */
     fun onConnected(remoteCell: Cell)
 
+    /**
+     * Called when the cell part is disconnected from another cell. This may happen when the part is being destroyed.
+     * */
     fun onDisconnected(remoteCell: Cell)
+
+    /**
+     * Called when the cell part is connected/disconnected. This is not called if the part is being destroyed.
+     * */
+    fun onConnectivityChanged() { }
 
     fun addExtraConnections(results: MutableSet<CellNeighborInfo>) { }
 }
