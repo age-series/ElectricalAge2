@@ -46,6 +46,7 @@ import net.minecraftforge.items.ItemStackHandler
 import net.minecraftforge.network.NetworkHooks
 import org.ageseries.libage.data.BiMap
 import org.ageseries.libage.data.MutableSetMapMultiMap
+import org.ageseries.libage.data.Quantity
 import org.ageseries.libage.data.mutableBiMapOf
 import org.ageseries.libage.sim.Material
 import org.ageseries.libage.sim.Scale

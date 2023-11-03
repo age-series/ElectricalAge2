@@ -114,7 +114,7 @@ data class GridConnectionCatenary(val id: Int, val wireCatenary: CatenaryCable3d
     /**
      * Gets the electrical resistance over the entire length of the cable.
      * */
-    val resistance get() = Quantity(material.physicalMaterial.electricalResistivity * (wireCatenary.arcLength / wireCatenary.crossSectionArea), OHM)
+    val resistance get() = material.physicalMaterial.electricalResistivity * (wireCatenary.arcLength / wireCatenary.crossSectionArea)
 
     fun toNbt() = CompoundTag().also {
         it.putInt(ID, id)
@@ -1089,7 +1089,7 @@ open class GridConnectItem(val material: GridMaterial) : Item(Properties()) {
 
             val connectionInfo = GridEndpointConnectionInfo(
                 gridCatenary.material,
-                !gridCatenary.resistance
+                gridCatenary.resistance
             )
 
             CellConnections.retopologize(targetPart.cell, targetPart.placement.multipart) {

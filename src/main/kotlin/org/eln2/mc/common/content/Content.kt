@@ -4,6 +4,8 @@ package org.eln2.mc.common.content
 
 import net.minecraft.client.gui.screens.MenuScreens
 import net.minecraft.world.phys.Vec3
+import org.ageseries.libage.data.CELSIUS
+import org.ageseries.libage.data.Quantity
 import org.ageseries.libage.sim.Material
 import org.eln2.mc.LOG
 import org.eln2.mc.ThermalBodyDef

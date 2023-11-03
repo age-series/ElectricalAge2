@@ -2,6 +2,9 @@ package org.eln2.mc.common.cells.foundation
 
 import mcp.mobius.waila.api.IPluginConfig
 import net.minecraft.server.level.ServerLevel
+import org.ageseries.libage.data.KELVIN
+import org.ageseries.libage.data.Quantity
+import org.ageseries.libage.data.Temp
 import org.eln2.mc.Inj
 import org.eln2.mc.ThermalBody
 import org.eln2.mc.common.blocks.foundation.MultipartBlockEntity

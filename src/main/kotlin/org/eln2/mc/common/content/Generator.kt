@@ -29,6 +29,8 @@ import net.minecraftforge.common.capabilities.ForgeCapabilities
 import net.minecraftforge.common.util.LazyOptional
 import net.minecraftforge.items.ItemStackHandler
 import net.minecraftforge.items.SlotItemHandler
+import org.ageseries.libage.data.CELSIUS
+import org.ageseries.libage.data.Quantity
 import org.eln2.mc.*
 import org.eln2.mc.client.render.foundation.renderTextured
 import org.eln2.mc.common.blocks.foundation.CellBlock

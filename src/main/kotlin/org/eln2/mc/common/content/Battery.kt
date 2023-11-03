@@ -5,6 +5,7 @@ package org.eln2.mc.common.content
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.world.phys.Vec3
+import org.ageseries.libage.data.*
 import org.ageseries.libage.sim.Material
 import org.ageseries.libage.sim.thermal.Temperature
 import org.eln2.mc.*
@@ -17,6 +18,7 @@ import org.eln2.mc.common.parts.foundation.ItemPersistentPart
 import org.eln2.mc.common.parts.foundation.PartPlacementInfo
 import org.eln2.mc.common.parts.foundation.ItemPersistentPartLoadOrder
 import org.eln2.mc.data.*
+import org.eln2.mc.data.abs
 import org.eln2.mc.mathematics.*
 import kotlin.math.abs
 import kotlin.math.pow
@@ -332,7 +334,7 @@ class BatteryCell(
         // Get energy transfer:
         energyIncrement = Quantity(generator.sourcePower * elapsed)
 
-        if(energyIncrement.isApproxZero) {
+        if(energyIncrement.value.approxEq(0.0)) {
             return false
         }
 

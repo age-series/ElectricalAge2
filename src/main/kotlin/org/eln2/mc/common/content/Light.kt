@@ -21,6 +21,7 @@ import net.minecraft.world.item.TooltipFlag
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.GlassBlock
 import net.minecraftforge.registries.ForgeRegistries
+import org.ageseries.libage.data.Quantity
 import org.eln2.mc.*
 import org.eln2.mc.client.render.PartialModels
 import org.eln2.mc.client.render.foundation.applyBlockBenchTransform
