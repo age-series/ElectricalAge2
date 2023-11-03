@@ -847,6 +847,12 @@ data class Vector3d(val x: Double, val y: Double, val z: Double) {
         val unitX = Vector3d(1.0, 0.0, 0.0)
         val unitY = Vector3d(0.0, 1.0, 0.0)
         val unitZ = Vector3d(0.0, 0.0, 1.0)
+
+        fun lerp(from: Vector3d, to: Vector3d, t: Double) = Vector3d(
+            lerp(from.x, to.x, t),
+            lerp(from.y, to.y, t),
+            lerp(from.z, to.z, t)
+        )
     }
 }
 
@@ -916,11 +922,21 @@ data class Vector3dDual(val x: Dual, val y: Dual, val z: Dual) {
     operator fun get(n: Int) = Vector3d(x[n], y[n], z[n])
 
     companion object {
-        fun const(x: Double, y: Double, z: Double, n: Int = 1) =
-            Vector3dDual(Dual.const(x, n), Dual.const(y, n), Dual.const(z, n))
-
+        fun const(x: Double, y: Double, z: Double, n: Int = 1) = Vector3dDual(Dual.const(x, n), Dual.const(y, n), Dual.const(z, n))
         fun const(value: Vector3d, n: Int = 1) = const(value.x, value.y, value.z, n)
         fun of(vararg values: Vector3d) = Vector3dDual(values.asList())
+
+        fun lerp(from: Vector3dDual, to: Vector3dDual, t: Dual) = Vector3dDual(
+            lerp(from.x, to.x, t),
+            lerp(from.y, to.y, t),
+            lerp(from.z, to.z, t)
+        )
+
+        fun lerp(from: Vector3d, to: Vector3d, t: Dual) = lerp(
+            const(from, t.size),
+            const(to, t.size),
+            t
+        )
     }
 }
 

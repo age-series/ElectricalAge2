@@ -7,6 +7,7 @@ import net.minecraft.client.renderer.LevelRenderer
 import net.minecraft.core.BlockPos
 import net.minecraft.world.level.BlockAndTintGetter
 import org.eln2.mc.mathematics.*
+import org.eln2.mc.noop
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
@@ -95,7 +96,7 @@ fun getDiffuseLight(layer: Int, neighborValues: NeighborLightReader, normal: Vec
         normSqr += normalizeLightComponentSqr(n2)
     }
 
-    if(light.approxEq(0.0)) {
+    if(light.approxEq(0.0) || normSqr.approxEq(0.0)) {
         return 0.0
     }
 
@@ -104,5 +105,10 @@ fun getDiffuseLight(layer: Int, neighborValues: NeighborLightReader, normal: Vec
 
 fun combineLight(layer: Int, neighborLightValues: NeighborLightReader, normal: Vector3d, localLight: Double) : Int {
     val diffuseContribution = getDiffuseLight(layer, neighborLightValues, normal)
+
+    if(diffuseContribution.isNaN() || localLight.isNaN()) {
+        return 0
+    }
+
     return avg(diffuseContribution, localLight).roundToInt() shr 4
 }

@@ -173,14 +173,18 @@ fun sketchCircle(vertices: Int, radius: Double = 1.0): Sketch {
     return Sketch(results)
 }
 
-fun extrudeSketch(sketch: Sketch, spline: Spline3d, samples: List<Double>): SketchExtrusion {
+fun extrudeSketchFrenet(sketch: Sketch, spline: Spline3d, samples: List<Double>): SketchExtrusion {
+    val f0 = spline.frenetPose(samples.first())
+    val f1 = spline.frenetPose(samples.last())
+    return extrudeSketch(sketch, spline, samples, f0, f1)
+}
+
+fun extrudeSketch(sketch: Sketch, spline: Spline3d, samples: List<Double>, f0: Pose3d, f1: Pose3d): SketchExtrusion {
     val builder = MeshBuilder<Vector3dParametric, Quads>()
 
     val y0 = samples.first()
     val y1 = samples.last()
 
-    val f0 = spline.frenetPose(y0)
-    val f1 = spline.frenetPose(y1)
     val increment = f1.rotation / f0.rotation
 
     val rmf = ArrayList<Pose3dParametric>(samples.size)

@@ -103,13 +103,13 @@ object GridMaterials {
 }
 
 /**
- * [CatenaryCable3d] with extra information needed by grids.
+ * [Cable3d] with extra information needed by grids.
  * @param id The unique ID of the connection.
  * @param wireCatenary Catenary that models the physical connection.
  * @param material The physical properties of the grid cable.
  * */
-data class GridConnectionCatenary(val id: Int, val wireCatenary: CatenaryCable3d, val material: GridMaterial) {
-    constructor(catenary: CatenaryCable3d, material: GridMaterial) : this(getUniqueId(), catenary, material)
+data class GridConnectionCatenary(val id: Int, val wireCatenary: Cable3d, val material: GridMaterial) {
+    constructor(catenary: Cable3d, material: GridMaterial) : this(getUniqueId(), catenary, material)
 
     /**
      * Gets the electrical resistance over the entire length of the cable.
@@ -129,7 +129,7 @@ data class GridConnectionCatenary(val id: Int, val wireCatenary: CatenaryCable3d
 
         fun fromNbt(tag: CompoundTag) = GridConnectionCatenary(
             tag.getInt(ID),
-            CatenaryCable3d.fromNbt(tag.get(CATENARY) as CompoundTag),
+            Cable3d.fromNbt(tag.get(CATENARY) as CompoundTag),
             GridMaterials.getMaterial(tag.getResourceLocation(MATERIAL))
         )
     }
@@ -297,7 +297,7 @@ data class GridConnectionDeleteMessage(val id: Int) {
 @ServerOnly
 object GridConnectionManagerServer {
     fun createGridCatenary(pair: GridConnectionPair, material: GridMaterial) = GridConnectionCatenary(
-        CatenaryCable3d(
+        Cable3d(
             pair.a.attachment,
             pair.b.attachment
         ),
@@ -550,7 +550,7 @@ object GridConnectionManagerClient {
         }
     }
 
-    private fun scanUProgression(extrusion: SketchExtrusion, catenary: CatenaryCable3d, u0: Double, u1: Double) : Double2DoubleOpenHashMap {
+    private fun scanUProgression(extrusion: SketchExtrusion, catenary: Cable3d, u0: Double, u1: Double) : Double2DoubleOpenHashMap {
         var p0 = extrusion.rmfProgression.first()
         var arcLength = 0.0
         val uCoordinates = Double2DoubleOpenHashMap(extrusion.rmfProgression.size)
@@ -1201,7 +1201,7 @@ object GridRenderer {
  * @param splitRotIncrementMax The maximum deviation between the tangents at consecutive vertex rings (for rendering)
  * @param radius The radius of the cable (for rendering)
  * */
-class CatenaryCable3d(
+class Cable3d(
     val a: Vector3d,
     val b: Vector3d,
     val slack: Double = 0.05,
@@ -1227,23 +1227,41 @@ class CatenaryCable3d(
     val supports = listOf(a, b).sortedBy { it.y }
 
     // Should be ~equal to the actual arc length
-    /**
-     * Gets the arc length of the cable, factoring in the [slack].
-     * */
-    val arcLength = (a..b) * (1.0 + slack)
+
+    val isNonCatenary = (a == b) || (a.x == b.x && a.z == b.z)
 
     /**
-     * Gets the catenary spline that characterises the wire.
+     * Gets the arc length of the cable, factoring in the [slack], if possible
+     * */
+    val arcLength = if(isNonCatenary) {
+        a .. b
+    }
+    else {
+        (a..b) * (1.0 + slack)
+    }
+
+    /**
+     * Gets the spline that characterises the wire. It may or may not be catenary, depending on [isNonCatenary].
      * */
     val spline = Spline3d(
-        ArcReparamCatenarySegment3d(
-            t0 = 0.0,
-            t1 = 1.0,
-            p0 = supports[0],
-            p1 = supports[1],
-            length = arcLength,
-            Vector3d.unitY
-        )
+        if(isNonCatenary) {
+            LinearSplineSegment3d(
+                t0 = 0.0,
+                t1 = 1.0,
+                p0 = supports[0],
+                p1 = supports[1],
+            )
+        }
+        else {
+            ArcReparamCatenarySegment3d(
+                t0 = 0.0,
+                t1 = 1.0,
+                p0 = supports[0],
+                p1 = supports[1],
+                length = arcLength,
+                Vector3d.unitY
+            )
+        }
     )
 
     /**
@@ -1274,11 +1292,26 @@ class CatenaryCable3d(
             iMax = 1024 * 32 // way too generous...
         ).requireNotNull { "Failed to mesh $this" }
 
-        val extrusion = extrudeSketch(
-            sketchCircle(circleVertices, radius),
-            spline,
-            samples
-        )
+        val crossSectionSketch = sketchCircle(circleVertices, radius)
+
+        val extrusion = if(isNonCatenary) {
+            val wx = Rotation3d.fromForwardUp(Vector3d.unitY, Vector3d.unitZ)
+
+            extrudeSketch(
+                crossSectionSketch,
+                spline,
+                samples,
+                Pose3d(supports[0], wx),
+                Pose3d(supports[1], wx)
+            )
+        }
+        else {
+            extrudeSketchFrenet(
+                crossSectionSketch,
+                spline,
+                samples
+            )
+        }
 
         val quads = ArrayList<CatenaryCableQuad>()
 
@@ -1339,7 +1372,7 @@ class CatenaryCable3d(
         private const val CIRCLE_VERTICES = "circleVertices"
         private const val RADIUS = "radius"
 
-        fun fromNbt(tag: CompoundTag) = CatenaryCable3d(
+        fun fromNbt(tag: CompoundTag) = Cable3d(
             tag.getVector3d(A),
             tag.getVector3d(B),
             tag.getDouble(SLACK),

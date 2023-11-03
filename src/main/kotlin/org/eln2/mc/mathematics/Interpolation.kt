@@ -431,6 +431,19 @@ data class ArcReparamCatenarySegment3d(
     override fun evaluateDual(tSegment: Dual) = catenary.evaluateDual(tSegment)
 }
 
+data class LinearSplineSegment3d(
+    override val t0: Double,
+    override val t1: Double,
+    val p0: Vector3d,
+    val p1: Vector3d
+) : SplineSegment3d {
+    override val y0 = Vector3dDual.of(p0)
+    override val y1 = Vector3dDual.of(p1)
+    override fun evaluate(tSegment: Double) = Vector3d.lerp(p0, p1, tSegment)
+    // Do not evaluate with y0, y1, it will get reduced
+    override fun evaluateDual(tSegment: Dual) = Vector3dDual.lerp(p0, p1, tSegment)
+}
+
 data class CubicHermiteSplineSegment1d(
     override val t0: Double,
     override val t1: Double,
