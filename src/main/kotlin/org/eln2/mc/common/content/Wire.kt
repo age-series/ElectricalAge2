@@ -3,6 +3,7 @@
 package org.eln2.mc.common.content
 
 import com.jozufozu.flywheel.backend.Backend
+import com.jozufozu.flywheel.config.BackendType
 import com.jozufozu.flywheel.core.Materials
 import com.jozufozu.flywheel.core.PartialModel
 import com.jozufozu.flywheel.core.materials.model.ModelData
@@ -507,12 +508,12 @@ class WirePart<C : Cell>(
         val supplier = renderInfo ?: error("Render info is null")
         val renderInfo = supplier.get()
 
-        return if(isIncandescent) { // TODO canUseInstancing is misleading, fix:
-            if(Backend.canUseInstancing(placement.level)) {
+        return if(isIncandescent) {
+            if(Backend.getBackendType() == BackendType.INSTANCING) {
                 // Instancing is supported, so use good renderer:
                 IncandescentInstancedWireRenderer(this, renderInfo)
             } else {
-                // Maybe make batched fallback, not worth investing time into
+                // Maybe make batched fallback with temperature, not worth investing time into because batched will probably be removed
                 FlatWireRenderer(this, renderInfo)
             }
         } else {

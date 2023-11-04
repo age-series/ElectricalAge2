@@ -1109,8 +1109,8 @@ open class GridConnectItem(val material: GridMaterial) : Item(Properties()) {
         }
 
         actualStack.tag = CompoundTag().apply {
-            putBlockPos(NBT_POS, hit.blockPos)
-            putDirection(NBT_FACE, hit.direction)
+            putBlockPos(NBT_POS, targetPart.placement.position)
+            putDirection(NBT_FACE, targetPart.placement.face)
         }
 
         tell("Start recorded")
