@@ -843,10 +843,10 @@ data class Vector3d(val x: Double, val y: Double, val z: Double) {
 
     fun perpendicular() : Vector3d {
         val (x, y, z) = if(!this.isUnit && this != zero) {
-            this
+            this.normalized()
         }
         else {
-            this.normalized()
+            this
         }
 
         val result = if (abs(y + z) > GEOMETRY_NORMALIZED_EPS || abs(x) > GEOMETRY_NORMALIZED_EPS) {

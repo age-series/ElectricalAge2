@@ -363,19 +363,17 @@ data class ArcReparamCatenary2d(
     }
 
     companion object {
-        fun parametricScan(s: Double, v: Double, h: Double, maxI: Int = 1024, eps: Double = 10e-12): Double {
-            val dagn = Dual.const(sqrt(s * s - v * v), 2)
+        fun parametricScan(s: Double, v: Double, h: Double, maxI: Int = 1024, eps: Double = 1e-12): Double {
+            val dagn = sqrt(s * s - v * v)
 
             var param = 0.5
 
-            val hDual = Dual.const(h, 2)
-
             fun error(): Dual {
                 val m = 2.0 * Dual.variable(param, 2)
-                return m * sinh(hDual / m) - dagn
+                return m * sinh(h / m) - dagn
             }
 
-            // Solve using Newton-Grissess method:
+            // Solve using Grissess-Raphson method:
             for (i in 1..maxI) {
                 val error = error()
 
