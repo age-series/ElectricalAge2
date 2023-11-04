@@ -5,9 +5,9 @@ import org.ageseries.libage.sim.electrical.mna.Circuit
 import org.ageseries.libage.sim.electrical.mna.component.Component
 import org.ageseries.libage.sim.thermal.ConnectionParameters
 import org.ageseries.libage.sim.thermal.Simulator
-import org.eln2.mc.ThermalBody
-import org.eln2.mc.data.Locator
-import org.eln2.mc.data.LocatorRelationRuleSet
+import org.eln2.mc.*
+import org.eln2.mc.data.*
+import org.eln2.mc.integration.WailaEntity
 
 /**
  * Represents a discrete simulation unit that participates in one simulation type.
@@ -17,6 +17,7 @@ abstract class SimulationObject<C : Cell>(val cell: C) {
     abstract val type: SimulationObjectType
 
     private val rsLazy = lazy { LocatorRelationRuleSet() }
+
     val ruleSet get() = rsLazy.value
 
     /**
@@ -47,6 +48,7 @@ abstract class SimulationObject<C : Cell>(val cell: C) {
 }
 
 data class ThermalComponentInfo(val body: ThermalBody)
+
 abstract class ThermalObject<C : Cell>(cell: C) : SimulationObject<C>(cell) {
     var simulation: Simulator? = null
         private set
@@ -130,6 +132,7 @@ abstract class ThermalObject<C : Cell>(cell: C) : SimulationObject<C>(cell) {
 }
 
 data class ElectricalComponentInfo(val component: Component, val index: Int)
+
 abstract class ElectricalObject<C : Cell>(cell: C) : SimulationObject<C>(cell) {
     /**
      * The circuit this object is part of.
@@ -292,5 +295,53 @@ enum class SimulationObjectType(val index: Int, val id: Int, val domain: String)
 
     companion object {
         val values: List<SimulationObjectType> = values().toList()
+    }
+}
+
+interface ThermalBipole {
+    val b1: ThermalBody
+    val b2: ThermalBody
+}
+
+/**
+ * Thermal object with two connection sides.
+ * */
+@NoInj
+class ThermalBipoleObject<C : Cell>(
+    cell: C,
+    val map: PoleMap,
+    b1Def: ThermalBodyDef,
+    b2Def: ThermalBodyDef
+) : ThermalObject<C>(cell), DataContainer, WailaEntity, ThermalBipole {
+    override var b1 = b1Def.create()
+    override var b2 = b2Def.create()
+
+    init {
+        cell.environmentData.getOrNull<EnvironmentalTemperatureField>()?.readTemperature()?.also {
+            b1.temperature = it
+            b2.temperature = it
+        }
+    }
+
+    override fun offerComponent(neighbour: ThermalObject<*>) = ThermalComponentInfo(
+        when (map.evaluate(cell.locator, neighbour.cell.locator)) {
+            Pole.Plus -> b1
+            Pole.Minus -> b2
+        }
+    )
+
+    override fun addComponents(simulator: Simulator) {
+        simulator.add(b1)
+        simulator.add(b2)
+    }
+
+    override val dataNode = HashDataNode().also { root ->
+        root.withChild {
+            it.data.withField(TooltipField { b -> b.text("B1", b1.temperatureKelvin.formatted()) })
+        }
+
+        root.withChild {
+            it.data.withField(TooltipField { b -> b.text("B2", b2.temperatureKelvin.formatted()) })
+        }
     }
 }

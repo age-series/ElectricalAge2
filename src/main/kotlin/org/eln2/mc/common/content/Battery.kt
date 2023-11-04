@@ -3,8 +3,6 @@
 package org.eln2.mc.common.content
 
 import net.minecraft.nbt.CompoundTag
-import net.minecraft.resources.ResourceLocation
-import net.minecraft.world.phys.Vec3
 import org.ageseries.libage.data.*
 import org.ageseries.libage.sim.Material
 import org.ageseries.libage.sim.thermal.Temperature
@@ -227,10 +225,11 @@ class BatteryCell(
         private const val ENERGY_IO = "energyIo"
         private const val VOLTAGE_EPS = 1e-4
         private const val RESISTANCE_EPS = 1e-2
+        private const val LIFE_EPS = 1e-3
     }
 
     @SimObject
-    val generator = VRGeneratorObject(this, directionPoleMapPlanar(plusDir, minusDir))
+    val generator = VRGeneratorObject<Cell>(this, directionPoleMapPlanar(plusDir, minusDir))
 
     @SimObject
     val thermalWire = ThermalWireObject(this, ThermalBodyDef(model.material, !model.mass, !model.surfaceArea, null))
@@ -276,6 +275,7 @@ class BatteryCell(
     override val current get() = generator.resistorCurrent
     override val charge get() = energy / model.energyCapacity
     override val sourcePower get() = Quantity(generator.sourcePower, WATT)
+
     override var energyIncrement = Quantity(0.0, JOULE)
 
     private val stateUpdate = AtomicUpdate<BatteryState>()
@@ -372,7 +372,7 @@ class BatteryCell(
         life -= model.damageFunction.computeDamage(this, elapsed)
         life = life.coerceIn(0.0, 1.0)
 
-        setChangedIf(!life.approxEq(savedLife)) {
+        setChangedIf(!life.approxEq(savedLife, LIFE_EPS)) {
             savedLife = life
         }
     }

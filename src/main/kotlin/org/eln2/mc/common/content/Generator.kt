@@ -7,10 +7,6 @@ import net.minecraft.nbt.CompoundTag
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.state.BlockState
-import org.ageseries.libage.sim.electrical.mna.Circuit
-import org.ageseries.libage.sim.electrical.mna.component.Resistor
-import org.ageseries.libage.sim.electrical.mna.component.VoltageSource
-import org.ageseries.libage.sim.thermal.Simulator
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
 import net.minecraft.network.chat.Component
@@ -37,171 +33,12 @@ import org.eln2.mc.common.blocks.foundation.CellBlock
 import org.eln2.mc.common.blocks.foundation.CellBlockEntity
 import org.eln2.mc.common.cells.foundation.*
 import org.eln2.mc.common.events.AtomicUpdate
-import org.eln2.mc.common.parts.foundation.*
 import org.eln2.mc.control.PIDController
 import org.eln2.mc.data.*
 import org.eln2.mc.integration.WailaEntity
 import org.eln2.mc.integration.WailaTooltipBuilder
 import org.eln2.mc.mathematics.*
 import kotlin.math.*
-
-/**
- * Generator model consisting of a Voltage Source + Resistor
- * */
-class VRGeneratorObject(cell: Cell, val map: PoleMap) : ElectricalObject<Cell>(cell), WailaEntity, DataContainer {
-    private val resistor = ComponentHolder {
-        Resistor().also { it.resistance = resistanceExact }
-    }
-
-    private val source = ComponentHolder {
-        VoltageSource().also { it.potential = potentialExact }
-    }
-
-    /**
-     * Gets the exact resistance of the [resistor].
-     * */
-    var resistanceExact: Double = 1.0
-        set(value) {
-            field = value
-            resistor.ifPresent { it.resistance = value }
-        }
-
-    /**
-     * Gets the exact potential of the [resistor].
-     * */
-    var potentialExact: Double = 1.0
-        set(value) {
-            field = value
-            source.ifPresent { it.potential = value }
-        }
-
-    /**
-     * Updates the resistance if the deviation between the current resistance and [value] is larger than [eps].
-     * This should be used instead of setting [resistanceExact] whenever possible, because setting the resistance is expensive.
-     * @return True if the resistance was updated. Otherwise, false.
-     * */
-    fun updateResistance(value: Double, eps: Double = LIBAGE_SET_EPS): Boolean {
-        if(resistanceExact.approxEq(value, eps)) {
-            return false
-        }
-
-        resistanceExact = value
-
-        return true
-    }
-
-    /**
-     * Updates the potential if the deviation between the current potential and [value] is larger than [eps].
-     * Using this instead of setting [potentialExact] doesn't have a large performance impact.
-     * @return True if the voltage was updated. Otherwise, false.
-     * */
-    fun updatePotential(value: Double, eps: Double = LIBAGE_SET_EPS): Boolean {
-        if(potentialExact.approxEq(value, eps)) {
-            return false
-        }
-
-        potentialExact = value
-
-        return true
-    }
-
-    val hasResistor get() = resistor.isPresent
-    val hasSource get() = source.isPresent
-
-    val resistorCurrent get() = if(resistor.isPresent) resistor.instance.current else 0.0
-    val sourceCurrent get() = if(source.isPresent) source.instance.current else 0.0
-
-    val resistorPower get() = if (resistor.isPresent) resistor.instance.power else 0.0
-    val sourcePower get() = if (source.isPresent) source.instance.power else 0.0
-
-    override val maxConnections = 2
-
-    /**
-     * Gets the offered component by evaluating the map.
-     * @return The resistor's external pin when the pole evaluates to *plus*. The source's negative pin when the pole evaluates to *minus*.
-     * */
-    override fun offerComponent(neighbour: ElectricalObject<*>): ElectricalComponentInfo =
-        when (map.evaluate(this.cell.locator, neighbour.cell.locator)) {
-            Pole.Plus -> resistor.offerExternal()
-            Pole.Minus -> source.offerNegative()
-        }
-
-    override fun clearComponents() {
-        resistor.clear()
-        source.clear()
-    }
-
-    override fun addComponents(circuit: Circuit) {
-        circuit.add(resistor)
-        circuit.add(source)
-    }
-
-    override fun build() {
-        resistor.connectInternal(source.offerPositive())
-        super.build()
-    }
-
-    override val dataNode = data {
-        it.withField(VoltageField {
-            potentialExact
-        })
-
-        it.withField(CurrentField {
-            sourceCurrent
-        })
-
-        it.withField(ResistanceField {
-            resistanceExact
-        })
-
-        it.withField(PowerField {
-            sourcePower
-        })
-    }
-}
-
-interface ThermalBipole {
-    val b1: ThermalBody
-    val b2: ThermalBody
-}
-
-/**
- * Thermal body with two connection sides.
- * */
-@NoInj
-class ThermalBipoleObject(cell: Cell, val map: PoleMap, b1Def: ThermalBodyDef, b2Def: ThermalBodyDef) : ThermalObject<Cell>(cell), DataContainer, WailaEntity, ThermalBipole {
-    override var b1 = b1Def.create()
-    override var b2 = b2Def.create()
-
-    init {
-        cell.environmentData.getOrNull<EnvironmentalTemperatureField>()?.readTemperature()?.also {
-            b1.temperature = it
-            b2.temperature = it
-        }
-    }
-
-    override fun offerComponent(neighbour: ThermalObject<*>) = ThermalComponentInfo(
-        when (map.evaluate(cell.locator, neighbour.cell.locator)) {
-            Pole.Plus -> b1
-            Pole.Minus -> b2
-        }
-    )
-
-    override fun addComponents(simulator: Simulator) {
-        simulator.add(b1)
-        simulator.add(b2)
-    }
-
-    override val dataNode = HashDataNode().also { root ->
-        root.withChild {
-            it.data.withField(TooltipField { b -> b.text("B1", b1.temperatureKelvin.formatted()) })
-        }
-
-        root.withChild {
-            it.data.withField(TooltipField { b -> b.text("B2", b2.temperatureKelvin.formatted()) })
-        }
-    }
-}
 
 class HeatGeneratorFuelMass(var fuelAmount: Double, val energyDensity: Double) {
     companion object {
@@ -610,7 +447,7 @@ object PhotovoltaicModels {
 /**
  * Photovoltaic generator behavior. Works by modulating the voltage of [generator], based on the [model].
  * */
-class PhotovoltaicBehavior(val cell: Cell, val generator: VRGeneratorObject, val model: PhotovoltaicModel) : SolarIlluminationBehavior(cell) {
+class PhotovoltaicBehavior(val cell: Cell, val generator: VRGeneratorObject<*>, val model: PhotovoltaicModel) : SolarIlluminationBehavior(cell) {
     override fun subscribe(subscribers: SubscriberCollection) {
         subscribers.addSubscriber(SubscriberOptions(100, SubscriberPhase.Pre), this::update)
     }
@@ -626,7 +463,10 @@ class PhotovoltaicBehavior(val cell: Cell, val generator: VRGeneratorObject, val
 
 class PhotovoltaicGeneratorCell(ci: CellCreateInfo, model: PhotovoltaicModel) : Cell(ci) {
     @SimObject @Inspect
-    val generator = VRGeneratorObject(this, directionPoleMapPlanar()).also { it.potentialExact = 0.0 }
+    val generator = VRGeneratorObject<Cell>(
+        this,
+        directionPoleMapPlanar()
+    ).also { it.potentialExact = 0.0 }
 
     @Behavior
     val photovoltaic = PhotovoltaicBehavior(this, generator, model)

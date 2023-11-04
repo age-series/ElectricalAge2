@@ -10,12 +10,14 @@ import net.minecraft.world.level.saveddata.SavedData
 import net.minecraftforge.server.ServerLifecycleHooks
 import org.ageseries.libage.data.MutableMapPairBiMap
 import org.ageseries.libage.sim.electrical.mna.Circuit
+import org.ageseries.libage.sim.electrical.mna.component.Resistor
 import org.ageseries.libage.sim.electrical.mna.component.VoltageSource
 import org.ageseries.libage.sim.thermal.Simulator
 import org.eln2.mc.*
 import org.eln2.mc.common.cells.CellRegistry
 import org.eln2.mc.data.*
 import org.eln2.mc.integration.WailaEntity
+import org.eln2.mc.mathematics.approxEq
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
@@ -1665,3 +1667,118 @@ const val EXTERNAL_PIN: Int = 1
 const val INTERNAL_PIN: Int = 0
 const val POSITIVE_PIN = EXTERNAL_PIN
 const val NEGATIVE_PIN = INTERNAL_PIN
+
+/**
+ * Generator model consisting of a Voltage Source + Resistor
+ * */
+open class VRGeneratorObject<C : Cell>(cell: Cell, val map: PoleMap) : ElectricalObject<Cell>(cell), WailaEntity, DataContainer {
+    private val resistor = ComponentHolder {
+        Resistor().also { it.resistance = resistanceExact }
+    }
+
+    private val source = ComponentHolder {
+        VoltageSource().also { it.potential = potentialExact }
+    }
+
+    /**
+     * Gets the exact resistance of the [resistor].
+     * */
+    var resistanceExact: Double = 1.0
+        set(value) {
+            field = value
+            resistor.ifPresent { it.resistance = value }
+        }
+
+    /**
+     * Gets the exact potential of the [resistor].
+     * */
+    var potentialExact: Double = 1.0
+        set(value) {
+            field = value
+            source.ifPresent { it.potential = value }
+        }
+
+    /**
+     * Updates the resistance if the deviation between the current resistance and [value] is larger than [eps].
+     * This should be used instead of setting [resistanceExact] whenever possible, because setting the resistance is expensive.
+     * @return True if the resistance was updated. Otherwise, false.
+     * */
+    fun updateResistance(value: Double, eps: Double = LIBAGE_SET_EPS): Boolean {
+        if(resistanceExact.approxEq(value, eps)) {
+            return false
+        }
+
+        resistanceExact = value
+
+        return true
+    }
+
+    /**
+     * Updates the potential if the deviation between the current potential and [value] is larger than [eps].
+     * Using this instead of setting [potentialExact] doesn't have a large performance impact.
+     * @return True if the voltage was updated. Otherwise, false.
+     * */
+    fun updatePotential(value: Double, eps: Double = LIBAGE_SET_EPS): Boolean {
+        if(potentialExact.approxEq(value, eps)) {
+            return false
+        }
+
+        potentialExact = value
+
+        return true
+    }
+
+    val hasResistor get() = resistor.isPresent
+    val hasSource get() = source.isPresent
+
+    val resistorCurrent get() = if(resistor.isPresent) resistor.instance.current else 0.0
+    val sourceCurrent get() = if(source.isPresent) source.instance.current else 0.0
+
+    val resistorPower get() = if (resistor.isPresent) resistor.instance.power else 0.0
+    val sourcePower get() = if (source.isPresent) source.instance.power else 0.0
+
+    override val maxConnections = 2
+
+    /**
+     * Gets the offered component by evaluating the map.
+     * @return The resistor's external pin when the pole evaluates to *plus*. The source's negative pin when the pole evaluates to *minus*.
+     * */
+    override fun offerComponent(neighbour: ElectricalObject<*>): ElectricalComponentInfo =
+        when (map.evaluate(this.cell.locator, neighbour.cell.locator)) {
+            Pole.Plus -> resistor.offerExternal()
+            Pole.Minus -> source.offerNegative()
+        }
+
+    override fun clearComponents() {
+        resistor.clear()
+        source.clear()
+    }
+
+    override fun addComponents(circuit: Circuit) {
+        circuit.add(resistor)
+        circuit.add(source)
+    }
+
+    override fun build() {
+        resistor.connectInternal(source.offerPositive())
+        super.build()
+    }
+
+    override val dataNode = data {
+        it.withField(VoltageField {
+            potentialExact
+        })
+
+        it.withField(CurrentField {
+            sourceCurrent
+        })
+
+        it.withField(ResistanceField {
+            resistanceExact
+        })
+
+        it.withField(PowerField {
+            sourcePower
+        })
+    }
+}
