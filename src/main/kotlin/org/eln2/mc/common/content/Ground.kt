@@ -49,9 +49,5 @@ class GroundCell(ci: CellCreateInfo) : Cell(ci) {
 }
 
 class GroundPart(id: ResourceLocation, placementContext: PartPlacementInfo) : CellPart<GroundCell, BasicPartRenderer>(id, placementContext, Content.GROUND_CELL.get()), RotatablePart {
-    override val partSize = bbVec(4.0, 4.0, 4.0)
-
-    override fun createRenderer() = BasicPartRenderer(this, PartialModels.GROUND).also {
-        it.downOffset = bbOffset(4)
-    }
+    override fun createRenderer() = BasicPartRenderer(this, PartialModels.GROUND)
 }

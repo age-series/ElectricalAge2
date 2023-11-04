@@ -43,8 +43,7 @@ import java.util.*
 import kotlin.math.PI
 import net.minecraft.world.level.block.Block
 import org.eln2.mc.common.cells.foundation.CellNeighborInfo
-import org.eln2.mc.common.events.Event
-import org.eln2.mc.common.events.EventManager
+import org.eln2.mc.mathematics.Vector3d
 
 /**
  * Encapsulates all the data associated with a part's placement.
@@ -86,13 +85,22 @@ object PartGeometry {
     /**
      * @see Part.modelBoundingBox
      * */
-    fun modelBoundingBox(sizeActual: Vec3, facingWorld: Direction, faceWorld: Direction): AABB {
+    fun modelBoundingBox(sizeActual: Vector3d, facingWorld: Direction, faceWorld: Direction): AABB {
         val center = Vec3(0.0, 0.0, 0.0)
-        val halfSize = sizeActual / 2.0
+        val sizeActualMc = sizeActual.toVec3()
+        val halfSize = sizeActualMc / 2.0
         return AABB(center - halfSize, center + halfSize)
             .transformed(facingRotation(facingWorld))
             .transformed(faceWorld.rotation.toJoml())
             .move(faceOffset(sizeActual, faceWorld))
+    }
+
+    fun facingRotationLog(facingWorld: Direction) = when (facingWorld) {
+        Direction.NORTH -> 0.0
+        Direction.SOUTH -> PI
+        Direction.WEST -> PI / 2.0
+        Direction.EAST -> -PI / 2.0
+        else -> error("Invalid horizontal facing $facingWorld")
     }
 
     /**
@@ -100,18 +108,12 @@ object PartGeometry {
      * */
     fun facingRotation(facingWorld: Direction) = Quaternionf(
         AxisAngle4f(
-            when (facingWorld) {
-                Direction.NORTH -> 0.0
-                Direction.SOUTH -> PI
-                Direction.WEST -> PI / 2.0
-                Direction.EAST -> -PI / 2.0
-                else -> error("Invalid horizontal facing $facingWorld")
-            }.toFloat(),
+            facingRotationLog(facingWorld).toFloat(),
             Vector3f(0.0f, 1.0f, 0.0f)
         )
     )
 
-    fun faceOffset(sizeActual: Vec3, faceWorld: Direction): Vec3 {
+    fun faceOffset(sizeActual: Vector3d, faceWorld: Direction): Vec3 {
         val halfSize = sizeActual / 2.0
 
         val positiveOffset = halfSize.y
@@ -140,11 +142,8 @@ object PartGeometry {
         }
     }
 
-    fun gridBoundingBox(sizeActual: Vec3, facingWorld: Direction, faceWorld: Direction, posWorld: BlockPos): AABB =
+    fun worldBoundingBox(sizeActual: Vector3d, facingWorld: Direction, faceWorld: Direction, posWorld: BlockPos): AABB =
         modelBoundingBox(sizeActual, facingWorld, faceWorld).move(posWorld)
-
-    fun worldBoundingBox(sizeActual: Vec3, facingWorld: Direction, faceWorld: Direction, posWorld: BlockPos): AABB =
-        gridBoundingBox(sizeActual, facingWorld, faceWorld, posWorld).move(Vec3(-0.5, 0.0, -0.5))
 }
 
 /**
@@ -203,12 +202,6 @@ abstract class Part<Renderer : PartRenderer>(val id: ResourceLocation, val place
         )
     }
 
-    /**
-     * This is the size that will be used to create the bounding box for this part.
-     * It should not exceed the block size, but that is not enforced.
-     * */
-    abstract val partSize: Vec3
-
     private var cachedShape: VoxelShape? = null
 
     var brightness: Int = 0
@@ -232,7 +225,11 @@ abstract class Part<Renderer : PartRenderer>(val id: ResourceLocation, val place
      * on the inner face. It is not translated to the position of the part in the world (it is a local frame)
      * */
     private val modelBoundingBox: AABB
-        get() = PartGeometry.modelBoundingBox(partSize, placement.horizontalFacing, placement.face)
+        get() = PartGeometry.modelBoundingBox(
+            placement.provider.placementCollisionSize,
+            placement.horizontalFacing,
+            placement.face
+        )
 
     /**
      * @return The local Y rotation due to facing.
@@ -242,25 +239,14 @@ abstract class Part<Renderer : PartRenderer>(val id: ResourceLocation, val place
     /**
      * @return The offset towards the placement face, calculated using the base size.
      * */
-    private val faceOffset: Vec3 get() = PartGeometry.faceOffset(partSize, placement.face)
+    private val faceOffset: Vec3 get() = PartGeometry.faceOffset(placement.provider.placementCollisionSize, placement.face)
 
     /**
      * This is the bounding box of the part, in its block position.
      * */
-    val gridBoundingBox: AABB
-        get() = PartGeometry.gridBoundingBox(
-            partSize,
-            placement.horizontalFacing,
-            placement.face,
-            placement.position
-        )
-
-    /**
-     * This is the bounding box of the part, in final world coordinates.
-     * */
     val worldBoundingBox: AABB
         get() = PartGeometry.worldBoundingBox(
-            partSize,
+            placement.provider.placementCollisionSize,
             placement.horizontalFacing,
             placement.face,
             placement.position
@@ -478,7 +464,7 @@ abstract class PartProvider {
      * This is the size used to validate placement. This is different from baseSize, because
      * you can implement a visual placement margin here.
      * */
-    abstract val placementCollisionSize: Vec3
+    abstract val placementCollisionSize: Vector3d
 
     open fun canPlace(context: PartPlacementInfo): Boolean = true
 }
@@ -489,7 +475,7 @@ abstract class PartProvider {
  * */
 open class BasicPartProvider(
     val factory: ((id: ResourceLocation, context: PartPlacementInfo) -> Part<*>),
-    final override val placementCollisionSize: Vec3,
+    final override val placementCollisionSize: Vector3d,
 ) : PartProvider() {
     override fun create(context: PartPlacementInfo) = factory(id, context)
 }
@@ -736,7 +722,6 @@ abstract class CellPart<C: Cell, R : PartRenderer>(
 open class BasicCellPart<C: Cell, R : PartRenderer>(
     id: ResourceLocation,
     placementContext: PartPlacementInfo,
-    override val partSize: Vec3,
     provider: CellProvider<C>,
     private val rendererFactory: PartRendererFactory<R>,
 ) :
@@ -822,9 +807,9 @@ fun incrementFromForwardUp(facingWorld: Direction, faceWorld: Direction, directi
 fun incrementFromForwardUp(facingWorld: Direction, faceWorld: Direction, direction: Base6Direction3d) = incrementFromForwardUp(facingWorld, faceWorld, direction.alias)
 
 @JvmInline
-value class PartConnectionDirection(val data: Int) {
-    val mode get() = CellPartConnectionMode.byId[(data and 3)]
-    val directionPart get() = Base6Direction3d.byId[(data shr 2)]
+value class PartConnectionDirection(val value: Int) {
+    val mode get() = CellPartConnectionMode.byId[(value and 3)]
+    val directionPart get() = Base6Direction3d.byId[(value shr 2)]
 
     constructor(mode: CellPartConnectionMode, directionPart: Base6Direction3d) : this(mode.index or (directionPart.id shl 2))
 
@@ -1071,8 +1056,8 @@ fun interface PartRendererFactory<R : PartRenderer> {
     fun create(part: Part<R>): R
 }
 
-fun basicPartRenderer(model: PartialModel, downOffset: Double): PartRendererFactory<BasicPartRenderer> {
+fun basicPartRenderer(model: PartialModel): PartRendererFactory<BasicPartRenderer> {
     return PartRendererFactory { part ->
-        BasicPartRenderer(part, model).also { it.downOffset = downOffset }
+        BasicPartRenderer(part, model)
     }
 }

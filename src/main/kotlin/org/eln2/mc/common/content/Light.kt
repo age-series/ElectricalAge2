@@ -24,7 +24,7 @@ import net.minecraftforge.registries.ForgeRegistries
 import org.ageseries.libage.data.Quantity
 import org.eln2.mc.*
 import org.eln2.mc.client.render.PartialModels
-import org.eln2.mc.client.render.foundation.applyBlockBenchTransform
+import org.eln2.mc.client.render.foundation.transformPart
 import org.eln2.mc.client.render.foundation.colorLerp
 import org.eln2.mc.common.blocks.foundation.GhostLightServer
 import org.eln2.mc.common.blocks.foundation.GhostLightUpdateType
@@ -782,8 +782,6 @@ class LightPart(
     placementContext: PartPlacementInfo,
     cellProvider: CellProvider<LightCell>
 ) : CellPart<LightCell, LightFixtureRenderer>(id, placementContext, cellProvider), EventListener, RotatablePart {
-    override val partSize = bbVec(8.0, 1.0 + 2.302, 5.0)
-
     private fun getPositionWorld(x: Int, y: Int, z: Int) = BlockPos(
         placement.position.x + x,
         placement.position.y + y,
@@ -868,7 +866,7 @@ class LightPart(
         this,
         PartialModels.SMALL_WALL_LAMP_CAGE,
         PartialModels.SMALL_WALL_LAMP_EMITTER
-    ).also { it.downOffset = partSize.y / 2.0 }
+    )
 
     @ServerOnly @OnServerThread
     override fun onCellAcquired() {
@@ -1124,8 +1122,7 @@ class LightFixtureRenderer(
 
     fun updateBrightness(newValue: Double) = brightnessUpdate.setLatest(newValue)
 
-    var yRotation = 0f
-    var downOffset = 0.0
+    var yRotation = 0.0
 
     private var cageInstance: ModelData? = null
     private var emitterInstance: ModelData? = null
@@ -1145,7 +1142,7 @@ class LightFixtureRenderer(
             .getModel(model)
             .createInstance()
             .loadIdentity()
-            .applyBlockBenchTransform(part, downOffset, yRotation)
+            .transformPart(part, yRotation)
     }
 
     private fun applyLightTint() {

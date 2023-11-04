@@ -404,7 +404,7 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
      * Finds the part intersected by the entity's view.
      * */
     fun pickPart(entity: LivingEntity): Part<*>? {
-        return clipScene(entity, { it.gridBoundingBox }, parts.values)
+        return clipScene(entity, { it.worldBoundingBox }, parts.values)
     }
 
     /**

@@ -999,7 +999,7 @@ fun <T> InputStream.getList(deserialize: (InputStream) -> T) = this.getIntPacked
 
 fun InputStream.getFloatList() = this.getList { it.getFloat() }
 fun InputStream.getStringList() = this.getList { it.getString() }
-
+// I did this because right after 1.19.2 minecraft switched to JOML (good ending)
 fun Quaternion.toJoml() = Quaternionf(this.i(), this.j(), this.k(), this.r())
 fun Quaternionf.toMinecraft() = Quaternion(this.x, this.y, this.z, this.w)
 fun Vec3.toJoml() = Vector3f(this.x.toFloat(), this.y.toFloat(), this.z.toFloat())

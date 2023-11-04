@@ -8,7 +8,10 @@ import com.jozufozu.flywheel.core.PartialModel
 import com.jozufozu.flywheel.core.materials.FlatLit
 import com.jozufozu.flywheel.core.materials.model.ModelData
 import com.jozufozu.flywheel.util.Color
+import com.jozufozu.flywheel.util.transform.Transform
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap
+import it.unimi.dsi.fastutil.ints.IntArrayList
+import net.minecraft.core.Direction
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.world.level.LightLayer
 import org.ageseries.libage.sim.thermal.STANDARD_TEMPERATURE
@@ -16,20 +19,21 @@ import org.ageseries.libage.sim.thermal.Temperature
 import org.ageseries.libage.sim.thermal.ThermalUnits
 import org.eln2.mc.*
 import org.eln2.mc.common.blocks.foundation.MultipartBlockEntity
+import org.eln2.mc.common.content.PartConnectionRenderInfo
+import org.eln2.mc.common.content.PartConnectionRenderInfoSetConsumer
+import org.eln2.mc.common.content.WirePolarPatchModel
+import org.eln2.mc.common.content.getPartConnectionAsContactSectionConnectionOrNull
 import org.eln2.mc.common.events.AtomicUpdate
 import org.eln2.mc.common.parts.foundation.*
 import org.eln2.mc.mathematics.Base6Direction3d
 import org.eln2.mc.mathematics.Base6Direction3dMask
+import org.eln2.mc.mathematics.Vector3d
 import org.eln2.mc.mathematics.map
-import org.joml.AxisAngle4f
-import org.joml.Quaternionf
-import org.joml.Vector3f
 
 fun createPartInstance(
     multipart: MultipartBlockEntityInstance,
     model: PartialModel,
     part: Part<*>,
-    downOffset: Double,
     yRotation: Double = 0.0,
 ): ModelData {
     return multipart.materialManager
@@ -38,7 +42,7 @@ fun createPartInstance(
         .getModel(model)
         .createInstance()
         .loadIdentity()
-        .applyBlockBenchTransform(part, downOffset, yRotation.toFloat())
+        .transformPart(part, yRotation)
 }
 
 /**
@@ -46,7 +50,6 @@ fun createPartInstance(
  * */
 open class BasicPartRenderer(val part: Part<*>, val model: PartialModel) : PartRenderer() {
     var yRotation = 0.0
-    var downOffset = 0.0
 
     private var modelInstance: ModelData? = null
 
@@ -56,7 +59,7 @@ open class BasicPartRenderer(val part: Part<*>, val model: PartialModel) : PartR
 
     fun buildInstance() {
         modelInstance?.delete()
-        modelInstance = createPartInstance(multipart, model, part, downOffset, yRotation)
+        modelInstance = createPartInstance(multipart, model, part, yRotation)
     }
 
     override fun relight(source: RelightSource) {
@@ -70,114 +73,104 @@ open class BasicPartRenderer(val part: Part<*>, val model: PartialModel) : PartR
     }
 }
 
-fun interface ConnectionMaskConsumer {
-    /**
-     * Accepts the connection directions encoded as [mask].
-     * The connection directions are all in the local frame.
-     * */
-    fun acceptDirections(mask: Base6Direction3dMask)
-}
-
 fun CellPart<*, ConnectedPartRenderer>.getConnectedPartTag() = CompoundTag().also { compoundTag ->
     if(this.hasCell) {
-        var mask = Base6Direction3dMask.EMPTY
+        val values = IntArrayList(2)
 
         for (it in this.cell.connections) {
-            val solution = getPartConnectionOrNull(this.cell.locator, it.locator)
+            val solution = getPartConnectionAsContactSectionConnectionOrNull(this.cell, it)
                 ?: continue
 
-            mask += solution.directionPart
+            values.add(solution.value)
         }
 
-        compoundTag.putInt("mask", mask.value)
+        compoundTag.putIntArray("connections", values)
     }
 }
 
-fun Part<ConnectedPartRenderer>.handleConnectedPartTag(tag: CompoundTag) = this.renderer.acceptDirections(
-    if(tag.contains("mask")) {
-        Base6Direction3dMask(
-            tag.getInt("mask")
-        )
+fun Part<ConnectedPartRenderer>.handleConnectedPartTag(tag: CompoundTag) = this.renderer.acceptConnections(
+    if(tag.contains("connections")) {
+        tag.getIntArray("connections")
     }
     else {
-        Base6Direction3dMask.EMPTY
+        IntArray(0)
     }
 )
+
+data class WireConnectionModelPartial(
+    val planar: PolarModel,
+    val inner: PolarModel,
+    val wrapped: PolarModel
+) {
+    val variants = mapOf(
+        CellPartConnectionMode.Planar to planar,
+        CellPartConnectionMode.Inner to inner,
+        CellPartConnectionMode.Wrapped to wrapped
+    )
+}
 
 class ConnectedPartRenderer(
     val part: Part<*>,
     val body: PartialModel,
-    val connections: Map<Base6Direction3d, Pair<PartialModel, Double>>
-) : PartRenderer(), ConnectionMaskConsumer {
-    constructor(part: Part<*>, body: PartialModel, connection: PartialModel, connectionDown: Double = 0.0) : this(
+    val connections: Map<Base6Direction3d, WireConnectionModelPartial>
+) : PartRenderer(), PartConnectionRenderInfoSetConsumer {
+    constructor(part: Part<*>, body: PartialModel, connection: WireConnectionModelPartial) : this(
         part,
         body,
-        Pair(connection, connectionDown).let {
-            mapOf(
-                Base6Direction3d.Front to it,
-                Base6Direction3d.Back to it,
-                Base6Direction3d.Left to it,
-                Base6Direction3d.Right to it
-            )
-        }
+        mapOf(
+            Base6Direction3d.Front to connection,
+            Base6Direction3d.Back to connection,
+            Base6Direction3d.Left to connection,
+            Base6Direction3d.Right to connection
+        )
     )
 
-    var bodyDownOffset = 0.0
-
     private var bodyInstance: ModelData? = null
-    private var connectionDirections = Base6Direction3dMask.EMPTY
-    private val connectionDirectionsUpdate = AtomicUpdate<Base6Direction3dMask>()
+    private val connectionDirectionsUpdate = AtomicUpdate<IntArray>()
     private val connectionInstances = Int2ObjectOpenHashMap<ModelData>()
 
-    override fun acceptDirections(mask: Base6Direction3dMask) {
-        connectionDirectionsUpdate.setLatest(mask)
+    override fun acceptConnections(connections: IntArray) {
+        connectionDirectionsUpdate.setLatest(connections)
     }
 
     override fun setupRendering() {
         buildBody()
-        buildConnections()
+        applyConnectionData(connectionInstances.keys.toIntArray())
     }
 
     private fun buildBody() {
         bodyInstance?.delete()
-        bodyInstance = createPartInstance(multipart, body, part, bodyDownOffset)
+        bodyInstance = createPartInstance(multipart, body, part)
     }
 
-    private fun buildConnections() {
+    private fun applyConnectionData(values: IntArray) {
         connectionInstances.values.forEach { it.delete() }
         connectionInstances.clear()
 
-        for (direction in connectionDirections.directionList) {
-            val modelInfo = connections[direction.alias]
+        for (value in values) {
+            val info = PartConnectionRenderInfo(value)
+            val direction = info.directionPart
+
+            val model = connections[direction]
                 ?: continue
 
-            val instance = multipart.materialManager
-                .defaultSolid()
-                .material(Materials.TRANSFORMED)
-                .getModel(modelInfo.first)
-                .createInstance()
-                .loadIdentity()
-                .translateNormal(part.placement.face.opposite, modelInfo.second)
-                .translate(0.5, 0.0, 0.5)
-                .translate(part.worldBoundingBox.center)
-                .multiply(
-                    part.placement.face.rotation.toJoml()
-                        .mul(part.facingRotation)
-                        .rotateY(
-                            when (direction.alias) {
-                                Base6Direction3d.Front -> 0.0
-                                Base6Direction3d.Back -> kotlin.math.PI
-                                Base6Direction3d.Left -> kotlin.math.PI / 2.0
-                                Base6Direction3d.Right -> -kotlin.math.PI / 2.0
-                                else -> error("Invalid connected part direction $direction")
-                            }.toFloat()
-                        )
-                        .toMinecraft()
-                )
-                .translate(-0.5, 0.0, -0.5)
+            val instance = createPartInstance(
+                multipart,
+                model.variants[info.mode]!!,
+                part,
+                when (direction) {
+                    Base6Direction3d.Front -> 0.0
+                    Base6Direction3d.Back -> kotlin.math.PI
+                    Base6Direction3d.Left -> kotlin.math.PI / 2.0
+                    Base6Direction3d.Right -> -kotlin.math.PI / 2.0
+                    else -> error("Invalid connected part direction $direction")
+                }
+            )
 
-            connectionInstances.putUnique(direction.index(), instance)
+            connectionInstances.putUnique(value, instance)
         }
+
+        multipart.relightModels(connectionInstances.values)
     }
 
     override fun relight(source: RelightSource) {
@@ -186,10 +179,8 @@ class ConnectedPartRenderer(
     }
 
     override fun beginFrame() {
-        connectionDirectionsUpdate.consume { mask ->
-            this.connectionDirections = mask
-            buildConnections()
-            multipart.relightModels(connectionInstances.values)
+        connectionDirectionsUpdate.consume { values ->
+            applyConnectionData(values)
         }
     }
 
@@ -198,25 +189,26 @@ class ConnectedPartRenderer(
         connectionInstances.values.forEach { it.delete() }
     }
 }
-// down offset -> world units
-fun ModelData.applyBlockBenchTransform(part: Part<*>, downOffset: Double, yRotation: Float = 0f): ModelData {
+
+private val offsetTable = Int2ObjectOpenHashMap<Vector3d>(6).also {
+    it[Direction.DOWN.index()] = Vector3d(0.5, 1.0, 0.5)
+    it[Direction.UP.index()] = Vector3d(0.5, 0.0, 0.5)
+    it[Direction.NORTH.index()] = Vector3d(0.5, 0.5, 1.0)
+    it[Direction.SOUTH.index()] = Vector3d(0.5, 0.5, 0.0)
+    it[Direction.WEST.index()] = Vector3d(1.0, 0.5, 0.5)
+    it[Direction.EAST.index()] = Vector3d(0.0, 0.5, 0.5)
+}
+
+fun<T : Transform<T>> T.transformPart(part: Part<*>, yRotation: Double = 0.0): T {
+    val (dx, dy, dz) = offsetTable.get(part.placement.face.index())!!
+
     return this
-        .translate(part.placement.face.opposite.normal.toVec3() * downOffset)
-        .blockCenter()
-        .translate(part.worldBoundingBox.center)
-        .multiply(
-            part.placement.face.rotation.toJoml()
-                .mul(part.facingRotation)
-                .mul(
-                    Quaternionf(
-                        AxisAngle4f(
-                            yRotation,
-                            Vector3f(0.0f, 1.0f, 0.0f)
-                        )
-                    )
-                ).toMinecraft()
-        )
-        .zeroCenter()
+        .translate(part.placement.position)
+        .translate(dx, dy, dz)
+        .multiply(part.placement.face.rotation)
+        .rotateYRadians(PartGeometry.facingRotationLog(part.placement.horizontalFacing))
+        .rotateYRadians(yRotation)
+        .translate(-0.5, 0.0, -0.5)
 }
 
 class RadiantBodyColorBuilder {

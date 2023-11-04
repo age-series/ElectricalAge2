@@ -2,6 +2,7 @@ package org.eln2.mc.client.render
 
 import com.jozufozu.flywheel.core.PartialModel
 import org.eln2.mc.client.render.foundation.PolarModel
+import org.eln2.mc.client.render.foundation.WireConnectionModelPartial
 import org.eln2.mc.common.content.WireConnectionModel
 import org.eln2.mc.common.content.WirePatchType
 import org.eln2.mc.common.content.WirePolarPatchModel
@@ -33,7 +34,7 @@ object PartialModels {
     val SOLAR_PANEL_ONE_BLOCK = partialBlock("solar_panel_one_block")
 
     val GRID_TAP_BODY = partialBlock("grid_tap_body")
-    val GRID_TAP_CONNECTION = partialBlock("grid_tap_connection")
+    val GRID_TAP_CONNECTION = patchPartial("grid_tap_connection")
 
     private fun partial(path: String): PartialModel {
         return PartialModel(resource(path))
@@ -58,6 +59,16 @@ object PartialModels {
             PolarModel(fullResourceLocation),
             WirePolarPatchModel(fullResourceLocation, WirePatchType.Inner),
             WirePolarPatchModel(fullResourceLocation, WirePatchType.Wrapped)
+        )
+    }
+
+    fun patchPartial(connection: String): WireConnectionModelPartial {
+        val resourceLocation = resource("block/$connection")
+
+        return WireConnectionModelPartial(
+            PolarModel(resourceLocation),
+            WirePolarPatchModel(resourceLocation, WirePatchType.Inner),
+            WirePolarPatchModel(resourceLocation, WirePatchType.Wrapped)
         )
     }
 

@@ -23,9 +23,7 @@ class RadiatorPart(
     placementContext: PartPlacementInfo,
     val radiantColor: ThermalTint
 ) : CellPart<ThermalWireCell, RadiantBodyRenderer>(id, placementContext, Content.THERMAL_RADIATOR_CELL.get()), InternalTemperatureConsumer {
-    override val partSize = Vec3(1.0, 3.0 / 16.0, 1.0)
-
-    override fun createRenderer() = RadiantBodyRenderer(this, PartialModels.RADIATOR, radiantColor, bbOffset(3.0), 0.0)
+    override fun createRenderer() = RadiantBodyRenderer(this, PartialModels.RADIATOR, radiantColor, 0.0)
 
     override fun registerPackets(builder: PacketHandlerBuilder) {
         builder.withHandler<Sync> {
@@ -45,7 +43,6 @@ class RadiantBodyRenderer(
     val part: Part<*>,
     val model: PartialModel,
     val color: ThermalTint,
-    val offset: Double,
     val yRotation: Double
 ) : PartRenderer() {
     private var bodyInstance: ModelData? = null
@@ -54,7 +51,7 @@ class RadiantBodyRenderer(
     fun update(temperature: Temperature) = updates.setLatest(temperature)
 
     override fun setupRendering() {
-        bodyInstance = createPartInstance(multipart, model, part, offset, yRotation)
+        bodyInstance = createPartInstance(multipart, model, part, yRotation)
     }
 
     override fun beginFrame() {
@@ -80,11 +77,8 @@ class RadiantBipoleRenderer(
     val body: PartialModel,
     val left: PartialModel,
     val right: PartialModel,
-    val bodyDownOffset: Double,
     val bodyRotation: Double,
-    val leftDownOffset: Double,
     val leftRotation: Double,
-    val rightDownOffset: Double,
     val rightRotation: Double,
     val leftColor: ThermalTint,
     val rightColor: ThermalTint,
@@ -94,7 +88,6 @@ class RadiantBipoleRenderer(
         body: PartialModel,
         left: PartialModel,
         right: PartialModel,
-        downOffset: Double,
         rotation: Double,
         leftColor: ThermalTint,
         rightColor: ThermalTint,
@@ -104,11 +97,8 @@ class RadiantBipoleRenderer(
             body,
             left,
             right,
-            downOffset,
             rotation,
-            downOffset,
             rotation,
-            downOffset,
             rotation,
             leftColor,
             rightColor
@@ -119,10 +109,9 @@ class RadiantBipoleRenderer(
         body: PartialModel,
         left: PartialModel,
         right: PartialModel,
-        downOffset: Double,
         rotation: Double,
     ) :
-        this(part, body, left, right, downOffset, rotation, defaultRadiantBodyColor(), defaultRadiantBodyColor())
+        this(part, body, left, right, rotation, defaultRadiantBodyColor(), defaultRadiantBodyColor())
 
     private var bodyInstance: ModelData? = null
     private var leftInstance: ModelData? = null
@@ -139,9 +128,9 @@ class RadiantBipoleRenderer(
         bodyInstance?.delete()
         leftInstance?.delete()
         rightInstance?.delete()
-        bodyInstance = createPartInstance(multipart, body, part, bodyDownOffset, bodyRotation)
-        leftInstance = createPartInstance(multipart, left, part, leftDownOffset, leftRotation)
-        rightInstance = createPartInstance(multipart, right, part, rightDownOffset, rightRotation)
+        bodyInstance = createPartInstance(multipart, body, part, bodyRotation)
+        leftInstance = createPartInstance(multipart, left, part, leftRotation)
+        rightInstance = createPartInstance(multipart, right, part, rightRotation)
     }
 
     override fun beginFrame() {

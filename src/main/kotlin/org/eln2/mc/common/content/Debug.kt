@@ -36,8 +36,6 @@ class ElectricalEnergyMeterCell(ci: CellCreateInfo) : Cell(ci) {
 }
 
 class ElectricalEnergyMeterPart(id: ResourceLocation, placement: PartPlacementInfo) : CellPart<ElectricalEnergyMeterCell, BasicPartRenderer>(id, placement, Content.ELECTRICAL_ENERGY_METER_CELL.get()) {
-    override val partSize = Vec3(1.0, 1.0, 1.0)
-
     override fun createRenderer() = BasicPartRenderer(this, PartialModels.ELECTRICAL_WIRE_HUB)
 
     override fun onUsedBy(context: PartUseInfo): InteractionResult {
@@ -75,7 +73,6 @@ class OscillatorCell(ci: CellCreateInfo) : Cell(ci) {
 
 class OscillatorPart(id: ResourceLocation, placement: PartPlacementInfo) :
     CellPart<OscillatorCell, BasicPartRenderer>(id, placement, Content.OSCILLATOR_CELL.get()) {
-    override val partSize = Vec3(1.0, 1.0, 1.0)
 
     override fun createRenderer() = BasicPartRenderer(this, PartialModels.BATTERY)
 }

@@ -22,7 +22,6 @@ import net.minecraft.nbt.ListTag
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.util.RandomSource
 import net.minecraft.world.level.LightLayer
-import net.minecraft.world.phys.Vec3
 import net.minecraftforge.api.distmarker.Dist
 import net.minecraftforge.fml.DistExecutor
 import net.minecraftforge.registries.RegistryObject
@@ -200,15 +199,11 @@ class WireConnectionModel(
 /**
  * Holds all data required to render a wire connection.
  * @param hub Hub (junction) model
- * @param hubHeight The real height of the hub model (for BlockBench, it is **size along Y / 16.0**)
  * @param connection The connection models
- * @param connectionHeight The real height of the connection model (for BlockBench, it is **size along Y / 16.0**)
  * */
 data class WireRenderInfo(
     val hub: PartialModel,
-    val hubHeight: Double,
     val connection: WireConnectionModel,
-    val connectionHeight: Double,
     val tintColor: ThermalTint,
 )
 
@@ -325,10 +320,11 @@ data class ElectricalWireRegistryObject(
 
 abstract class WireBuilder<C : Cell>(val id: String) {
     var material = ThermalBodyDef(Material.COPPER, 1.0, cylinderSurfaceArea(1.0, 0.05))
+    var contactSurfaceArea = PI * (0.05 * 0.05)
     var damageOptions = TemperatureExplosionBehaviorOptions()
     var replicatesInternalTemperature = true
     var isIncandescent: Boolean = true
-    var size = Vec3(0.1, 0.1, 0.1)
+    var size = Vector3d(3.5 / 16.0, 2.0 / 16.0, 3.5 / 16.0)
     var tint = defaultRadiantBodyColor()
     var smokeTemperature: Double? = null
     private var renderInfo: Supplier<WireRenderInfo>? = null
@@ -368,16 +364,23 @@ abstract class WireBuilder<C : Cell>(val id: String) {
 class ThermalWireBuilder(id: String) : WireBuilder<ThermalWireCell>(id) {
     fun register(): ThermalWireRegistryObject {
         val material = createMaterialProperties()
-        val cell = CellRegistry.injCell<ThermalWireCell>(id, material)
+        val cell = CellRegistry.cell(
+            id,
+            BasicCellProvider { ci ->
+                ThermalWireCell(
+                    ci,
+                    contactSurfaceArea,
+                    material
+                )
+            }
+        )
         registerPart(material, cell)
         return ThermalWireRegistryObject(material, cell.id)
     }
 
     override fun defaultRender() = WireRenderInfo(
         PartialModels.THERMAL_WIRE_HUB,
-        1.5 / 16.0,
         PartialModels.THERMAL_WIRE_CONNECTION,
-        1.5 / 16.0,
         tint
     )
 }
@@ -388,16 +391,19 @@ class ElectricalWireBuilder(id: String) : WireBuilder<ElectricalWireCell>(id) {
     fun register(): ElectricalWireRegistryObject {
         val material = createMaterialProperties()
         val electrical = WireElectricalProperties(resistance)
-        val cell = CellRegistry.injCell<ElectricalWireCell>(id, material, electrical)
+        val cell = CellRegistry.cell(
+            id,
+            BasicCellProvider { ci ->
+                ElectricalWireCell(ci, contactSurfaceArea, material, electrical)
+            }
+        )
         registerPart(material, cell)
         return ElectricalWireRegistryObject(material, electrical, cell.id)
     }
 
     override fun defaultRender() = WireRenderInfo(
         PartialModels.ELECTRICAL_WIRE_HUB,
-        1.5 / 16.0,
         PartialModels.ELECTRICAL_WIRE_CONNECTION,
-        1.5 / 16.0,
         tint
     )
 }
@@ -424,7 +430,7 @@ data class WireElectricalProperties(
     val electricalResistance: Double,
 )
 
-open class ThermalWireCell(ci: CellCreateInfo, val thermalProperties: WireThermalProperties) : Cell(ci) {
+open class ThermalWireCell(ci: CellCreateInfo, val connectionCrossSection: Double, val thermalProperties: WireThermalProperties) : Cell(ci), CellContactPointSurface {
     @SimObject
     val thermalWire = ThermalWireObject(this)
 
@@ -456,9 +462,11 @@ open class ThermalWireCell(ci: CellCreateInfo, val thermalProperties: WireTherma
         if(thermalProperties.replicatesExternalTemperature)
             ExternalTemperatureReplicatorBehavior(this, consumer)
         else null
+
+    override fun getContactSection(cell: Cell) = connectionCrossSection
 }
 
-open class ElectricalWireCell(ci: CellCreateInfo, thermalProperties: WireThermalProperties, val electricalProperties: WireElectricalProperties) : ThermalWireCell(ci, thermalProperties) {
+open class ElectricalWireCell(ci: CellCreateInfo, contactCrossSection: Double, thermalProperties: WireThermalProperties, val electricalProperties: WireElectricalProperties) : ThermalWireCell(ci, contactCrossSection, thermalProperties) {
     @SimObject
     val electricalWire = ElectricalWireObject(this).also {
         it.resistance = electricalProperties.electricalResistance
@@ -494,14 +502,12 @@ class WirePart<C : Cell>(
         private const val DIRECTIONS = "directions"
     }
 
-    override val partSize = bbVec(8.0, 2.0, 8.0)
-
     @ClientOnly
     override fun createRenderer(): WireRenderer<*> {
         val supplier = renderInfo ?: error("Render info is null")
         val renderInfo = supplier.get()
 
-        return if(isIncandescent) {
+        return if(isIncandescent) { // TODO canUseInstancing is misleading, fix:
             if(Backend.canUseInstancing(placement.level)) {
                 // Instancing is supported, so use good renderer:
                 IncandescentInstancedWireRenderer(this, renderInfo)
@@ -531,10 +537,10 @@ class WirePart<C : Cell>(
             val directionList = ListTag()
 
             for (it in cell.connections) {
-                val solution = getPartConnectionOrNull(cell.locator, it.locator)
+                val directSolution = getPartConnectionAsContactSectionConnectionOrNull(cell, it)
                     ?: continue
 
-                directionList.add(solution.toNbt())
+                directionList.add(directSolution.toNbt())
             }
 
             tag.put(DIRECTIONS, directionList)
@@ -551,10 +557,10 @@ class WirePart<C : Cell>(
             val data = IntArray(directionList.size)
 
             directionList.forEachIndexed { i, t ->
-                data[i] = PartConnectionDirection.fromNbt(t as CompoundTag).data
+                data[i] = PartConnectionRenderInfo.fromNbt(t as CompoundTag).value
             }
 
-            renderer.updateDirections(data)
+            renderer.acceptConnections(data)
         }
     }
 
@@ -616,10 +622,10 @@ class WirePart<C : Cell>(
         val temperatures = Int2DoubleOpenHashMap()
 
         for ((thermalObject, temperature) in dirty) {
-            val solution = getPartConnectionOrNull(cell.locator, thermalObject.cell.locator)
+            val solution = getPartConnectionAsContactSectionConnectionOrNull(cell, thermalObject.cell)
                 ?: continue
 
-            temperatures.put(solution.data, temperature)
+            temperatures.put(solution.value, temperature)
         }
 
         sendBulkPacket(ExternalTemperaturesPacket(temperatures))
@@ -641,7 +647,7 @@ class WirePart<C : Cell>(
                 val solution = getPartConnectionOrNull(this.cell.locator, remoteThermalObject.cell.locator)
                     ?: return@scanNeighbors
 
-                externalTemperatures.put(solution.data, field.readKelvin())
+                externalTemperatures.put(solution.value, field.readKelvin())
             }
 
            if(externalTemperatures.isNotEmpty()) {
@@ -691,10 +697,70 @@ interface ExternalTemperatureConsumerWire {
     fun updateExternalTemperatures(temperatures: Map<Int, Double>)
 }
 
+@JvmInline
+value class PartConnectionRenderInfo(val value: Int) {
+    val mode get() = CellPartConnectionMode.byId[(value and 3)]
+    val directionPart get() = Base6Direction3d.byId[(value shr 2) and 7]
+    val flag get() = (value and 32) != 0
+
+    constructor(mode: CellPartConnectionMode, directionPart: Base6Direction3d, flag: Boolean) : this(mode.index or (directionPart.id shl 2) or (if(flag) 32 else 0))
+
+    val partConnectionDirection get() = PartConnectionDirection(mode, directionPart)
+
+    fun toNbt(): CompoundTag {
+        val tag = CompoundTag()
+
+        tag.putBase6Direction(DIR, directionPart)
+        tag.putConnectionMode(MODE, mode)
+        tag.putBoolean(FLAG, flag)
+
+        return tag
+    }
+
+    companion object {
+        private const val MODE = "mode"
+        private const val DIR = "dir"
+        private const val FLAG = "flag"
+
+        fun cast(from: PartConnectionDirection) = PartConnectionRenderInfo(from.mode, from.directionPart, false)
+
+        fun fromNbt(tag: CompoundTag) = PartConnectionRenderInfo(
+            tag.getConnectionMode(MODE),
+            tag.getDirectionActual(DIR),
+            tag.getBoolean(FLAG)
+        )
+    }
+}
+
+interface CellContactPointSurface {
+    fun getContactSection(cell: Cell) : Double
+}
+// to improve
+fun getPartConnectionAsContactSectionConnectionOrNull(cell: Cell, remoteCell: Cell) : PartConnectionRenderInfo? {
+    val partSolution = getPartConnectionOrNull(cell.locator, remoteCell.locator)
+        ?: return null
+
+    if(cell !is CellContactPointSurface || remoteCell !is CellContactPointSurface) {
+        return PartConnectionRenderInfo.cast(partSolution)
+    }
+
+    val flag = cell.getContactSection(remoteCell) < remoteCell.getContactSection(cell)
+
+    return PartConnectionRenderInfo(
+        partSolution.mode,
+        partSolution.directionPart,
+        flag
+    )
+}
+
+fun interface PartConnectionRenderInfoSetConsumer {
+    fun acceptConnections(connections: IntArray)
+}
+
 abstract class WireRenderer<I>(
     val part: WirePart<*>,
     val renderInfo: WireRenderInfo,
-) : PartRenderer() {
+) : PartRenderer(), PartConnectionRenderInfoSetConsumer {
     private var connectionsUpdate = AtomicUpdate<IntArray>()
     protected var hubInstance: ModelData? = null
     protected var connectionInstances = Int2ObjectOpenHashMap<I>(4)
@@ -706,37 +772,26 @@ abstract class WireRenderer<I>(
     }
 
     protected fun<T : Transform<T>> T.poseHub(): T =
-        this.translateNormal(part.placement.face, -renderInfo.hubHeight * (2f / 3f))
-        .translate(0.5, 0.0, 0.5)
-        .translate(part.worldBoundingBox.center)
-        .multiply(
-            part.placement.face.rotation.toJoml()
-                .mul(part.facingRotation)
-            .toMinecraft()
+        this.transformPart(
+            part,
+            0.0
         )
-        .translate(-0.5, 0.0, -0.5)
 
     protected fun<T : Transform<T>> T.poseConnection(info: PartConnectionDirection): T =
-        this.translateNormal(part.placement.face, -renderInfo.connectionHeight * (2f / 3f))
-        .translate(0.5, 0.0, 0.5)
-        .translate(part.worldBoundingBox.center)
-        .multiply(
-            part.placement.face.rotation.toJoml()
-                .mul(part.facingRotation)
-                .rotateY(
-                    when (info.directionPart) {
-                        Base6Direction3d.Front -> 0.0
-                        Base6Direction3d.Back -> PI
-                        Base6Direction3d.Left -> PI / 2.0
-                        Base6Direction3d.Right -> -PI / 2.0
-                        else -> error("Invalid wire direction ${info.directionPart}")
-                    }.toFloat()
-                )
-            .toMinecraft()
+        this.transformPart(
+            part,
+            when (info.directionPart) {
+                Base6Direction3d.Front -> 0.0
+                Base6Direction3d.Back -> PI
+                Base6Direction3d.Left -> PI / 2.0
+                Base6Direction3d.Right -> -PI / 2.0
+                else -> error("Invalid wire direction ${info.directionPart}")
+            }
         )
-        .translate(-0.5, 0.0, -0.5)
 
-    fun updateDirections(partConnections: IntArray) = connectionsUpdate.setLatest(partConnections)
+    override fun acceptConnections(connections: IntArray) {
+        connectionsUpdate.setLatest(connections)
+    }
 
     // We don't do any initialization here, but we re-create the models because it gets called when the pipeline changes.s
     override fun setupRendering() {
@@ -838,7 +893,7 @@ class FlatWireRenderer(
         for (connection in partConnections) {
             val info = PartConnectionDirection(connection)
             val connectionInstance = createConnectionInstance(info, variants[info.mode]!!)
-            putUniqueConnection(info.data, connectionInstance)
+            putUniqueConnection(info.value, connectionInstance)
         }
 
         // We re-created the models, so we need to re-upload lights:
@@ -978,12 +1033,12 @@ class IncandescentInstancedWireRenderer(
             val info = PartConnectionDirection(connection)
 
             putUniqueConnection(
-                info.data,
+                info.value,
                 createConnectionInstance(info, models[info.mode]!!)
             )
 
             // Mark the connection as still existing:
-            removedNeighbors.remove(info.data)
+            removedNeighbors.remove(info.value)
         }
 
         // Remove cached temperatures of objects that are not connected.

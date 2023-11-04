@@ -993,15 +993,11 @@ class GridTapPart(
 ) : GridCellPart<ConnectedPartRenderer>(id, placement, provider) {
     override val attachment: Vector3d = super.attachment - placement.face.toVector3d() * 0.15
 
-    override val partSize: Vec3
-        get() = Vec3(4.0 / 16.0, 0.5, 4.0 / 16.0)
-
     override fun createRenderer() = ConnectedPartRenderer(
         this,
         PartialModels.GRID_TAP_BODY,
-        PartialModels.GRID_TAP_CONNECTION,
-        8.0 / 32.0
-    ).also { it.bodyDownOffset = 8.0 / 32.0 }
+        PartialModels.GRID_TAP_CONNECTION
+    )
 
     override fun getSyncTag() = this.getConnectedPartTag()
     override fun handleSyncTag(tag: CompoundTag) = this.handleConnectedPartTag(tag)

@@ -385,7 +385,6 @@ class BatteryPart(
     id: ResourceLocation,
     placementContext: PartPlacementInfo,
     provider: CellProvider<BatteryCell>,
-    override val partSize: Vec3,
     private val rendererSupplier: PartRendererSupplier<BatteryPart, BasicPartRenderer>
 ) : CellPart<BatteryCell, BasicPartRenderer>(id, placementContext, provider), ItemPersistentPart, RotatablePart {
     companion object {
