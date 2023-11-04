@@ -67,8 +67,8 @@ object Content {
     val BATTERY_PART_12V =
         part(
             "lead_acid_battery_12v",
-            BasicPartProvider({ a, b ->
-                BatteryPart(a, b, BATTERY_CELL_12V.get()) { part ->
+            BasicPartProvider({ ci ->
+                BatteryPart(ci, BATTERY_CELL_12V.get()) { part ->
                     BasicPartRenderer(part, PartialModels.BATTERY)
                 }
             }, Vector3d(6.0 / 16.0, 7.0 / 16.0, 10.0 / 16.0))
@@ -94,8 +94,8 @@ object Content {
             )
         }
     )
-    val THERMAL_RADIATOR = part("thermal_radiator", BasicPartProvider({ id, ctx ->
-        RadiatorPart(id, ctx, defaultRadiantBodyColor()) }, Vector3d(1.0, 3.0 / 16.0, 1.0)))
+    val THERMAL_RADIATOR = part("thermal_radiator", BasicPartProvider({ ci ->
+        RadiatorPart(ci, defaultRadiantBodyColor()) }, Vector3d(1.0, 3.0 / 16.0, 1.0)))
 
     val HEAT_GENERATOR_CELL = injCell<HeatGeneratorCell>(
         "heat_generator_cell",
@@ -116,10 +116,9 @@ object Content {
         PhotovoltaicGeneratorCell(it, PhotovoltaicModels.test24Volts())
     })
 
-    val PHOTOVOLTAIC_PANEL_PART = part("photovoltaic_panel", BasicPartProvider({ id, context ->
+    val PHOTOVOLTAIC_PANEL_PART = part("photovoltaic_panel", BasicPartProvider({ ci ->
         BasicCellPart(
-            id,
-            context,
+            ci,
             PHOTOVOLTAIC_GENERATOR_CELL.get(),
             basicPartRenderer(
                 PartialModels.SOLAR_PANEL_ONE_BLOCK,
@@ -127,18 +126,18 @@ object Content {
         )
     }, Vector3d(1.0, 2.0 / 16.0, 1.0)))
 
-    val LIGHT_CELL = cell("light_cell", BasicCellProvider { context ->
-        LightCell(context, directionPoleMapPlanar(Base6Direction3d.Left, Base6Direction3d.Right)).also { cell ->
+    val LIGHT_CELL = cell("light_cell", BasicCellProvider { ci ->
+        LightCell(ci, directionPoleMapPlanar(Base6Direction3d.Left, Base6Direction3d.Right)).also { cell ->
             cell.ruleSet.withDirectionRulePlanar(Base6Direction3dMask.LEFT + Base6Direction3dMask.RIGHT)
         }
     })
 
-    val LIGHT_PART = part("light_part", BasicPartProvider({ a, b -> LightPart(a, b, LIGHT_CELL.get()) }, Vector3d(8.0 / 16.0, (1.0 + 2.302) / 16.0, 5.0 / 16.0)))
+    val LIGHT_PART = part("light_part", BasicPartProvider({ ci -> LightPart(ci, LIGHT_CELL.get()) }, Vector3d(8.0 / 16.0, (1.0 + 2.302) / 16.0, 5.0 / 16.0)))
 
     val OSCILLATOR_CELL = injCell<OscillatorCell>("oscillator")
 
-    val OSCILLATOR_PART = part("oscillator", BasicPartProvider( { a, b ->
-        OscillatorPart(a, b)
+    val OSCILLATOR_PART = part("oscillator", BasicPartProvider( { ci ->
+        OscillatorPart(ci)
     }, Vector3d(1.0, 1.0, 1.0)))
 
     val LIGHT_BULB_12V_100W = item("light_bulb_12v_100w") {
@@ -162,8 +161,8 @@ object Content {
     }
 
     val GRID_CELL = injCell<GridCell>("grid_cell")
-    val GRID_TAP_PART = part("grid_tap", BasicPartProvider( { a, b ->
-        GridTapPart(a, b, GRID_CELL.get())
+    val GRID_TAP_PART = part("grid_tap", BasicPartProvider( { ci ->
+        GridTapPart(ci, GRID_CELL.get())
     }, Vector3d(4.0 / 16.0, 0.5, 4.0 / 16.0)))
 
     val GRID_CONNECT_COPPER = item("grid_connect_copper") { GridConnectItem(GridMaterials.COPPER_AS_COPPER_COPPER) }

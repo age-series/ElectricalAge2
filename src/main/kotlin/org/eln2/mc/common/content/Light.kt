@@ -778,10 +778,9 @@ class LightBulbItem(val model: LightModel) : Item(Properties()) {
 }
 
 class LightPart(
-    id: ResourceLocation,
-    placementContext: PartPlacementInfo,
+    ci: PartCreateInfo,
     cellProvider: CellProvider<LightCell>
-) : CellPart<LightCell, LightFixtureRenderer>(id, placementContext, cellProvider), EventListener, RotatablePart {
+) : CellPart<LightCell, LightFixtureRenderer>(ci, cellProvider), EventListener, RotatablePart {
     private fun getPositionWorld(x: Int, y: Int, z: Int) = BlockPos(
         placement.position.x + x,
         placement.position.y + y,

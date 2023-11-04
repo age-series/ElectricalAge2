@@ -19,10 +19,9 @@ import org.eln2.mc.common.network.serverToClient.PacketHandlerBuilder
 import org.eln2.mc.common.parts.foundation.*
 
 class RadiatorPart(
-    id: ResourceLocation,
-    placementContext: PartPlacementInfo,
+    ci: PartCreateInfo,
     val radiantColor: ThermalTint
-) : CellPart<ThermalWireCell, RadiantBodyRenderer>(id, placementContext, Content.THERMAL_RADIATOR_CELL.get()), InternalTemperatureConsumer {
+) : CellPart<ThermalWireCell, RadiantBodyRenderer>(ci, Content.THERMAL_RADIATOR_CELL.get()), InternalTemperatureConsumer {
     override fun createRenderer() = RadiantBodyRenderer(this, PartialModels.RADIATOR, radiantColor, 0.0)
 
     override fun registerPackets(builder: PacketHandlerBuilder) {

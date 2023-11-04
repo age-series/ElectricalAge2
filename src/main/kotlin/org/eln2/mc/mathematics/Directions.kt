@@ -266,8 +266,7 @@ value class Base6Direction3dMask(val value: Int) {
             val list = ArrayList<Direction>()
             mask.toList(list)
             return@map list.toList()
-        }
-            .toTypedArray()
+        }.toTypedArray()
 
         // We precompute the most common transformations here.
         // I chose to allow all masks to be transformed using clockwise/counterclockwise.

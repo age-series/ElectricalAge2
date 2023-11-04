@@ -7,6 +7,7 @@ import org.eln2.mc.client.render.PartialModels.bbOffset
 import org.eln2.mc.client.render.foundation.BasicPartRenderer
 import org.eln2.mc.common.cells.foundation.*
 import org.eln2.mc.common.parts.foundation.CellPart
+import org.eln2.mc.common.parts.foundation.PartCreateInfo
 import org.eln2.mc.common.parts.foundation.PartPlacementInfo
 import org.eln2.mc.data.withDirectionRulePlanar
 import org.eln2.mc.mathematics.Base6Direction3dMask
@@ -48,6 +49,6 @@ class GroundCell(ci: CellCreateInfo) : Cell(ci) {
     }
 }
 
-class GroundPart(id: ResourceLocation, placementContext: PartPlacementInfo) : CellPart<GroundCell, BasicPartRenderer>(id, placementContext, Content.GROUND_CELL.get()), RotatablePart {
+class GroundPart(ci: PartCreateInfo) : CellPart<GroundCell, BasicPartRenderer>(ci, Content.GROUND_CELL.get()), RotatablePart {
     override fun createRenderer() = BasicPartRenderer(this, PartialModels.GROUND)
 }

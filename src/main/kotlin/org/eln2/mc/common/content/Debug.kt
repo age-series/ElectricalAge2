@@ -7,6 +7,7 @@ import org.eln2.mc.client.render.PartialModels
 import org.eln2.mc.client.render.foundation.BasicPartRenderer
 import org.eln2.mc.common.cells.foundation.*
 import org.eln2.mc.common.parts.foundation.CellPart
+import org.eln2.mc.common.parts.foundation.PartCreateInfo
 import org.eln2.mc.common.parts.foundation.PartPlacementInfo
 import org.eln2.mc.common.parts.foundation.PartUseInfo
 import org.eln2.mc.data.*
@@ -35,7 +36,7 @@ class ElectricalEnergyMeterCell(ci: CellCreateInfo) : Cell(ci) {
     val converter = ElectricalPowerConverterBehavior { resistor.power }
 }
 
-class ElectricalEnergyMeterPart(id: ResourceLocation, placement: PartPlacementInfo) : CellPart<ElectricalEnergyMeterCell, BasicPartRenderer>(id, placement, Content.ELECTRICAL_ENERGY_METER_CELL.get()) {
+class ElectricalEnergyMeterPart(ci: PartCreateInfo) : CellPart<ElectricalEnergyMeterCell, BasicPartRenderer>(ci, Content.ELECTRICAL_ENERGY_METER_CELL.get()) {
     override fun createRenderer() = BasicPartRenderer(this, PartialModels.ELECTRICAL_WIRE_HUB)
 
     override fun onUsedBy(context: PartUseInfo): InteractionResult {
@@ -71,8 +72,8 @@ class OscillatorCell(ci: CellCreateInfo) : Cell(ci) {
     }
 }
 
-class OscillatorPart(id: ResourceLocation, placement: PartPlacementInfo) :
-    CellPart<OscillatorCell, BasicPartRenderer>(id, placement, Content.OSCILLATOR_CELL.get()) {
+class OscillatorPart(ci: PartCreateInfo) :
+    CellPart<OscillatorCell, BasicPartRenderer>(ci, Content.OSCILLATOR_CELL.get()) {
 
     override fun createRenderer() = BasicPartRenderer(this, PartialModels.BATTERY)
 }

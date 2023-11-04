@@ -13,10 +13,7 @@ import org.eln2.mc.client.render.foundation.BasicPartRenderer
 import org.eln2.mc.client.render.foundation.PartRendererSupplier
 import org.eln2.mc.common.cells.foundation.*
 import org.eln2.mc.common.events.AtomicUpdate
-import org.eln2.mc.common.parts.foundation.CellPart
-import org.eln2.mc.common.parts.foundation.ItemPersistentPart
-import org.eln2.mc.common.parts.foundation.PartPlacementInfo
-import org.eln2.mc.common.parts.foundation.ItemPersistentPartLoadOrder
+import org.eln2.mc.common.parts.foundation.*
 import org.eln2.mc.data.*
 import org.eln2.mc.data.abs
 import org.eln2.mc.mathematics.*
@@ -382,11 +379,10 @@ class BatteryCell(
 }
 
 class BatteryPart(
-    id: ResourceLocation,
-    placementContext: PartPlacementInfo,
+    ci: PartCreateInfo,
     provider: CellProvider<BatteryCell>,
     private val rendererSupplier: PartRendererSupplier<BatteryPart, BasicPartRenderer>
-) : CellPart<BatteryCell, BasicPartRenderer>(id, placementContext, provider), ItemPersistentPart, RotatablePart {
+) : CellPart<BatteryCell, BasicPartRenderer>(ci, provider), ItemPersistentPart, RotatablePart {
     companion object {
         private const val BATTERY = "battery"
     }

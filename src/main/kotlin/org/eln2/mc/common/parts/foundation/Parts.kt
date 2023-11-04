@@ -20,8 +20,6 @@ import net.minecraft.world.phys.Vec3
 import net.minecraft.world.phys.shapes.Shapes
 import net.minecraft.world.phys.shapes.VoxelShape
 import org.eln2.mc.*
-import org.eln2.mc.client.render.foundation.BasicPartRenderer
-import org.eln2.mc.client.render.foundation.MultipartBlockEntityInstance
 import org.eln2.mc.common.blocks.foundation.MultipartBlockEntity
 import org.eln2.mc.common.cells.foundation.Cell
 import org.eln2.mc.common.cells.foundation.CellGraphManager
@@ -42,7 +40,9 @@ import org.joml.Vector3f
 import java.util.*
 import kotlin.math.PI
 import net.minecraft.world.level.block.Block
+import org.eln2.mc.client.render.foundation.*
 import org.eln2.mc.common.cells.foundation.CellNeighborInfo
+import org.eln2.mc.mathematics.Base6Direction3dMask
 import org.eln2.mc.mathematics.Vector3d
 
 /**
@@ -146,12 +146,20 @@ object PartGeometry {
         modelBoundingBox(sizeActual, facingWorld, faceWorld).move(posWorld)
 }
 
+data class PartCreateInfo(
+    val id: ResourceLocation,
+    val placement: PartPlacementInfo
+)
+
 /**
  * Parts are entity-like units that exist in a multipart entity. They are similar to normal block entities,
  * but up to 6 can exist in the same block space.
  * They are placed on the inner faces of a multipart container block space.
  * */
-abstract class Part<Renderer : PartRenderer>(val id: ResourceLocation, val placement: PartPlacementInfo) : DataContainer {
+abstract class Part<Renderer : PartRenderer>(ci: PartCreateInfo) : DataContainer {
+    val id = ci.id
+    val placement = ci.placement
+
     companion object {
         fun createPartDropStack(id: ResourceLocation, saveTag: CompoundTag?, count: Int = 1): ItemStack {
             val item = PartRegistry.getPartItem(id)
@@ -474,10 +482,10 @@ abstract class PartProvider {
  * Often, the part's constructor can be passed in as factory.
  * */
 open class BasicPartProvider(
-    val factory: ((id: ResourceLocation, context: PartPlacementInfo) -> Part<*>),
+    val factory: ((ci: PartCreateInfo) -> Part<*>),
     final override val placementCollisionSize: Vector3d,
 ) : PartProvider() {
-    override fun create(context: PartPlacementInfo) = factory(id, context)
+    override fun create(context: PartPlacementInfo) = factory(PartCreateInfo(id, context))
 }
 
 /**
@@ -539,10 +547,9 @@ interface PartCellContainer<C : Cell> {
  * This part represents a simulation object. It can become part of a cell network.
  * */
 abstract class CellPart<C: Cell, R : PartRenderer>(
-    id: ResourceLocation,
-    placement: PartPlacementInfo,
+    ci: PartCreateInfo,
     final override val provider: CellProvider<C>,
-) : Part<R>(id, placement), PartCellContainer<C>, WailaEntity {
+) : Part<R>(ci), PartCellContainer<C>, WailaEntity {
     companion object {
         private const val GRAPH_ID = "GraphID"
         private const val CUSTOM_SIMULATION_DATA = "SimulationData"
@@ -718,17 +725,48 @@ abstract class CellPart<C: Cell, R : PartRenderer>(
     override val allowWrappedConnections = true
 }
 
-
 open class BasicCellPart<C: Cell, R : PartRenderer>(
-    id: ResourceLocation,
-    placementContext: PartPlacementInfo,
+    ci: PartCreateInfo,
     provider: CellProvider<C>,
     private val rendererFactory: PartRendererFactory<R>,
-) :
-    CellPart<C, R>(id, placementContext, provider) {
+) : CellPart<C, R>(ci, provider) {
     override fun createRenderer(): R {
         return rendererFactory.create(this)
     }
+}
+
+open class BasicConnectedCellPart<C : Cell>(
+    ci: PartCreateInfo,
+    provider: CellProvider<C>,
+    val body: PartialModel,
+    val connections: Map<Base6Direction3d, WireConnectionModelPartial>
+) : CellPart<C, ConnectedPartRenderer>(ci, provider) {
+    constructor(
+        ci: PartCreateInfo,
+        provider: CellProvider<C>,
+        body: PartialModel,
+        connection: WireConnectionModelPartial,
+        mask: Base6Direction3dMask
+    ) : this(ci, provider, body, mask.directionList.map { it.alias }.associateWith { connection })
+
+    constructor(
+        ci: PartCreateInfo,
+        provider: CellProvider<C>,
+        body: PartialModel,
+        connection: WireConnectionModelPartial
+    ) : this(ci, provider, body, connection, Base6Direction3dMask.HORIZONTALS)
+
+    override fun createRenderer(): ConnectedPartRenderer {
+        return ConnectedPartRenderer(
+            this,
+            body,
+            connections
+        )
+    }
+
+    override fun getSyncTag() = this.getConnectedPartTag()
+    override fun handleSyncTag(tag: CompoundTag) = this.handleConnectedPartTag(tag)
+    override fun onConnectivityChanged() = this.setSyncDirty()
 }
 
 /**

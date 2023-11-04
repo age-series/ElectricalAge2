@@ -11,6 +11,7 @@ import org.eln2.mc.client.render.PartialModels.bbOffset
 import org.eln2.mc.client.render.foundation.BasicPartRenderer
 import org.eln2.mc.common.cells.foundation.*
 import org.eln2.mc.common.parts.foundation.CellPart
+import org.eln2.mc.common.parts.foundation.PartCreateInfo
 import org.eln2.mc.common.parts.foundation.PartPlacementInfo
 import org.eln2.mc.data.*
 import org.eln2.mc.integration.WailaEntity
@@ -98,8 +99,7 @@ class ResistorCell(ci: CellCreateInfo) : Cell(ci) {
     val heating = PowerHeatingBehavior({ resistor.power }, thermalWire.thermalBody)
 }
 
-class ResistorPart(id: ResourceLocation, placementContext: PartPlacementInfo) :
-    CellPart<ResistorCell, BasicPartRenderer>(id, placementContext, Content.RESISTOR_CELL.get()) {
+class ResistorPart(ci: PartCreateInfo) : CellPart<ResistorCell, BasicPartRenderer>(ci, Content.RESISTOR_CELL.get()) {
 
     override fun createRenderer() = BasicPartRenderer(this, PartialModels.RESISTOR)
 }

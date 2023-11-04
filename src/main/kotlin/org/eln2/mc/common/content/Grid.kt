@@ -40,6 +40,7 @@ import org.eln2.mc.common.blocks.foundation.MultipartBlockEntity
 import org.eln2.mc.common.cells.foundation.*
 import org.eln2.mc.common.network.Networking
 import org.eln2.mc.common.parts.foundation.CellPart
+import org.eln2.mc.common.parts.foundation.PartCreateInfo
 import org.eln2.mc.common.parts.foundation.PartPlacementInfo
 import org.eln2.mc.common.parts.foundation.PartRenderer
 import org.eln2.mc.data.*
@@ -917,10 +918,9 @@ class GridCell(ci: CellCreateInfo) : Cell(ci) {
 }
 
 abstract class GridCellPart<R : PartRenderer>(
-    id: ResourceLocation,
-    placement: PartPlacementInfo,
+    ci: PartCreateInfo,
     provider: CellProvider<GridCell>
-) : CellPart<GridCell, R>(id, placement, provider) {
+) : CellPart<GridCell, R>(ci, provider) {
     // Attachment in the fixed frame:
     open val attachment: Vector3d = placement.position.toVector3d() + Vector3d(0.5)
 
@@ -987,10 +987,9 @@ abstract class GridCellPart<R : PartRenderer>(
 }
 
 class GridTapPart(
-    id: ResourceLocation,
-    placement: PartPlacementInfo,
+    ci: PartCreateInfo,
     provider: CellProvider<GridCell>
-) : GridCellPart<ConnectedPartRenderer>(id, placement, provider) {
+) : GridCellPart<ConnectedPartRenderer>(ci, provider) {
     override val attachment: Vector3d = super.attachment - placement.face.toVector3d() * 0.15
 
     override fun createRenderer() = ConnectedPartRenderer(

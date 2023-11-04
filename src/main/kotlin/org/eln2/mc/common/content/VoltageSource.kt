@@ -9,6 +9,7 @@ import org.eln2.mc.client.render.PartialModels.bbOffset
 import org.eln2.mc.client.render.foundation.BasicPartRenderer
 import org.eln2.mc.common.cells.foundation.*
 import org.eln2.mc.common.parts.foundation.CellPart
+import org.eln2.mc.common.parts.foundation.PartCreateInfo
 import org.eln2.mc.common.parts.foundation.PartPlacementInfo
 import org.eln2.mc.data.DataContainer
 import org.eln2.mc.data.VoltageField
@@ -86,8 +87,7 @@ class VoltageSourceCell(ci: CellCreateInfo) : Cell(ci) {
     }
 }
 
-class VoltageSourcePart(id: ResourceLocation, placementContext: PartPlacementInfo) :
-    CellPart<VoltageSourceCell, BasicPartRenderer>(id, placementContext, Content.VOLTAGE_SOURCE_CELL.get()) {
+class VoltageSourcePart(ci: PartCreateInfo) : CellPart<VoltageSourceCell, BasicPartRenderer>(ci, Content.VOLTAGE_SOURCE_CELL.get()) {
 
     override fun createRenderer() = BasicPartRenderer(this, PartialModels.VOLTAGE_SOURCE)
 }

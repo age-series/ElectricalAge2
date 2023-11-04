@@ -346,10 +346,9 @@ abstract class WireBuilder<C : Cell>(val id: String) {
     protected fun registerPart(properties: WireThermalProperties, provider: RegistryObject<CellProvider<C>>) {
         PartRegistry.part(
             id,
-            BasicPartProvider({ ix, ctx ->
+            BasicPartProvider({ ci ->
                 WirePart(
-                    id = ix,
-                    context = ctx,
+                    ci,
                     cellProvider = provider.get(),
                     isIncandescent,
                     smokeTemperature ?: (!properties.damageOptions.temperatureThreshold * 0.9),
@@ -492,13 +491,12 @@ open class ElectricalWireCell(ci: CellCreateInfo, contactCrossSection: Double, t
 }
 
 class WirePart<C : Cell>(
-    id: ResourceLocation,
-    context: PartPlacementInfo,
+    ci: PartCreateInfo,
     cellProvider: CellProvider<C>,
     val isIncandescent: Boolean,
     val smokeTemperature: Double,
     val renderInfo: Supplier<WireRenderInfo>?,
-) : CellPart<C, WireRenderer<*>>(id, context, cellProvider), InternalTemperatureConsumer, ExternalTemperatureConsumer, AnimatedPart {
+) : CellPart<C, WireRenderer<*>>(ci, cellProvider), InternalTemperatureConsumer, ExternalTemperatureConsumer, AnimatedPart {
     companion object {
         private const val DIRECTIONS = "directions"
     }
