@@ -1,6 +1,0 @@
-{
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "eln2:item/latex_sap_bucket_item"
-  }
-}
