@@ -841,6 +841,24 @@ data class Vector3d(val x: Double, val y: Double, val z: Double) {
     fun roundBlockPos() = BlockPos(round(this.x).toInt(), round(this.y).toInt(), round(this.z).toInt())
     fun intCast() = Vector3di(x.toInt(), y.toInt(), z.toInt())
 
+    fun perpendicular() : Vector3d {
+        val (x, y, z) = if(!this.isUnit && this != zero) {
+            this
+        }
+        else {
+            this.normalized()
+        }
+
+        val result = if (abs(y + z) > GEOMETRY_NORMALIZED_EPS || abs(x) > GEOMETRY_NORMALIZED_EPS) {
+            Vector3d(-y - z, x, x)
+        }
+        else {
+            Vector3d(z, z, -x - y)
+        }
+
+        return result.normalized()
+    }
+
     companion object {
         val zero = Vector3d(0.0, 0.0, 0.0)
         val one = Vector3d(1.0, 1.0, 1.0)

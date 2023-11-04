@@ -6,10 +6,7 @@ import it.unimi.dsi.fastutil.doubles.DoubleArrayList
 import org.eln2.mc.data.ClosedInterval
 import org.eln2.mc.data.SegmentTree
 import org.eln2.mc.data.SegmentTreeBuilder
-import kotlin.math.abs
-import kotlin.math.cos
-import kotlin.math.pow
-import kotlin.math.sqrt
+import kotlin.math.*
 
 /**
  * The grid interpolator is used to query arbitrary coordinates inside a [ArrayKDGridD], with interpolation
@@ -318,19 +315,31 @@ data class ArcReparamCatenary2d(
 ) {
     private val a: Double
 
+    private val pr: Double
+    private val qr: Double
+
     init {
         require(p0.y <= p1.y)
         require(p0 != p1)
-
         a = parametricScan(length, p1.y - p0.y, p1.x - p0.x)
+        pr = (p0.x + p1.x - a * ln((length + (p1.y - p0.y)) / (length - (p1.y - p0.y)))) / 2.0
+        qr = (p0.y + p1.y - length * coth((p1.x - p0.x) / (2.0 * a))) / 2.0
     }
 
-    private fun abscissa(t: Dual, x0: Dual, x1: Dual) = t.mappedTo(
-        Dual.const(t0, t.size),
-        Dual.const(t1, t.size),
-        x0,
-        x1
+    private fun abscissa(t: Double, x0: Double, x1: Double) = t.mappedTo(
+        t0, t1,
+        x0, x1
     )
+
+    private fun abscissa(t: Dual, x0: Dual, x1: Dual) = t.mappedTo(
+        Dual.const(t0, t.size), Dual.const(t1, t.size),
+        x0, x1
+    )
+
+    fun evaluate(t: Double): Vector2d {
+        val x = abscissa(t, p0.x, p1.x)
+        return Vector2d(x, a * cosh((x - pr) / a) + qr)
+    }
 
     fun evaluateDual(t: Dual): Vector2dDual {
         val p0Dual = Vector2dDual.const(p0, t.size)
@@ -400,6 +409,27 @@ data class ArcReparamCatenary3d(
         t0,
         t1
     )
+
+    fun matchesParameters(eps: Double = 1e-3) : Boolean {
+        if(!evaluate(t0).approxEq(p0, eps)) {
+            return false
+        }
+
+        if(!evaluate(t1).approxEq(p1, eps)) {
+            return false
+        }
+
+        return true
+    }
+
+    fun evaluate(t: Double): Vector3d {
+        val ordinate = catenary.evaluate(t)
+
+        val trHorizontal = p0 + (p1 - p0).projectOnPlane(vertical).normalized() * ordinate.x
+        val trVertical = vertical * ordinate.y
+
+        return trHorizontal + trVertical
+    }
 
     fun evaluateDual(t: Dual): Vector3dDual {
         val p0 = Vector3dDual.const(p0, t.size)

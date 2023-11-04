@@ -1226,43 +1226,52 @@ class Cable3d(
      * */
     val supports = listOf(a, b).sortedBy { it.y }
 
-    // Should be ~equal to the actual arc length
-
-    val isNonCatenary = (a == b) || (a.x == b.x && a.z == b.z)
+    /**
+     * True if the connection was represented as a catenary. Otherwise, the connection was represented as a linear segment.
+     * */
+    val isCatenary: Boolean
 
     /**
-     * Gets the arc length of the cable, factoring in the [slack], if possible
+     * Gets the arc length of the cable, factoring in the [slack], if [isCatenary]
      * */
-    val arcLength = if(isNonCatenary) {
-        a .. b
-    }
-    else {
-        (a..b) * (1.0 + slack)
-    }
+    val arcLength: Double
 
     /**
-     * Gets the spline that characterises the wire. It may or may not be catenary, depending on [isNonCatenary].
+     * Gets the spline that characterises the wire. It may or may not be catenary, depending on [isCatenary].
      * */
-    val spline = Spline3d(
-        if(isNonCatenary) {
-            LinearSplineSegment3d(
-                t0 = 0.0,
-                t1 = 1.0,
-                p0 = supports[0],
-                p1 = supports[1],
-            )
+    val spline: Spline3d
+
+    init {
+        val distance = a .. b
+        val catenaryLength = distance * (1.0 + slack)
+
+        val catenarySegment = ArcReparamCatenarySegment3d(
+            t0 = 0.0,
+            t1 = 1.0,
+            p0 = supports[0],
+            p1 = supports[1],
+            length = catenaryLength,
+            Vector3d.unitY
+        )
+
+        if(catenarySegment.catenary.matchesParameters()) {
+            isCatenary = true
+            spline = Spline3d(catenarySegment)
+            arcLength = catenaryLength // ~approximately
         }
         else {
-            ArcReparamCatenarySegment3d(
-                t0 = 0.0,
-                t1 = 1.0,
-                p0 = supports[0],
-                p1 = supports[1],
-                length = arcLength,
-                Vector3d.unitY
+            isCatenary = false
+            spline = Spline3d(
+                LinearSplineSegment3d(
+                    t0 = 0.0,
+                    t1 = 1.0,
+                    p0 = supports[0],
+                    p1 = supports[1],
+                )
             )
+            arcLength = distance
         }
-    )
+    }
 
     /**
      * Gets a set of blocks that are intersected by the spline.
@@ -1294,8 +1303,23 @@ class Cable3d(
 
         val crossSectionSketch = sketchCircle(circleVertices, radius)
 
-        val extrusion = if(isNonCatenary) {
-            val wx = Rotation3d.fromForwardUp(Vector3d.unitY, Vector3d.unitZ)
+        val extrusion = if(isCatenary) {
+            extrudeSketchFrenet(
+                crossSectionSketch,
+                spline,
+                samples
+            )
+        }
+        else {
+            val t = (supports[1] - supports[0]).normalized()
+            val n = t.perpendicular()
+            val b = (t x n).normalized()
+
+            val wx = Rotation3d.fromRotationMatrix(
+                Matrix3x3(
+                    t, n, b
+                )
+            )
 
             extrudeSketch(
                 crossSectionSketch,
@@ -1303,13 +1327,6 @@ class Cable3d(
                 samples,
                 Pose3d(supports[0], wx),
                 Pose3d(supports[1], wx)
-            )
-        }
-        else {
-            extrudeSketchFrenet(
-                crossSectionSketch,
-                spline,
-                samples
             )
         }
 

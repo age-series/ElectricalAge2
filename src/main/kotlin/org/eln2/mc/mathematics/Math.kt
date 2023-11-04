@@ -477,6 +477,9 @@ fun integralScan(a: Double, b: Double, tolerance: Double = 1e-15, f: (Double) ->
     return adaptlobStp(f, a, b, y1, y13, `is`)
 }
 
+fun tanh(x: Double) = sinh(x) / cosh(x)
+fun coth(x: Double) = cosh(x) / sinh(x)
+
 class Dual private constructor(private val values: DoubleArray) : AbstractList<Double>() {
     constructor(values: List<Double>) : this(values.toDoubleArray())
 

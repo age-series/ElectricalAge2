@@ -178,7 +178,7 @@ fun extrudeSketchFrenet(sketch: Sketch, spline: Spline3d, samples: List<Double>)
     val f1 = spline.frenetPose(samples.last())
     return extrudeSketch(sketch, spline, samples, f0, f1)
 }
-
+// RMF assumes no "twists and turns", fix in the future?
 fun extrudeSketch(sketch: Sketch, spline: Spline3d, samples: List<Double>, f0: Pose3d, f1: Pose3d): SketchExtrusion {
     val builder = MeshBuilder<Vector3dParametric, Quads>()
 
