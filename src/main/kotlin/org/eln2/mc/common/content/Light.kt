@@ -5,11 +5,11 @@ import com.jozufozu.flywheel.core.PartialModel
 import com.jozufozu.flywheel.core.materials.model.ModelData
 import com.jozufozu.flywheel.util.Color
 import it.unimi.dsi.fastutil.ints.*
+import mcp.mobius.waila.api.IPluginConfig
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.network.chat.Component
-import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.sounds.SoundEvents
 import net.minecraft.sounds.SoundSource
@@ -34,10 +34,10 @@ import org.eln2.mc.common.network.serverToClient.with
 import org.eln2.mc.common.parts.foundation.*
 import org.eln2.mc.data.*
 import org.eln2.mc.integration.WailaEntity
+import org.eln2.mc.integration.WailaTooltipBuilder
 import org.eln2.mc.mathematics.*
 import java.nio.ByteBuffer
 import kotlin.math.*
-import kotlin.random.Random
 
 // Unfortunately, vanilla rendering has a problem which causes some smooth lighting to break
 // Nothing I can do
@@ -326,6 +326,50 @@ object LightFieldPrimitives {
         return FaceOrientedLightVolumeProvider(variantsByFace)
     }
 
+    fun sphere(increments: Int, strength: Double): ConstantLightVolumeProvider {
+        val variants = HashMap<Int, Int2ByteOpenHashMap>()
+
+        for (state in 0 .. increments) {
+            val results = Int2ByteOpenHashMap()
+            variants[state] = results
+
+            val radius = strength * (state / increments.toDouble())
+            val radiusUpper = ceil(radius).toInt()
+            val radiusSqr = radius * radius
+
+            if(radiusUpper == 0) {
+                continue
+            }
+
+            fun set(x: Int, y: Int, z: Int) {
+                val cell = Vector3d(x, y, z)
+
+                val distanceSqr = cell.normSqr
+
+                if(distanceSqr <= radiusSqr) {
+                    val brightness = 15.0 * (1.0 - (cell.norm / radius))
+
+                    if(brightness >= 1.0) {
+                        val k = BlockPosInt.pack(x, y, z)
+                        results.put(k, brightness.roundToInt().toByte().coerceIn(0, 15))
+                    }
+                }
+            }
+
+            for (x in -radiusUpper..radiusUpper) {
+                for (y in -radiusUpper..radiusUpper) {
+                    for (z in -radiusUpper..radiusUpper) {
+                        set(x, y, z)
+                    }
+                }
+            }
+        }
+
+        return ConstantLightVolumeProvider(
+            LightVolume(variants)
+        )
+    }
+
     private fun lateralPass(face: Direction, grid: Int2DoubleOpenHashMap) {
         val axis = face.axis
 
@@ -477,6 +521,10 @@ fun interface LightVolumeProvider {
     fun getVolume(locatorSet: Locator) : LightVolume
 }
 
+data class ConstantLightVolumeProvider(val volume: LightVolume) : LightVolumeProvider {
+    override fun getVolume(locatorSet: Locator) = volume
+}
+
 /**
  * *Light Volume* (light voxel data) function. This function maps a state increment (light "brightness") to the
  * desired light voxels.
@@ -576,12 +624,23 @@ fun interface LightTemperatureConsumer {
     fun consume(temperature: Double)
 }
 
-class LightCell(ci: CellCreateInfo, poleMap: PoleMap) : Cell(ci), DataContainer, WailaEntity, LightView {
+interface LightBulbEmitterView {
+    var life: Double
+    var lightBulb: LightBulbItem?
+
+    /**
+     * Called to reset the state of the light emitter. States that should be reset are:
+     * - The model temperature
+     * - The volume state increment and the volume
+     * - The life
+     * - The light bulb item
+     * */
+    fun resetValues()
+}
+
+class LightCell(ci: CellCreateInfo, poleMap: PoleMap) : Cell(ci), DataContainer, WailaEntity, LightView, LightBulbEmitterView {
     companion object {
-        private const val ID = "id"
-        private const val LIFE = "life"
         private const val RENDER_EPS = 1e-4
-        private const val DAMAGE_EPS = 1e-4
         private const val OPEN_CIRCUIT_RESISTANCE = LARGE_RESISTANCE
         private const val RESISTANCE_EPS = 0.1
     }
@@ -591,7 +650,7 @@ class LightCell(ci: CellCreateInfo, poleMap: PoleMap) : Cell(ci), DataContainer,
             b.text("Minecraft Brightness", volumeState)
             b.text("Model Brightness", modelTemperature.formatted())
 
-            val item = this.item
+            val item = this.lightBulb
 
             if(item == null) {
                 b.text("Bulb", "N/A")
@@ -638,22 +697,33 @@ class LightCell(ci: CellCreateInfo, poleMap: PoleMap) : Cell(ci), DataContainer,
 
     override var life: Double = 0.0
 
-    var item: LightBulbItem? = null
+    override var lightBulb: LightBulbItem? = null
     var volume: LightVolume? = null
 
-    fun resetValues() {
+    override fun resetValues() {
         resistor.updateResistance(OPEN_CIRCUIT_RESISTANCE)
         modelTemperature = 0.0
         trackedRenderBrightness = 0.0
         volumeState = 0
         life = 0.0
-        item = null
+        lightBulb = null
         volume = null
     }
 
-    fun bind(serverThreadAccess: EventQueue, renderBrightnessConsumer: LightTemperatureConsumer) {
+    fun bind(serverThreadAccess: EventQueue, renderBrightnessConsumer: LightTemperatureConsumer, pLoadExisting: Boolean) {
         this.serverThreadReceiver = serverThreadAccess
         this.renderBrightnessConsumer = renderBrightnessConsumer
+
+        if(pLoadExisting) {
+            // If we've been running, send the current state:
+            val life = this.life
+            val volume = this.volume
+
+            if(volume != null && life > 0.0) {
+                serverThreadAccess.place(VolumetricLightChangeEvent(volume, volumeState))
+                renderBrightnessConsumer.consume(modelTemperature)
+            }
+        }
     }
 
     fun unbind() {
@@ -662,11 +732,11 @@ class LightCell(ci: CellCreateInfo, poleMap: PoleMap) : Cell(ci), DataContainer,
     }
 
     override fun subscribe(subs: SubscriberCollection) {
-        subs.addPre(this::simulationTick)
+        subs.addPre(this::simulationTick) // maybe reduce interval
     }
 
     private fun simulationTick(dt: Double, phase: SubscriberPhase) {
-        val lightModel = this.item?.model
+        val lightModel = this.lightBulb?.model
 
         if(lightModel == null || life approxEq 0.0) {
             return
@@ -676,7 +746,7 @@ class LightCell(ci: CellCreateInfo, poleMap: PoleMap) : Cell(ci), DataContainer,
         volume = volume ?: lightModel.volumeProvider.getVolume(locator)
         val volume = volume!!
 
-        val gameEventReceiver = this.serverThreadReceiver ?: return
+        val gameEventReceiver = this.serverThreadReceiver
 
         // Tick down consumption:
         val damage = lightModel.damageFunction.computeDamage(this, dt).absoluteValue
@@ -689,7 +759,7 @@ class LightCell(ci: CellCreateInfo, poleMap: PoleMap) : Cell(ci), DataContainer,
         if(life approxEq 0.0) {
             life = 0.0
             // Light has burned out:
-            gameEventReceiver.enqueue(LightBurnedOutEvent)
+            gameEventReceiver?.enqueue(LightBurnedOutEvent)
             resetValues()
             setChanged()
             return
@@ -715,31 +785,16 @@ class LightCell(ci: CellCreateInfo, poleMap: PoleMap) : Cell(ci), DataContainer,
             volumeState = targetState
             // Using this new "place" API, the game object will receive one event (with the latest values),
             // even if we do multiple updates in our simulation thread:
-            gameEventReceiver.place(VolumetricLightChangeEvent(volume, targetState))
+            gameEventReceiver?.place(VolumetricLightChangeEvent(volume, targetState))
         }
     }
 
-    override fun saveCellData(): CompoundTag {
-        val tag = CompoundTag()
-
-        item?.also { item ->
-            ForgeRegistries.ITEMS.getKey(item)?.also { itemId ->
-                tag.putResourceLocation(ID, itemId)
-                tag.putDouble(LIFE, life)
-            }
-        }
-
-        return tag
-    }
+    override fun saveCellData() = lightBulb?.toNbtWithState(life)
 
     override fun loadCellData(tag: CompoundTag) {
-        if(tag.contains(ID)) {
-            ForgeRegistries.ITEMS.getValue(tag.getResourceLocation(ID))?.also {
-                if(it is LightBulbItem) {
-                    item = it
-                    life = tag.getDouble(LIFE)
-                }
-            }
+        LightBulbItem.fromNbtWithState(tag)?.also { (bulb, life) ->
+            this.lightBulb = bulb
+            this.life = life
         }
     }
 }
@@ -747,6 +802,31 @@ class LightCell(ci: CellCreateInfo, poleMap: PoleMap) : Cell(ci), DataContainer,
 class LightBulbItem(val model: LightModel) : Item(Properties()) {
     companion object {
         private const val LIFE = "life"
+        private const val ID = "id"
+
+        fun fromNbtWithState(tag: CompoundTag) : Pair<LightBulbItem, Double>? {
+            var result: Pair<LightBulbItem, Double>? = null
+
+            if(tag.contains(ID)) {
+                ForgeRegistries.ITEMS.getValue(tag.getResourceLocation(ID))?.also {
+                    if(it is LightBulbItem) {
+                        result = Pair(
+                            it,
+                            tag.getDouble(LIFE)
+                        )
+                    }
+                }
+            }
+
+            return result
+        }
+    }
+
+    fun toNbtWithState(life: Double) = CompoundTag().also {
+        ForgeRegistries.ITEMS.getKey(this)?.also { itemId ->
+            it.putResourceLocation(ID, itemId)
+            it.putDouble(LIFE, life)
+        }
     }
 
     fun createStack(life: Double, count: Int = 1): ItemStack {
@@ -777,14 +857,18 @@ class LightBulbItem(val model: LightModel) : Item(Properties()) {
     }
 }
 
-class LightPart(
-    ci: PartCreateInfo,
-    cellProvider: CellProvider<LightCell>
-) : CellPart<LightCell, LightFixtureRenderer>(ci, cellProvider), EventListener, RotatablePart {
+class LightVolumeInstance(val level: ServerLevel, val placementPosition: BlockPos) {
+    private val lightCells = Int2ObjectOpenHashMap<Light>()
+
+    var volume: LightVolume? = null
+        private set
+    var state: Int = 0
+        private set
+
     private fun getPositionWorld(x: Int, y: Int, z: Int) = BlockPos(
-        placement.position.x + x,
-        placement.position.y + y,
-        placement.position.z + z
+        placementPosition.x + x,
+        placementPosition.y + y,
+        placementPosition.z + z
     )
 
     /**
@@ -795,7 +879,7 @@ class LightPart(
     private fun transmitsRayWorld(position: BlockPos): Boolean {
         requireIsOnServerThread()
 
-        val state = placement.level.getBlockState(position)
+        val state = level.getBlockState(position)
 
         if(state.isAir) {
             return true
@@ -805,108 +889,22 @@ class LightPart(
             return true
         }
 
-        if(!state.isCollisionShapeFullBlock(placement.level, position)) {
+        if(!state.isCollisionShapeFullBlock(level, position)) {
             return true
         }
 
         return false
     }
 
-    private val lightCells = Int2ObjectOpenHashMap<Light>()
-    private var volume: LightVolume? = null
-    private var state: Int = 0
-
-    private fun resetValues() {
-        volume = null
-        state = 0
-     }
-
-    override fun onUsedBy(context: PartUseInfo): InteractionResult {
-        if(placement.level.isClientSide || context.hand != InteractionHand.MAIN_HAND) {
-            return InteractionResult.PASS
-        }
-
-        val level = placement.level as ServerLevel
-        var result = InteractionResult.FAIL
-
-        cell.graph.runSuspended {
-            val existingItem = cell.item
-
-            if(existingItem != null) {
-                destroyCells()
-                level.addItem(placement.position, existingItem.createStack(cell.life))
-                cell.resetValues()
-                sendClientBrightness(0.0)
-                resetValues()
-
-                result = InteractionResult.SUCCESS
-            }
-            else {
-                val stack = context.player.mainHandItem
-
-                if(stack.count > 0 && stack.item is LightBulbItem) {
-                    destroyCells()
-
-                    val item = stack.item as LightBulbItem
-                    cell.resetValues()
-                    cell.life = item.getLife(stack)
-                    cell.item = item
-                    resetValues()
-
-                    result = InteractionResult.CONSUME
-                }
-            }
-        }
-
-        return result
-    }
-
-    override fun createRenderer() = LightFixtureRenderer(
-        this,
-        PartialModels.SMALL_WALL_LAMP_CAGE,
-        PartialModels.SMALL_WALL_LAMP_EMITTER
-    )
-
     @ServerOnly @OnServerThread
-    override fun onCellAcquired() {
-        val events = Scheduler.register(this)
-
-        events.registerHandler(this::onVolumeUpdated)
-        events.registerHandler(this::onLightBurnedOut)
-
-        cell.bind(
-            serverThreadAccess = Scheduler.getEventAccess(this),
-            renderBrightnessConsumer = ::sendClientBrightness
-        )
-    }
-
-    @ServerOnly
-    private fun sendClientBrightness(value: Double) {
-        val buffer = ByteBuffer.allocate(8) with value
-        enqueueBulkMessage(buffer.array())
-    }
-
-    @ClientOnly
-    override fun handleBulkMessage(msg: ByteArray) {
-        val buffer = ByteBuffer.wrap(msg)
-        renderer.updateBrightness(buffer.double)
-    }
-
-    @ServerOnly @OnServerThread
-    private fun onVolumeUpdated(event: VolumetricLightChangeEvent) {
-        requireIsOnServerThread()
-
-        // Item is only mutated on onUsedBy (server thread), when the bulb is added/removed, so it is safe to access here
-        // if it is null, it means we got this update possibly after the bulb was removed by a player, so we will ignore it
-        if(!hasCell || cell.item == null) {
-            return
-        }
+    fun onVolumeUpdated(event: VolumetricLightChangeEvent) {
+        requireIsOnServerThread { "Cannot update light volume instance outside of server thread" }
 
         if(this.volume == null) {
             this.volume = event.volume
         }
 
-        require(this.volume == event.volume)
+        check(this.volume == event.volume)
 
         if(event.targetState == state) {
             return
@@ -945,16 +943,16 @@ class LightPart(
         val newCellsIterator = newCells.intIterator()
         while (newCellsIterator.hasNext()) {
             val k = newCellsIterator.nextInt()
-            val positionWorld = placement.position + BlockPosInt.unpackBlockPos(k)
+            val positionWorld = placementPosition + BlockPosInt.unpackBlockPos(k)
 
-            if(!GhostLightServer.canCreateHandle(placement.level, positionWorld)) {
+            if(!GhostLightServer.canCreateHandle(level, positionWorld)) {
                 continue
             }
 
             var cell = lightCells.get(k)
 
             if(cell == null) {
-                cell = Light(k, positionWorld)
+                cell = Light(this, k, positionWorld)
                 require(lightCells.put(k, cell) == null)
             }
 
@@ -964,9 +962,14 @@ class LightPart(
         this.state = event.targetState
     }
 
+    fun resetValues() {
+        volume = null
+        state = 0
+    }
+
     @ServerOnly @OnServerThread
-    private fun destroyCells() {
-        requireIsOnServerThread()
+    fun destroyCells() {
+        requireIsOnServerThread { "Cannot destroy light cells outside of server thread" }
 
         for (it in lightCells.values) {
             it.destroy()
@@ -975,43 +978,12 @@ class LightPart(
         lightCells.clear()
     }
 
-    @ServerOnly @OnServerThread
-    private fun onLightBurnedOut(event: LightBurnedOutEvent) {
-        sendClientBrightness(0.0)
-        destroyCells()
-        placement.level.playLocalSound(
-            placement.position.x.toDouble(),
-            placement.position.y.toDouble(),
-            placement.position.z.toDouble(),
-            SoundEvents.FIRE_EXTINGUISH,
-            SoundSource.BLOCKS,
-            1.0f,
-            Random.nextDouble(0.9, 1.1).toFloat(),
-            false
-        )
-    }
-
-    @ServerOnly @OnServerThread
-    override fun onSyncSuggested() {
-        sendClientBrightness(cell.modelTemperature)
-    }
-
-    override fun onCellReleased() {
-        cell.unbind()
-        Scheduler.remove(this)
+    fun onLightBurnedOut(event: LightBurnedOutEvent) {
         destroyCells()
     }
 
-    override fun onRemoved() {
-        super.onRemoved()
-
-        if(!placement.level.isClientSide) {
-            destroyCells()
-        }
-    }
-
-    private inner class Light(val voxelPositionVolume: Int, voxelPositionWorld: BlockPos) {
-        private val handle = GhostLightServer.createHandle(placement.level, voxelPositionWorld) { _, type ->
+    class Light(val instance: LightVolumeInstance, val voxelPositionVolume: Int, voxelPositionWorld: BlockPos) {
+        private val handle = GhostLightServer.createHandle(instance.level, voxelPositionWorld) { _, type ->
             onUpdate(type)
         }!!
 
@@ -1029,7 +1001,7 @@ class LightPart(
 
             if(!isOrigin) {
                 traverseLightRay(voxelPositionVolume) { x, y, z ->
-                    if(!transmitsRayWorld(getPositionWorld(x, y, z))) {
+                    if(!instance.transmitsRayWorld(instance.getPositionWorld(x, y, z))) {
                         // But we store in the volume frame as 1 int, it is way more efficient:
                         obstructingBlocks.add(BlockPosInt.pack(x, y, z))
                     }
@@ -1062,13 +1034,13 @@ class LightPart(
             }
 
             // If this block is not an obstruction, it doesn't affect us:
-            if(type == GhostLightUpdateType.Closed && transmitsRayWorld(handle.position)) {
+            if(type == GhostLightUpdateType.Closed && instance.transmitsRayWorld(handle.position)) {
                 return
             }
 
             // First of all, we'll get the light cells whose rays intersect this voxel. That includes this one too!
 
-            val mask = volume!!.getMask()
+            val mask = instance.volume!!.getMask()
 
             val intersectionsVolume = rayIntersectionAnalyzer(voxelPositionVolume) { k ->
                 mask.contains(k)
@@ -1082,7 +1054,7 @@ class LightPart(
                 GhostLightUpdateType.Closed -> {
                     // Add to obstructions list and update:
                     while (iterator.hasNext()) {
-                        val cell = lightCells[iterator.nextInt()] ?: continue
+                        val cell = instance.lightCells[iterator.nextInt()] ?: continue
                         cell.obstructingBlocks.add(voxelPositionVolume)
                         // If we added one, it automatically means the cell is blocked:
                         cell.handle.setBrightness(0)
@@ -1091,7 +1063,7 @@ class LightPart(
                 GhostLightUpdateType.Opened -> {
                     // Remove from list of obstructions and, if empty, set light:
                     while (iterator.hasNext()) {
-                        val cell = lightCells[iterator.nextInt()] ?: continue
+                        val cell = instance.lightCells[iterator.nextInt()] ?: continue
 
                         if(cell.obstructingBlocks.remove(voxelPositionVolume)) {
                             if(!cell.isObstructed) {
@@ -1109,12 +1081,343 @@ class LightPart(
     }
 }
 
+enum class LightLoadResult {
+    RemoveExisting,
+    AddNew,
+    Fail
+}
+
+private fun loadLightFromBulb(instance: LightVolumeInstance, emitter: LightBulbEmitterView, stack: ItemStack) : LightLoadResult {
+    var result = LightLoadResult.Fail
+
+    val existingItem = emitter.lightBulb
+
+    if(existingItem != null) {
+        instance.destroyCells()
+        instance.level.addItem(instance.placementPosition, existingItem.createStack(emitter.life))
+        emitter.resetValues()
+        instance.resetValues()
+
+        result = LightLoadResult.RemoveExisting
+    }
+    else {
+        if(stack.count > 0 && stack.item is LightBulbItem) {
+            instance.destroyCells()
+
+            val item = stack.item as LightBulbItem
+            emitter.resetValues()
+            emitter.life = item.getLife(stack)
+            emitter.lightBulb = item
+            instance.resetValues()
+
+            result = LightLoadResult.AddNew
+        }
+    }
+
+    return result
+}
+
+class PoweredLightPart(ci: PartCreateInfo, cellProvider: CellProvider<LightCell>) : CellPart<LightCell, LightFixtureRenderer>(ci, cellProvider), EventListener, RotatablePart {
+    val instance = serverOnlyHolder {
+        LightVolumeInstance(
+            placement.level as ServerLevel,
+            placement.position
+        )
+    }
+
+    override fun onUsedBy(context: PartUseInfo): InteractionResult {
+        if(placement.level.isClientSide || context.hand != InteractionHand.MAIN_HAND) {
+            return InteractionResult.PASS
+        }
+
+        val instance = instance()
+        val stack = context.player.mainHandItem
+
+        var result = LightLoadResult.Fail
+
+        cell.graph.runSuspended {
+            result = loadLightFromBulb(instance, cell, stack)
+        }
+
+        return when(result) {
+            LightLoadResult.RemoveExisting -> {
+                sendClientBrightness(0.0)
+                InteractionResult.SUCCESS
+            }
+            LightLoadResult.AddNew -> {
+                InteractionResult.CONSUME
+            }
+            LightLoadResult.Fail -> {
+                InteractionResult.FAIL
+            }
+        }
+    }
+
+    override fun createRenderer() = LightFixtureRenderer(
+        this,
+        PartialModels.SMALL_WALL_LAMP_CAGE,
+        PartialModels.SMALL_WALL_LAMP_EMITTER
+    )
+
+    @ServerOnly @OnServerThread
+    override fun onCellAcquired() {
+        val events = Scheduler.register(this)
+
+        events.registerHandler(this::onVolumeUpdated)
+        events.registerHandler(this::onLightBurnedOut)
+
+        cell.bind(
+            serverThreadAccess = Scheduler.getEventAccess(this),
+            renderBrightnessConsumer = ::sendClientBrightness,
+            true
+        )
+    }
+
+    private fun onVolumeUpdated(event: VolumetricLightChangeEvent) {
+        // Item is only mutated on onUsedBy (server thread), when the bulb is added/removed, so it is safe to access here
+        // if it is null, it means we got this update possibly after the bulb was removed by a player, so we will ignore it
+        if(!hasCell || cell.lightBulb == null) {
+            return
+        }
+
+        instance().onVolumeUpdated(event)
+    }
+
+    @ServerOnly
+    private fun sendClientBrightness(value: Double) {
+        val buffer = ByteBuffer.allocate(8) with value
+        enqueueBulkMessage(buffer.array())
+    }
+
+    @ClientOnly
+    override fun handleBulkMessage(msg: ByteArray) {
+        val buffer = ByteBuffer.wrap(msg)
+        renderer.updateBrightness(buffer.double)
+    }
+
+    @ServerOnly @OnServerThread
+    private fun onLightBurnedOut(event: LightBurnedOutEvent) {
+        sendClientBrightness(0.0)
+        instance().onLightBurnedOut(event)
+        placement.level.playLocalSound(
+            placement.position.x.toDouble(),
+            placement.position.y.toDouble(),
+            placement.position.z.toDouble(),
+            SoundEvents.FIRE_EXTINGUISH,
+            SoundSource.BLOCKS,
+            1.0f,
+            randomFloat(0.9f, 1.1f),
+            false
+        )
+    }
+
+    @ServerOnly @OnServerThread
+    override fun onSyncSuggested() {
+        sendClientBrightness(cell.modelTemperature)
+    }
+
+    override fun onCellReleased() {
+        cell.unbind()
+        Scheduler.remove(this)
+        instance().destroyCells()
+    }
+
+    override fun onRemoved() {
+        super.onRemoved()
+
+        if(!placement.level.isClientSide) {
+            instance().destroyCells()
+        }
+    }
+}
+
+data class SolarLightModel(
+    val rechargeRate: Double,
+    val rechargeRateRain: Double,
+    val rechargeRateThunder: Double,
+    val rechargeRateLunar: Double,
+    val dischargeRate: Double,
+    val volumeProvider: LightVolumeProvider
+)
+
+class SolarLightPart<R : PartRenderer>(
+    ci: PartCreateInfo,
+    val model: SolarLightModel,
+    val rendererSupplier: (SolarLightPart<R>) -> R,
+    rendererClass: Class<R>
+) : Part<R>(ci), TickablePart, WailaEntity {
+    val volume = model.volumeProvider.getVolume(placement.createLocator())
+
+    val instance = serverOnlyHolder {
+        LightVolumeInstance(
+            placement.level as ServerLevel,
+            placement.position
+        )
+    }
+
+    var energy = 0.0
+    var isOn = true
+
+    var trackedState = false
+
+    val usesSync = rendererClass == LightFixtureRenderer::class.java
+
+    override fun onPlaced() {
+        energy = 0.5 // Initial charge
+    }
+
+    override fun onUsedBy(context: PartUseInfo): InteractionResult {
+        if(placement.level.isClientSide) {
+            return InteractionResult.PASS
+        }
+
+        if(context.hand == InteractionHand.MAIN_HAND) {
+            isOn = !isOn
+            setSaveDirty()
+            return InteractionResult.SUCCESS
+        }
+
+        return InteractionResult.FAIL
+    }
+
+    override fun createRenderer() = rendererSupplier(this)
+
+    override fun onAdded() {
+        if(!placement.level.isClientSide) {
+            placement.multipart.addTicker(this)
+        }
+    }
+
+    override fun tick() {
+        val initialEnergy = energy
+
+        val state: Boolean
+
+        if(placement.level.isDay && placement.level.canSeeSky(placement.position)) {
+            energy += if(placement.level.isThundering) {
+                model.rechargeRateThunder
+            } else if(placement.level.isRaining) {
+                model.rechargeRateRain
+            } else {
+                model.rechargeRate
+            }
+
+            state = false
+        }
+        else {
+            if(placement.level.isNight && placement.level.canSeeSky(placement.position)) {
+                energy += model.rechargeRateLunar
+            }
+
+            if(isOn) {
+                state = energy > 0.0
+                energy -= model.dischargeRate
+            }
+            else {
+                state = false
+            }
+        }
+
+        val increment = if(state) {
+            volume.stateIncrements
+        }
+        else {
+            0
+        }
+
+        val instance = instance()
+        if(instance.volume != volume || instance.state != increment) {
+            instance.onVolumeUpdated(
+                VolumetricLightChangeEvent(
+                    volume,
+                    increment
+                )
+            )
+        }
+
+        if(state != trackedState) {
+            trackedState = state
+
+            if(usesSync) {
+                setSyncDirty()
+            }
+        }
+
+        energy = energy.coerceIn(0.0, 1.0)
+
+        if(!initialEnergy.approxEq(energy)) {
+            setSaveDirty()
+        }
+    }
+
+    override fun getSaveTag() = CompoundTag().also {
+        it.putDouble(ENERGY, energy)
+        it.putBoolean(IS_ON, isOn)
+    }
+
+    override fun loadFromTag(tag: CompoundTag) {
+        energy = tag.getDouble(ENERGY)
+        isOn = tag.getBoolean(IS_ON)
+    }
+
+    override fun getSyncTag() = CompoundTag().also {
+        it.putBoolean(STATE, trackedState)
+    }
+
+    override fun handleSyncTag(tag: CompoundTag) {
+        if(usesSync) {
+            (renderer as LightFixtureRenderer).updateBrightness(
+                if(tag.getBoolean(STATE)) {
+                    1.0
+                }
+                else {
+                    0.0
+                }
+            )
+        }
+    }
+
+    override fun appendWaila(builder: WailaTooltipBuilder, config: IPluginConfig?) {
+        builder.text("Charge", energy.formattedPercentN())
+    }
+
+    override fun onRemoved() {
+        super.onRemoved()
+        destroyLights()
+    }
+
+    override fun onUnloaded() {
+        super.onUnloaded()
+        destroyLights()
+    }
+
+    private fun destroyLights() {
+        if(!placement.level.isClientSide) {
+            instance().destroyCells()
+        }
+    }
+
+    companion object {
+        private const val ENERGY = "energy"
+        private const val IS_ON = "isOn"
+        private const val STATE = "state"
+    }
+}
+
+enum class RenderTypeType {
+    Solid,
+    Cutout,
+    Transparent
+}
+
 class LightFixtureRenderer(
-    val part: LightPart,
+    val part: Part<LightFixtureRenderer>,
     val cageModel: PartialModel,
     val emitterModel: PartialModel,
     val coldTint: Color = Color(255, 255, 255, 255),
-    val warmTint: Color = Color(254, 196, 127, 255)
+    val warmTint: Color = Color(254, 196, 127, 255),
+    val cageType: RenderTypeType = RenderTypeType.Solid,
+    val emitterType: RenderTypeType = RenderTypeType.Solid
 ) : PartRenderer() {
     private val brightnessUpdate = AtomicUpdate<Double>()
     private var brightness = 0.0
@@ -1129,14 +1432,20 @@ class LightFixtureRenderer(
     override fun setupRendering() {
         cageInstance?.delete()
         emitterInstance?.delete()
-        cageInstance = create(cageModel)
-        emitterInstance = create(emitterModel)
+        cageInstance = create(cageModel, cageType)
+        emitterInstance = create(emitterModel, emitterType)
         applyLightTint()
     }
 
-    private fun create(model: PartialModel): ModelData {
+    private fun create(model: PartialModel, type: RenderTypeType): ModelData {
         return multipart.materialManager
-            .defaultSolid()
+            .let {
+                when(type) {
+                    RenderTypeType.Solid -> it.defaultSolid()
+                    RenderTypeType.Cutout -> it.defaultCutout()
+                    RenderTypeType.Transparent -> it.defaultTransparent()
+                }
+            }
             .material(Materials.TRANSFORMED)
             .getModel(model)
             .createInstance()

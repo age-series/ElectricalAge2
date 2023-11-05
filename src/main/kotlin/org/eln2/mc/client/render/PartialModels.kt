@@ -36,6 +36,10 @@ object PartialModels {
     val GRID_TAP_BODY = partialBlock("grid_tap_body")
     val GRID_TAP_CONNECTION = patchPartial("grid_tap_connection")
 
+    val SMALL_GARDEN_LIGHT = partialBlock("small_garden_light")
+    val TALL_GARDEN_LIGHT_EMITTER = partialBlock("tall_garden_light_emitter")
+    val TALL_GARDEN_LIGHT_CAGE = partialBlock("tall_garden_light_cage")
+
     private fun partial(path: String): PartialModel {
         return PartialModel(resource(path))
     }

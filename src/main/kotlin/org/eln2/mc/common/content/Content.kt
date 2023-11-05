@@ -132,7 +132,7 @@ object Content {
         }
     })
 
-    val LIGHT_PART = part("light_part", BasicPartProvider({ ci -> LightPart(ci, LIGHT_CELL.get()) }, Vector3d(8.0 / 16.0, (1.0 + 2.302) / 16.0, 5.0 / 16.0)))
+    val LIGHT_PART = part("light_part", BasicPartProvider({ ci -> PoweredLightPart(ci, LIGHT_CELL.get()) }, Vector3d(8.0 / 16.0, (1.0 + 2.302) / 16.0, 5.0 / 16.0)))
 
     val OSCILLATOR_CELL = injCell<OscillatorCell>("oscillator")
 
@@ -166,6 +166,47 @@ object Content {
     }, Vector3d(4.0 / 16.0, 0.5, 4.0 / 16.0)))
 
     val GRID_CONNECT_COPPER = item("grid_connect_copper") { GridConnectItem(GridMaterials.COPPER_AS_COPPER_COPPER) }
+
+    val TALL_GARDEN_LIGHT = part("tall_garden_light", BasicPartProvider( { ci ->
+        SolarLightPart(ci,
+            SolarLightModel(
+                1.0 / 24000.0,
+                1.0 / 24000.0 * 0.7,
+                1.0 / 24000.0 * 0.42,
+                1.0 / 24000.0 * 0.2,
+                1.0 / 24000.0 * 0.9,
+                LightFieldPrimitives.sphere(1, 7.0)
+            ), { part ->
+                LightFixtureRenderer(
+                    part,
+                    PartialModels.TALL_GARDEN_LIGHT_CAGE,
+                    PartialModels.TALL_GARDEN_LIGHT_EMITTER,
+                    cageType = RenderTypeType.Cutout,
+                    emitterType = RenderTypeType.Solid
+                )
+            },
+            LightFixtureRenderer::class.java
+        )
+    }, Vector3d(3.0 / 16.0, 15.5 / 16.0, 3.0 / 16.0)))
+
+    val SMALL_GARDEN_LIGHT = part("small_garden_light", BasicPartProvider( { ci ->
+        SolarLightPart(ci,
+            SolarLightModel(
+                1.0 / 24000.0,
+                1.0 / 24000.0 * 0.7,
+                1.0 / 24000.0 * 0.42,
+                1.0 / 24000.0 * 0.1,
+                1.0 / 24000.0 * 0.9,
+                LightFieldPrimitives.sphere(1, 3.0)
+            ), { part ->
+                BasicPartRenderer(
+                    part,
+                    PartialModels.SMALL_GARDEN_LIGHT
+                )
+            },
+            BasicPartRenderer::class.java
+        )
+    }, Vector3d(4.0 / 16.0, 6.0 / 16.0, 4.0 / 16.0)))
 
     fun clientWork() {
         MenuScreens.register(HEAT_GENERATOR_MENU.get(), ::HeatGeneratorScreen)

@@ -11,6 +11,7 @@ import com.jozufozu.flywheel.util.Color
 import com.jozufozu.flywheel.util.transform.Transform
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap
 import it.unimi.dsi.fastutil.ints.IntArrayList
+import net.minecraft.client.renderer.RenderType
 import net.minecraft.core.Direction
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.world.level.LightLayer

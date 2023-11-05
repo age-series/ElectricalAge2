@@ -10,6 +10,7 @@ import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
 import net.minecraft.network.chat.Component
+import net.minecraft.network.protocol.game.ClientboundMoveEntityPacket.Rot
 import net.minecraft.world.InteractionHand
 import net.minecraft.world.InteractionResult
 import net.minecraft.world.entity.player.Inventory
@@ -391,6 +392,31 @@ data class PhotovoltaicModel(
     val panelResistance: Double,
 )
 
+fun celestialPass(sunAngle: Double) : Rotation2d? {
+    val nx = when (sunAngle) {
+        in (3.0 / 2.0) * PI..2.0 * PI -> {
+            map(sunAngle, (3.0 / 2.0) * PI, 2.0 * PI, 0.0, 0.5)
+        }
+
+        in 0.0..PI / 2.0 -> {
+            map(sunAngle, 0.0, PI / 2.0, 0.5, 1.0)
+        }
+
+        else -> {
+            // Under horizon
+            return null
+        }
+    }
+
+    return Rotation2d.exp(PI * nx)
+}
+
+fun celestialPass3d(sunAngle: Double) : Vector3d? {
+    val pass = celestialPass(sunAngle) ?: return null
+
+    return Vector3d(pass.re, pass.im, 0.0)
+}
+
 object PhotovoltaicModels {
     // We map angle difference to a voltage coefficient. 0 - directly overhead, 1 - under horizon
     private val TEST_SPLINE = InterpolatorBuilder()
@@ -405,30 +431,15 @@ object PhotovoltaicModels {
                 return@PhotovoltaicVoltageFunction 0.0
             }
 
-            val sun = Rotation2d.exp(
-                kotlin.math.PI * when (val sunAngle = Math.toDegrees(view.sunAngle)) {
-                    in 270.0..360.0 -> {
-                        map(sunAngle, 270.0, 360.0, 0.0, 0.5)
-                    }
+            val pass = celestialPass3d(view.sunAngle) ?: return@PhotovoltaicVoltageFunction 0.0
 
-                    in 0.0..90.0 -> {
-                        map(sunAngle, 0.0, 90.0, 0.5, 1.0)
-                    }
-
-                    else -> {
-                        // Under horizon
-                        return@PhotovoltaicVoltageFunction 0.0
-                    }
-                }
-            ).direction
-
-            val angle = Vector3d(sun.x, sun.y, 0.0).normalized() angle view.normal.toVector3d()
+            val angle = pass angle view.normal.toVector3d()
 
             val value = TEST_SPLINE.evaluate(
                 map(
-                    angle.absoluteValue.coerceIn(0.0, kotlin.math.PI / 2.0),
+                    angle.absoluteValue.coerceIn(0.0, PI / 2.0),
                     0.0,
-                    kotlin.math.PI / 2.0,
+                    PI / 2.0,
                     0.0,
                     1.0
                 )

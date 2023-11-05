@@ -325,7 +325,7 @@ class SidedLazy<T>(private val factory: () -> T, val side: Dist) {
         return lazy.value
     }
 
-    operator fun not() = get()
+    operator fun invoke() = get()
 }
 
 class SidedHolder<T>(initialValue: T, val side: Dist) {
