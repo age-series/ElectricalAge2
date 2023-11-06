@@ -1,13 +1,20 @@
 package org.eln2.mc.client.render
 
 import com.jozufozu.flywheel.core.PartialModel
+import net.minecraftforge.api.distmarker.Dist
+import net.minecraftforge.event.server.ServerLifecycleEvent
+import net.minecraftforge.fml.loading.FMLEnvironment
+import net.minecraftforge.server.ServerLifecycleHooks
 import org.eln2.mc.client.render.foundation.PolarModel
 import org.eln2.mc.client.render.foundation.WireConnectionModelPartial
 import org.eln2.mc.common.content.WireConnectionModel
 import org.eln2.mc.common.content.WirePatchType
 import org.eln2.mc.common.content.WirePolarPatchModel
 import org.eln2.mc.mathematics.bbSize
+import org.eln2.mc.requireIsOnRenderThread
 import org.eln2.mc.resource
+
+typealias RenderTypedPartialModel = DefaultRenderTypePartialModel<PartialModel>
 
 object PartialModels {
     val ELECTRICAL_WIRE_HUB = partialBlock("wire/electrical/hub")
@@ -40,17 +47,11 @@ object PartialModels {
     val TALL_GARDEN_LIGHT_EMITTER = partialBlock("tall_garden_light_emitter")
     val TALL_GARDEN_LIGHT_CAGE = partialBlock("tall_garden_light_cage")
 
-    private fun partial(path: String): PartialModel {
-        return PartialModel(resource(path))
-    }
+    private fun partial(path: String) = PartialModel(resource(path))
 
-    fun partialBlock(path: String): PartialModel {
-        return PartialModel(resource("block/$path"))
-    }
+    fun partialBlock(path: String) = PartialModel(resource("block/$path"))
 
-    fun polarBlock(path: String): PolarModel {
-        return PolarModel(resource("block/$path"))
-    }
+    fun polarBlock(path: String) = PolarModel(resource("block/$path"))
 
     fun wireConnection(connectionHub: String, connectionFull: String): WireConnectionModel {
         val hubResourceLocation = resource("block/$connectionHub")
@@ -76,13 +77,25 @@ object PartialModels {
         )
     }
 
-    fun initialize() {}
-
-    fun bbOffset(height: Int): Double {
-        return bbOffset(height.toDouble())
-    }
-
-    fun bbOffset(height: Double): Double {
-        return bbSize(height) / 2
+    fun initialize() {
+        ServerLifecycleHooks.getCurrentServer()?.also { server ->
+            require(!server.isSameThread) {
+                "Initializing partial models in server thread"
+            }
+        }
     }
 }
+
+enum class RenderTypeType {
+    Solid,
+    Cutout,
+    Transparent
+}
+
+// find better name
+data class DefaultRenderTypePartialModel<Model : PartialModel>(val partial : Model, val type: RenderTypeType)
+
+fun<T : PartialModel> T.solid() = DefaultRenderTypePartialModel<T>(this, RenderTypeType.Solid)
+fun<T : PartialModel> T.cutout() = DefaultRenderTypePartialModel<T>(this, RenderTypeType.Cutout)
+fun<T : PartialModel> T.transparent() = DefaultRenderTypePartialModel<T>(this, RenderTypeType.Transparent)
+

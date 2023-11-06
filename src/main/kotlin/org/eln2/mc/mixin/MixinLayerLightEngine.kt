@@ -8,6 +8,7 @@ import net.minecraft.world.level.Level
 import net.minecraft.world.level.LightLayer
 import net.minecraft.world.level.chunk.LightChunkGetter
 import net.minecraft.world.level.lighting.LayerLightEngine
+import net.minecraftforge.server.ServerLifecycleHooks
 import org.eln2.mc.common.blocks.foundation.GhostLightHackClient
 import org.eln2.mc.common.blocks.foundation.GhostLightServer
 import org.spongepowered.asm.mixin.Mixin
@@ -37,7 +38,11 @@ abstract class MixinLayerLightEngine  {
                 return GhostLightHackClient.getBlockBrightness(pBlockPos)
             }
             else if(level is ServerLevel) {
-                return GhostLightServer.getBlockBrightness(level, pBlockPos)
+                val server = ServerLifecycleHooks.getCurrentServer()
+
+                if(server != null && server.isSameThread) {
+                    return GhostLightServer.getBlockBrightness(level, pBlockPos)
+                }
             }
         }
 

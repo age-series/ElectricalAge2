@@ -3,13 +3,10 @@ package org.eln2.mc.common.content
 import com.jozufozu.flywheel.core.PartialModel
 import com.jozufozu.flywheel.core.materials.model.ModelData
 import kotlinx.serialization.Serializable
-import net.minecraft.resources.ResourceLocation
-import net.minecraft.world.phys.Vec3
 import org.ageseries.libage.sim.thermal.Temperature
 import org.eln2.mc.NoInj
 import org.eln2.mc.ThermalBody
 import org.eln2.mc.client.render.PartialModels
-import org.eln2.mc.client.render.PartialModels.bbOffset
 import org.eln2.mc.client.render.foundation.ThermalTint
 import org.eln2.mc.client.render.foundation.createPartInstance
 import org.eln2.mc.client.render.foundation.defaultRadiantBodyColor

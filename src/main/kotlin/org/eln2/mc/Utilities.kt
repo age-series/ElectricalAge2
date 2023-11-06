@@ -22,7 +22,6 @@ import net.minecraftforge.server.ServerLifecycleHooks
 import org.ageseries.libage.data.*
 import org.eln2.mc.data.CsvLoader
 import org.eln2.mc.mathematics.*
-import org.eln2.mc.mathematics.arrayKDGridDOf
 import org.joml.Vector3f
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
@@ -317,8 +316,8 @@ private fun validateSide(side: Dist) = when(side) {
         "Accessed server only"
     }
 }
-class SidedLazy<T>(private val factory: () -> T, val side: Dist) {
-    private val lazy = lazy(LazyThreadSafetyMode.NONE, factory)
+class SidedLazy<T>(factory: () -> T, val side: Dist) {
+    private val lazy = lazy(factory)
 
     fun get() : T {
         validateSide(side)
@@ -353,3 +352,30 @@ inline fun<T> T?.requireNotNull(message: () -> String) : T {
     require(this != null, message)
     return this
 }
+
+enum class WeatherStateType {
+    Clear,
+    Rain,
+    Thunder
+}
+
+enum class DayNightStateType {
+    Day,
+    Night
+}
+
+fun Level.getWeatherStateType() =
+    if(this.isThundering) {
+        WeatherStateType.Thunder
+    } else if(this.isRaining) {
+        WeatherStateType.Rain
+    } else {
+        WeatherStateType.Clear
+    }
+
+fun Level.getDayNightStateType() =
+    if(this.isDay) {
+        DayNightStateType.Day
+    } else {
+        DayNightStateType.Night
+    }

@@ -19,13 +19,17 @@ import net.minecraft.world.item.Item
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.TooltipFlag
 import net.minecraft.world.level.Level
+import net.minecraft.world.level.LightLayer
 import net.minecraft.world.level.block.GlassBlock
 import net.minecraftforge.registries.ForgeRegistries
 import org.ageseries.libage.data.Quantity
 import org.eln2.mc.*
 import org.eln2.mc.client.render.PartialModels
-import org.eln2.mc.client.render.foundation.transformPart
+import org.eln2.mc.client.render.RenderTypeType
+import org.eln2.mc.client.render.RenderTypedPartialModel
 import org.eln2.mc.client.render.foundation.colorLerp
+import org.eln2.mc.client.render.foundation.transformPart
+import org.eln2.mc.client.render.solid
 import org.eln2.mc.common.blocks.foundation.GhostLightServer
 import org.eln2.mc.common.blocks.foundation.GhostLightUpdateType
 import org.eln2.mc.common.cells.foundation.*
@@ -862,7 +866,7 @@ class LightVolumeInstance(val level: ServerLevel, val placementPosition: BlockPo
 
     var volume: LightVolume? = null
         private set
-    var state: Int = 0
+    var stateIncrement: Int = 0
         private set
 
     private fun getPositionWorld(x: Int, y: Int, z: Int) = BlockPos(
@@ -906,7 +910,7 @@ class LightVolumeInstance(val level: ServerLevel, val placementPosition: BlockPo
 
         check(this.volume == event.volume)
 
-        if(event.targetState == state) {
+        if(event.targetState == stateIncrement) {
             return
         }
 
@@ -918,7 +922,7 @@ class LightVolumeInstance(val level: ServerLevel, val placementPosition: BlockPo
         // After we finished processing the positions in the actual field, this set will have all cells that were not present in the
         // actual field, so they are new
 
-        val actualField = volume.getLightField(this.state)
+        val actualField = volume.getLightField(this.stateIncrement)
         val targetField = volume.getLightField(event.targetState)
         val newCells = IntOpenHashSet(targetField.keys)
 
@@ -959,12 +963,27 @@ class LightVolumeInstance(val level: ServerLevel, val placementPosition: BlockPo
             cell.updateBrightness(targetField.get(k).toInt())
         }
 
-        this.state = event.targetState
+        this.stateIncrement = event.targetState
+    }
+
+    fun checkoutState(volume: LightVolume, increment: Int) : Boolean {
+        if(this.volume != volume || this.stateIncrement != increment) {
+            onVolumeUpdated(
+                VolumetricLightChangeEvent(
+                    volume,
+                    increment
+                )
+            )
+
+            return true
+        }
+
+        return false
     }
 
     fun resetValues() {
         volume = null
-        state = 0
+        stateIncrement = 0
     }
 
     @ServerOnly @OnServerThread
@@ -1155,8 +1174,8 @@ class PoweredLightPart(ci: PartCreateInfo, cellProvider: CellProvider<LightCell>
 
     override fun createRenderer() = LightFixtureRenderer(
         this,
-        PartialModels.SMALL_WALL_LAMP_CAGE,
-        PartialModels.SMALL_WALL_LAMP_EMITTER
+        PartialModels.SMALL_WALL_LAMP_CAGE.solid(),
+        PartialModels.SMALL_WALL_LAMP_EMITTER.solid()
     )
 
     @ServerOnly @OnServerThread
@@ -1233,9 +1252,6 @@ class PoweredLightPart(ci: PartCreateInfo, cellProvider: CellProvider<LightCell>
 
 data class SolarLightModel(
     val rechargeRate: Double,
-    val rechargeRateRain: Double,
-    val rechargeRateThunder: Double,
-    val rechargeRateLunar: Double,
     val dischargeRate: Double,
     val volumeProvider: LightVolumeProvider
 )
@@ -1243,12 +1259,14 @@ data class SolarLightModel(
 class SolarLightPart<R : PartRenderer>(
     ci: PartCreateInfo,
     val model: SolarLightModel,
+    normalSupplier: (SolarLightPart<R>) -> Vector3d,
     val rendererSupplier: (SolarLightPart<R>) -> R,
-    rendererClass: Class<R>
+    rendererClass: Class<R>,
 ) : Part<R>(ci), TickablePart, WailaEntity {
     val volume = model.volumeProvider.getVolume(placement.createLocator())
+    val normal = normalSupplier(this)
 
-    val instance = serverOnlyHolder {
+    private val instance = serverOnlyHolder {
         LightVolumeInstance(
             placement.level as ServerLevel,
             placement.position
@@ -1256,15 +1274,10 @@ class SolarLightPart<R : PartRenderer>(
     }
 
     var energy = 0.0
-    var isOn = true
-
-    var trackedState = false
-
-    val usesSync = rendererClass == LightFixtureRenderer::class.java
-
-    override fun onPlaced() {
-        energy = 0.5 // Initial charge
-    }
+    private var savedEnergy = 0.0
+    private var isOn = true
+    private var trackedState = false
+    private val usesSync = rendererClass == LightFixtureRenderer::class.java
 
     override fun onUsedBy(context: PartUseInfo): InteractionResult {
         if(placement.level.isClientSide) {
@@ -1289,51 +1302,39 @@ class SolarLightPart<R : PartRenderer>(
     }
 
     override fun tick() {
-        val initialEnergy = energy
+        energy += model.rechargeRate * placement.level.evaluateDiffuseIrradianceFactor(normal)
 
         val state: Boolean
 
+        // Is day -> sky darken
         if(placement.level.isDay && placement.level.canSeeSky(placement.position)) {
-            energy += if(placement.level.isThundering) {
-                model.rechargeRateThunder
-            } else if(placement.level.isRaining) {
-                model.rechargeRateRain
-            } else {
-                model.rechargeRate
-            }
-
             state = false
         }
         else {
-            if(placement.level.isNight && placement.level.canSeeSky(placement.position)) {
-                energy += model.rechargeRateLunar
-            }
-
             if(isOn) {
-                state = energy > 0.0
-                energy -= model.dischargeRate
+                state = energy > model.dischargeRate
+
+                if(state) {
+                    energy -= model.dischargeRate
+                }
+                else {
+                    isOn = false
+                    setSaveDirty()
+                }
             }
             else {
                 state = false
             }
         }
 
-        val increment = if(state) {
+        val stateIncrement = if(state) {
             volume.stateIncrements
         }
         else {
             0
         }
 
-        val instance = instance()
-        if(instance.volume != volume || instance.state != increment) {
-            instance.onVolumeUpdated(
-                VolumetricLightChangeEvent(
-                    volume,
-                    increment
-                )
-            )
-        }
+        instance().checkoutState(volume, stateIncrement)
 
         if(state != trackedState) {
             trackedState = state
@@ -1345,7 +1346,8 @@ class SolarLightPart<R : PartRenderer>(
 
         energy = energy.coerceIn(0.0, 1.0)
 
-        if(!initialEnergy.approxEq(energy)) {
+        if(!savedEnergy.approxEq(energy)) {
+            savedEnergy = energy
             setSaveDirty()
         }
     }
@@ -1379,6 +1381,7 @@ class SolarLightPart<R : PartRenderer>(
 
     override fun appendWaila(builder: WailaTooltipBuilder, config: IPluginConfig?) {
         builder.text("Charge", energy.formattedPercentN())
+        builder.text("Irradiance", placement.level.evaluateDiffuseIrradianceFactor(normal).formattedPercentN())
     }
 
     override fun onRemoved() {
@@ -1404,20 +1407,12 @@ class SolarLightPart<R : PartRenderer>(
     }
 }
 
-enum class RenderTypeType {
-    Solid,
-    Cutout,
-    Transparent
-}
-
 class LightFixtureRenderer(
     val part: Part<LightFixtureRenderer>,
-    val cageModel: PartialModel,
-    val emitterModel: PartialModel,
+    val cageModel: RenderTypedPartialModel,
+    val emitterModel: RenderTypedPartialModel,
     val coldTint: Color = Color(255, 255, 255, 255),
     val warmTint: Color = Color(254, 196, 127, 255),
-    val cageType: RenderTypeType = RenderTypeType.Solid,
-    val emitterType: RenderTypeType = RenderTypeType.Solid
 ) : PartRenderer() {
     private val brightnessUpdate = AtomicUpdate<Double>()
     private var brightness = 0.0
@@ -1432,8 +1427,8 @@ class LightFixtureRenderer(
     override fun setupRendering() {
         cageInstance?.delete()
         emitterInstance?.delete()
-        cageInstance = create(cageModel, cageType)
-        emitterInstance = create(emitterModel, emitterType)
+        cageInstance = create(cageModel.partial, cageModel.type)
+        emitterInstance = create(emitterModel.partial, emitterModel.type)
         applyLightTint()
     }
 

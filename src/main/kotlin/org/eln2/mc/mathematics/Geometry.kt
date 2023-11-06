@@ -3,6 +3,7 @@
 package org.eln2.mc.mathematics
 
 import net.minecraft.core.BlockPos
+import org.eln2.mc.formatted
 import kotlin.math.*
 
 private const val GEOMETRY_COMPARE_EPS = 1e-8
@@ -598,10 +599,9 @@ data class Rotation2d(val re: Double, val im: Double) {
     val inverse get() = Rotation2d(re, -im)
     val direction get() = Vector2d(re, im)
 
-    fun approxEq(other: Rotation2d, eps: Double = GEOMETRY_COMPARE_EPS) =
-        re.approxEq(other.re, eps) && im.approxEq(other.im, eps)
+    fun approxEq(other: Rotation2d, eps: Double = GEOMETRY_COMPARE_EPS) = re.approxEq(other.re, eps) && im.approxEq(other.im, eps)
 
-    override fun toString() = "${Math.toDegrees(log()).rounded()} deg"
+    override fun toString() = "${Math.toDegrees(log()).formatted()} deg"
 
     operator fun not() = this.inverse
     operator fun times(b: Rotation2d) = Rotation2d(this.re * b.re - this.im * b.im, this.re * b.im + this.im * b.re)
@@ -611,7 +611,7 @@ data class Rotation2d(val re: Double, val im: Double) {
     operator fun minus(b: Rotation2d) = (this / b).log()
 
     companion object {
-        val zero = exp(0.0)
+        val identity = exp(0.0)
 
         fun exp(angleIncr: Double) = Rotation2d(cos(angleIncr), sin(angleIncr))
 
@@ -813,14 +813,20 @@ data class Vector3d(val x: Double, val y: Double, val z: Double) {
 
     override fun toString() = "x=$x, y=$y, z=$z"
 
-    operator fun rangeTo(b: Vector3d) = this distanceTo b
+    operator fun not() = if(this.isUnit) {
+        this
+    } else if(this != zero) {
+        this.normalized()
+    } else {
+        this
+    }
+
     operator fun unaryPlus() = this
     operator fun unaryMinus() = Vector3d(-x, -y, -z)
     operator fun plus(b: Vector3d) = Vector3d(x + b.x, y + b.y, z + b.z)
     operator fun minus(b: Vector3d) = Vector3d(x - b.x, y - b.y, z - b.z)
     operator fun times(b: Vector3d) = Vector3d(x * b.x, y * b.y, z * b.z)
     operator fun div(b: Vector3d) = Vector3d(x / b.x, y / b.y, z / b.z)
-    operator fun rem(b: Vector3d) = this angle b
     operator fun times(scalar: Double) = Vector3d(x * scalar, y * scalar, z * scalar)
     operator fun div(scalar: Double) = Vector3d(x / scalar, y / scalar, z / scalar)
 
@@ -874,6 +880,7 @@ data class Vector3d(val x: Double, val y: Double, val z: Double) {
     }
 }
 
+operator fun Vector3d.rangeTo(b: Vector3d) = this distanceTo b
 infix fun Vector3d.o(other: Vector3d) = this dot other
 infix fun Vector3d.x(other: Vector3d) = this cross other
 

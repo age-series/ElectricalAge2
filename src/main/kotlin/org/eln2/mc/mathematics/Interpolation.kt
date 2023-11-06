@@ -539,7 +539,7 @@ data class QuinticHermiteSplineSegment3d(
     )
 }
 
-interface InterpolationFunction<P, V> {
+fun interface InterpolationFunction<P, V> {
     fun evaluate(t: P): V
 }
 

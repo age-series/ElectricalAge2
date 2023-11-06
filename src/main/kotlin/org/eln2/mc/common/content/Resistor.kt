@@ -1,23 +1,19 @@
 package org.eln2.mc.common.content
 
-import net.minecraft.resources.ResourceLocation
 import org.ageseries.libage.sim.electrical.mna.Circuit
 import org.ageseries.libage.sim.electrical.mna.component.Resistor
 import org.eln2.mc.LIBAGE_SET_EPS
 import org.eln2.mc.NoInj
 import org.eln2.mc.add
 import org.eln2.mc.client.render.PartialModels
-import org.eln2.mc.client.render.PartialModels.bbOffset
 import org.eln2.mc.client.render.foundation.BasicPartRenderer
 import org.eln2.mc.common.cells.foundation.*
 import org.eln2.mc.common.parts.foundation.CellPart
 import org.eln2.mc.common.parts.foundation.PartCreateInfo
-import org.eln2.mc.common.parts.foundation.PartPlacementInfo
 import org.eln2.mc.data.*
 import org.eln2.mc.integration.WailaEntity
 import org.eln2.mc.mathematics.Base6Direction3d
 import org.eln2.mc.mathematics.approxEq
-import org.eln2.mc.mathematics.bbVec
 
 @NoInj
 class ResistorObject(cell: Cell, val poleMap: PoleMap) : ElectricalObject<Cell>(cell), DataContainer, WailaEntity {

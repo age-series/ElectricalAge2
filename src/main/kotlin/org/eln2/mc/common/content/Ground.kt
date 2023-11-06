@@ -1,17 +1,13 @@
 package org.eln2.mc.common.content
 
-import net.minecraft.resources.ResourceLocation
 import org.ageseries.libage.sim.electrical.mna.Circuit
 import org.eln2.mc.client.render.PartialModels
-import org.eln2.mc.client.render.PartialModels.bbOffset
 import org.eln2.mc.client.render.foundation.BasicPartRenderer
 import org.eln2.mc.common.cells.foundation.*
 import org.eln2.mc.common.parts.foundation.CellPart
 import org.eln2.mc.common.parts.foundation.PartCreateInfo
-import org.eln2.mc.common.parts.foundation.PartPlacementInfo
 import org.eln2.mc.data.withDirectionRulePlanar
 import org.eln2.mc.mathematics.Base6Direction3dMask
-import org.eln2.mc.mathematics.bbVec
 
 class GroundObject(cell: Cell) : ElectricalObject<Cell>(cell) {
     private val resistors = ResistorBundle(0.01, this)

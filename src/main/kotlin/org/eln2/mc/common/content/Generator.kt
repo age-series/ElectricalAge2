@@ -10,7 +10,6 @@ import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
 import net.minecraft.network.chat.Component
-import net.minecraft.network.protocol.game.ClientboundMoveEntityPacket.Rot
 import net.minecraft.world.InteractionHand
 import net.minecraft.world.InteractionResult
 import net.minecraft.world.entity.player.Inventory
@@ -365,124 +364,6 @@ class HeatGeneratorBlock : CellBlock<HeatGeneratorCell>() {
     }
 }
 
+
 // Best option is to estimate irradiance but maybe in the future
 
-interface IlluminatedBodyView {
-    val sunAngle: Double
-    val isObstructed: Boolean
-    val normal: Direction
-}
-
-abstract class SolarIlluminationBehavior(private val cell: Cell) : CellBehavior, IlluminatedBodyView {
-    // Is it fine to access these from our simulation threads?
-    override val sunAngle: Double
-        get() = cell.graph.level.getSunAngle(0f).toDouble()
-
-    override val isObstructed: Boolean
-        get() = !cell.graph.level.canSeeSky(cell.locator.requireLocator<BlockLocator> { "Solar Behaviors require block pos locator" })
-}
-
-
-fun interface PhotovoltaicVoltageFunction {
-    fun compute(view: IlluminatedBodyView): Double
-}
-
-data class PhotovoltaicModel(
-    val voltageFunction: PhotovoltaicVoltageFunction,
-    val panelResistance: Double,
-)
-
-fun celestialPass(sunAngle: Double) : Rotation2d? {
-    val nx = when (sunAngle) {
-        in (3.0 / 2.0) * PI..2.0 * PI -> {
-            map(sunAngle, (3.0 / 2.0) * PI, 2.0 * PI, 0.0, 0.5)
-        }
-
-        in 0.0..PI / 2.0 -> {
-            map(sunAngle, 0.0, PI / 2.0, 0.5, 1.0)
-        }
-
-        else -> {
-            // Under horizon
-            return null
-        }
-    }
-
-    return Rotation2d.exp(PI * nx)
-}
-
-fun celestialPass3d(sunAngle: Double) : Vector3d? {
-    val pass = celestialPass(sunAngle) ?: return null
-
-    return Vector3d(pass.re, pass.im, 0.0)
-}
-
-object PhotovoltaicModels {
-    // We map angle difference to a voltage coefficient. 0 - directly overhead, 1 - under horizon
-    private val TEST_SPLINE = InterpolatorBuilder()
-        .with(0.0, 1.0)
-        .with(0.95, 0.8)
-        .with(1.0, 0.0)
-        .buildCubic()
-
-    private fun voltageTest(maximumVoltage: Double): PhotovoltaicVoltageFunction {
-        return PhotovoltaicVoltageFunction { view ->
-            if (view.isObstructed) {
-                return@PhotovoltaicVoltageFunction 0.0
-            }
-
-            val pass = celestialPass3d(view.sunAngle) ?: return@PhotovoltaicVoltageFunction 0.0
-
-            val angle = pass angle view.normal.toVector3d()
-
-            val value = TEST_SPLINE.evaluate(
-                map(
-                    angle.absoluteValue.coerceIn(0.0, PI / 2.0),
-                    0.0,
-                    PI / 2.0,
-                    0.0,
-                    1.0
-                )
-            )
-
-            return@PhotovoltaicVoltageFunction value * maximumVoltage
-        }
-    }
-
-    fun test24Volts(): PhotovoltaicModel {
-        //https://www.todoensolar.com/285w-24-volt-AmeriSolar-Solar-Panel
-        return PhotovoltaicModel(voltageTest(32.0), 3.5)
-    }
-}
-
-/**
- * Photovoltaic generator behavior. Works by modulating the voltage of [generator], based on the [model].
- * */
-class PhotovoltaicBehavior(val cell: Cell, val generator: VRGeneratorObject<*>, val model: PhotovoltaicModel) : SolarIlluminationBehavior(cell) {
-    override fun subscribe(subscribers: SubscriberCollection) {
-        subscribers.addSubscriber(SubscriberOptions(100, SubscriberPhase.Pre), this::update)
-    }
-
-    private fun update(dt: Double, phase: SubscriberPhase) {
-        generator.updatePotential(model.voltageFunction.compute(this))
-    }
-
-    override val normal = cell.locator.requireLocator<FaceLocator> {
-        "Photovoltaic behavior requires a face locator"
-    }
-}
-
-class PhotovoltaicGeneratorCell(ci: CellCreateInfo, model: PhotovoltaicModel) : Cell(ci) {
-    @SimObject @Inspect
-    val generator = VRGeneratorObject<Cell>(
-        this,
-        directionPoleMapPlanar()
-    ).also { it.potentialExact = 0.0 }
-
-    @Behavior
-    val photovoltaic = PhotovoltaicBehavior(this, generator, model)
-
-    init {
-        ruleSet.withDirectionRulePlanar(Base6Direction3d.Front + Base6Direction3d.Back)
-    }
-}

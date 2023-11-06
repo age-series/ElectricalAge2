@@ -74,7 +74,9 @@ import java.io.OutputStream
 import java.nio.ByteBuffer
 import java.util.*
 import kotlin.collections.ArrayList
+import kotlin.math.PI
 import kotlin.math.abs
+import kotlin.math.absoluteValue
 
 fun AABB.viewClip(entity: LivingEntity): Optional<Vec3> {
     val viewDirection = entity.lookAngle
@@ -1101,3 +1103,28 @@ fun<K, V> MutableMap<K, V>.putUnique(key: K, value: V) {
         "Failed to put unique $key with value $value"
     }
 }
+
+/**
+ * Gets the celestial phase from the in-game celestial angle.
+ * @param sunAngle The celestial angle, as per [Level.getSunAngle]
+ * @return A [Rotation2d] that represents the current celestial pass. The real axis is fixed as the ground. When the value is in the upper semicircle, the sun is passing. When the value is in the lower semicircle, the moon is passing.
+ * */
+fun celestialPass(sunAngle: Double) = Rotation2d.exp(sunAngle + PI / 2.0)
+
+/**
+ * Gets the deviation between the normal and the direction towards the celestial body.
+ * @return The deviation angle. It is always positive, no matter if the celestial body is the sun or the moon.
+ * */
+fun celestialDeviation(sunAngle: Double, normal: Vector3d) : Double {
+    var pass = celestialPass(sunAngle)
+
+    if(pass.im < 0.0) {
+        // Night
+        pass = !pass
+    }
+
+    return !Vector3d(pass.re, pass.im, 0.0) angle !normal
+}
+
+fun Level.celestialPass() = celestialPass(this.getSunAngle(1.0f).toDouble())
+fun Level.celestialDeviation(normal: Vector3d) = celestialDeviation(this.getSunAngle(1.0f).toDouble(), normal)

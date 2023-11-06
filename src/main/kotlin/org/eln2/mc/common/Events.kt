@@ -13,12 +13,15 @@ import net.minecraftforge.client.event.TextureStitchEvent
 import net.minecraftforge.event.entity.player.PlayerInteractEvent
 import net.minecraftforge.event.level.LevelEvent
 import org.eln2.mc.LOG
+import org.eln2.mc.celestialDeviation
+import org.eln2.mc.celestialPass
 import org.eln2.mc.common.blocks.foundation.GhostLightHackClient
 import org.eln2.mc.common.blocks.foundation.GhostLightServer
 import org.eln2.mc.common.cells.foundation.CellGraphManager
 import org.eln2.mc.common.content.*
 import org.eln2.mc.common.events.schedulePost
 import org.eln2.mc.data.AveragingList
+import org.eln2.mc.mathematics.Vector3d
 
 data class LevelDataStorage(val map: HashMap<Any, Any>) {
     inline fun <K : Any, reified V : Any> read(key: K): V? {
