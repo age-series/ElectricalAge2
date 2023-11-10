@@ -40,10 +40,10 @@ object BlockRegistry {
         BLOCK_ENTITY_REGISTRY.register(bus)
     }
 
-    val CELL_BLOCK_ENTITY: RegistryObject<BlockEntityType<CellBlockEntity>> = BLOCK_ENTITY_REGISTRY.register("cell") {
+    /*val CELL_BLOCK_ENTITY: RegistryObject<BlockEntityType<CellBlockEntity>> = BLOCK_ENTITY_REGISTRY.register("cell") {
         @Suppress("NULLABILITY_MISMATCH_BASED_ON_JAVA_ANNOTATIONS")
         BlockEntityType.Builder.of(::CellBlockEntity).build(null)
-    }
+    }*/
 
     val MULTIPART_BLOCK_ENTITY: RegistryObject<BlockEntityType<MultipartBlockEntity>> =
         BLOCK_ENTITY_REGISTRY.register("multipart") {
@@ -51,12 +51,12 @@ object BlockRegistry {
             BlockEntityType.Builder.of(::MultipartBlockEntity, MULTIPART_BLOCK.block.get()).build(null)
         }
 
-    data class CellBlockRegistryItem(
+   /* data class CellBlockRegistryItem(
         val name: String,
         val block: RegistryObject<CellBlock>,
         val item: RegistryObject<BlockItem>,
     )
-
+*/
     data class BlockRegistryItem(
         val name: String,
         val block: RegistryObject<Block>,
@@ -65,7 +65,7 @@ object BlockRegistry {
         val registryName get() = block.id ?: error("Invalid registry name")
     }
 
-    private fun registerCellBlock(
+   /* private fun registerCellBlock(
         name: String,
         tab: CreativeModeTab? = null,
         supplier: () -> CellBlock,
@@ -74,12 +74,12 @@ object BlockRegistry {
         val item = BLOCK_ITEM_REGISTRY.register(name) {
             BlockItem(
                 block.get(),
-                Item.Properties().also { /*TODO where did tabs go?*/ })
+                Item.Properties().also { *//*TODO where did tabs go?*//* })
         }
 
         return CellBlockRegistryItem(name, block, item)
     }
-
+*/
     fun block(
         name: String,
         tab: CreativeModeTab? = null,
@@ -97,5 +97,4 @@ object BlockRegistry {
     }
 
     val MULTIPART_BLOCK = block("multipart", tab = null) { MultipartBlock() }
-    val LIGHT_GHOST_BLOCK = block("light_ghost") { GhostLightBlock() }
 }

@@ -8,13 +8,17 @@ import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.saveddata.SavedData
 import net.minecraftforge.server.ServerLifecycleHooks
+import org.ageseries.libage.data.MutableMapPairBiMap
 import org.ageseries.libage.sim.electrical.mna.Circuit
+import org.ageseries.libage.sim.electrical.mna.component.PowerVoltageSource
+import org.ageseries.libage.sim.electrical.mna.component.Resistor
 import org.ageseries.libage.sim.electrical.mna.component.VoltageSource
 import org.ageseries.libage.sim.thermal.Simulator
 import org.eln2.mc.*
 import org.eln2.mc.common.cells.CellRegistry
 import org.eln2.mc.data.*
 import org.eln2.mc.integration.WailaEntity
+import org.eln2.mc.mathematics.approxEq
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
@@ -22,60 +26,75 @@ import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.locks.ReentrantLock
+import kotlin.collections.ArrayList
+import kotlin.contracts.ExperimentalContracts
+import kotlin.contracts.contract
 
-class TrackedSubscriberCollection(val underlying: SubscriberCollection) : SubscriberCollection {
-    private val subscribers = HashSet<Sub>()
+/**
+ * [SubscriberCollection] that tracks the added subscribers, making it possible to remove all of them at a later time.
+ * @param underlyingCollection The parent subscriber collection that will actually run the subscribers.
+ * */
+class TrackedSubscriberCollection(private val underlyingCollection: SubscriberCollection) : SubscriberCollection {
+    private val subscribers = HashMap<Subscriber, SubscriberOptions>()
 
     override fun addSubscriber(parameters: SubscriberOptions, subscriber: Subscriber) {
-        require(subscribers.add(Sub(parameters, subscriber))) { "Duplicate subscriber $subscriber" }
-        underlying.addSubscriber(parameters, subscriber)
+        require(subscribers.put(subscriber, parameters) == null) { "Duplicate subscriber $subscriber" }
+        underlyingCollection.addSubscriber(parameters, subscriber)
     }
 
     override fun remove(subscriber: Subscriber) {
-        require(subscribers.removeAll { it.subscriber == subscriber }) { "Subscriber $subscriber was never added" }
-        underlying.remove(subscriber)
+        require(subscribers.remove(subscriber) != null) { "Subscriber $subscriber was never added" }
+        underlyingCollection.remove(subscriber)
     }
 
-    fun destroy() {
-        subscribers.forEach { underlying.remove(it.subscriber) }
+    fun clear() {
+        subscribers.keys.forEach { underlyingCollection.remove(it) }
         subscribers.clear()
     }
-
-    private data class Sub(val parameters: SubscriberOptions, val subscriber: Subscriber)
 }
 
-data class CellCreateInfo(
-    val pos: LocatorSet,
-    val id: ResourceLocation,
-    val envFm: DataFieldMap,
-)
+data class CellCreateInfo(val locator: Locator, val id: ResourceLocation, val environment: HashDataTable)
 
+/**
+ * Marks a field in a [Cell] as [SimulationObject]. The object will be registered automatically.
+ * */
 @Retention(AnnotationRetention.RUNTIME)
 @Target(AnnotationTarget.FIELD)
 annotation class SimObject
 
+/**
+ * Marks a field in a [Cell] as [CellBehavior]. The behavior will be registered automatically.
+ * */
 @Retention(AnnotationRetention.RUNTIME)
 @Target(AnnotationTarget.FIELD)
 annotation class Behavior
+
+@Retention(AnnotationRetention.RUNTIME)
+@Target(AnnotationTarget.FIELD)
+annotation class Inspect
 
 /**
  * The cell is a physical unit, that may participate in multiple simulations. Each simulation will
  * have a Simulation Object associated with it.
  * Cells create connections with other cells, and objects create connections with other objects of the same simulation type.
  * */
-abstract class Cell(val pos: LocatorSet, val id: ResourceLocation, val environmentData: DataFieldMap) : WailaEntity,
-    DataEntity {
+@ServerOnly
+abstract class Cell(val locator: Locator, val id: ResourceLocation, val environmentData: HashDataTable) : WailaEntity, DataContainer {
     companion object {
-        private val OBJECT_READERS = ConcurrentHashMap<Class<*>, List<FieldReader<Cell>>>()
-        private val BEHAVIOR_READERS = ConcurrentHashMap<Class<*>, List<FieldReader<Cell>>>()
+        private val OBJECT_READERS = ConcurrentHashMap<Class<*>, List<FieldInfo<Cell>>>()
+        private val BEHAVIOR_READERS = ConcurrentHashMap<Class<*>, List<FieldInfo<Cell>>>()
 
         private const val CELL_DATA = "cellData"
         private const val OBJECT_DATA = "objectData"
+
+        private val ID_ATOMIC = AtomicInteger()
     }
 
-    constructor(ci: CellCreateInfo) : this(ci.pos, ci.id, ci.envFm)
+    constructor(ci: CellCreateInfo) : this(ci.locator, ci.id, ci.environment)
 
-    final override val dataNode = DataNode()
+    val uniqueCellId = ID_ATOMIC.getAndIncrement()
+
+    final override val dataNode = HashDataNode()
 
     val data get() = dataNode.data
 
@@ -98,15 +117,15 @@ abstract class Cell(val pos: LocatorSet, val id: ResourceLocation, val environme
     lateinit var connections: ArrayList<Cell>
 
     private val ruleSetLazy = lazy { LocatorRelationRuleSet() }
-    protected val ruleSet get() = ruleSetLazy.value
+    val ruleSet get() = ruleSetLazy.value
 
     private val servicesLazy = lazy {
         ServiceCollection()
             .withSingleton { dataNode }
             .withSingleton { this }
             .withSingleton(this.javaClass) { this }
-            .withSingleton { pos }
-            .withExternalResolver { dataNode.data.get(it) }
+            .withSingleton { locator }
+            .withExternalResolver { dataNode.data.getOrNull(it) }
             .also { registerServices(it) }
     }
 
@@ -123,18 +142,55 @@ abstract class Cell(val pos: LocatorSet, val id: ResourceLocation, val environme
      * - [dataNode]
      * - this
      * - [javaClass]
-     * - [pos]
+     * - [locator]
      * - data node fields (fields in [dataNode], but not child nodes)
      * - [registerServices] (user-specified services)
      * */
-    protected inline fun <reified T> activate(vararg extraParams: Any): T = services.activate(extraParams.asList())
+    protected inline fun <reified T> activate(vararg extraParams: Any): T =
+        services.activate(extraParams.asList())
+
+    /**
+     * Instantiates the specified class using dependency injection, as per [activate].
+     * Services will also be requested from the specified [entity]
+     * */
+    protected inline fun <reified T> activateWith(entity: DataContainer, vararg extraParams: Any): T =
+        services.activate(extraParams.asList().plus(entity.dataNode.data.values.mapNotNull { it.getValue() }))
+
+    /**
+     * Instantiates the specified class using dependency injection, as per [activate].
+     * The result will also be added to the service collection.
+     * */
+    protected inline fun <reified T> activateService(vararg extraParams: Any): T = services.activate<T>(extraParams.asList()).also {
+        if(it is ReplicatorBehavior) {
+            error("Cannot activate service a replicator behavior!")
+        }
+
+        services.withService(T::class.java) { it }
+    }
+
+    /**
+     * Instantiates the specified class using dependency injection, as per [activate].
+     * The result will also be added to the service collection.
+     * Services will also be requested from the specified [entity]
+     * */
+    protected inline fun <reified T> activateServiceWith(entity: DataContainer, vararg extraParams: Any): T {
+        if(ReplicatorBehavior::class.java.isAssignableFrom(T::class.java)) {
+            error("Cannot activate replicator behavior as service!")
+        }
+
+        val instance = services.activate<T>(extraParams.asList().plus(entity.dataNode.data.values.mapNotNull { it.getValue() }))
+
+        services.withService(T::class.java) { instance }
+
+        return instance
+    }
 
     /**
      * Checks if this cell accepts a connection from the remote cell.
      * @return True if the connection is accepted. Otherwise, false.
      * */
     open fun acceptsConnection(remote: Cell): Boolean {
-        return ruleSet.accepts(pos, remote.pos)
+        return ruleSet.accepts(locator, remote.locator)
     }
 
     private val replicators = ArrayList<ReplicatorBehavior>()
@@ -149,6 +205,22 @@ abstract class Cell(val pos: LocatorSet, val id: ResourceLocation, val environme
         }
     }
 
+    /**
+     * Marks this cell as dirty, if [value] is true.
+     * */
+    fun setChangedIf(value: Boolean) {
+        if(value) {
+            setChanged()
+        }
+    }
+
+    fun setChangedIf(value: Boolean, action: () -> Unit) {
+        if(value) {
+            setChanged()
+            action()
+        }
+    }
+
     val hasGraph get() = this::graph.isInitialized
 
     fun removeConnection(cell: Cell) {
@@ -160,13 +232,29 @@ abstract class Cell(val pos: LocatorSet, val id: ResourceLocation, val environme
     var container: CellContainer? = null
 
     private val objectsLazy = lazy {
-        createObjectSet().also { set ->
-            set.process { obj ->
-                if (obj is DataEntity) {
-                    dataNode.withChild(obj.dataNode)
+        val objectFields = fieldScan(this.javaClass, SimulationObject::class, SimObject::class.java, OBJECT_READERS)
+
+        val fields = HashMap<SimulationObject<*>, FieldInfo<Cell>>()
+
+        val set = SimulationObjectSet(objectFields.mapNotNull {
+            val o = it.reader.get(this) as? SimulationObject<*>
+
+            if(o != null) {
+                require(fields.put(o, it) == null) {
+                    "Duplicate obj $o"
                 }
             }
+
+            o
+        })
+
+        set.forEachObject { obj ->
+            if (obj is DataContainer && fields[obj]!!.field.isAnnotationPresent(Inspect::class.java)) {
+                dataNode.withChild(obj.dataNode)
+            }
         }
+
+        set
     }
 
     val objects get() = objectsLazy.value
@@ -177,23 +265,17 @@ abstract class Cell(val pos: LocatorSet, val id: ResourceLocation, val environme
         }
     }
 
+    var isBeingRemoved = false
+        private set
+
     /**
      * Gets the behavior container for this cell. Accessing this will initialize [behaviorsLazy].
      * */
     protected val behaviors get() = behaviorsLazy.value
 
-    /**
-     * Called once when the object set is requested. The result is then cached.
-     * @return A new object set, with all the desired objects.
-     * */
-    open fun createObjectSet() = SimulationObjectSet(
-        fieldScan(this.javaClass, SimulationObject::class, SimObject::class.java, OBJECT_READERS)
-            .mapNotNull { it.get(this) as? SimulationObject }
-    )
-
     open fun createBehaviorContainer() = CellBehaviorContainer(this).also { container ->
         fieldScan(this.javaClass, CellBehavior::class, Behavior::class.java, BEHAVIOR_READERS)
-            .mapNotNull { it.get(this) as? CellBehavior }.forEach(container::addBehaviorInstance)
+            .mapNotNull { it.reader.get(this) as? CellBehavior }.forEach(container::addToCollection)
     }
 
     fun loadTag(tag: CompoundTag) {
@@ -241,17 +323,17 @@ abstract class Cell(val pos: LocatorSet, val id: ResourceLocation, val environme
     open fun saveCellData(): CompoundTag? = null
 
     private fun saveObjectData(tag: CompoundTag) {
-        objects.process { obj ->
+        objects.forEachObject { obj ->
             if (obj is PersistentObject) {
-                tag.put(obj.type.domain, obj.save())
+                tag.put(obj.type.domain, obj.saveObjectNbt())
             }
         }
     }
 
     private fun loadObjectData(tag: CompoundTag) {
-        objects.process { obj ->
+        objects.forEachObject { obj ->
             if (obj is PersistentObject) {
-                obj.load(tag.getCompound(obj.type.domain))
+                obj.loadObjectNbt(tag.getCompound(obj.type.domain))
             }
         }
     }
@@ -261,17 +343,16 @@ abstract class Cell(val pos: LocatorSet, val id: ResourceLocation, val environme
     open fun onContainerUnloaded() {}
 
     fun bindGameObjects(objects: List<Any>) {
+        // Not null, it is initialized when added to graph (so the SubscriberCollection is available)
         val transient = this.transientPool
             ?: error("Transient pool is null in bind")
 
-        require(replicators.isEmpty()) {
-            "Lingering replicators in bind"
-        }
+        require(replicators.isEmpty()) { "Lingering replicators in bind" }
 
         objects.forEach { obj ->
-            fun bindReplicator(replicatorBehavior: ReplicatorBehavior) {
-                behaviors.addBehaviorInstance(replicatorBehavior)
-                replicators.add(replicatorBehavior)
+            fun bindReplicator(behavior: ReplicatorBehavior) {
+                behaviors.addToCollection(behavior)
+                replicators.add(behavior)
             }
 
             Replicators.replicatorScan(
@@ -296,7 +377,7 @@ abstract class Cell(val pos: LocatorSet, val id: ResourceLocation, val environme
         }
 
         replicators.clear()
-        transient.destroy()
+        transient.clear()
     }
 
     /**
@@ -320,14 +401,16 @@ abstract class Cell(val pos: LocatorSet, val id: ResourceLocation, val environme
     protected open fun onCreated() {}
 
     fun notifyRemoving() {
+        isBeingRemoved = true
         behaviors.destroy()
         onRemoving()
-        persistentPool?.destroy()
+        persistentPool?.clear()
     }
 
     /**
      * Called while the cell is being destroyed, just after the simulation was stopped.
      * Subscribers may be cleaned up here.
+     * *Almost* guaranteed to be on the game thread.
      * */
     protected open fun onRemoving() {}
 
@@ -339,7 +422,7 @@ abstract class Cell(val pos: LocatorSet, val id: ResourceLocation, val environme
      * Called after the cell was destroyed.
      */
     protected open fun onDestroyed() {
-        objects.process { it.destroy() }
+        objects.forEachObject { it.destroy() }
     }
 
     /**
@@ -353,11 +436,11 @@ abstract class Cell(val pos: LocatorSet, val id: ResourceLocation, val environme
         }
 
         if (graphChanged) {
-            persistentPool?.destroy()
-            transientPool?.destroy()
+            persistentPool?.clear()
+            transientPool?.clear()
 
-            persistentPool = TrackedSubscriberCollection(graph.subscribers)
-            transientPool = TrackedSubscriberCollection(graph.subscribers)
+            persistentPool = TrackedSubscriberCollection(graph.simulationSubscribers)
+            transientPool = TrackedSubscriberCollection(graph.simulationSubscribers)
 
             behaviors.behaviors.forEach {
                 it.subscribe(persistentPool!!)
@@ -384,16 +467,16 @@ abstract class Cell(val pos: LocatorSet, val id: ResourceLocation, val environme
      * Called when the solver is being built, in order to clear and prepare the objects.
      * */
     fun clearObjectConnections() {
-        objects.process { it.clear() }
+        objects.forEachObject { it.clear() }
     }
 
     /**
      * Called when the solver is being built, in order to record all object-object connections.
      * */
     fun recordObjectConnections() {
-        objects.process { localObj ->
+        objects.forEachObject { localObj ->
             connections.forEach { remoteCell ->
-                if (!localObj.acceptsRemoteLocation(remoteCell.pos)) {
+                if (!localObj.acceptsRemoteLocation(remoteCell.locator)) {
                     return@forEach
                 }
 
@@ -405,7 +488,7 @@ abstract class Cell(val pos: LocatorSet, val id: ResourceLocation, val environme
 
                 require(remoteCell.connections.contains(this)) { "Mismatched connection set" }
 
-                if (!remoteObj.acceptsRemoteLocation(pos)) {
+                if (!remoteObj.acceptsRemoteLocation(locator)) {
                     return@forEach
                 }
 
@@ -432,7 +515,7 @@ abstract class Cell(val pos: LocatorSet, val id: ResourceLocation, val environme
      * Called when the solver is being built, in order to finish setting up the underlying components in the
      * simulation objects.
      * */
-    fun build() = objects.process { it.build() }
+    fun build() = objects.forEachObject { it.build() }
 
     /**
      * Checks if this cell has the specified simulation object type.
@@ -554,7 +637,7 @@ object CellConnections {
                 * Connections of the remote cells have changed only if the remote cell is a neighbor of the inserted cell.
                 * This is because inserting a cell cannot remove connections, and new connections appear only between the new cell and cells from other circuits (the inserted cell is a cut vertex)
                 * */
-                existingGraph.cells.forEach { cell ->
+                existingGraph.forEach { cell ->
                     cell.graph = graph
 
                     cell.update(
@@ -592,6 +675,10 @@ object CellConnections {
 
         val graph = actualCell.graph
 
+        if(!graph.isSimulating) {
+            noop()
+        }
+
         // Stop Simulation
         graph.stopSimulation()
 
@@ -620,7 +707,7 @@ object CellConnections {
             // Case 1. Destroy this circuit.
 
             // Make sure we don't make any logic errors somewhere else.
-            assert(graph.cells.size == 1)
+            assert(graph.size == 1)
 
             graph.destroy()
         } else if (actualNeighborCells.size == 1) {
@@ -641,6 +728,12 @@ object CellConnections {
             graph.destroy()
             rebuildTopologies(actualNeighborCells, actualCell, manager)
         }
+    }
+
+    inline fun retopologize(cell: Cell, container: CellContainer, action: () -> Unit) {
+        disconnectCell(cell, container, false)
+        action()
+        connectCell(cell, container)
     }
 
     /**
@@ -725,7 +818,7 @@ object CellConnections {
             assert(bfsQueue.isEmpty())
 
             // Refit cells
-            graph.cells.forEach { cell ->
+            graph.forEach { cell ->
                 val isNeighbor = neighbors.contains(cell)
 
                 cell.update(connectionsChanged = isNeighbor, graphChanged = true)
@@ -745,15 +838,15 @@ object CellConnections {
 }
 
 fun planarCellScan(level: Level, actualCell: Cell, searchDirection: Direction, consumer: ((CellNeighborInfo) -> Unit)) {
-    val actualPosWorld = actualCell.pos.requireLocator<BlockLocator> { "Planar Scan requires a block position" }
-    val actualFaceTarget = actualCell.pos.requireLocator<FaceLocator> { "Planar Scan requires a face" }
+    val actualPosWorld = actualCell.locator.requireLocator<BlockLocator> { "Planar Scan requires a block position" }
+    val actualFaceTarget = actualCell.locator.requireLocator<FaceLocator> { "Planar Scan requires a face" }
     val remoteContainer = level.getBlockEntity(actualPosWorld + searchDirection) as? CellContainer ?: return
 
     remoteContainer
         .getCells()
-        .filter { it.pos.has<BlockLocator>() && it.pos.has<FaceLocator>() }
+        .filter { it.locator.has<BlockLocator>() && it.locator.has<FaceLocator>() }
         .forEach { targetCell ->
-            val targetFaceTarget = targetCell.pos.requireLocator<FaceLocator>()
+            val targetFaceTarget = targetCell.locator.requireLocator<FaceLocator>()
 
             if (targetFaceTarget == actualFaceTarget) {
                 if (actualCell.acceptsConnection(targetCell) && targetCell.acceptsConnection(actualCell)) {
@@ -769,17 +862,17 @@ fun wrappedCellScan(
     searchDirectionTarget: Direction,
     consumer: ((CellNeighborInfo) -> Unit),
 ) {
-    val actualPosWorld = actualCell.pos.requireLocator<BlockLocator> { "Wrapped Scan requires a block position" }
-    val actualFaceActual = actualCell.pos.requireLocator<FaceLocator> { "Wrapped Scan requires a face" }
+    val actualPosWorld = actualCell.locator.requireLocator<BlockLocator> { "Wrapped Scan requires a block position" }
+    val actualFaceActual = actualCell.locator.requireLocator<FaceLocator> { "Wrapped Scan requires a face" }
     val wrapDirection = actualFaceActual.opposite
     val remoteContainer = level.getBlockEntity(actualPosWorld + searchDirectionTarget + wrapDirection) as? CellContainer
         ?: return
 
     remoteContainer
         .getCells()
-        .filter { it.pos.has<BlockLocator>() && it.pos.has<FaceLocator>() }
+        .filter { it.locator.has<BlockLocator>() && it.locator.has<FaceLocator>() }
         .forEach { targetCell ->
-            val targetFaceTarget = targetCell.pos.requireLocator<FaceLocator>()
+            val targetFaceTarget = targetCell.locator.requireLocator<FaceLocator>()
 
             if (targetFaceTarget == searchDirectionTarget) {
                 if (actualCell.acceptsConnection(targetCell) && targetCell.acceptsConnection(actualCell)) {
@@ -802,7 +895,31 @@ interface CellContainer {
 /**
  * Encapsulates information about a neighbor cell.
  * */
-data class CellNeighborInfo(val neighbor: Cell, val neighborContainer: CellContainer)
+data class CellNeighborInfo(val neighbor: Cell, val neighborContainer: CellContainer) {
+    companion object {
+        fun of(cell: Cell) = CellNeighborInfo(cell, cell.container ?: error("Cannot create CellNeighborInfo of $cell"))
+    }
+}
+
+class CellList : Iterable<Cell> {
+    private val cells = MutableMapPairBiMap<Cell, Locator>()
+
+    val size get() = cells.size
+
+    fun add(cell: Cell) = cells.add(cell, cell.locator)
+
+    fun remove(cell: Cell) = check(cells.removeForward(cell)) { "Cell $cell ${cell.locator} was not present"}
+
+    fun contains(cell: Cell) = cells.forward.contains(cell)
+
+    fun contains(locator: Locator) = cells.backward.contains(locator)
+
+    fun getByLocator(locator: Locator) = cells.backward[locator]
+
+    fun addAll(source: CellList) = source.forEach { this.add(it) }
+
+    override fun iterator(): Iterator<Cell> = cells.forward.keys.iterator()
+}
 
 /**
  * The cell graph represents a physical network of cells.
@@ -810,34 +927,107 @@ data class CellNeighborInfo(val neighbor: Cell, val neighborContainer: CellConta
  * The cell graph manages the solver and simulation.
  * It also has serialization/deserialization logic for saving to the disk using NBT.
  * */
-class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLevel) {
-    val cells = ArrayList<Cell>()
-
-    private val posCells = HashMap<LocatorSet, Cell>()
-
+class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLevel) : Iterable<Cell> {
+    private val cells = CellList()
     private val electricalSims = ArrayList<Circuit>()
     private val thermalSims = ArrayList<Simulator>()
 
-    private val simStopLock = ReentrantLock()
+    private val simulationStopLock = ReentrantLock()
 
     // This is the simulation task. It will be null if the simulation is stopped
-    private var simTask: ScheduledFuture<*>? = null
+    private var simulationTask: ScheduledFuture<*>? = null
 
-    val isSimRunning get() = simTask != null
+    val isSimulating get() = simulationTask != null
 
     @CrossThreadAccess
     private var updates = 0L
 
     private var updatesCheckpoint = 0L
 
-    val subscribers = SubscriberPool()
+    val simulationSubscribers = SubscriberPool()
 
     @CrossThreadAccess
     var lastTickTime = 0.0
         private set
 
-    fun setChanged() {
+    var isLoading = false
+        private set
+
+    /**
+     * Gets an iterator over the cells in this graph.
+     * */
+    override fun iterator(): Iterator<Cell> = cells.iterator()
+
+    /**
+     * Gets the number of cells in the graph.
+     * */
+    val size get() = cells.size
+
+    fun isEmpty() = size == 0
+    fun isNotEmpty() = !isEmpty()
+
+    /**
+     * Adds a cell to the internal sets, assigns its graph, and invalidates the saved data.
+     * **This does not update the solver!
+     * It is assumed that multiple operations of this type will be performed, then, the solver update will occur explicitly.**
+     * The simulation must be stopped before calling this.
+     * */
+    fun addCell(cell: Cell) {
+        validateMutationAccess()
+        cells.add(cell)
+        cell.graph = this
         manager.setDirty()
+    }
+
+    /**
+     * Removes a cell from the internal sets, and invalidates the saved data.
+     * **This does not update the solver!
+     * It is assumed that multiple operations of this type will be performed, then,
+     * the solver update will occur explicitly.**
+     * The simulation must be stopped before calling this.
+     * */
+    fun removeCell(cell: Cell) {
+        validateMutationAccess()
+        cells.remove(cell)
+        manager.setDirty()
+    }
+
+    /**
+     * Copies the cells of this graph to the other graph, and invalidates the saved data.
+     * The simulation must be stopped before calling this.
+     * */
+    fun copyTo(graph: CellGraph) {
+        this.validateMutationAccess()
+        graph.validateMutationAccess()
+        graph.cells.addAll(this.cells)
+        graph.manager.setDirty()
+    }
+
+    /**
+     * Gets the cell with the specified [locator].
+     * @return The cell, if found, or throws an exception, if the cell does not exist.
+     * */
+    fun getCellByLocator(locator: Locator): Cell {
+        val result = cells.getByLocator(locator)
+
+        if (result == null) {
+            LOG.error("Could not get cell at $locator") // exception may be swallowed
+            error("Could not get cell at $locator")
+        }
+
+        return result
+    }
+
+    /**
+     * Checks if the graph contains a cell with the specified [locator].
+     * @return True if a cell with the [locator] exists in this graph. Otherwise, false.
+     * */
+    fun containsCellByLocator(locator: Locator) = cells.contains(locator)
+
+    fun setChanged() {
+        if(!isLoading) {
+            manager.setDirty()
+        }
     }
 
     /**
@@ -846,22 +1036,15 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
     fun sampleElapsedUpdates(): Long {
         val elapsed = updates - updatesCheckpoint
         updatesCheckpoint += elapsed
-
         return elapsed
     }
-
-    /**
-     * True, if the solution was found last simulation tick. Otherwise, false.
-     * */
-    var isElectricalSuccessful = false
-        private set
 
     /**
      * Checks if the simulation is running. Presumably, this is used by logic that wants to mutate the graph.
      * It also checks if the caller is the server thread.
      * */
     private fun validateMutationAccess() {
-        if (simTask != null) {
+        if (simulationTask != null) {
             error("Tried to mutate the simulation while it was running")
         }
 
@@ -883,7 +1066,7 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
      * */
     @CrossThreadAccess
     private fun update() {
-        simStopLock.lock()
+        simulationStopLock.lock()
 
         var stage = UpdateStep.Start
 
@@ -891,17 +1074,14 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
             val fixedDt = 1.0 / 100.0
 
             stage = UpdateStep.UpdateSubsPre
-            subscribers.update(fixedDt, SubscriberPhase.Pre)
+            simulationSubscribers.update(fixedDt, SubscriberPhase.Pre)
 
             lastTickTime = !measureDuration {
-                isElectricalSuccessful = true
 
                 stage = UpdateStep.UpdateElectricalSims
                 val electricalTime = measureDuration {
                     electricalSims.forEach {
                         val success = it.step(fixedDt)
-
-                        isElectricalSuccessful = isElectricalSuccessful && success
 
                         if (!success && !it.isFloating) {
                             LOG.error("Failed to update non-floating circuit!")
@@ -918,7 +1098,7 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
             }
 
             stage = UpdateStep.UpdateSubsPost
-            subscribers.update(fixedDt, SubscriberPhase.Post)
+            simulationSubscribers.update(fixedDt, SubscriberPhase.Post)
 
             updates++
 
@@ -926,7 +1106,7 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
             LOG.error("FAILED TO UPDATE SIMULATION at $stage: $t")
         } finally {
             // Maybe blow up the game instead of just allowing this to go on?
-            simStopLock.unlock()
+            simulationStopLock.unlock()
         }
     }
 
@@ -991,7 +1171,7 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
     private fun <TComponent> realizeComponents(
         type: SimulationObjectType,
         factory: ((HashSet<Cell>) -> TComponent),
-        extraCondition: ((SimulationObject, SimulationObject) -> Boolean)? = null,
+        extraCondition: ((SimulationObject<*>, SimulationObject<*>) -> Boolean)? = null,
     ) {
         val pending = HashSet(cells.filter { it.hasObject(type) })
         val queue = ArrayDeque<Cell>()
@@ -1057,63 +1237,6 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
     }
 
     /**
-     * Gets the cell at the specified CellPos.
-     * @return The cell, if found, or throws an exception, if the cell does not exist.
-     * */
-    fun getCell(pos: LocatorSet): Cell {
-        val result = posCells[pos]
-
-        if (result == null) {
-            LOG.error("Could not get cell at $pos") // exception may be swallowed
-            error("Could not get cell at $pos")
-        }
-
-        return result
-    }
-
-    /**
-     * Removes a cell from the internal sets, and invalidates the saved data.
-     * **This does not update the solver!
-     * It is assumed that multiple operations of this type will be performed, then,
-     * the solver update will occur explicitly.**
-     * The simulation must be stopped before calling this.
-     * */
-    fun removeCell(cell: Cell) {
-        validateMutationAccess()
-
-        cells.remove(cell)
-        posCells.remove(cell.pos)
-        manager.setDirty()
-    }
-
-    /**
-     * Adds a cell to the internal sets, assigns its graph, and invalidates the saved data.
-     * **This does not update the solver!
-     * It is assumed that multiple operations of this type will be performed, then,
-     * the solver update will occur explicitly.**
-     * The simulation must be stopped before calling this.
-     * */
-    fun addCell(cell: Cell) {
-        validateMutationAccess()
-
-        cells.add(cell)
-        cell.graph = this
-        posCells[cell.pos] = cell
-        manager.setDirty()
-    }
-
-    /**
-     * Copies the cells of this graph to the other graph, and invalidates the saved data.
-     * The simulation must be stopped before calling this.
-     * */
-    fun copyTo(graph: CellGraph) {
-        validateMutationAccess()
-
-        graph.cells.addAll(cells)
-        manager.setDirty()
-    }
-
-    /**
      * Removes the graph from tracking and invalidates the saved data.
      * The simulation must be stopped before calling this.
      * */
@@ -1125,7 +1248,7 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
     }
 
     fun ensureStopped() {
-        if (isSimRunning) {
+        if (isSimulating) {
             stopSimulation()
         }
     }
@@ -1135,14 +1258,14 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
      * Will result in an error if it was not running.
      * */
     fun stopSimulation() {
-        if (simTask == null) {
+        if (simulationTask == null) {
             error("Tried to stop simulation, but it was not running")
         }
 
-        simStopLock.lock()
-        simTask!!.cancel(true)
-        simTask = null
-        simStopLock.unlock()
+        simulationStopLock.lock()
+        simulationTask!!.cancel(true)
+        simulationTask = null
+        simulationStopLock.unlock()
 
         LOG.info("Stopped simulation for $this")
     }
@@ -1151,11 +1274,11 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
      * Starts the simulation. Will result in an error if it is already running.,
      * */
     fun startSimulation() {
-        if (simTask != null) {
+        if (simulationTask != null) {
             error("Tried to start simulation, but it was already running")
         }
 
-        simTask = pool.scheduleAtFixedRate(this::update, 0, 10, TimeUnit.MILLISECONDS)
+        simulationTask = pool.scheduleAtFixedRate(this::update, 0, 10, TimeUnit.MILLISECONDS)
 
         LOG.info("Started simulation for $this")
     }
@@ -1165,8 +1288,13 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
      * The previous running state is preserved; if the simulation was paused, it will not be started after the [action] is completed.
      * If it was running, then the simulation will resume.
      * */
+    @OptIn(ExperimentalContracts::class)
     fun runSuspended(action: (() -> Unit)) {
-        val running = isSimRunning
+        contract {
+            callsInPlace(action)
+        }
+
+        val running = isSimulating
 
         if (running) {
             stopSimulation()
@@ -1184,7 +1312,7 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
     fun toNbt(): CompoundTag {
         val circuitCompound = CompoundTag()
 
-        require(!isSimRunning)
+        require(!isSimulating)
 
         circuitCompound.putUUID(NBT_ID, id)
 
@@ -1196,11 +1324,11 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
 
             cell.connections.forEach { conn ->
                 val connectionCompound = CompoundTag()
-                connectionCompound.putLocatorSet(NBT_POSITION, conn.pos)
+                connectionCompound.putLocatorSet(NBT_POSITION, conn.locator)
                 connectionsTag.add(connectionCompound)
             }
 
-            cellTag.putLocatorSet(NBT_POSITION, cell.pos)
+            cellTag.putLocatorSet(NBT_POSITION, cell.locator)
             cellTag.putString(NBT_ID, cell.id.toString())
             cellTag.put(NBT_CONNECTIONS, connectionsTag)
 
@@ -1219,7 +1347,7 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
     }
 
     fun serverStop() {
-        if (simTask != null) {
+        if (simulationTask != null) {
             stopSimulation()
         }
     }
@@ -1261,15 +1389,17 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
         )
 
         fun fromNbt(graphCompound: CompoundTag, manager: CellGraphManager, level: ServerLevel): CellGraph {
-            val id = graphCompound.getUUID(NBT_ID)
-            val result = CellGraph(id, manager, level)
+            val graphId = graphCompound.getUUID(NBT_ID)
+            val result = CellGraph(graphId, manager, level)
+
+            result.isLoading = true
 
             val cellListTag = graphCompound.get(NBT_CELLS) as ListTag?
                 ?: // No cells are available
                 return result
 
             // Used to assign the connections after all cells have been loaded:
-            val cellConnections = HashMap<Cell, ArrayList<LocatorSet>>()
+            val cellConnections = HashMap<Cell, ArrayList<Locator>>()
 
             // Used to load cell custom data:
             val cellData = HashMap<Cell, CompoundTag>()
@@ -1279,7 +1409,7 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
                 val pos = cellCompound.getLocatorSet(NBT_POSITION)
                 val cellId = ResourceLocation.tryParse(cellCompound.getString(NBT_ID))!!
 
-                val connectionPositions = ArrayList<LocatorSet>()
+                val connectionPositions = ArrayList<Locator>()
                 val connectionsTag = cellCompound.get(NBT_CONNECTIONS) as ListTag
 
                 connectionsTag.forEach {
@@ -1288,9 +1418,9 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
                     connectionPositions.add(connectionPos)
                 }
 
-                val cell = CellRegistry.getProvider(cellId).create(
+                val cell = CellRegistry.getCellProvider(cellId).create(
                     pos,
-                    BiomeEnvironments.cellEnv(level, pos).fieldMap()
+                    BiomeEnvironments.getInformationForBlock(level, pos).fieldMap()
                 )
 
                 cellConnections[cell] = connectionPositions
@@ -1304,9 +1434,9 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
             cellConnections.forEach { (cell, connectionPositions) ->
                 val connections = ArrayList<Cell>(connectionPositions.size)
 
-                connectionPositions.forEach { connections.add(result.getCell(it)) }
+                connectionPositions.forEach { connections.add(result.getCellByLocator(it)) }
 
-                // now set graph and connection
+                // Now set graph and connection
                 cell.graph = result
                 cell.connections = connections
                 cell.update(connectionsChanged = true, graphChanged = true)
@@ -1316,11 +1446,12 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
                 } catch (t: Throwable) {
                     LOG.error("Cell loading exception: $t")
                 }
-
-                cell.onLoadedFromDisk()
             }
 
+            result.cells.forEach { it.onLoadedFromDisk() }
             result.cells.forEach { it.create() }
+
+            result.isLoading = false
 
             return result
         }
@@ -1440,34 +1571,44 @@ class CellGraphManager(val level: ServerLevel) : SavedData() {
                 val graphCompound = circuitNbt as CompoundTag
                 val graph = CellGraph.fromNbt(graphCompound, manager, level)
 
-                if (graph.cells.isEmpty()) {
+                if (graph.isEmpty()) {
                     LOG.error("Loaded circuit with no cells!")
                     return@forEach
                 }
 
                 manager.addGraph(graph)
 
-                LOG.info("Loaded ${graph.cells.size} cells for ${graph.id}!")
+                LOG.info("Loaded ${graph.size} cells for ${graph.id}!")
             }
 
             manager.graphs.values.forEach {
-                it.cells.forEach { cell -> cell.onWorldLoadedPreSolver() }
+                it.forEach { cell ->
+                    cell.onWorldLoadedPreSolver()
+                }
             }
 
             manager.graphs.values.forEach { it.buildSolver() }
 
             manager.graphs.values.forEach {
-                it.cells.forEach { cell -> cell.onWorldLoadedPostSolver() }
+                it.forEach { cell ->
+                    cell.onWorldLoadedPostSolver()
+                }
             }
 
             manager.graphs.values.forEach {
-                it.cells.forEach { cell -> cell.onWorldLoadedPreSim() }
+                it.forEach { cell ->
+                    cell.onWorldLoadedPreSim()
+                }
             }
 
-            manager.graphs.values.forEach { it.startSimulation() }
+            manager.graphs.values.forEach {
+                it.startSimulation()
+            }
 
             manager.graphs.values.forEach {
-                it.cells.forEach { cell -> cell.onWorldLoadedPostSim() }
+                it.forEach { cell ->
+                    cell.onWorldLoadedPostSim()
+                }
             }
 
             return manager
@@ -1487,42 +1628,29 @@ class CellGraphManager(val level: ServerLevel) : SavedData() {
 /**
  * The Cell Provider is a factory of cells, and also has connection rules for cells.
  * */
-abstract class CellProvider {
-    val id get() = CellRegistry.getId(this)
-
-    protected abstract fun createInstance(ci: CellCreateInfo): Cell
+abstract class CellProvider<T : Cell> {
+    /**
+     * Gets the resource ID of this cell.
+     * */
+    val id get() = CellRegistry.getCellId(this)
 
     /**
-     * Creates a new Cell, at the specified position.
+     * Creates a new instance of the cell.
      * */
-    fun create(pos: LocatorSet, envNode: DataFieldMap): Cell {
-        return createInstance(
-            CellCreateInfo(
-                pos,
-                id,
-                envNode
-            )
-        )
-    }
+    abstract fun create(ci: CellCreateInfo): T
+
+    fun create(locator: Locator, environment: HashDataTable) = create(CellCreateInfo(locator, id, environment))
 }
 
-/**
- * The cell factory is used by Cell Providers, to instantiate Cells.
- * Usually, the constructor of the cell can be passed as factory.
- * */
-fun interface CellFactory {
-    fun create(ci: CellCreateInfo): Cell
+class BasicCellProvider<T : Cell>(val factory: (CellCreateInfo) -> T) : CellProvider<T>() {
+    override fun create(ci: CellCreateInfo) = factory(ci)
 }
 
-class BasicCellProvider(private val factory: CellFactory) : CellProvider() {
-    override fun createInstance(ci: CellCreateInfo) = factory.create(ci)
-}
-
-class InjCellProvider<T : Cell>(val c: Class<T>, val extraParams: List<Any>) : CellProvider() {
+class InjectCellProvider<T : Cell>(val c: Class<T>, val extraParams: List<Any>) : CellProvider<T>() {
     constructor(c: Class<T>) : this(c, listOf())
 
     @Suppress("UNCHECKED_CAST")
-    override fun createInstance(ci: CellCreateInfo) =
+    override fun create(ci: CellCreateInfo) =
         ServiceCollection()
             .withSingleton { ci }
             .withSingleton { this }
@@ -1540,3 +1668,196 @@ const val EXTERNAL_PIN: Int = 1
 const val INTERNAL_PIN: Int = 0
 const val POSITIVE_PIN = EXTERNAL_PIN
 const val NEGATIVE_PIN = INTERNAL_PIN
+
+/**
+ * Generator model consisting of a Voltage Source + Resistor
+ * */
+open class VRGeneratorObject<C : Cell>(cell: Cell, val map: PoleMap) : ElectricalObject<Cell>(cell), WailaEntity, DataContainer {
+    private val resistor = ComponentHolder {
+        Resistor().also { it.resistance = resistanceExact }
+    }
+
+    private val source = ComponentHolder {
+        VoltageSource().also { it.potential = potentialExact }
+    }
+
+    /**
+     * Gets the exact resistance of the [resistor].
+     * */
+    var resistanceExact: Double = 1.0
+        set(value) {
+            field = value
+            resistor.ifPresent { it.resistance = value }
+        }
+
+    /**
+     * Gets the exact potential of the [resistor].
+     * */
+    var potentialExact: Double = 1.0
+        set(value) {
+            field = value
+            source.ifPresent { it.potential = value }
+        }
+
+    /**
+     * Updates the resistance if the deviation between the current resistance and [value] is larger than [eps].
+     * This should be used instead of setting [resistanceExact] whenever possible, because setting the resistance is expensive.
+     * @return True if the resistance was updated. Otherwise, false.
+     * */
+    fun updateResistance(value: Double, eps: Double = LIBAGE_SET_EPS): Boolean {
+        if(resistanceExact.approxEq(value, eps)) {
+            return false
+        }
+
+        resistanceExact = value
+
+        return true
+    }
+
+    /**
+     * Updates the potential if the deviation between the current potential and [value] is larger than [eps].
+     * Using this instead of setting [potentialExact] doesn't have a large performance impact.
+     * @return True if the voltage was updated. Otherwise, false.
+     * */
+    fun updatePotential(value: Double, eps: Double = LIBAGE_SET_EPS): Boolean {
+        if(potentialExact.approxEq(value, eps)) {
+            return false
+        }
+
+        potentialExact = value
+
+        return true
+    }
+
+    val hasResistor get() = resistor.isPresent
+    val hasSource get() = source.isPresent
+
+    val resistorCurrent get() = if(resistor.isPresent) resistor.instance.current else 0.0
+    val sourceCurrent get() = if(source.isPresent) source.instance.current else 0.0
+
+    val resistorPower get() = if (resistor.isPresent) resistor.instance.power else 0.0
+    val sourcePower get() = if (source.isPresent) source.instance.power else 0.0
+
+    override val maxConnections = 2
+
+    /**
+     * Gets the offered component by evaluating the map.
+     * @return The resistor's external pin when the pole evaluates to *plus*. The source's negative pin when the pole evaluates to *minus*.
+     * */
+    override fun offerComponent(neighbour: ElectricalObject<*>): ElectricalComponentInfo =
+        when (map.evaluate(this.cell.locator, neighbour.cell.locator)) {
+            Pole.Plus -> resistor.offerExternal()
+            Pole.Minus -> source.offerNegative()
+        }
+
+    override fun clearComponents() {
+        resistor.clear()
+        source.clear()
+    }
+
+    override fun addComponents(circuit: Circuit) {
+        circuit.add(resistor)
+        circuit.add(source)
+    }
+
+    override fun build() {
+        resistor.connectInternal(source.offerPositive())
+        super.build()
+    }
+
+    override val dataNode = data {
+        it.withField(VoltageField {
+            potentialExact
+        })
+
+        it.withField(CurrentField {
+            sourceCurrent
+        })
+
+        it.withField(ResistanceField {
+            resistanceExact
+        })
+
+        it.withField(PowerField {
+            sourcePower
+        })
+    }
+}
+
+open class PVSObject<C : Cell>(cell: Cell, val map: PoleMap) : ElectricalObject<Cell>(cell), WailaEntity, DataContainer {
+    private val source = ComponentHolder {
+        PowerVoltageSource().also {
+            it.potentialMax = potentialMaxExact
+            it.powerIdeal = powerIdealExact
+        }
+    }
+
+    var potentialMaxExact: Double = 0.0
+        set(value) {
+            field = value
+            source.ifPresent { it.potentialMax = value }
+        }
+
+    var powerIdealExact: Double = 0.0
+        set(value) {
+            field = value
+            source.ifPresent { it.powerIdeal = value }
+        }
+
+    fun updatePotentialMax(value: Double, eps: Double = LIBAGE_SET_EPS): Boolean {
+        if(potentialMaxExact.approxEq(value, eps)) {
+            return false
+        }
+
+        potentialMaxExact = value
+
+        return true
+    }
+
+    fun updatePowerIdeal(value: Double, eps: Double = LIBAGE_SET_EPS): Boolean {
+        if(powerIdealExact.approxEq(value, eps)) {
+            return false
+        }
+
+        powerIdealExact = value
+
+        return true
+    }
+
+    fun solve() : Boolean = if(source.isPresent) source.instance.solve() else false
+
+    val hasSource get() = source.isPresent
+    val sourceCurrent get() = if(source.isPresent) source.instance.current else 0.0
+    val sourcePower get() = if (source.isPresent) source.instance.power else 0.0
+
+    override val maxConnections = 2
+
+    /**
+     * Gets the offered component by evaluating the map.
+     * @return The resistor's external pin when the pole evaluates to *plus*. The source's negative pin when the pole evaluates to *minus*.
+     * */
+    override fun offerComponent(neighbour: ElectricalObject<*>): ElectricalComponentInfo =
+        when (map.evaluate(this.cell.locator, neighbour.cell.locator)) {
+            Pole.Plus -> source.offerPositive()
+            Pole.Minus -> source.offerNegative()
+        }
+
+    override fun clearComponents() {
+        source.clear()
+    }
+
+    override val dataNode = data {
+        it.withField(VoltageField {
+            potentialMaxExact
+        })
+
+        it.withField(CurrentField {
+            sourceCurrent
+        })
+
+        it.withField(PowerField {
+            sourcePower
+        })
+    }
+}
+

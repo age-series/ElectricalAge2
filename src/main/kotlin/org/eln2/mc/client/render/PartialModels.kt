@@ -1,23 +1,22 @@
 package org.eln2.mc.client.render
 
 import com.jozufozu.flywheel.core.PartialModel
-import org.eln2.mc.mathematics.bbSize
+import net.minecraftforge.server.ServerLifecycleHooks
+import org.eln2.mc.client.render.foundation.PolarModel
+import org.eln2.mc.client.render.foundation.WireConnectionModelPartial
+import org.eln2.mc.common.content.WireConnectionModel
+import org.eln2.mc.common.content.WirePatchType
+import org.eln2.mc.common.content.WirePolarPatchModel
 import org.eln2.mc.resource
 
-object PartialModels {
-    val ELECTRICAL_WIRE_CROSSING_EMPTY = partialBlock("wire/electrical/wire_crossing_empty")
-    val ELECTRICAL_WIRE_CROSSING_SINGLE_WIRE = partialBlock("wire/electrical/wire_crossing_single")
-    val ELECTRICAL_WIRE_STRAIGHT = partialBlock("wire/electrical/wire_straight")
-    val ELECTRICAL_WIRE_CORNER = partialBlock("wire/electrical/wire_corner")
-    val ELECTRICAL_WIRE_CROSSING = partialBlock("wire/electrical/wire_crossing")
-    val ELECTRICAL_WIRE_CROSSING_FULL = partialBlock("wire/electrical/wire_crossing_full")
+typealias RenderTypedPartialModel = DefaultRenderTypePartialModel<PartialModel>
 
-    val THERMAL_WIRE_CROSSING_EMPTY = partialBlock("wire/thermal/wire_crossing_empty")
-    val THERMAL_WIRE_CROSSING_SINGLE_WIRE = partialBlock("wire/thermal/wire_crossing_single")
-    val THERMAL_WIRE_STRAIGHT = partialBlock("wire/thermal/wire_straight")
-    val THERMAL_WIRE_CORNER = partialBlock("wire/thermal/wire_corner")
-    val THERMAL_WIRE_CROSSING = partialBlock("wire/thermal/wire_crossing")
-    val THERMAL_WIRE_CROSSING_FULL = partialBlock("wire/thermal/wire_crossing_full")
+object PartialModels {
+    val ELECTRICAL_WIRE_HUB = partialBlock("wire/electrical/hub")
+    val ELECTRICAL_WIRE_CONNECTION = wireConnection("wire/electrical/connection_hub", "wire/electrical/connection_full")
+
+    val THERMAL_WIRE_HUB = partialBlock("wire/thermal/hub")
+    val THERMAL_WIRE_CONNECTION = wireConnection("wire/thermal/connection_hub", "wire/thermal/connection_full")
 
     val BATTERY = partialBlock("battery/lead_acid")
 
@@ -36,21 +35,62 @@ object PartialModels {
 
     val SOLAR_PANEL_ONE_BLOCK = partialBlock("solar_panel_one_block")
 
-    private fun partial(path: String): PartialModel {
-        return PartialModel(resource(path))
+    val GRID_TAP_BODY = partialBlock("grid_tap_body")
+    val GRID_TAP_CONNECTION = patchPartial("grid_tap_connection")
+
+    val SMALL_GARDEN_LIGHT = partialBlock("small_garden_light")
+    val TALL_GARDEN_LIGHT_EMITTER = partialBlock("tall_garden_light_emitter")
+    val TALL_GARDEN_LIGHT_CAGE = partialBlock("tall_garden_light_cage")
+
+    private fun partial(path: String) = PartialModel(resource(path))
+
+    fun partialBlock(path: String) = PartialModel(resource("block/$path"))
+
+    fun polarBlock(path: String) = PolarModel(resource("block/$path"))
+
+    fun wireConnection(connectionHub: String, connectionFull: String): WireConnectionModel {
+        val hubResourceLocation = resource("block/$connectionHub")
+        val fullResourceLocation = resource("block/$connectionFull")
+
+       return WireConnectionModel(
+            PolarModel(hubResourceLocation),
+            WirePolarPatchModel(hubResourceLocation, WirePatchType.Inner),
+            WirePolarPatchModel(hubResourceLocation, WirePatchType.Wrapped),
+            PolarModel(fullResourceLocation),
+            WirePolarPatchModel(fullResourceLocation, WirePatchType.Inner),
+            WirePolarPatchModel(fullResourceLocation, WirePatchType.Wrapped)
+        )
     }
 
-    fun partialBlock(path: String): PartialModel {
-        return PartialModel(resource("block/$path"))
+    fun patchPartial(connection: String): WireConnectionModelPartial {
+        val resourceLocation = resource("block/$connection")
+
+        return WireConnectionModelPartial(
+            PolarModel(resourceLocation),
+            WirePolarPatchModel(resourceLocation, WirePatchType.Inner),
+            WirePolarPatchModel(resourceLocation, WirePatchType.Wrapped)
+        )
     }
 
-    fun initialize() {}
-
-    fun bbOffset(height: Int): Double {
-        return bbOffset(height.toDouble())
-    }
-
-    fun bbOffset(height: Double): Double {
-        return bbSize(height) / 2
+    fun initialize() {
+        ServerLifecycleHooks.getCurrentServer()?.also { server ->
+            require(!server.isSameThread) {
+                "Initializing partial models in server thread"
+            }
+        }
     }
 }
+
+enum class RenderTypeType {
+    Solid,
+    Cutout,
+    Transparent
+}
+
+// find better name
+data class DefaultRenderTypePartialModel<Model : PartialModel>(val partial : Model, val type: RenderTypeType)
+
+fun<T : PartialModel> T.solid() = DefaultRenderTypePartialModel<T>(this, RenderTypeType.Solid)
+fun<T : PartialModel> T.cutout() = DefaultRenderTypePartialModel<T>(this, RenderTypeType.Cutout)
+fun<T : PartialModel> T.transparent() = DefaultRenderTypePartialModel<T>(this, RenderTypeType.Transparent)
+

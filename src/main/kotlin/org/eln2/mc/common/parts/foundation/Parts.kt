@@ -1,13 +1,15 @@
 package org.eln2.mc.common.parts.foundation
 
 import com.jozufozu.flywheel.core.PartialModel
-import com.jozufozu.flywheel.core.materials.FlatLit
+import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap
 import mcp.mobius.waila.api.IPluginConfig
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
+import net.minecraft.core.Vec3i
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.level.ServerLevel
+import net.minecraft.util.RandomSource
 import net.minecraft.world.InteractionHand
 import net.minecraft.world.InteractionResult
 import net.minecraft.world.entity.player.Player
@@ -18,8 +20,6 @@ import net.minecraft.world.phys.Vec3
 import net.minecraft.world.phys.shapes.Shapes
 import net.minecraft.world.phys.shapes.VoxelShape
 import org.eln2.mc.*
-import org.eln2.mc.client.render.foundation.BasicPartRenderer
-import org.eln2.mc.client.render.foundation.MultipartBlockEntityInstance
 import org.eln2.mc.common.blocks.foundation.MultipartBlockEntity
 import org.eln2.mc.common.cells.foundation.Cell
 import org.eln2.mc.common.cells.foundation.CellGraphManager
@@ -33,35 +33,34 @@ import org.eln2.mc.data.*
 import org.eln2.mc.integration.WailaEntity
 import org.eln2.mc.integration.WailaTooltipBuilder
 import org.eln2.mc.mathematics.Base6Direction3d
-import org.eln2.mc.mathematics.DirectionMask
+import org.eln2.mc.mathematics.BlockPosInt
 import org.joml.AxisAngle4f
 import org.joml.Quaternionf
 import org.joml.Vector3f
 import java.util.*
 import kotlin.math.PI
+import net.minecraft.world.level.block.Block
+import org.eln2.mc.client.render.foundation.*
+import org.eln2.mc.common.cells.foundation.CellNeighborInfo
+import org.eln2.mc.mathematics.Base6Direction3dMask
+import org.eln2.mc.mathematics.Vector3d
 
 /**
  * Encapsulates all the data associated with a part's placement.
  * */
 data class PartPlacementInfo(
-    /**
-     * The final position of the part. It is one block along the normal, starting from the clicked block.
-     * */
-    val pos: BlockPos,
-
-    /**
-     * The clicked face of the block.
-     * */
+    val position: BlockPos,
     val face: Direction,
     val horizontalFacing: Direction,
     val level: Level,
     val multipart: MultipartBlockEntity,
+    val provider: PartProvider
 ) {
-    fun createDescriptor() = LocatorSet().apply {
-        withLocator(pos)
+    fun createLocator() = LocatorSetBuilder().apply {
+        withLocator(position)
         withLocator(FacingLocator(horizontalFacing)) // is this right?
         withLocator(face)
-    }
+    }.build()
 }
 
 enum class PartUpdateType(val id: Int) {
@@ -86,13 +85,22 @@ object PartGeometry {
     /**
      * @see Part.modelBoundingBox
      * */
-    fun modelBoundingBox(sizeActual: Vec3, facingWorld: Direction, faceWorld: Direction): AABB {
+    fun modelBoundingBox(sizeActual: Vector3d, facingWorld: Direction, faceWorld: Direction): AABB {
         val center = Vec3(0.0, 0.0, 0.0)
-        val halfSize = sizeActual / 2.0
+        val sizeActualMc = sizeActual.toVec3()
+        val halfSize = sizeActualMc / 2.0
         return AABB(center - halfSize, center + halfSize)
             .transformed(facingRotation(facingWorld))
-            .transformed(faceWorld.rotation)
+            .transformed(faceWorld.rotation.toJoml())
             .move(faceOffset(sizeActual, faceWorld))
+    }
+
+    fun facingRotationLog(facingWorld: Direction) = when (facingWorld) {
+        Direction.NORTH -> 0.0
+        Direction.SOUTH -> PI
+        Direction.WEST -> PI / 2.0
+        Direction.EAST -> -PI / 2.0
+        else -> error("Invalid horizontal facing $facingWorld")
     }
 
     /**
@@ -100,18 +108,12 @@ object PartGeometry {
      * */
     fun facingRotation(facingWorld: Direction) = Quaternionf(
         AxisAngle4f(
-            when (facingWorld) {
-                Direction.NORTH -> 0.0
-                Direction.SOUTH -> PI
-                Direction.WEST -> PI / 2.0
-                Direction.EAST -> -PI / 2.0
-                else -> error("Invalid horizontal facing $facingWorld")
-            }.toFloat(),
+            facingRotationLog(facingWorld).toFloat(),
             Vector3f(0.0f, 1.0f, 0.0f)
         )
     )
 
-    fun faceOffset(sizeActual: Vec3, faceWorld: Direction): Vec3 {
+    fun faceOffset(sizeActual: Vector3d, faceWorld: Direction): Vec3 {
         val halfSize = sizeActual / 2.0
 
         val positiveOffset = halfSize.y
@@ -140,26 +142,26 @@ object PartGeometry {
         }
     }
 
-    fun gridBoundingBox(sizeActual: Vec3, facingWorld: Direction, faceWorld: Direction, posWorld: BlockPos): AABB =
+    fun worldBoundingBox(sizeActual: Vector3d, facingWorld: Direction, faceWorld: Direction, posWorld: BlockPos): AABB =
         modelBoundingBox(sizeActual, facingWorld, faceWorld).move(posWorld)
-
-    fun worldBoundingBox(sizeActual: Vec3, facingWorld: Direction, faceWorld: Direction, posWorld: BlockPos): AABB =
-        gridBoundingBox(sizeActual, facingWorld, faceWorld, posWorld).move(Vec3(-0.5, 0.0, -0.5))
-
-    fun getDirectionActual(actualFacingActual: Direction, faceWorld: Direction, dirWorld: Direction): Base6Direction3d =
-        Base6Direction3d.fromForwardUp(
-            actualFacingActual,
-            faceWorld,
-            dirWorld
-        )
 }
+
+data class PartCreateInfo(
+    val id: ResourceLocation,
+    val placement: PartPlacementInfo
+)
 
 /**
  * Parts are entity-like units that exist in a multipart entity. They are similar to normal block entities,
  * but up to 6 can exist in the same block space.
  * They are placed on the inner faces of a multipart container block space.
  * */
-abstract class Part<Renderer : PartRenderer>(val id: ResourceLocation, val placement: PartPlacementInfo) : DataEntity {
+abstract class Part<Renderer : PartRenderer>(ci: PartCreateInfo) : DataContainer {
+    val id = ci.id
+    val placement = ci.placement
+
+    private var cachedShape: VoxelShape? = null
+
     companion object {
         fun createPartDropStack(id: ResourceLocation, saveTag: CompoundTag?, count: Int = 1): ItemStack {
             val item = PartRegistry.getPartItem(id)
@@ -183,8 +185,7 @@ abstract class Part<Renderer : PartRenderer>(val id: ResourceLocation, val place
     }
 
     @ClientOnly
-    protected open fun registerPackets(builder: PacketHandlerBuilder) {
-    }
+    protected open fun registerPackets(builder: PacketHandlerBuilder) {}
 
     /**
      * Enqueues a bulk packet to be sent to the client.
@@ -207,20 +208,9 @@ abstract class Part<Renderer : PartRenderer>(val id: ResourceLocation, val place
         require(!placement.level.isClientSide) { "Tried to send bulk message from client" }
         BulkMessages.enqueuePartMessage(
             placement.level as ServerLevel,
-            PartMessage(placement.pos, placement.face, payload)
+            PartMessage(placement.position, placement.face, payload)
         )
     }
-
-    /**
-     * This is the size that will be used to create the bounding box for this part.
-     * It should not exceed the block size, but that is not enforced.
-     * */
-    abstract val sizeActual: Vec3
-
-    private var cachedShape: VoxelShape? = null
-
-    var brightness: Int = 0
-        private set
 
     /**
      * This gets the relative direction towards the global direction, taking into account the facing of this part.
@@ -228,7 +218,11 @@ abstract class Part<Renderer : PartRenderer>(val id: ResourceLocation, val place
      * @return The relative direction towards the global direction.
      * */
     fun getDirectionActual(dirWorld: Direction): Base6Direction3d {
-        return PartGeometry.getDirectionActual(placement.horizontalFacing, placement.face, dirWorld)
+        return Base6Direction3d.fromForwardUp(
+            placement.horizontalFacing,
+            placement.face,
+            dirWorld
+        )
     }
 
     /**
@@ -236,7 +230,11 @@ abstract class Part<Renderer : PartRenderer>(val id: ResourceLocation, val place
      * on the inner face. It is not translated to the position of the part in the world (it is a local frame)
      * */
     private val modelBoundingBox: AABB
-        get() = PartGeometry.modelBoundingBox(sizeActual, placement.horizontalFacing, placement.face)
+        get() = PartGeometry.modelBoundingBox(
+            placement.provider.placementCollisionSize,
+            placement.horizontalFacing,
+            placement.face
+        )
 
     /**
      * @return The local Y rotation due to facing.
@@ -246,28 +244,17 @@ abstract class Part<Renderer : PartRenderer>(val id: ResourceLocation, val place
     /**
      * @return The offset towards the placement face, calculated using the base size.
      * */
-    private val txFace: Vec3 get() = PartGeometry.faceOffset(sizeActual, placement.face)
+    private val faceOffset: Vec3 get() = PartGeometry.faceOffset(placement.provider.placementCollisionSize, placement.face)
 
     /**
      * This is the bounding box of the part, in its block position.
      * */
-    val gridBoundingBox: AABB
-        get() = PartGeometry.gridBoundingBox(
-            sizeActual,
-            placement.horizontalFacing,
-            placement.face,
-            placement.pos
-        )
-
-    /**
-     * This is the bounding box of the part, in final world coordinates.
-     * */
     val worldBoundingBox: AABB
         get() = PartGeometry.worldBoundingBox(
-            sizeActual,
+            placement.provider.placementCollisionSize,
             placement.horizontalFacing,
             placement.face,
-            placement.pos
+            placement.position
         )
 
     /**
@@ -287,25 +274,35 @@ abstract class Part<Renderer : PartRenderer>(val id: ResourceLocation, val place
      * Called when the part is right-clicked by a living entity.
      * */
     open fun onUsedBy(context: PartUseInfo): InteractionResult {
-        return InteractionResult.SUCCESS
+        return InteractionResult.FAIL
     }
 
     /**
-     * This method is used for saving the part.
+     * Saves the part data to the compound tag.
      * @return A compound tag with all the save data for this part, or null, if no data needs saving.
      * */
     @ServerOnly
-    open fun getSaveTag(): CompoundTag? {
-        return null
-    }
+    open fun getSaveTag(): CompoundTag? = null
 
     /**
-     * This method is called to restore the part data from the compound tag.
+     * Gets the synced data that should be sent when a client first loads the part.
+     * @return A compound tag with all the data, or null, if no data needs to be sent.
+     * */
+    @ServerOnly
+    open fun getInitialSyncTag(): CompoundTag? = getSyncTag()
+
+    /**
+     * Restore the part data from the compound tag.
      * This method is used on both logical sides. The client only receives this call
      * when the initial chunk synchronization happens.
      * @param tag The custom data tag, as created by getSaveTag.
      * */
-    open fun loadFromTag(tag: CompoundTag) {}
+    open fun loadFromTag(tag: CompoundTag) { }
+
+    /**
+     * Loads the synced data that was sent when the client first loaded this part, from [getInitialSyncTag].
+     * */
+    open fun loadInitialSyncTag(tag: CompoundTag) = loadFromTag(tag)
 
     /**
      * This method is called when this part is invalidated, and in need of synchronization to clients.
@@ -324,15 +321,14 @@ abstract class Part<Renderer : PartRenderer>(val id: ResourceLocation, val place
      * @param tag The custom data tag, as returned by the getSyncTag method on the server.
      * */
     @ClientOnly
-    open fun handleSyncTag(tag: CompoundTag) {
-    }
+    open fun handleSyncTag(tag: CompoundTag) { }
 
     /**
      * This method invalidates the saved data of the part.
      * This ensures that the part will be saved to the disk.
      * */
     @ServerOnly
-    fun invalidateSave() {
+    fun setSaveDirty() {
         if (placement.level.isClientSide) {
             error("Cannot save on the client")
         }
@@ -345,7 +341,7 @@ abstract class Part<Renderer : PartRenderer>(val id: ResourceLocation, val place
      * It results in calls to the *getSyncTag* **(server)** / *handleSyncTag* **(client)** combo.
      * */
     @ServerOnly
-    fun syncChanges() {
+    fun setSyncDirty() {
         if (placement.level.isClientSide) {
             error("Cannot sync changes from client to server!")
         }
@@ -355,28 +351,26 @@ abstract class Part<Renderer : PartRenderer>(val id: ResourceLocation, val place
 
     /**
      * This method invalidates the saved data and synchronizes to clients.
-     * @see invalidateSave
-     * @see syncChanges
+     * @see setSaveDirty
+     * @see setSyncDirty
      * */
     @ServerOnly
-    fun syncAndSave() {
-        syncChanges()
-        invalidateSave()
+    fun setSyncAndSaveDirty() {
+        setSyncDirty()
+        setSaveDirty()
     }
 
     /**
      *  Called on the server when the part is placed.
      * */
     @ServerOnly
-    open fun onPlaced() {
-    }
+    open fun onPlaced() {}
 
     /**
      * Called on the server when the part finished loading from disk
      * */
     @ServerOnly
-    open fun onLoaded() {
-    }
+    open fun onLoaded() {}
 
     /**
      * Called when this part is added to a multipart.
@@ -402,11 +396,19 @@ abstract class Part<Renderer : PartRenderer>(val id: ResourceLocation, val place
      * Called when this part is received and added to the client multipart, just before rendering set-up is enqueued.
      * */
     @ClientOnly
-    open fun onAddedToClient() {
+    open fun onAddedToClient() {}
+
+    /**
+     * Called when synchronization is suggested. This happens when a client enters the viewing area of the part.
+     * */
+    @ServerOnly
+    open fun onSyncSuggested() {
+        this.setSyncDirty()
     }
 
     @ClientOnly
-    private var cachedRenderer: Renderer? = null
+    protected var cachedRenderer: Renderer? = null
+        private set
 
     /**
      * Gets the renderer instance for this part.
@@ -421,6 +423,7 @@ abstract class Part<Renderer : PartRenderer>(val id: ResourceLocation, val place
 
             if (cachedRenderer == null) {
                 cachedRenderer = createRenderer()
+                initializeRenderer()
             }
 
             return cachedRenderer!!
@@ -433,22 +436,19 @@ abstract class Part<Renderer : PartRenderer>(val id: ResourceLocation, val place
     @ClientOnly
     abstract fun createRenderer(): Renderer
 
+    /**
+     * Called to initialize the [Renderer], right after it is created by [createRenderer]
+     * */
+    @ClientOnly
+    open fun initializeRenderer() { }
+
     @ClientOnly
     open fun destroyRenderer() {
         cachedRenderer?.remove()
         cachedRenderer = null
     }
 
-    /**
-     * Sends a light update to the multipart.
-     * */
-    fun updateBrightness(newValue: Int) {
-        brightness = newValue
-
-        placement.multipart.updateBrightness()
-    }
-
-    override val dataNode: DataNode = DataNode()
+    override val dataNode: HashDataNode = HashDataNode()
 }
 
 /**
@@ -469,7 +469,7 @@ abstract class PartProvider {
      * This is the size used to validate placement. This is different from baseSize, because
      * you can implement a visual placement margin here.
      * */
-    abstract val placementCollisionSize: Vec3
+    abstract val placementCollisionSize: Vector3d
 
     open fun canPlace(context: PartPlacementInfo): Boolean = true
 }
@@ -479,16 +479,16 @@ abstract class PartProvider {
  * Often, the part's constructor can be passed in as factory.
  * */
 open class BasicPartProvider(
-    val factory: ((id: ResourceLocation, context: PartPlacementInfo) -> Part<*>),
-    final override val placementCollisionSize: Vec3,
+    val factory: ((ci: PartCreateInfo) -> Part<*>),
+    final override val placementCollisionSize: Vector3d,
 ) : PartProvider() {
-    override fun create(context: PartPlacementInfo) = factory(id, context)
+    override fun create(context: PartPlacementInfo) = factory(PartCreateInfo(id, context))
 }
 
 /**
  * Represents a part that has a cell.
  * */
-interface PartCellContainer {
+interface PartCellContainer<C : Cell> {
     /**
      * This is the cell owned by the part.
      * */
@@ -502,7 +502,7 @@ interface PartCellContainer {
     /**
      * @return The provider associated with the cell.
      * */
-    val provider: CellProvider
+    val provider: CellProvider<C>
 
     /**
      * Indicates whether this part allows planar connections.
@@ -522,18 +522,31 @@ interface PartCellContainer {
      * */
     val allowWrappedConnections: Boolean
 
+    /**
+     * Called when the cell part is connected to another cell.
+     * */
     fun onConnected(remoteCell: Cell)
+
+    /**
+     * Called when the cell part is disconnected from another cell. This may happen when the part is being destroyed.
+     * */
     fun onDisconnected(remoteCell: Cell)
+
+    /**
+     * Called when the cell part is connected/disconnected. This is not called if the part is being destroyed.
+     * */
+    fun onConnectivityChanged() { }
+
+    fun addExtraConnections(results: MutableSet<CellNeighborInfo>) { }
 }
 
 /**
  * This part represents a simulation object. It can become part of a cell network.
  * */
-abstract class CellPart<Renderer : PartRenderer>(
-    id: ResourceLocation,
-    placement: PartPlacementInfo,
-    final override val provider: CellProvider,
-) : Part<Renderer>(id, placement), PartCellContainer, WailaEntity {
+abstract class CellPart<C: Cell, R : PartRenderer>(
+    ci: PartCreateInfo,
+    final override val provider: CellProvider<C>,
+) : Part<R>(ci), PartCellContainer<C>, WailaEntity {
     companion object {
         private const val GRAPH_ID = "GraphID"
         private const val CUSTOM_SIMULATION_DATA = "SimulationData"
@@ -544,12 +557,12 @@ abstract class CellPart<Renderer : PartRenderer>(
      * It only exists on the server (it is a simulation-only item)
      * */
     @ServerOnly
-    final override lateinit var cell: Cell
+    final override lateinit var cell: C
 
     final override val hasCell: Boolean
         get() = this::cell.isInitialized
 
-    val cellPos = placement.createDescriptor()
+    val cellPos = placement.createLocator()
 
     /**
      * Used by the loading procedures.
@@ -567,7 +580,7 @@ abstract class CellPart<Renderer : PartRenderer>(
      * Notifies the cell of the new container.
      * */
     override fun onPlaced() {
-        cell = provider.create(cellPos, BiomeEnvironments.cellEnv(placement.level, cellPos).fieldMap())
+        cell = provider.create(cellPos, BiomeEnvironments.getInformationForBlock(placement.level, cellPos).fieldMap())
         cell.container = placement.multipart
         isAlive = true
         acquireCell()
@@ -634,6 +647,7 @@ abstract class CellPart<Renderer : PartRenderer>(
     /**
      * This is the final stage of loading. We have the level, so we can fetch the cell using the saved data.
      * */
+    @Suppress("UNCHECKED_CAST")
     override fun onLoaded() {
         if (placement.level.isClientSide) {
             return
@@ -642,33 +656,47 @@ abstract class CellPart<Renderer : PartRenderer>(
         cell = if (!this::loadGraphId.isInitialized) {
             LOG.error("Part cell not initialized!")
             // Should we blow up the game?
-            provider.create(cellPos, BiomeEnvironments.cellEnv(placement.level, cellPos).fieldMap())
+            provider.create(cellPos, BiomeEnvironments.getInformationForBlock(placement.level, cellPos).fieldMap())
         } else {
             CellGraphManager.getFor(placement.level as ServerLevel)
                 .getGraph(loadGraphId)
-                .getCell(cellPos)
+                .getCellByLocator(cellPos) as C
         }
 
         cell.container = placement.multipart
         cell.onContainerLoaded()
 
-        if (customSimulationData != null) {
-            LOG.info(customSimulationData)
-            loadCustomSimData(customSimulationData!!)
-            customSimulationData = null
+        if (this.customSimulationData != null) {
+            loadCustomSimDataPre(customSimulationData!!)
         }
 
         isAlive = true
         acquireCell()
 
+        if (this.customSimulationData != null) {
+            loadCustomSimDataPost(customSimulationData!!)
+            this.customSimulationData = null
+        }
+
         cell.bindGameObjects(listOf(this, placement.multipart))
     }
 
+    /**
+     * Saves custom data to the simulation storage (separate from the block entity and chunks)
+     * */
     open fun saveCustomSimData(): CompoundTag? {
         return null
     }
 
-    open fun loadCustomSimData(tag: CompoundTag) {}
+    /**
+     * Loads custom data from the simulation storage, just before the cell is acquired.
+     * */
+    open fun loadCustomSimDataPre(tag: CompoundTag) {}
+
+    /**
+     * Loads custom data from the simulation storage, after the cell is acquired.
+     * */
+    open fun loadCustomSimDataPost(tag: CompoundTag) {}
 
     override fun appendWaila(builder: WailaTooltipBuilder, config: IPluginConfig?) {
         if (hasCell) {
@@ -694,60 +722,218 @@ abstract class CellPart<Renderer : PartRenderer>(
     override val allowWrappedConnections = true
 }
 
-
-open class BasicCellPart<R : PartRenderer>(
-    id: ResourceLocation,
-    placementContext: PartPlacementInfo,
-    override val sizeActual: Vec3,
-    provider: CellProvider,
+open class BasicCellPart<C: Cell, R : PartRenderer>(
+    ci: PartCreateInfo,
+    provider: CellProvider<C>,
     private val rendererFactory: PartRendererFactory<R>,
-) :
-    CellPart<R>(id, placementContext, provider) {
+) : CellPart<C, R>(ci, provider) {
     override fun createRenderer(): R {
         return rendererFactory.create(this)
     }
 }
 
+open class BasicConnectedCellPart<C : Cell>(
+    ci: PartCreateInfo,
+    provider: CellProvider<C>,
+    val body: PartialModel,
+    val connections: Map<Base6Direction3d, WireConnectionModelPartial>
+) : CellPart<C, ConnectedPartRenderer>(ci, provider) {
+    constructor(
+        ci: PartCreateInfo,
+        provider: CellProvider<C>,
+        body: PartialModel,
+        connection: WireConnectionModelPartial,
+        mask: Base6Direction3dMask
+    ) : this(ci, provider, body, mask.directionList.map { it.alias }.associateWith { connection })
+
+    constructor(
+        ci: PartCreateInfo,
+        provider: CellProvider<C>,
+        body: PartialModel,
+        connection: WireConnectionModelPartial
+    ) : this(ci, provider, body, connection, Base6Direction3dMask.HORIZONTALS)
+
+    override fun createRenderer(): ConnectedPartRenderer {
+        return ConnectedPartRenderer(
+            this,
+            body,
+            connections
+        )
+    }
+
+    override fun getSyncTag() = this.getConnectedPartTag()
+    override fun handleSyncTag(tag: CompoundTag) = this.handleConnectedPartTag(tag)
+    override fun onConnectivityChanged() = this.setSyncDirty()
+}
+
 /**
  * A connection mode represents the way two cells may be connected.
  * */
-enum class CellPartConnectionMode {
+enum class CellPartConnectionMode(val index: Int) {
+    /**
+     * The connection mode could not be identified.
+     * */
+    Unknown(0),
+
     /**
      * Planar connections are connections between units placed on the same plane, in adjacent containers.
      * */
-    Planar,
+    Planar(1),
 
     /**
      * Inner connections are connections between units placed on perpendicular faces in the same container.
      * */
-    Inner,
+    Inner(2),
 
     /**
      * Wrapped connections are connections between units placed on perpendicular faces of the same block.
      * Akin to a connection wrapping around the corner of the substrate block.
      * */
-    Wrapped,
+    Wrapped(3);
 
-    /**
-     * The connection mode could not be identified.
-     * */
-    Unknown
+    companion object {
+        val byId = values().toList()
+    }
 }
 
-data class CellPartConnectionInfo(
-    val mode: CellPartConnectionMode,
-    val actualDirActualPlr: Base6Direction3d,
-)
+private val DIRECTIONS = Direction.values()
 
-fun solveCellPartConnection(actualCell: Cell, remoteCell: Cell): CellPartConnectionInfo {
-    val actualPosWorld = actualCell.pos.requireLocator<BlockLocator>()
-    val remotePosWorld = remoteCell.pos.requireLocator<BlockLocator>()
-    val actualFaceWorld = actualCell.pos.requireLocator<FaceLocator>()
-    val remoteFaceWorld = remoteCell.pos.requireLocator<FaceLocator>()
+private val INCREMENT_FROM_FORWARD_UP = Int2IntOpenHashMap().also { map ->
+    for (facingWorld in DIRECTIONS) {
+        if(facingWorld.isVertical()) {
+            continue
+        }
 
+        DIRECTIONS.forEach { faceWorld ->
+            DIRECTIONS.forEach { direction ->
+                val direction3d = Vector3f(
+                    direction.stepX.toFloat(),
+                    direction.stepY.toFloat(),
+                    direction.stepZ.toFloat()
+                )
+
+                PartGeometry.facingRotation(facingWorld).transform(direction3d)
+                faceWorld.rotation.toJoml().transform(direction3d)
+
+                val result = Direction.getNearest(direction3d.x, direction3d.y, direction3d.z)
+
+                val id = BlockPosInt.pack(
+                    facingWorld.get3DDataValue(),
+                    faceWorld.get3DDataValue(),
+                    direction.get3DDataValue()
+                )
+
+                map[id] = result.get3DDataValue()
+            }
+        }
+    }
+}
+
+fun incrementFromForwardUp(facingWorld: Direction, faceWorld: Direction, direction: Direction): Direction {
+    val id = BlockPosInt.pack(
+        facingWorld.get3DDataValue(),
+        faceWorld.get3DDataValue(),
+        direction.get3DDataValue()
+    )
+
+    return Direction.from3DDataValue(INCREMENT_FROM_FORWARD_UP.get(id))
+}
+
+fun incrementFromForwardUp(facingWorld: Direction, faceWorld: Direction, direction: Base6Direction3d) = incrementFromForwardUp(facingWorld, faceWorld, direction.alias)
+
+@JvmInline
+value class PartConnectionDirection(val value: Int) {
+    val mode get() = CellPartConnectionMode.byId[(value and 3)]
+    val directionPart get() = Base6Direction3d.byId[(value shr 2)]
+
+    constructor(mode: CellPartConnectionMode, directionPart: Base6Direction3d) : this(mode.index or (directionPart.id shl 2))
+
+    fun toNbt(): CompoundTag {
+        val tag = CompoundTag()
+
+        tag.putBase6Direction(DIR, directionPart)
+        tag.putConnectionMode(MODE, mode)
+
+        return tag
+    }
+
+    fun getIncrement(facingWorld: Direction, faceWorld: Direction) = when(mode) {
+        CellPartConnectionMode.Unknown -> {
+            error("Undefined part connection")
+        }
+        CellPartConnectionMode.Planar -> {
+            incrementFromForwardUp(facingWorld, faceWorld, directionPart).normal
+        }
+        CellPartConnectionMode.Inner -> {
+            Vec3i.ZERO
+        }
+        CellPartConnectionMode.Wrapped ->{
+            val trWorld = incrementFromForwardUp(facingWorld, faceWorld, directionPart)
+            Vec3i(
+                trWorld.stepX - faceWorld.stepX,
+                trWorld.stepY - faceWorld.stepY,
+                trWorld.stepZ - faceWorld.stepZ
+            )
+        }
+    }
+
+    companion object {
+        private const val MODE = "mode"
+        private const val DIR = "dir"
+
+        fun fromNbt(tag: CompoundTag) = PartConnectionDirection(
+            tag.getConnectionMode(MODE),
+            tag.getDirectionActual(DIR),
+        )
+    }
+}
+
+fun getPartConnection(actualCell: Cell, remoteCell: Cell): PartConnectionDirection {
+    return getPartConnection(actualCell.locator, remoteCell.locator)
+}
+
+fun getPartConnection(actualCell: Locator, remoteCell: Locator): PartConnectionDirection {
+    val actualPosWorld = actualCell.requireLocator<BlockLocator>()
+    val remotePosWorld = remoteCell.requireLocator<BlockLocator>()
+    val actualFaceWorld = actualCell.requireLocator<FaceLocator>()
+    val remoteFaceWorld = remoteCell.requireLocator<FaceLocator>()
+    val remoteFacingWorld = actualCell.requireLocator<FacingLocator>()
+
+    return getPartConnection(
+        actualPosWorld,
+        remotePosWorld,
+        actualFaceWorld,
+        remoteFaceWorld,
+        remoteFacingWorld
+    )
+}
+
+fun getPartConnectionOrNull(actualCell: Locator, remoteCell: Locator): PartConnectionDirection? {
+    val actualPosWorld = actualCell.get<BlockLocator>() ?: return null
+    val remotePosWorld = remoteCell.get<BlockLocator>() ?: return null
+    val actualFaceWorld = actualCell.get<FaceLocator>() ?: return null
+    val remoteFaceWorld = remoteCell.get<FaceLocator>() ?: return null
+    val remoteFacingWorld = actualCell.get<FacingLocator>() ?: return null
+
+    return getPartConnection(
+        actualPosWorld,
+        remotePosWorld,
+        actualFaceWorld,
+        remoteFaceWorld,
+        remoteFacingWorld
+    )
+}
+
+fun getPartConnection(
+    actualPosWorld: BlockPos,
+    remotePosWorld: BlockPos,
+    actualFaceWorld: FaceLocator,
+    remoteFaceWorld: FaceLocator,
+    actualFacingWorld: FacingLocator
+) : PartConnectionDirection {
     val mode: CellPartConnectionMode
 
-    val dirGlobal = if (actualPosWorld == remotePosWorld) {
+    val dir = if (actualPosWorld == remotePosWorld) {
         if (actualFaceWorld == remoteFaceWorld) {
             error("Invalid configuration") // Cannot have multiple parts in same face, something is super wrong up the chain
         }
@@ -764,30 +950,26 @@ fun solveCellPartConnection(actualCell: Cell, remoteCell: Cell): CellPartConnect
             remoteFaceWorld.opposite
         }
     } else {
-        // They are planar if the normals match up.
-        // Wrapped parts have perpendicular normals.
+        // They are planar if the normals match up:
         if (actualFaceWorld == remoteFaceWorld) {
-            val txActualTarget = actualPosWorld.directionTo(remotePosWorld)
+            val direction = actualPosWorld.directionTo(remotePosWorld)
 
-            if (txActualTarget == null) {
-                // They are not in-plane, which means Unknown
+            if (direction == null) {
+                // They are not positioned correctly, which means Unknown:
                 mode = CellPartConnectionMode.Unknown
                 actualFaceWorld
             } else {
                 // This is planar:
                 mode = CellPartConnectionMode.Planar
-                txActualTarget
+                direction
             }
         } else {
-            // Scan for Wrapped connections. If those do not match, then Unknown.
-            val solution = DirectionMask.perpendicular(actualFaceWorld)
-                .directionList
-                .firstOrNull { (actualPosWorld + it - actualFaceWorld) == remotePosWorld }
+            val direction = Direction.fromNormal(remotePosWorld + actualFaceWorld - actualPosWorld)
 
-            if (solution != null) {
+            if (direction != null) {
                 // Solution was found, this is wrapped:
                 mode = CellPartConnectionMode.Wrapped
-                solution
+                direction
             } else {
                 mode = CellPartConnectionMode.Unknown
                 actualFaceWorld
@@ -795,12 +977,12 @@ fun solveCellPartConnection(actualCell: Cell, remoteCell: Cell): CellPartConnect
         }
     }
 
-    return CellPartConnectionInfo(
+    return PartConnectionDirection(
         mode,
         Base6Direction3d.fromForwardUp(
-            actualCell.pos.requireLocator<FacingLocator>().forwardWorld,
+            actualFacingWorld.forwardWorld,
             actualFaceWorld,
-            dirGlobal
+            dir
         )
     )
 }
@@ -808,73 +990,109 @@ fun solveCellPartConnection(actualCell: Cell, remoteCell: Cell): CellPartConnect
 /**
  * Represents a part that can be ticked by the multipart block entity.
  * @see MultipartBlockEntity.addTicker
- * @see MultipartBlockEntity.removeTicker
+ * @see MultipartBlockEntity.hasTicker
+ * @see MultipartBlockEntity.markRemoveTicker
  * */
 interface TickablePart {
     fun tick()
 }
 
 /**
- * Implemented by [Part]s that need to save data to the item.
+ * Represents a part that receives block animation ticks ([Block.animateTick]).
+ * @see MultipartBlockEntity.addAnimated
+ * @see MultipartBlockEntity.hasAnimated
+ * @see MultipartBlockEntity.markRemoveAnimated
  * */
-enum class PersistentPartLoadOrder {
+interface AnimatedPart {
+    fun animationTick(random: RandomSource)
+}
+
+enum class ItemPersistentPartLoadOrder {
+    /**
+     * The data is loaded before the simulation is built.
+     * */
     BeforeSim,
+    /**
+     * The data is loaded after the simulation is built.
+     * */
     AfterSim
 }
 
 interface ItemPersistentPart {
-    val order: PersistentPartLoadOrder
+    val order: ItemPersistentPartLoadOrder
 
-    fun saveItemTag(tag: CompoundTag)
+    /**
+     * Saves the part to an item tag.
+     * */
+    fun saveToItemNbt(tag: CompoundTag)
 
     /**
      * Loads the part from the item tag.
      * @param tag The saved tag. Null if no data was present in the item (possibly because the item was newly created)
      * */
-    fun loadItemTag(tag: CompoundTag?)
+    fun loadFromItemNbt(tag: CompoundTag?)
+}
+
+enum class RelightSource {
+    Setup,
+    BlockEvent
 }
 
 /**
  * This is the per-part renderer. One is created for every instance of a part.
- * The methods may be called from separate threads.
+ * The various methods may be called from separate threads.
  * Thread safety must be guaranteed by the implementation.
  * */
 @CrossThreadAccess
-interface PartRenderer {
-    fun isSetupWith(multipartBlockEntityInstance: MultipartBlockEntityInstance): Boolean
+abstract class PartRenderer {
+    lateinit var multipart: MultipartBlockEntityInstance
+        private set
+
+    val hasMultipart get() = this::multipart.isInitialized
+
+    fun isSetupWith(multipartBlockEntityInstance: MultipartBlockEntityInstance): Boolean {
+        return this::multipart.isInitialized && multipart == multipartBlockEntityInstance
+    }
 
     /**
      * Called when the part is picked up by the renderer.
      * @param multipart The renderer instance.
      * */
-    fun setupRendering(multipart: MultipartBlockEntityInstance)
+    fun setupRendering(multipart: MultipartBlockEntityInstance) {
+        this.multipart = multipart
+        setupRendering()
+    }
+
+    /**
+     * Called to set up rendering, when [multipart] has been acquired.
+     * */
+    protected open fun setupRendering() { }
+
+    /**
+     * Called when a light update occurs, or the part is set up (after [setupRendering]).
+     * Models should be re-lit here
+     * */
+    open fun relight(source: RelightSource) { }
 
     /**
      * Called each frame. This method may be used to animate parts or to
      * apply general per-frame updates.
      * */
-    fun beginFrame()
-
-    /**
-     * Called when a re-light is required.
-     * This happens when the light sources are changed.
-     * @return A list of models that need relighting, or null if none do so.
-     * */
-    fun relightModels(): List<FlatLit<*>>?
+    open fun beginFrame() { }
 
     /**
      * Called when the renderer is no longer required.
      * All resources must be released here.
      * */
-    fun remove()
+    abstract fun remove()
 }
 
 fun interface PartRendererFactory<R : PartRenderer> {
     fun create(part: Part<R>): R
 }
 
-fun basicPartRenderer(model: PartialModel, downOffset: Double): PartRendererFactory<BasicPartRenderer> {
+fun basicPartRenderer(model: PartialModel): PartRendererFactory<BasicPartRenderer> {
     return PartRendererFactory { part ->
-        BasicPartRenderer(part, model).also { it.downOffset = downOffset }
+        BasicPartRenderer(part, model)
     }
 }

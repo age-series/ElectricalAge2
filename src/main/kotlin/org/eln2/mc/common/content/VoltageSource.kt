@@ -1,32 +1,36 @@
 package org.eln2.mc.common.content
 
-import mcp.mobius.waila.api.IPluginConfig
-import net.minecraft.resources.ResourceLocation
 import org.ageseries.libage.sim.electrical.mna.Circuit
 import org.ageseries.libage.sim.electrical.mna.component.VoltageSource
+import org.eln2.mc.add
 import org.eln2.mc.client.render.PartialModels
-import org.eln2.mc.client.render.PartialModels.bbOffset
 import org.eln2.mc.client.render.foundation.BasicPartRenderer
 import org.eln2.mc.common.cells.foundation.*
 import org.eln2.mc.common.parts.foundation.CellPart
-import org.eln2.mc.common.parts.foundation.PartPlacementInfo
-import org.eln2.mc.data.DataEntity
-import org.eln2.mc.data.DataNode
+import org.eln2.mc.common.parts.foundation.PartCreateInfo
+import org.eln2.mc.data.DataContainer
 import org.eln2.mc.data.VoltageField
-import org.eln2.mc.data.withDirectionActualRule
+import org.eln2.mc.data.data
+import org.eln2.mc.data.withDirectionRulePlanar
 import org.eln2.mc.integration.WailaEntity
-import org.eln2.mc.integration.WailaTooltipBuilder
-import org.eln2.mc.mathematics.DirectionMask
-import org.eln2.mc.mathematics.bbVec
-import org.eln2.mc.voltageSource
+import org.eln2.mc.mathematics.Base6Direction3dMask
 
 /**
  * The voltage source object has a bundle of resistors, whose External Pins are exported to other objects, and
  * a voltage source, connected to the Internal Pins of the bundle.
  * */
-class VoltageSourceObject(cell: Cell) : ElectricalObject(cell), WailaEntity, DataEntity {
-    private lateinit var source: VoltageSource
-    val hasSource get() = this::source.isInitialized
+class VoltageSourceObject(cell: Cell) : ElectricalObject<Cell>(cell), WailaEntity, DataContainer {
+    override val dataNode = data {
+        it.withField(VoltageField {
+            source.value?.potential ?: 0.0
+        })
+    }
+
+    private val source = ComponentHolder {
+        VoltageSource().also {
+            it.potential = potential
+        }
+    }
 
     private val resistors = ResistorBundle(0.01, this)
 
@@ -36,9 +40,8 @@ class VoltageSourceObject(cell: Cell) : ElectricalObject(cell), WailaEntity, Dat
     var potential: Double = 1200.0
         set(value) {
             field = value
-
-            if (hasSource) {
-                source.potential = potential
+            if (source.isPresent) {
+                source.instance.potential = value
             }
         }
 
@@ -48,18 +51,14 @@ class VoltageSourceObject(cell: Cell) : ElectricalObject(cell), WailaEntity, Dat
      * */
     var resistance: Double
         get() = resistors.resistance
-        set(value) {
-            resistors.resistance = value
-        }
+        set(value) { resistors.resistance = value }
 
-    override fun offerComponent(neighbour: ElectricalObject): ElectricalComponentInfo {
+    override fun offerComponent(neighbour: ElectricalObject<*>): ElectricalComponentInfo {
         return resistors.getOfferedResistor(neighbour)
     }
 
     override fun clearComponents() {
-        source = VoltageSource()
-        source.potential = potential
-
+        source.clear()
         resistors.clear()
     }
 
@@ -70,37 +69,21 @@ class VoltageSourceObject(cell: Cell) : ElectricalObject(cell), WailaEntity, Dat
 
     override fun build() {
         source.ground(INTERNAL_PIN)
-
         resistors.connect(connections, this)
-        resistors.process { it.connect(INTERNAL_PIN, source, EXTERNAL_PIN) }
-    }
-
-    override fun appendWaila(builder: WailaTooltipBuilder, config: IPluginConfig?) {
-        builder.voltageSource(source)
-    }
-
-    override val dataNode = DataNode().also {
-        it.data.withField {
-            VoltageField { potential }
-        }
+        resistors.forEach { it.connect(INTERNAL_PIN, source.instance, EXTERNAL_PIN) }
     }
 }
 
 class VoltageSourceCell(ci: CellCreateInfo) : Cell(ci) {
-    @SimObject
-    val voltageSourceObj = VoltageSourceObject(this)
+    @SimObject @Inspect
+    val voltageSource = VoltageSourceObject(this)
 
     init {
-        ruleSet.withDirectionActualRule(DirectionMask.FRONT)
+        ruleSet.withDirectionRulePlanar(Base6Direction3dMask.FRONT)
     }
 }
 
-class VoltageSourcePart(id: ResourceLocation, placementContext: PartPlacementInfo) :
-    CellPart<BasicPartRenderer>(id, placementContext, Content.VOLTAGE_SOURCE_CELL.get()) {
+class VoltageSourcePart(ci: PartCreateInfo) : CellPart<VoltageSourceCell, BasicPartRenderer>(ci, Content.VOLTAGE_SOURCE_CELL.get()) {
 
-    override val sizeActual = bbVec(6.0, 2.5, 6.0)
-
-    override fun createRenderer() = BasicPartRenderer(this, PartialModels.VOLTAGE_SOURCE).also {
-        it.downOffset = bbOffset(2.5)
-    }
+    override fun createRenderer() = BasicPartRenderer(this, PartialModels.VOLTAGE_SOURCE)
 }

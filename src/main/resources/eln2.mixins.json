@@ -1,0 +1,16 @@
+{
+    "required": true,
+    "package": "org.eln2.mc.mixin",
+    "compatibilityLevel": "JAVA_17",
+    "refmap": "eln2.refmap.json",
+    "mixins": [
+        "MixinLayerLightEngine",
+        "MixinRebuildTask",
+        "MixinRenderType",
+        "MixinRenderRegionCache",
+        "MixinBlockPlaceContext"
+    ],
+    "client": [
+    ],
+    "minVersion": "0.8"
+}

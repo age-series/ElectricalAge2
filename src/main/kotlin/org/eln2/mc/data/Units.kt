@@ -2,6 +2,7 @@
 
 package org.eln2.mc.data
 
+import org.ageseries.libage.data.*
 import org.ageseries.libage.sim.Scale
 import org.ageseries.libage.sim.thermal.ThermalUnits
 import org.eln2.mc.formatted
@@ -108,88 +109,25 @@ fun valueText(value: Double, baseUnit: UnitType): String {
     } + baseUnit.unit
 }
 
-data class QuantityScale<Unit>(val scale: Scale) {
-    constructor(factor: Double, base: Double) : this(
-        Scale(factor, base)
-    )
-
-    val base get() = scale.base
-    val factor get() = scale.factor
-
-    operator fun times(mult: Double) = QuantityScale<Unit>(
-        scale.factor / mult,
-        scale.base
-    )
-
-    operator fun div(submult: Double) = QuantityScale<Unit>(
-        scale.factor * submult,
-        scale.base
-    )
-
-    operator fun unaryPlus() = this * 1000.0
-    operator fun unaryMinus() = this / 1000.0
-}
-
-interface Mass
-interface MolecularWeight
-interface Time
-interface Distance
-interface Velocity
-interface Energy
-interface Radioactivity
-interface RadiationAbsorbedDose
-interface RadiationDoseEquivalent
-interface RadiationExposure
-interface ArealDensity
-interface ReciprocalDistance
-interface ReciprocalArealDensity
-interface Density
-interface Substance
-interface Area
-interface Volume
-interface Temp
-interface MolarConcentration
-interface SpecificHeatCapacity
-interface HeatCapacity
-interface ThermalConductivity
-interface Pressure
-
-@JvmInline
-value class Quantity<Unit>(val value: Double) : Comparable<Quantity<Unit>> {
-    constructor(quantity: Double, s: QuantityScale<Unit>) : this(s.scale.unmap(quantity))
-
-    val isZero get() = value == 0.0
-    val isApproxZero get() = value approxEq 0.0
-
-    operator fun not() = value
-    operator fun unaryMinus() = Quantity<Unit>(-value)
-    operator fun unaryPlus() = Quantity<Unit>(+value)
-    operator fun plus(b: Quantity<Unit>) = Quantity<Unit>(this.value + b.value)
-    operator fun minus(b: Quantity<Unit>) = Quantity<Unit>(this.value - b.value)
-    operator fun times(scalar: Double) = Quantity<Unit>(this.value * scalar)
-    operator fun div(scalar: Double) = Quantity<Unit>(this.value / scalar)
-    operator fun div(b: Quantity<Unit>) = this.value / b.value
-    override operator fun compareTo(other: Quantity<Unit>) = value.compareTo(other.value)
-    operator fun compareTo(b: Double) = value.compareTo(b)
-    operator fun rangeTo(s: QuantityScale<Unit>) = s.scale.map(value)
-
-    fun format(decimals: Int = 3, scale: QuantityScale<Unit>? = null) =
-        if (scale == null) (!this).formatted(decimals)
-        else (this..scale).formatted(decimals)
-
-    override fun toString() = value.toString()
-
-    fun <U2> reparam(factor: Double = 1.0) = Quantity<U2>(value * factor)
-}
-
+/**
+ * Represents a physical quantity, characterised by a [Unit] and a dual number [values].
+ * */
 data class QuantityDual<Unit>(val values: Dual) {
     constructor(quantity: Dual, s: QuantityScale<Unit>) : this(s.scale.unmap(quantity))
 
     val isReal get() = values.isReal
+
+    /**
+     * Gets the real component of the quantity.
+     * */
     val value get() = values.value
+
     fun head(n: Int = 1) = values.head(n)
     fun tail(n: Int = 1) = values.tail(n)
 
+    /**
+     * Gets the dual value of this quantity.
+     * */
     operator fun not() = values
     operator fun plus(b: QuantityDual<Unit>) = QuantityDual<Unit>(this.values + b.values)
     operator fun plus(b: Quantity<Unit>) = QuantityDual<Unit>(this.values + b.value)
@@ -202,134 +140,16 @@ data class QuantityDual<Unit>(val values: Dual) {
     operator fun div(b: QuantityDual<Unit>) = this.values / b.values
     operator fun div(b: Quantity<Unit>) = this.values / b.value
     operator fun rangeTo(s: QuantityScale<Unit>) = s.scale.map(values)
+
+    /**
+     * Gets the [n]th value.
+     * */
     operator fun get(n: Int) = values[n]
 }
 
 fun <U> min(a: Quantity<U>, b: Quantity<U>) = Quantity<U>(min(!a, !b))
 fun <U> max(a: Quantity<U>, b: Quantity<U>) = Quantity<U>(max(!a, !b))
 fun <U> abs(q: Quantity<U>) = Quantity<U>(abs(!q))
-
-private fun <U> standard(factor: Double = 1.0, base: Double = 0.0) = QuantityScale<U>(factor, base)
-
-val KILOGRAMS = standard<Mass>()
-val GRAMS = -KILOGRAMS
-
-val SECOND = standard<Time>()
-val MILLISECONDS = -SECOND
-val MICROSECONDS = -MILLISECONDS
-val NANOSECONDS = -MICROSECONDS
-val MINUTES = SECOND * 60.0
-val HOURS = MINUTES * 60.0
-val DAYS = HOURS * 24.0
-
-val METER = standard<Distance>()
-val CENTIMETERS = METER / 100.0
-val MILLIMETERS = -METER
-
-val JOULE = standard<Energy>()
-val KILOJOULES = +JOULE
-val MEGAJOULES = +KILOJOULES
-val GIGAJOULES = +MEGAJOULES
-val WATT_SECONDS = QuantityScale<Energy>(JOULE.factor, 0.0)
-val WATT_MINUTES = WATT_SECONDS * 60.0
-val WATT_HOURS = WATT_MINUTES * 60.0
-val KW_HOURS = WATT_HOURS * 1000.0
-
-// Serious precision issues? Hope not! :Fish_Smug:
-val ELECTRON_VOLT = JOULE * 1.602176634e-19
-val KILO_ELECTRON_VOLT = JOULE * 1.602176634e-16
-val MEGA_ELECTRON_VOLT = JOULE * 1.602176634e-13
-val GIGA_ELECTRON_VOLT = JOULE * 1.602176634e-10
-val TERA_ELECTRON_VOLT = JOULE * 1.602176634e-7
-
-val BECQUEREL = standard<Radioactivity>()
-val KILOBECQUERELS = +BECQUEREL
-val MEGABECQUERELS = +KILOBECQUERELS
-val GIGABECQUERELS = +MEGABECQUERELS
-val TERABECQUERELS = +GIGABECQUERELS
-val CURIE = GIGABECQUERELS * 37.0
-val MILLICURIES = MEGABECQUERELS * 37.0
-val MICROCURIES = KILOBECQUERELS * 37.0
-val NANOCURIES = BECQUEREL * 37.0
-val KILOCURIES = +CURIE
-val MEGACURIES = +KILOCURIES
-val GIGACURIES = +MEGACURIES // Average conversation with Grissess (every disintegration is a cute dragon image)
-
-val GRAY = standard<RadiationAbsorbedDose>()
-val RAD = GRAY / 100.0
-
-val SIEVERT = standard<RadiationDoseEquivalent>()
-val MILLISIEVERTS = -SIEVERT
-val MICROSIEVERTS = -MILLISIEVERTS
-val REM = SIEVERT / 100.0
-val MILLIREM = -REM
-val MICROREM = -MILLIREM
-
-val COULOMB_PER_KG = standard<RadiationExposure>()
-val ROENTGEN = COULOMB_PER_KG / 3875.96899225
-
-val RECIP_METER = standard<ReciprocalDistance>()
-val RECIP_CENTIMETERS = RECIP_METER * 100.0
-
-val KG_PER_M2 = standard<ArealDensity>()
-val G_PER_CM2 = KG_PER_M2 * 10.0
-
-val KG_PER_M3 = standard<Density>()
-val G_PER_CM3 = KG_PER_M3 * 1000.0
-val G_PER_L = KG_PER_M3
-
-val M2_PER_KG = standard<ReciprocalArealDensity>()
-val CM2_PER_G = M2_PER_KG / 10.0
-
-val M_PER_S = standard<Velocity>()
-val KM_PER_S = +M_PER_S
-
-val MOLE = standard<Substance>()
-
-val MOLE_PER_M3 = standard<MolarConcentration>()
-
-val M2 = standard<Area>()
-
-val M3 = standard<Volume>()
-val LITERS = M3 / 1000.0
-val MILLILITERS = -LITERS
-
-val KELVIN = standard<Temp>()
-val CELSIUS = QuantityScale<Temp>(ThermalUnits.CELSIUS)
-
-val J_PER_KG_K = standard<SpecificHeatCapacity>()
-val J_PER_G_K = +J_PER_KG_K
-val KJ_PER_KG_K = +J_PER_KG_K
-
-val J_PER_K = standard<HeatCapacity>()
-
-val W_PER_M_K = standard<ThermalConductivity>()
-val mW_PER_M_K = -W_PER_M_K
-
-val KG_PER_MOLE = standard<MolecularWeight>()
-val G_PER_MOLE = -KG_PER_MOLE
-
-val PASCAL = standard<Pressure>()
-val ATMOSPHERES = PASCAL * 9.86923e-6
-
-operator fun <U> Quantity<U>.rangeTo(other: Quantity<U>) = ClosedQuantityRange(this, other)
-
-data class ClosedQuantityRange<T>(override val start: Quantity<T>, override val endInclusive: Quantity<T>) :
-    ClosedRange<Quantity<T>> {
-    val valueRange = !start..!endInclusive
-    override fun contains(value: Quantity<T>) = (!value) in valueRange
-    override fun isEmpty(): Boolean = valueRange.isEmpty()
-}
-
-val KG by ::KILOGRAMS
-val eV by ::ELECTRON_VOLT
-val keV by ::KILO_ELECTRON_VOLT
-val MeV by ::MEGA_ELECTRON_VOLT
-val GeV by ::GIGA_ELECTRON_VOLT
-val TeV by ::TERA_ELECTRON_VOLT
-
-val Pa by ::PASCAL
-val Atm by ::ATMOSPHERES
 
 fun parseTimeUnitOrNull(unit: String) = when (unit) {
     "days" -> DAYS
@@ -362,3 +182,36 @@ fun parseTempUnitOrNull(unit: String) = when (unit) {
 }
 
 fun parseTempUnit(unit: String) = parseTempUnitOrNull(unit) ?: error("Unrecognised temp unit $unit")
+
+interface Power
+val WATT = standardScale<Power>()
+val KILOWATT = +WATT
+
+interface Voltage
+val VOLT = standardScale<Voltage>()
+val KILOVOLT = +VOLT
+val MILLIVOLT = -VOLT
+
+interface Resistance
+val OHM = standardScale<Resistance>()
+val KILOOHM = +OHM
+val MEGAOHM = +KILOOHM
+val GIGAOHM = +MEGAOHM
+val MILLIOHM = -OHM
+
+interface Intensity
+val WATT_PER_M2 = standardScale<Intensity>()
+
+val kWh by ::KW_HOURS
+
+val KG by ::KILOGRAMS
+val eV by ::ELECTRON_VOLT
+val keV by ::KILO_ELECTRON_VOLT
+val MeV by ::MEGA_ELECTRON_VOLT
+val GeV by ::GIGA_ELECTRON_VOLT
+val TeV by ::TERA_ELECTRON_VOLT
+
+val Pa by ::PASCAL
+val Atm by ::ATMOSPHERES
+
+val kW by ::KILOWATT

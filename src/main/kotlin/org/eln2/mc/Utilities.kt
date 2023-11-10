@@ -1,5 +1,6 @@
 package org.eln2.mc
 
+import com.mojang.blaze3d.systems.RenderSystem
 import net.minecraft.core.BlockPos
 import net.minecraft.sounds.SoundEvent
 import net.minecraft.sounds.SoundEvents
@@ -16,23 +17,36 @@ import net.minecraft.world.level.block.entity.BlockEntityTicker
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
-import org.ageseries.libage.data.MultiMap
-import org.ageseries.libage.data.MutableSetMapMultiMap
+import net.minecraftforge.api.distmarker.Dist
+import net.minecraftforge.server.ServerLifecycleHooks
+import org.ageseries.libage.data.*
 import org.eln2.mc.data.CsvLoader
-import org.eln2.mc.data.NANOSECONDS
-import org.eln2.mc.data.Quantity
-import org.eln2.mc.data.Time
 import org.eln2.mc.mathematics.*
 import org.joml.Vector3f
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicInteger
+import kotlin.contracts.ExperimentalContracts
+import kotlin.contracts.InvocationKind
+import kotlin.contracts.contract
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.random.Random
 import kotlin.system.measureNanoTime
+
+fun randomFloat(min: Float, max: Float) = map(Random.nextFloat(), 0f, 1f, min, max)
 
 fun <T> all(vararg items: T, condition: (T) -> Boolean) = items.asList().all(condition)
 
-fun measureDuration(block: () -> Unit) = Quantity(
-    measureNanoTime(block).toDouble(), NANOSECONDS
-)
+@OptIn(ExperimentalContracts::class)
+fun measureDuration(block: () -> Unit) : Quantity<Time> {
+    contract {
+        callsInPlace(block, InvocationKind.EXACTLY_ONCE)
+    }
+
+    val result = measureNanoTime(block)
+
+    return Quantity(result.toDouble(), NANOSECONDS)
+}
 
 val digitRange = '0'..'9'
 val subscriptDigitRange = '₀'..'₉'
@@ -276,3 +290,92 @@ fun prepareBucket(
 
     player.level.playSound(null, pos, sound, source, 1.0F, 1.0F);
 }
+
+inline fun requireIsOnServerThread(message: () -> String) = require(ServerLifecycleHooks.getCurrentServer().isSameThread) {
+    message()
+}
+fun requireIsOnServerThread() = requireIsOnServerThread { "Requirement failed: not on server thread (${Thread.currentThread()})" }
+
+inline fun requireIsOnRenderThread(message: () -> String) = require(RenderSystem.isOnRenderThread(), message)
+
+fun requireIsOnRenderThread() = requireIsOnRenderThread { "Requirement failed: not on render thread (${Thread.currentThread()})" }
+
+fun<K, V> ConcurrentHashMap<K, V>.atomicRemoveIf(consumer: (Map.Entry<K, V>) -> Boolean) {
+    this.entries.forEach { entry ->
+        if(consumer(entry)) {
+            this.remove(entry.key, entry.value)
+        }
+    }
+}
+
+private fun validateSide(side: Dist) = when(side) {
+    Dist.CLIENT -> requireIsOnRenderThread {
+        "Accessed client only"
+    }
+    Dist.DEDICATED_SERVER -> requireIsOnServerThread {
+        "Accessed server only"
+    }
+}
+class SidedLazy<T>(factory: () -> T, val side: Dist) {
+    private val lazy = lazy(factory)
+
+    fun get() : T {
+        validateSide(side)
+        return lazy.value
+    }
+
+    operator fun invoke() = get()
+}
+
+class SidedHolder<T>(initialValue: T, val side: Dist) {
+    var value = initialValue
+        get() {
+            validateSide(side)
+            return field
+        }
+        set(value) {
+            validateSide(side)
+            field = value
+        }
+}
+
+fun<T> clientOnlyHolder(factory: () -> T) = SidedLazy(factory, Dist.CLIENT)
+fun<T> serverOnlyHolder(factory: () -> T) = SidedLazy(factory, Dist.DEDICATED_SERVER)
+fun<T> clientOnlyField(value: T) = SidedHolder(value, Dist.CLIENT)
+fun<T> serverOnlyField(value: T) = SidedHolder(value, Dist.DEDICATED_SERVER)
+
+private val UNIQUE_ID_ATOMIC = AtomicInteger()
+
+fun getUniqueId() = UNIQUE_ID_ATOMIC.getAndIncrement()
+
+inline fun<T> T?.requireNotNull(message: () -> String) : T {
+    require(this != null, message)
+    return this
+}
+
+enum class WeatherStateType {
+    Clear,
+    Rain,
+    Thunder
+}
+
+enum class DayNightStateType {
+    Day,
+    Night
+}
+
+fun Level.getWeatherStateType() =
+    if(this.isThundering) {
+        WeatherStateType.Thunder
+    } else if(this.isRaining) {
+        WeatherStateType.Rain
+    } else {
+        WeatherStateType.Clear
+    }
+
+fun Level.getDayNightStateType() =
+    if(this.isDay) {
+        DayNightStateType.Day
+    } else {
+        DayNightStateType.Night
+    }

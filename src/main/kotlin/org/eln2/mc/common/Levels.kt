@@ -151,7 +151,7 @@ class BlockStreamProvider(val level: LevelReader) {
         }
     }
 }
-
+// todo forgot this exists, do we remove?
 @Mod.EventBusSubscriber
 object BlockStreamEvents {
     @SubscribeEvent
@@ -168,8 +168,6 @@ object BlockStreamEvents {
         if (event.level.isClientSide) {
             return
         }
-
-        println("Dispatching EntityPlaceEvent $event")
 
         event.level.getEventSourceProvider().also { provider ->
             provider.gtDispatchEvent(
@@ -204,8 +202,6 @@ object BlockStreamEvents {
         if (event.level.isClientSide) {
             return
         }
-
-        println("Dispatching BreakEvent $event")
 
         event.level.getEventSourceProvider().also { provider ->
             provider.gtDispatchEvent(

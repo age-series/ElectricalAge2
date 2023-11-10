@@ -3,15 +3,20 @@ package org.eln2.mc
 import mcp.mobius.waila.api.IPluginConfig
 import org.ageseries.libage.data.biMapOf
 import org.ageseries.libage.sim.Material
+import org.ageseries.libage.sim.electrical.mna.Circuit
+import org.ageseries.libage.sim.electrical.mna.component.Component
 import org.ageseries.libage.sim.thermal.Temperature
 import org.ageseries.libage.sim.thermal.ThermalMass
-import org.eln2.mc.data.DataFieldMap
+import org.eln2.mc.data.HashDataTable
 import org.eln2.mc.integration.WailaEntity
 import org.eln2.mc.integration.WailaTooltipBuilder
 
+const val LARGE_RESISTANCE = 1e9
+
 object MaterialMapping {
     private val map = biMapOf(
-        "iron" to Material.IRON
+        "iron" to Material.IRON,
+        "copper" to Material.COPPER
     )
 
     fun getMaterial(name: String): Material {
@@ -38,15 +43,28 @@ val nullMaterial = Material(0.0, 0.0, 0.0, 0.0)
 fun nullThermalMass() = ThermalMass(nullMaterial, 0.0, 0.0)
 fun nullThermalBody() = ThermalBody(nullThermalMass(), 0.0)
 
+fun Material.hash(): Int {
+    val a = this.electricalResistivity
+    val b = this.thermalConductivity
+    val c = this.specificHeat
+    val d = this.density
+
+    var result = a.hashCode()
+    result = 31 * result + b.hashCode()
+    result = 31 * result + c.hashCode()
+    result = 31 * result + d.hashCode()
+    return result
+}
+
 class ThermalBody(var thermal: ThermalMass, var area: Double) : WailaEntity {
-    var temp: Temperature
+    var temperature: Temperature
         get() = thermal.temperature
         set(value) {
             thermal.temperature = value
         }
 
-    var tempK: Double
-        get() = temp.kelvin
+    var temperatureKelvin: Double
+        get() = temperature.kelvin
         set(value) {
             thermal.temperature = Temperature(value)
         }
@@ -66,12 +84,18 @@ class ThermalBody(var thermal: ThermalMass, var area: Double) : WailaEntity {
             return ThermalBody(ThermalMass(Material.COPPER), 0.5)
         }
 
-        fun createDefault(env: DataFieldMap): ThermalBody {
+        fun createDefault(env: HashDataTable): ThermalBody {
             return createDefault().also { b ->
-                env.get<EnvTemperatureField>()?.readTemperature()?.also {
-                    b.temp = it
+                env.getOrNull<EnvironmentalTemperatureField>()?.readTemperature()?.also {
+                    b.temperature = it
                 }
             }
         }
+    }
+}
+
+fun Circuit.addAll(components: Iterable<Component>) {
+    components.forEach {
+        this.add(it)
     }
 }

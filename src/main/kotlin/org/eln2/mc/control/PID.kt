@@ -2,57 +2,39 @@ package org.eln2.mc.control
 
 import net.minecraft.nbt.CompoundTag
 
-// P.S. this is mutable, so we adjust the instance in order to affect the controller
-// do we want immutability?
-data class PIDCoefficients(
-    var kP: Double = 0.0,
-    var kI: Double = 0.0,
-    var kD: Double = 0.0,
-) {
-    fun copy(): PIDCoefficients {
-        return PIDCoefficients(kP, kI, kD)
+class PIDController(var kP: Double, var kI: Double, var kD: Double) {
+    companion object {
+        private const val KP = "kP"
+        private const val KI = "kI"
+        private const val KD = "kD"
+        private const val ERROR_SUM = "errorSum"
+        private const val LAST_ERROR = "lastError"
+        private const val MIN_CONTROL = "minControl"
+        private const val MAX_CONTROL = "maxControl"
+
+        fun fromNbt(tag: CompoundTag) = PIDController(0.0, 0.0, 0.0).also { it.loadFromNbt(tag) }
     }
 
-    fun serializeNbt(): CompoundTag {
-        val tag = CompoundTag()
-
-        tag.putDouble("kP", kP)
-        tag.putDouble("kI", kI)
-        tag.putDouble("kD", kD)
-
-        return tag
-    }
-
-    fun deserializeNbt(tag: CompoundTag) {
-        kP = tag.getDouble("kP")
-        kI = tag.getDouble("kI")
-        kD = tag.getDouble("kD")
-    }
-}
-
-// TODO: PIDF (using a plant model)
-
-class PIDController(private val coefficients: PIDCoefficients) {
     private var errorSum = 0.0
     private var lastError = 0.0
 
+    /**
+     * Gets or sets the setpoint (desired value).
+     * */
     var setPoint = 0.0
 
-    fun computeError(value: Double): Double {
-        return setPoint - value
-    }
-
+    /**
+     * Gets or sets the minimum control signal returned by [update]
+     * */
     var minControl = Double.MIN_VALUE
-    var maxControl = Double.MAX_VALUE
 
     /**
-     * Runs an iteration of the PID Controller.
-     *
-     * @param value The current observed value.
-     * @return The control signal, that is to be applied to the plant.
-     */
+     * Gets or sets the maximum control signal returned by [update]
+     * */
+    var maxControl = Double.MAX_VALUE
+
     fun update(value: Double, dt: Double): Double {
-        val error = computeError(value)
+        val error = setPoint - value
 
         errorSum += (error + lastError) * 0.5 * dt
 
@@ -60,21 +42,31 @@ class PIDController(private val coefficients: PIDCoefficients) {
 
         lastError = error
 
-        var control = coefficients.kP * error +
-            coefficients.kI * errorSum +
-            coefficients.kD * derivative
-
-        control = control.coerceIn(minControl, maxControl)
-
-        return control
+        return (kP * error + kI * errorSum + kD * derivative).coerceIn(minControl, maxControl)
     }
 
-    fun unwind() {
+    fun reset() {
         errorSum = 0.0
         lastError = 0.0
     }
-}
 
-fun pid(kP: Double, kI: Double, kD: Double): PIDController {
-    return PIDController(PIDCoefficients(kP, kI, kD))
+    fun saveToNbt() = CompoundTag().also {
+        it.putDouble(KP, kP)
+        it.putDouble(KI, kI)
+        it.putDouble(KD, kD)
+        it.putDouble(ERROR_SUM, errorSum)
+        it.putDouble(LAST_ERROR, lastError)
+        it.putDouble(MIN_CONTROL, minControl)
+        it.putDouble(MAX_CONTROL, maxControl)
+    }
+
+    fun loadFromNbt(tag: CompoundTag) {
+        kP = tag.getDouble(KP)
+        kI = tag.getDouble(KI)
+        kD = tag.getDouble(KD)
+        errorSum = tag.getDouble(ERROR_SUM)
+        lastError = tag.getDouble(LAST_ERROR)
+        minControl = tag.getDouble(MIN_CONTROL)
+        maxControl = tag.getDouble(MAX_CONTROL)
+    }
 }

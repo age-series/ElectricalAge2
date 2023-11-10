@@ -1,19 +1,27 @@
 package org.eln2.mc
 
 import com.jozufozu.flywheel.core.materials.model.ModelData
+import com.jozufozu.flywheel.util.transform.Translate
 import com.mojang.math.*
+import it.unimi.dsi.fastutil.ints.IntSet
 import mcp.mobius.waila.api.IPluginConfig
+import net.minecraft.client.renderer.block.model.BakedQuad
+import net.minecraft.client.resources.model.BakedModel
+import net.minecraft.client.resources.model.SimpleBakedModel
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
 import net.minecraft.core.Vec3i
 import net.minecraft.core.particles.ParticleOptions
 import net.minecraft.nbt.CompoundTag
+import net.minecraft.nbt.ListTag
 import net.minecraft.network.chat.Component
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.server.level.ServerPlayer
 import net.minecraft.sounds.SoundEvent
 import net.minecraft.sounds.SoundSource
+import net.minecraft.util.Mth
+import net.minecraft.util.RandomSource
 import net.minecraft.world.InteractionResult
 import net.minecraft.world.MenuProvider
 import net.minecraft.world.entity.Entity
@@ -23,6 +31,7 @@ import net.minecraft.world.entity.player.Inventory
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.inventory.AbstractContainerMenu
 import net.minecraft.world.inventory.Slot
+import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.ChunkPos
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.Block
@@ -32,10 +41,12 @@ import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
+import net.minecraftforge.common.ForgeMod
 import net.minecraftforge.items.ItemStackHandler
 import net.minecraftforge.network.NetworkHooks
 import org.ageseries.libage.data.BiMap
 import org.ageseries.libage.data.MutableSetMapMultiMap
+import org.ageseries.libage.data.Quantity
 import org.ageseries.libage.data.mutableBiMapOf
 import org.ageseries.libage.sim.Material
 import org.ageseries.libage.sim.Scale
@@ -46,32 +57,38 @@ import org.ageseries.libage.sim.thermal.ConnectionParameters
 import org.ageseries.libage.sim.thermal.Simulator
 import org.ageseries.libage.sim.thermal.Temperature
 import org.ageseries.libage.sim.thermal.ThermalMass
-import org.apache.commons.math3.geometry.euclidean.threed.Vector3D
-import org.eln2.mc.common.blocks.foundation.CellBlockEntity
-import org.eln2.mc.common.blocks.foundation.MultiblockManager
 import org.eln2.mc.common.blocks.foundation.MultipartBlockEntity
-import org.eln2.mc.common.cells.foundation.Cell
 import org.eln2.mc.common.cells.foundation.ComponentHolder
 import org.eln2.mc.common.cells.foundation.ElectricalComponentInfo
+import org.eln2.mc.common.parts.foundation.CellPartConnectionMode
 import org.eln2.mc.common.parts.foundation.Part
 import org.eln2.mc.common.parts.foundation.PartUpdateType
 import org.eln2.mc.data.*
 import org.eln2.mc.integration.WailaTooltipBuilder
 import org.eln2.mc.mathematics.*
+import org.eln2.mc.mathematics.Vector3d
 import org.joml.Quaternionf
 import org.joml.Vector3f
 import java.io.InputStream
 import java.io.OutputStream
 import java.nio.ByteBuffer
 import java.util.*
+import kotlin.collections.ArrayList
+import kotlin.math.PI
 import kotlin.math.abs
+import kotlin.math.absoluteValue
 
 fun AABB.viewClip(entity: LivingEntity): Optional<Vec3> {
     val viewDirection = entity.lookAngle
 
     val start = Vec3(entity.x, entity.eyeY, entity.z)
 
-    val distance = 5.0
+    val distance = if(entity is Player) {
+        entity.reachDistance
+    }
+    else {
+        ForgeMod.REACH_DISTANCE.get().defaultValue
+    }
 
     val end = start + viewDirection * distance
 
@@ -123,7 +140,7 @@ fun AABB.transformed(quaternion: Quaternionf): AABB {
     var max = Vector3f(Float.MIN_VALUE, Float.MIN_VALUE, Float.MIN_VALUE)
 
     this.corners().forEach {
-        val corner = quaternion.transform(it.toVector3f())
+        val corner = quaternion.transform(it.toJoml())
 
         min = componentMin(min, corner)
         max = componentMax(max, corner)
@@ -194,8 +211,8 @@ fun Direction.index(): Int {
     return this.get3DDataValue()
 }
 
-fun Direction.toVector3D(): Vector3D {
-    return Vector3D(this.stepX.toDouble(), this.stepY.toDouble(), this.stepZ.toDouble())
+fun Direction.toVector3d(): Vector3d {
+    return Vector3d(this.stepX.toDouble(), this.stepY.toDouble(), this.stepZ.toDouble())
 }
 
 fun AbstractContainerMenu.addPlayerGrid(playerInventory: Inventory, addSlot: ((Slot) -> Unit)): Int {
@@ -248,9 +265,21 @@ fun Level.addParticle(
     this.addParticle(pParticleData, pos.x, pos.y, pos.z, speed.x, speed.y, speed.z)
 }
 
+fun ServerLevel.addItem(x: Double, y: Double, z: Double, stack: ItemStack) {
+    this.addFreshEntity(ItemEntity(
+        this,
+        x,
+        y,
+        z,
+        stack
+    ))
+}
+
+fun ServerLevel.addItem(pos: BlockPos, stack: ItemStack) = addItem(pos.x.toDouble(), pos.y.toDouble(), pos.z.toDouble(), stack)
+
 @ServerOnly
 fun ServerLevel.destroyPart(part: Part<*>, dropPart: Boolean) {
-    val pos = part.placement.pos
+    val pos = part.placement.position
 
     val multipart = this.getBlockEntity(pos)
         as? MultipartBlockEntity
@@ -332,11 +361,12 @@ inline fun <reified TEntity : BlockEntity> Level.constructMenu(
     }
 }
 
-fun Level.getDataAccess(pos: BlockPos): DataNode? {
+fun Level.getDataAccess(pos: BlockPos): HashDataNode? {
     return ((this.getBlockEntity(pos) ?: return null)
-        as? DataEntity ?: return null)
+        as? DataContainer ?: return null)
         .dataNode
 }
+/*
 
 inline fun <reified T : Cell> Level.getCellOrNull(mb: MultiblockManager, cellPosId: BlockPos): T? {
     val entity = this.getBlockEntity(mb.txIdWorld(cellPosId)) as? CellBlockEntity
@@ -347,8 +377,9 @@ inline fun <reified T : Cell> Level.getCellOrNull(mb: MultiblockManager, cellPos
 
 inline fun <reified T : Cell> Level.getCell(mb: MultiblockManager, cellPosId: BlockPos): T =
     getCellOrNull(mb, cellPosId) ?: error("Cell was not present")
+*/
 
-private const val LIBAGE_SET_EPS = 0.001
+const val LIBAGE_SET_EPS = 1e-3
 fun org.ageseries.libage.sim.electrical.mna.component.Component.connect(pin: Int, info: ElectricalComponentInfo) {
     this.connect(pin, info.component, info.index)
 }
@@ -421,6 +452,24 @@ private const val NBT_MATERIAL_NAME = "materialName"
 private const val NBT_ENERGY = "energy"
 private const val NBT_MASS = "mass"
 private const val NBT_MATERIAL = "material"
+
+fun CompoundTag.putVector3d(key: String, v: Vector3d) {
+    val dataTag = CompoundTag()
+    dataTag.putDouble("X", v.x)
+    dataTag.putDouble("Y", v.y)
+    dataTag.putDouble("Z", v.z)
+    this.put(key, dataTag)
+}
+
+fun CompoundTag.getVector3d(key: String) : Vector3d {
+    val dataTag = this.get(key) as CompoundTag
+    val x = dataTag.getDouble("X")
+    val y = dataTag.getDouble("Y")
+    val z = dataTag.getDouble("Z")
+
+    return Vector3d(x, y, z)
+}
+
 fun CompoundTag.putBlockPos(key: String, pos: BlockPos) {
     val dataTag = CompoundTag()
     dataTag.putInt("X", pos.x)
@@ -438,12 +487,12 @@ fun CompoundTag.getBlockPos(key: String): BlockPos {
     return BlockPos(x, y, z)
 }
 
-fun CompoundTag.putLocatorSet(id: String, descriptor: LocatorSet) {
-    this.put(id, descriptor.toNbt())
+fun CompoundTag.putLocatorSet(id: String, locator: Locator) {
+    this.put(id, locator.toNbt())
 }
 
-fun CompoundTag.getLocatorSet(id: String): LocatorSet {
-    return LocatorSet.fromNbt(this.getCompound(id))
+fun CompoundTag.getLocatorSet(id: String): Locator {
+    return Locator.fromNbt(this.getCompound(id))
 }
 
 fun CompoundTag.getStringList(key: String): List<String> {
@@ -501,16 +550,22 @@ fun CompoundTag.getDirection(key: String): Direction {
     return Direction.from3DDataValue(data3d)
 }
 
-fun CompoundTag.putRelativeDirection(key: String, direction: Base6Direction3d) {
-    val data = direction.id
+fun CompoundTag.putBase6Direction(key: String, direction: Base6Direction3d) {
+    this.putInt(key, direction.id)
+}
 
-    this.putInt(key, data)
+fun CompoundTag.putConnectionMode(key: String, mode: CellPartConnectionMode) {
+    this.putInt(key, mode.index)
+}
+
+fun CompoundTag.getConnectionMode(key: String): CellPartConnectionMode {
+    val value = this.getInt(key)
+    return CellPartConnectionMode.byId[value] ?: error("Invalid connection mode $value")
 }
 
 fun CompoundTag.getDirectionActual(key: String): Base6Direction3d {
     val data = this.getInt(key)
-
-    return Base6Direction3d.fromId(data)
+    return Base6Direction3d.byId[data]
 }
 
 fun CompoundTag.putPartUpdateType(key: String, type: PartUpdateType) {
@@ -576,13 +631,13 @@ fun CompoundTag.placeSubTag(key: String, consumer: ((CompoundTag) -> Unit)): Com
  * Gets the compound tag from this instance, and calls the consumer method with the found tag.
  * @return The tag that was found.
  * */
-fun CompoundTag.useSubTagIfPreset(key: String, consumer: ((CompoundTag) -> Unit)): CompoundTag? {
+fun CompoundTag.useSubTagIfPreset(key: String, consumer: ((CompoundTag) -> Unit)): CompoundTag {
     val tag = this.get(key) as? CompoundTag
-        ?: return null
+        ?: return this
 
     consumer(tag)
 
-    return tag
+    return this
 }
 
 fun CompoundTag.putMaterial(id: String, material: Material) {
@@ -846,7 +901,6 @@ fun ByteBuffer.getVector3di() = Vector3di(
 fun Direction.valueHashCode() = this.normal.hashCode()
 
 fun Vector3di.toBlockPos() = BlockPos(this.x, this.y, this.z)
-fun Vec3.toVector3d() = Vector3d(this.x, this.y, this.z)
 
 fun Scale.map(u: Dual) = factor * u + base
 fun Scale.unmap(u: Dual) = (u - base) / factor
@@ -947,3 +1001,130 @@ fun <T> InputStream.getList(deserialize: (InputStream) -> T) = this.getIntPacked
 
 fun InputStream.getFloatList() = this.getList { it.getFloat() }
 fun InputStream.getStringList() = this.getList { it.getString() }
+// I did this because right after 1.19.2 minecraft switched to JOML (good ending)
+fun Quaternion.toJoml() = Quaternionf(this.i(), this.j(), this.k(), this.r())
+fun Quaternionf.toMinecraft() = Quaternion(this.x, this.y, this.z, this.w)
+fun Vec3.toJoml() = Vector3f(this.x.toFloat(), this.y.toFloat(), this.z.toFloat())
+
+fun <Self : Translate<Self>> Self.translateNormal(normal: Vec3, distance: Double) : Self {
+    this.translate(normal * distance)
+    return this
+}
+
+fun <Self : Translate<Self>> Self.translateNormal(normal: Vec3i, distance: Double) : Self {
+    this.translate(normal.toVec3() * distance)
+    return this
+}
+
+fun <Self : Translate<Self>> Self.translateNormal(normalDirection: Direction, distance: Double) : Self {
+    return this.translateNormal(normalDirection.normal, distance)
+}
+
+fun BakedQuad.bind() = BakedQuad(
+    this.vertices.copyOf(),
+    this.tintIndex,
+    this.direction,
+    this.sprite,
+    this.isShade,
+    this.hasAmbientOcclusion()
+)
+
+@Suppress("DEPRECATION", "NULLABILITY_MISMATCH_BASED_ON_JAVA_ANNOTATIONS")
+fun BakedModel.bind() : SimpleBakedModel {
+    val quads = HashMap<BakedQuad, BakedQuad>()
+
+    return SimpleBakedModel(
+        this.getQuads(null, null, null)
+        .map { quad ->
+            quad.bind().also { boundQuad ->
+                quads[quad] = boundQuad
+            }
+        },
+        let {
+            val cull = HashMap<Direction, List<BakedQuad>>()
+
+            Direction.values().forEach { dir ->
+                cull[dir] = this.getQuads(null, dir, null).map {
+                    quads[it]!!
+                }
+            }
+
+            cull
+        },
+        this.useAmbientOcclusion(),
+        this.usesBlockLight(),
+        this.isGui3d,
+        this.particleIcon,
+        this.transforms,
+        this.overrides
+    )
+}
+
+fun IntSet.minInt(): Int {
+    if(this.isEmpty()) {
+        error("The set is empty")
+    }
+
+    val iterator = this.intIterator()
+    var result = Int.MAX_VALUE
+
+    while (iterator.hasNext()) {
+        val i = iterator.nextInt()
+        if(i < result) {
+            result = i
+        }
+    }
+
+    return result
+}
+
+fun RandomSource.nextDouble(min: Double, max: Double) = Mth.nextDouble(this, min, max)
+
+inline fun ListTag.forEachCompound(action: (CompoundTag) -> Unit) {
+    for (tag in this) {
+        val compound = (tag as? CompoundTag).requireNotNull {
+            "Failed to cast element in list tag to compound"
+        }
+
+        action(compound)
+    }
+}
+
+fun CompoundTag.getListTag(key: String) : ListTag = (this.get(key) as? ListTag).requireNotNull {
+    "Failed to get list tag from compound"
+}
+
+inline fun<K, V> MutableMap<K, V>.putUnique(key: K, value: V, error: () -> String) {
+    require(this.put(key, value) == null, error)
+}
+
+fun<K, V> MutableMap<K, V>.putUnique(key: K, value: V) {
+    putUnique(key, value) {
+        "Failed to put unique $key with value $value"
+    }
+}
+
+/**
+ * Gets the celestial phase from the in-game celestial angle.
+ * @param sunAngle The celestial angle, as per [Level.getSunAngle]
+ * @return A [Rotation2d] that represents the current celestial pass. The real axis is fixed as the ground. When the value is in the upper semicircle, the sun is passing. When the value is in the lower semicircle, the moon is passing.
+ * */
+fun celestialPass(sunAngle: Double) = Rotation2d.exp(sunAngle + PI / 2.0)
+
+/**
+ * Gets the deviation between the normal and the direction towards the celestial body.
+ * @return The deviation angle. It is always positive, no matter if the celestial body is the sun or the moon.
+ * */
+fun celestialDeviation(sunAngle: Double, normal: Vector3d) : Double {
+    var pass = celestialPass(sunAngle)
+
+    if(pass.im < 0.0) {
+        // Night
+        pass = !pass
+    }
+
+    return !Vector3d(pass.re, pass.im, 0.0) angle !normal
+}
+
+fun Level.celestialPass() = celestialPass(this.getSunAngle(1.0f).toDouble())
+fun Level.celestialDeviation(normal: Vector3d) = celestialDeviation(this.getSunAngle(1.0f).toDouble(), normal)

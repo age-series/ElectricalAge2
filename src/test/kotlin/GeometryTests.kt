@@ -44,18 +44,18 @@ class GeometryTests {
         areEqual(rpi.scaled(-1.0), rpi.inverse)
         areEqual(rpi.scaled(0.5), Rotation2d.exp(PI / 2.0))
 
-        areEqual(rpi * rpi, Rotation2d.exp(PI * 2.0), Rotation2d.exp(PI * 4.0), Rotation2d.zero)
-        areEqual(rpi * Rotation2d.exp(-PI), Rotation2d.zero)
-        areEqual(rpi * rpi.inverse, Rotation2d.zero)
+        areEqual(rpi * rpi, Rotation2d.exp(PI * 2.0), Rotation2d.exp(PI * 4.0), Rotation2d.identity)
+        areEqual(rpi * Rotation2d.exp(-PI), Rotation2d.identity)
+        areEqual(rpi * rpi.inverse, Rotation2d.identity)
 
         assert((rpi * Vector2d.unitX).approxEq(-Vector2d.unitX, EPS))
         assert((Rotation2d.exp(PI * 2.0) * Vector2d.unitX).approxEq(Vector2d.unitX, EPS))
         assert((Rotation2d.exp(PI * 8.0) * Vector2d.unitX).approxEq(Vector2d.unitX, EPS))
 
-        areEqual(Rotation2d.interpolate(Rotation2d.zero, rpi, 0.0), Rotation2d.zero)
-        areEqual(Rotation2d.interpolate(Rotation2d.zero, rpi, 1.0), rpi)
-        areEqual(Rotation2d.interpolate(Rotation2d.zero, rpi, 0.5), Rotation2d.exp(PI / 2.0))
-        areEqual(Rotation2d.interpolate(Rotation2d.zero, rpi, 0.25), Rotation2d.exp(PI / 4.0))
+        areEqual(Rotation2d.interpolate(Rotation2d.identity, rpi, 0.0), Rotation2d.identity)
+        areEqual(Rotation2d.interpolate(Rotation2d.identity, rpi, 1.0), rpi)
+        areEqual(Rotation2d.interpolate(Rotation2d.identity, rpi, 0.5), Rotation2d.exp(PI / 2.0))
+        areEqual(Rotation2d.interpolate(Rotation2d.identity, rpi, 0.25), Rotation2d.exp(PI / 4.0))
 
         rangeScan(start = 0.0, end = 1.0) { t ->
             areEqual(Rotation2d.interpolate(rpi, rpi, t), rpi)

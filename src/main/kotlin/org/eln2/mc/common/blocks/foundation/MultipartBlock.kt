@@ -13,6 +13,7 @@ import net.minecraft.network.protocol.game.ClientGamePacketListener
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.level.ServerLevel
+import net.minecraft.util.RandomSource
 import net.minecraft.world.InteractionHand
 import net.minecraft.world.InteractionResult
 import net.minecraft.world.entity.Entity
@@ -20,17 +21,14 @@ import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.BlockGetter
+import net.minecraft.world.level.ChunkPos
 import net.minecraft.world.level.Level
-import net.minecraft.world.level.block.AirBlock
 import net.minecraft.world.level.block.BaseEntityBlock
 import net.minecraft.world.level.block.Block
-import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.entity.BlockEntityTicker
 import net.minecraft.world.level.block.entity.BlockEntityType
 import net.minecraft.world.level.block.state.BlockState
-import net.minecraft.world.level.block.state.StateDefinition
-import net.minecraft.world.level.block.state.properties.IntegerProperty
 import net.minecraft.world.level.material.FluidState
 import net.minecraft.world.level.material.Material
 import net.minecraft.world.phys.BlockHitResult
@@ -45,15 +43,16 @@ import org.eln2.mc.common.parts.foundation.*
 import org.eln2.mc.data.*
 import org.eln2.mc.integration.WailaEntity
 import org.eln2.mc.integration.WailaTooltipBuilder
-import org.eln2.mc.mathematics.DirectionMask
+import org.eln2.mc.mathematics.Base6Direction3dMask
 import java.util.*
 import java.util.concurrent.ConcurrentLinkedQueue
+import kotlin.collections.HashSet
 import kotlin.collections.set
 
-class MultipartBlock : BaseEntityBlock(Properties.of(Material.STONE)
+class MultipartBlock : BaseEntityBlock(
+    Properties.of(Material.STONE)
     .noOcclusion()
-    .destroyTime(0.2f)
-    .lightLevel { it.getValue(GhostLightBlock.brightnessProperty) }) {
+    .destroyTime(0.2f)) {
 
     private val epsilon = 0.00001
     private val emptyBox = box(0.0, 0.0, 0.0, epsilon, epsilon, epsilon)
@@ -111,7 +110,7 @@ class MultipartBlock : BaseEntityBlock(Properties.of(Material.STONE)
             return false
         }
 
-        if (level == null) {
+        if (level !is ServerLevel) {
             return false
         }
 
@@ -139,7 +138,20 @@ class MultipartBlock : BaseEntityBlock(Properties.of(Material.STONE)
         val multipartIsDestroyed = multipart.isEmpty
 
         if (multipartIsDestroyed) {
-            level.destroyBlock(pos, false)
+            // There is an edge case here!
+            // Because we destroyed it, the update packet never got sent, unfortunately.
+            // We will manually send the update packet:
+
+            val chunk = level.chunkSource.chunkMap.updatingChunkMap.get(ChunkPos(pos).toLong())
+
+            if(chunk == null) {
+                LOG.error("Failed to access chunk holder for removed multipart!")
+            }
+            else {
+                // Force update packet:
+                chunk.broadcastBlockEntity(level, pos)
+                level.destroyBlock(pos, false)
+            }
         }
 
         return multipartIsDestroyed
@@ -264,12 +276,14 @@ class MultipartBlock : BaseEntityBlock(Properties.of(Material.STONE)
         return createTickerHelper(
             pBlockEntityType,
             BlockRegistry.MULTIPART_BLOCK_ENTITY.get(),
-            MultipartBlockEntity.Companion::blockTick
+            MultipartBlockEntity.Companion::serverTick
         )
     }
 
-    override fun createBlockStateDefinition(pBuilder: StateDefinition.Builder<Block, BlockState>) {
-        pBuilder.add(GhostLightBlock.brightnessProperty)
+    override fun animateTick(pState: BlockState, pLevel: Level, pPos: BlockPos, pRandom: RandomSource) {
+        val entity = pLevel.getBlockEntity(pPos) as? MultipartBlockEntity
+
+        entity?.animateTick(pRandom)
     }
 
     override fun getCloneItemStack(
@@ -290,139 +304,6 @@ class MultipartBlock : BaseEntityBlock(Properties.of(Material.STONE)
     }
 }
 
-interface GhostLight {
-    fun update(brightness: Int)
-    fun destroy()
-}
-
-class GhostLightBlock : AirBlock(Properties.of(Material.AIR).lightLevel { it.getValue(brightnessProperty) }) {
-    private class LightGrid(val level: Level) {
-        private class Cell(val level: Level, val pos: BlockPos, val grid: LightGrid) {
-            private fun handleBrightnessChanged(handle: Handle) {
-                refreshGhost()
-            }
-
-            private fun handleDestroyed(handle: Handle) {
-                handles.remove(handle)
-
-                if (handles.size == 0) {
-                    clearFromLevel(level, pos)
-                    grid.onCellCleared(pos)
-                }
-            }
-
-            private val handles = ArrayList<Handle>()
-
-            fun createHandle(): GhostLight {
-                return Handle(this).also { handles.add(it) }
-            }
-
-            fun refreshGhost() {
-                LOG.info("Refresh ghost")
-
-                val maximalBrightness = handles.maxOf { it.trackedBrightness }
-
-                setInLevel(level, pos, maximalBrightness)
-            }
-
-            private class Handle(val cell: Cell) : GhostLight {
-                var trackedBrightness: Int = 0
-
-                var destroyed = false
-
-                override fun update(brightness: Int) {
-                    if (destroyed) {
-                        error("Cannot set brightness, handle destroyed!")
-                    }
-
-                    if (brightness == trackedBrightness) {
-                        return
-                    }
-
-                    trackedBrightness = brightness
-
-                    cell.handleBrightnessChanged(this)
-                }
-
-                override fun destroy() {
-                    if (!destroyed) {
-                        cell.handleDestroyed(this)
-                    }
-                }
-            }
-        }
-
-        private val cells = HashMap<BlockPos, Cell>()
-
-        fun onCellCleared(pos: BlockPos) {
-            cells.remove(pos)
-        }
-
-        fun createHandle(pos: BlockPos): GhostLight {
-            return cells.computeIfAbsent(pos) { Cell(level, pos, this) }.createHandle()
-        }
-
-        fun refreshGhost(pos: BlockPos) {
-            cells[pos]?.refreshGhost()
-        }
-    }
-
-    companion object {
-        private val block get() = BlockRegistry.LIGHT_GHOST_BLOCK.block.get()
-
-        val brightnessProperty: IntegerProperty = IntegerProperty.create("brightness", 0, 15)
-
-        private val grids = HashMap<Level, LightGrid>()
-
-        private fun setInLevel(level: Level, pos: BlockPos, brightness: Int): Boolean {
-            val previousBlockState = level.getBlockState(pos)
-
-            if (previousBlockState.block != Blocks.AIR && previousBlockState.block != block) {
-                LOG.info("Could not place, existing block there: $previousBlockState")
-                return false
-            }
-
-            if (previousBlockState.block != block || previousBlockState.getValue(brightnessProperty) != brightness) {
-                level.setBlockAndUpdate(pos, block.defaultBlockState().setValue(brightnessProperty, brightness))
-                LOG.info("Placed")
-                return true
-            }
-
-            return false
-        }
-
-        private fun clearFromLevel(level: Level, pos: BlockPos): Boolean {
-            val state = level.getBlockState(pos)
-
-            if (state.block != block) {
-                LOG.error("Cannot remove: not ghost light")
-
-                return false
-            }
-
-            level.setBlockAndUpdate(pos, Blocks.AIR.defaultBlockState())
-
-            return true
-        }
-
-        private fun getGrid(level: Level): LightGrid {
-            return grids.computeIfAbsent(level) { LightGrid(level) }
-        }
-
-        fun createHandle(level: Level, pos: BlockPos): GhostLight {
-            return getGrid(level).createHandle(pos)
-        }
-
-        fun refreshGhost(level: Level, pos: BlockPos) {
-            grids[level]?.refreshGhost(pos)
-        }
-    }
-
-    override fun createBlockStateDefinition(pBuilder: StateDefinition.Builder<Block, BlockState>) {
-        pBuilder.add(brightnessProperty)
-    }
-}
-
 /**
  * Multipart entities
  *  - Are dummy entities, that do not have any special data or logic by themselves
@@ -435,7 +316,7 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
     BlockEntity(BlockRegistry.MULTIPART_BLOCK_ENTITY.get(), pos, state),
     CellContainer,
     WailaEntity,
-    DataEntity {
+    DataContainer {
 
     // Interesting issue.
     // If we try to add tickers before the block receives the first tick,
@@ -446,17 +327,21 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
     private val parts = HashMap<Direction, Part<*>>()
 
     // Used for part sync:
-    private val syncingParts = ArrayList<Direction>()
+    private val dirtyParts = HashSet<Direction>()
     private val placementUpdates = ArrayList<PartUpdate>()
+
+    val hasPlacementUpdates get() = placementUpdates.isNotEmpty()
 
     // Used for disk loading:
     private var savedTag: CompoundTag? = null
 
-    private var tickingParts = ArrayList<TickablePart>()
+    private var tickingParts = HashSet<TickablePart>()
+    private var animatedParts = HashSet<AnimatedPart>()
 
     // This is useful, because a part might remove its ticker whilst being ticked
     // (which would cause our issues with iteration)
-    private var tickingRemoveQueue = ArrayDeque<TickablePart>()
+    private var tickingRemoveQueue = HashSet<TickablePart>()
+    private var animationRemoveQueue = HashSet<AnimatedPart>()
 
     val isEmpty get() = parts.isEmpty()
 
@@ -482,15 +367,11 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
 
         tickingParts.removeIf { it == result }
 
-        result.onRemoved()
-
-        level?.also {
-            if (!it.isClientSide) {
-                // Remove lingering lights
-
-                updateBrightness()
-            }
+        if(level?.isClientSide != false) {
+            animatedParts.removeIf { it == result }
         }
+
+        result.onRemoved()
 
         return result
     }
@@ -502,18 +383,10 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
     }
 
     /**
-     * Ensures that this multipart will be saved at a later date.
-     * */
-    @ServerOnly
-    private fun saveData() {
-        setChanged()
-    }
-
-    /**
      * Enqueues this multipart for synchronization to clients.
      * */
     @ServerOnly
-    private fun syncData() {
+    private fun setSyncDirty() {
         level!!.sendBlockUpdated(blockPos, blockState, blockState, Block.UPDATE_CLIENTS)
     }
 
@@ -523,15 +396,15 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
      * */
     @ServerOnly
     fun enqueuePartSync(face: Direction) {
-        syncingParts.add(face)
-        syncData() // TODO: Can we batch multiple updates?
+        dirtyParts.add(face)
+        setSyncDirty() // TODO: Can we batch multiple updates?
     }
 
     /**
      * Finds the part intersected by the entity's view.
      * */
     fun pickPart(entity: LivingEntity): Part<*>? {
-        return clipScene(entity, { it.gridBoundingBox }, parts.values)
+        return clipScene(entity, { it.worldBoundingBox }, parts.values)
     }
 
     /**
@@ -545,7 +418,12 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
         face: Direction,
         provider: PartProvider,
         saveTag: CompoundTag? = null,
+        orientation: Direction? = null,
     ): Boolean {
+        if(orientation != null &&! orientation.isHorizontal()) {
+            error("Invalid orientation $orientation")
+        }
+
         if (entity.level.isClientSide) {
             return false
         }
@@ -564,19 +442,19 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
             return false
         }
 
-        val placeDirection = if (face.isVertical()) {
+        val placeDirection = orientation ?: if (face.isVertical()) {
             entity.direction
         } else {
             Direction.NORTH
         }
 
-        val placementContext = PartPlacementInfo(pos, face, placeDirection, level, this)
+        val placementContext = PartPlacementInfo(pos, face, placeDirection, level, this, provider)
 
         val worldBoundingBox = PartGeometry.worldBoundingBox(
             provider.placementCollisionSize,
             placementContext.horizontalFacing,
             placementContext.face,
-            placementContext.pos
+            placementContext.position
         )
 
         val collides = parts.values.any { part ->
@@ -598,26 +476,26 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
         placementUpdates.add(PartUpdate(part, PartUpdateType.Add))
         joinCollider(part)
 
-        if (part is ItemPersistentPart && part.order == PersistentPartLoadOrder.BeforeSim) {
-            part.loadItemTag(saveTag)
+        if (part is ItemPersistentPart && part.order == ItemPersistentPartLoadOrder.BeforeSim) {
+            part.loadFromItemNbt(saveTag)
         }
 
         part.onPlaced()
 
-        if (part is PartCellContainer) {
+        if (part is PartCellContainer<*>) {
             CellConnections.insertFresh(this, part.cell)
         }
 
-        if (part is ItemPersistentPart && part.order == PersistentPartLoadOrder.AfterSim) {
-            part.loadItemTag(saveTag)
+        if (part is ItemPersistentPart && part.order == ItemPersistentPartLoadOrder.AfterSim) {
+            part.loadFromItemNbt(saveTag)
         }
 
-        if (part is PartCellContainer) {
+        if (part is PartCellContainer<*>) {
             part.cell.bindGameObjects(listOf(this, part))
         }
 
-        saveData()
-        syncData()
+        setChanged()
+        setSyncDirty()
 
         return true
     }
@@ -648,17 +526,13 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
      * */
     @ServerOnly
     fun breakPart(part: Part<*>, saveTag: CompoundTag? = null) {
-        if (part is PartCellContainer) {
+        if (part is PartCellContainer<*>) {
             part.cell.unbindGameObjects()
-
-            CellConnections.destroy(
-                part.cell,
-                this
-            )
+            CellConnections.destroy(part.cell, this)
         }
 
         if (part is ItemPersistentPart && saveTag != null) {
-            part.saveItemTag(saveTag)
+            part.saveToItemNbt(saveTag)
         }
 
         destroyPart(part.placement.face)
@@ -666,8 +540,8 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
 
         part.onBroken()
 
-        saveData()
-        syncData()
+        setChanged()
+        setSyncDirty()
     }
 
     /**
@@ -725,10 +599,16 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
     @ServerOnly
     override fun getUpdateTag(): CompoundTag {
         if (level!!.isClientSide) {
-            return CompoundTag()
+            return CompoundTag() //?
         }
 
-        return saveParts()
+        val tag = saveParts(true)
+
+        parts.values.forEach {
+            it.onSyncSuggested()
+        }
+
+        return tag
     }
 
     @ClientOnly
@@ -795,7 +675,7 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
 
             when (update.type) {
                 PartUpdateType.Add -> {
-                    updateTag.put("NewPart", savePart(part))
+                    updateTag.put("NewPart", savePartCommon(part))
                 }
 
                 PartUpdateType.Remove -> {
@@ -813,13 +693,13 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
 
     @ServerOnly
     private fun packPartUpdates(tag: CompoundTag) {
-        if (syncingParts.size == 0) {
+        if (dirtyParts.size == 0) {
             return
         }
 
         val partUpdatesTag = ListTag()
 
-        syncingParts.forEach { face ->
+        dirtyParts.forEach { face ->
             val part = parts[face]
 
             if (part == null) {
@@ -830,7 +710,7 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
             val syncTag = part.getSyncTag()
 
             if (syncTag == null) {
-                LOG.error("Part $part had an update enqueued, but returned a null sync tag")
+                //LOG.error("Part $part had an update enqueued, but returned a null sync tag")
                 return@forEach
             }
 
@@ -841,7 +721,7 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
             partUpdatesTag.add(updateTag)
         }
 
-        syncingParts.clear()
+        dirtyParts.clear()
 
         tag.put("PartUpdates", partUpdatesTag)
     }
@@ -956,7 +836,7 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
         }
 
         try {
-            saveParts(pTag)
+            saveParts(pTag, false)
         } catch (t: Throwable) {
             LOG.error("MULTIPART SAVE EX $t")
         }
@@ -1020,11 +900,11 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
      * Saves all the data associated with a part to a CompoundTag.
      * */
     @ServerOnly
-    private fun savePart(part: Part<*>): CompoundTag {
+    private fun savePartCommon(part: Part<*>): CompoundTag {
         val tag = CompoundTag()
 
         tag.putResourceLocation("ID", part.id)
-        tag.putBlockPos("Pos", part.placement.pos)
+        tag.putBlockPos("Pos", part.placement.position)
         tag.putDirection("Face", part.placement.face)
         tag.putDirection("Facing", part.placement.horizontalFacing)
 
@@ -1041,10 +921,10 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
      * Saves the entire part set to a CompoundTag.
      * */
     @ServerOnly
-    private fun saveParts(): CompoundTag {
+    private fun saveParts(initial: Boolean): CompoundTag {
         val tag = CompoundTag()
 
-        saveParts(tag)
+        saveParts(tag, initial)
 
         return tag
     }
@@ -1053,15 +933,24 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
      * Saves the entire part set to the provided CompoundTag.
      * */
     @ServerOnly
-    private fun saveParts(tag: CompoundTag) {
+    private fun saveParts(tag: CompoundTag, initial: Boolean) {
         assert(!level!!.isClientSide)
 
         val partsTag = ListTag()
 
         parts.keys.forEach { face ->
             val part = parts[face]
+            val commonTag = savePartCommon(part!!)
 
-            partsTag.add(savePart(part!!))
+            if(initial) {
+                val initialTag = part.getInitialSyncTag()
+
+                if(initialTag != null) {
+                    commonTag.put("Initial", initialTag)
+                }
+            }
+
+            partsTag.add(commonTag)
         }
 
         tag.put("Parts", partsTag)
@@ -1076,9 +965,16 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
         if (tag.contains("Parts")) {
             val partsTag = tag.get("Parts") as ListTag
             partsTag.forEach { partTag ->
-                val part = unpackPart(partTag as CompoundTag)
+                val partCompoundTag = partTag as CompoundTag
+                val part = unpackPart(partCompoundTag)
 
                 addPart(part.placement.face, part)
+
+                val initialTag = partCompoundTag.get("Initial") as? CompoundTag
+
+                if(initialTag != null) {
+                    part.loadInitialSyncTag(initialTag)
+                }
             }
 
             rebuildCollider()
@@ -1100,7 +996,7 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
         val customTag = tag.get("CustomTag") as? CompoundTag
 
         val provider = PartRegistry.tryGetProvider(id) ?: error("Failed to get part with id $id")
-        val part = provider.create(PartPlacementInfo(pos, face, facing, level!!, this))
+        val part = provider.create(PartPlacementInfo(pos, face, facing, level!!, this, provider))
 
         if (customTag != null) {
             part.loadFromTag(customTag)
@@ -1117,7 +1013,7 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
         val results = ArrayList<Cell>()
 
         parts.values.forEach { part ->
-            if (part is PartCellContainer) {
+            if (part is PartCellContainer<*>) {
                 results.add(part.cell)
             }
         }
@@ -1125,12 +1021,12 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
         return results
     }
 
-    override fun neighborScan(actualCell: Cell): ArrayList<CellNeighborInfo> {
-        val partFace = actualCell.pos.requireLocator<FaceLocator>()
+    override fun neighborScan(actualCell: Cell): List<CellNeighborInfo> {
+        val partFace = actualCell.locator.requireLocator<FaceLocator>()
 
         val part = parts[partFace]!!
 
-        if (part !is PartCellContainer) {
+        if (part !is PartCellContainer<*>) {
             error("FATAL! Queried neighbors for non-cell part!")
         }
 
@@ -1138,7 +1034,7 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
 
         val level = this.level ?: error("Level null in queryNeighbors")
 
-        DirectionMask.perpendicular(partFace).process { searchDirection ->
+        Base6Direction3dMask.perpendicular(partFace).process { searchDirection ->
             fun innerScan() {
                 // Inner scan does not make sense outside multiparts, so I did not move it to CellScanner
 
@@ -1148,7 +1044,7 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
                     val innerPart = parts[innerFace]
                         ?: return
 
-                    if (innerPart !is PartCellContainer) {
+                    if (innerPart !is PartCellContainer<*>) {
                         return
                     }
 
@@ -1190,22 +1086,28 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
             }
         }
 
-        return ArrayList(results)
+        part.addExtraConnections(results)
+
+        return results.toList()
     }
 
     override fun onCellConnected(actualCell: Cell, remoteCell: Cell) {
-        val innerFace = actualCell.pos.requireLocator<FaceLocator>()
-        val part = parts[innerFace] as PartCellContainer
+        val innerFace = actualCell.locator.requireLocator<FaceLocator>()
+        val part = parts[innerFace] as PartCellContainer<*>
         part.onConnected(remoteCell)
+        part.onConnectivityChanged()
     }
 
     override fun onCellDisconnected(actualCell: Cell, remoteCell: Cell) {
-        val part = parts[actualCell.pos.requireLocator<FaceLocator>()] as PartCellContainer
+        val part = parts[actualCell.locator.requireLocator<FaceLocator>()] as PartCellContainer<*>
         part.onDisconnected(remoteCell)
+        if(part.hasCell && !part.cell.isBeingRemoved) {
+            part.onConnectivityChanged()
+        }
     }
 
     override fun onTopologyChanged() {
-        saveData()
+        setChanged()
     }
 
     @ServerOnly
@@ -1235,7 +1137,7 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
 
     }
 
-    fun addTicker(part: TickablePart) {
+    fun addTicker(part: TickablePart) : Boolean {
         if (level == null) {
             error("Illegal ticker add before level is available")
         }
@@ -1244,56 +1146,62 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
             error("Cannot register ticker for a part that is not added!")
         }
 
-        if (tickingParts.contains(part)) {
-            error("Duplicate add ticking part $part")
+        val result = tickingParts.add(part)
+
+        if(!result) {
+            return false
         }
 
-        tickingParts.add(part)
-
-        if (!worldLoaded) {
-            return
+        if (worldLoaded) {
+            val chunk = level!!.getChunkAt(pos)
+            chunk.updateBlockEntityTicker(this)
         }
 
-        val chunk = level!!.getChunkAt(pos)
-
-        chunk.updateBlockEntityTicker(this)
+        return true
     }
 
-    fun removeTicker(part: TickablePart) {
-        tickingRemoveQueue.add(part)
+    fun hasTicker(part: TickablePart) = tickingParts.contains(part)
+
+    fun markRemoveTicker(part: TickablePart) = tickingRemoveQueue.add(part)
+
+    @ClientOnly
+    fun hasAnimated(part: AnimatedPart) : Boolean {
+        requireIsOnRenderThread { "Tried to check if part $part has animate ticker on ${Thread.currentThread()}" }
+        return animatedParts.contains(part)
+    }
+
+    @ClientOnly
+    fun addAnimated(part: AnimatedPart) : Boolean {
+        requireIsOnRenderThread { "Tried to add part $part as animate on ${Thread.currentThread()}" }
+
+        if (!parts.values.any { it == part }) {
+            error("Cannot register animate for a part that is not added!")
+        }
+
+        return animatedParts.add(part)
+    }
+
+    fun markRemoveAnimated(part: AnimatedPart) : Boolean {
+        requireIsOnRenderThread { "Tried to remove part $part as animate on ${Thread.currentThread()}" }
+        return animationRemoveQueue.add(part)
+    }
+
+    fun animateTick(randomSource: RandomSource) {
+        for(part in animatedParts) {
+            part.animationTick(randomSource)
+        }
+
+        for (removed in animationRemoveQueue) {
+            animatedParts.remove(removed)
+        }
+
+        animationRemoveQueue.clear()
     }
 
     val needsTicks get() = tickingParts.isNotEmpty()
 
-    private fun setBlockBrightness(value: Int) {
-        level!!.setBlockAndUpdate(pos, blockState.setValue(GhostLightBlock.brightnessProperty, value))
-    }
-
-    fun updateBrightness() {
-        if (level!!.isClientSide) {
-            error("Cannot update brightness on client")
-        }
-
-        if (!worldLoaded) {
-            return
-        }
-
-        val currentBrightness = blockState.getValue(GhostLightBlock.brightnessProperty)
-
-        val targetBrightness = parts.values.maxOfOrNull { it.brightness }
-
-        if (targetBrightness == null) {
-            setBlockBrightness(0)
-            return
-        }
-
-        if (targetBrightness != currentBrightness) {
-            setBlockBrightness(targetBrightness)
-        }
-    }
-
     companion object {
-        fun <T : BlockEntity> blockTick(level: Level?, pos: BlockPos?, state: BlockState?, entity: T?) {
+        fun <T : BlockEntity> serverTick(level: Level?, pos: BlockPos?, state: BlockState?, entity: T?) {
             if (entity !is MultipartBlockEntity) {
                 LOG.error("Block tick entity is not a multipart!")
                 return
@@ -1316,10 +1224,6 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
 
             entity.worldLoaded = true
 
-            if (!level.isClientSide) {
-                entity.updateBrightness()
-            }
-
             if (!entity.needsTicks) {
                 // Remove the ticker
 
@@ -1332,13 +1236,11 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
 
             entity.tickingParts.forEach { it.tick() }
 
-            while (entity.tickingRemoveQueue.isNotEmpty()) {
-                val removed = entity.tickingRemoveQueue.removeFirst()
-
-                if (!entity.tickingParts.remove(removed)) {
-                    error("Tried to remove part ticker $removed that was not registered")
-                }
+            for(removed in entity.tickingRemoveQueue) {
+                entity.tickingParts.remove(removed)
             }
+
+            entity.tickingRemoveQueue.clear()
         }
     }
 
@@ -1352,5 +1254,5 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
         }
     }
 
-    override val dataNode: DataNode = DataNode()
+    override val dataNode: HashDataNode = HashDataNode()
 }

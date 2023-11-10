@@ -8,26 +8,34 @@ import com.jozufozu.flywheel.core.PartialModel
 import com.jozufozu.flywheel.core.materials.FlatLit
 import com.jozufozu.flywheel.core.materials.model.ModelData
 import com.jozufozu.flywheel.util.Color
+import com.jozufozu.flywheel.util.transform.Transform
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap
+import it.unimi.dsi.fastutil.ints.IntArrayList
+import net.minecraft.client.renderer.RenderType
+import net.minecraft.core.Direction
+import net.minecraft.nbt.CompoundTag
+import net.minecraft.world.level.LightLayer
 import org.ageseries.libage.sim.thermal.STANDARD_TEMPERATURE
 import org.ageseries.libage.sim.thermal.Temperature
 import org.ageseries.libage.sim.thermal.ThermalUnits
 import org.eln2.mc.*
 import org.eln2.mc.common.blocks.foundation.MultipartBlockEntity
-import org.eln2.mc.common.parts.foundation.Part
-import org.eln2.mc.common.parts.foundation.PartRenderer
-import org.eln2.mc.common.parts.foundation.PartUpdateType
+import org.eln2.mc.common.content.PartConnectionRenderInfo
+import org.eln2.mc.common.content.PartConnectionRenderInfoSetConsumer
+import org.eln2.mc.common.content.WirePolarPatchModel
+import org.eln2.mc.common.content.getPartConnectionAsContactSectionConnectionOrNull
+import org.eln2.mc.common.events.AtomicUpdate
+import org.eln2.mc.common.parts.foundation.*
+import org.eln2.mc.mathematics.Base6Direction3d
+import org.eln2.mc.mathematics.Base6Direction3dMask
+import org.eln2.mc.mathematics.Vector3d
 import org.eln2.mc.mathematics.map
-import org.eln2.mc.mathematics.vec3
-import org.joml.AxisAngle4f
-import org.joml.Quaternionf
-import org.joml.Vector3f
 
 fun createPartInstance(
     multipart: MultipartBlockEntityInstance,
     model: PartialModel,
     part: Part<*>,
-    downOffset: Double,
-    yRotation: Float,
+    yRotation: Double = 0.0,
 ): ModelData {
     return multipart.materialManager
         .defaultSolid()
@@ -35,92 +43,183 @@ fun createPartInstance(
         .getModel(model)
         .createInstance()
         .loadIdentity()
-        .applyBlockBenchTransform(part, downOffset, yRotation)
+        .transformPart(part, yRotation)
 }
 
 /**
- * The basic part renderer is used to render a single partial model.
+ * Part renderer with a single model.
  * */
-open class BasicPartRenderer(val part: Part<*>, val model: PartialModel) : PartRenderer {
-    override fun isSetupWith(multipartBlockEntityInstance: MultipartBlockEntityInstance): Boolean {
-        return this::multipart.isInitialized && this.multipart == multipartBlockEntityInstance
-    }
-
-    /**
-     * Useful if the model needs to be rotated to match the networked behavior.
-     * Alternatively, the model may be rotated in the 3D editor.
-     * */
-    var yRotation = 0f
-
-    /**
-     * Required in order to "place" the model on the mounting surface. Usually, this offset is calculated using information from the 3D editor.
-     * */
-    var downOffset = 0.0
+open class BasicPartRenderer(val part: Part<*>, val model: PartialModel) : PartRenderer() {
+    var yRotation = 0.0
 
     private var modelInstance: ModelData? = null
-    protected lateinit var multipart: MultipartBlockEntityInstance
 
-    override fun setupRendering(multipart: MultipartBlockEntityInstance) {
-        this.multipart = multipart
-
+    override fun setupRendering() {
         buildInstance()
     }
 
     fun buildInstance() {
-        if (!this::multipart.isInitialized) {
-            error("Multipart not initialized!")
-        }
-
         modelInstance?.delete()
+        modelInstance = createPartInstance(multipart, model, part, yRotation)
+    }
 
-        modelInstance = createPartInstance(multipart, model, part, downOffset, yRotation)
-
-        multipart.relightPart(part)
+    override fun relight(source: RelightSource) {
+        multipart.relightModels(modelInstance)
     }
 
     override fun beginFrame() {}
-
-    override fun relightModels(): List<FlatLit<*>>? {
-        if (modelInstance != null) {
-            return listOf(modelInstance!!)
-        }
-
-        return null
-    }
 
     override fun remove() {
         modelInstance?.delete()
     }
 }
 
-fun ModelData.applyBlockBenchTransform(part: Part<*>, downOffset: Double, yRotation: Float = 0f): ModelData {
-    return this
-        .translate(part.placement.face.opposite.normal.toVec3() * vec3(downOffset))
-        .blockCenter()
-        .translate(part.worldBoundingBox.center)
-        .multiply(
-            part.placement.face.rotation
-                .mul(part.facingRotation)
-                .mul(
-                    Quaternionf(
-                        AxisAngle4f(
-                            yRotation,
-                            Vector3f(0.0f, 1.0f, 0.0f)
-                        )
-                    )
-                )
+fun CellPart<*, ConnectedPartRenderer>.getConnectedPartTag() = CompoundTag().also { compoundTag ->
+    if(this.hasCell) {
+        val values = IntArrayList(2)
+
+        for (it in this.cell.connections) {
+            val solution = getPartConnectionAsContactSectionConnectionOrNull(this.cell, it)
+                ?: continue
+
+            values.add(solution.value)
+        }
+
+        compoundTag.putIntArray("connections", values)
+    }
+}
+
+fun Part<ConnectedPartRenderer>.handleConnectedPartTag(tag: CompoundTag) = this.renderer.acceptConnections(
+    if(tag.contains("connections")) {
+        tag.getIntArray("connections")
+    }
+    else {
+        IntArray(0)
+    }
+)
+
+data class WireConnectionModelPartial(
+    val planar: PolarModel,
+    val inner: PolarModel,
+    val wrapped: PolarModel
+) {
+    val variants = mapOf(
+        CellPartConnectionMode.Planar to planar,
+        CellPartConnectionMode.Inner to inner,
+        CellPartConnectionMode.Wrapped to wrapped
+    )
+}
+
+class ConnectedPartRenderer(
+    val part: Part<*>,
+    val body: PartialModel,
+    val connections: Map<Base6Direction3d, WireConnectionModelPartial>
+) : PartRenderer(), PartConnectionRenderInfoSetConsumer {
+    constructor(part: Part<*>, body: PartialModel, connection: WireConnectionModelPartial) : this(
+        part,
+        body,
+        mapOf(
+            Base6Direction3d.Front to connection,
+            Base6Direction3d.Back to connection,
+            Base6Direction3d.Left to connection,
+            Base6Direction3d.Right to connection
         )
-        .zeroCenter()
+    )
+
+    private var bodyInstance: ModelData? = null
+    private val connectionDirectionsUpdate = AtomicUpdate<IntArray>()
+    private val connectionInstances = Int2ObjectOpenHashMap<ModelData>()
+
+    override fun acceptConnections(connections: IntArray) {
+        connectionDirectionsUpdate.setLatest(connections)
+    }
+
+    override fun setupRendering() {
+        buildBody()
+        applyConnectionData(connectionInstances.keys.toIntArray())
+    }
+
+    private fun buildBody() {
+        bodyInstance?.delete()
+        bodyInstance = createPartInstance(multipart, body, part)
+    }
+
+    private fun applyConnectionData(values: IntArray) {
+        connectionInstances.values.forEach { it.delete() }
+        connectionInstances.clear()
+
+        for (value in values) {
+            val info = PartConnectionRenderInfo(value)
+            val direction = info.directionPart
+
+            val model = connections[direction]
+                ?: continue
+
+            val instance = createPartInstance(
+                multipart,
+                model.variants[info.mode]!!,
+                part,
+                when (direction) {
+                    Base6Direction3d.Front -> 0.0
+                    Base6Direction3d.Back -> kotlin.math.PI
+                    Base6Direction3d.Left -> kotlin.math.PI / 2.0
+                    Base6Direction3d.Right -> -kotlin.math.PI / 2.0
+                    else -> error("Invalid connected part direction $direction")
+                }
+            )
+
+            connectionInstances.putUnique(value, instance)
+        }
+
+        multipart.relightModels(connectionInstances.values)
+    }
+
+    override fun relight(source: RelightSource) {
+        multipart.relightModels(bodyInstance)
+        multipart.relightModels(connectionInstances.values)
+    }
+
+    override fun beginFrame() {
+        connectionDirectionsUpdate.consume { values ->
+            applyConnectionData(values)
+        }
+    }
+
+    override fun remove() {
+        bodyInstance?.delete()
+        connectionInstances.values.forEach { it.delete() }
+    }
+}
+
+private val offsetTable = Int2ObjectOpenHashMap<Vector3d>(6).also {
+    it[Direction.DOWN.index()] = Vector3d(0.5, 1.0, 0.5)
+    it[Direction.UP.index()] = Vector3d(0.5, 0.0, 0.5)
+    it[Direction.NORTH.index()] = Vector3d(0.5, 0.5, 1.0)
+    it[Direction.SOUTH.index()] = Vector3d(0.5, 0.5, 0.0)
+    it[Direction.WEST.index()] = Vector3d(1.0, 0.5, 0.5)
+    it[Direction.EAST.index()] = Vector3d(0.0, 0.5, 0.5)
+}
+
+fun<T : Transform<T>> T.transformPart(part: Part<*>, yRotation: Double = 0.0): T {
+    val (dx, dy, dz) = offsetTable.get(part.placement.face.index())!!
+
+    return this
+        .translate(part.placement.position)
+        .translate(dx, dy, dz)
+        .multiply(part.placement.face.rotation)
+        .rotateYRadians(PartGeometry.facingRotationLog(part.placement.horizontalFacing))
+        .rotateYRadians(yRotation)
+        .translate(-0.5, 0.0, -0.5)
 }
 
 class RadiantBodyColorBuilder {
     var coldTint = colorF(1f, 1f, 1f, 1f)
-    var hotTint = colorF(5f, 0.1f, 0.2f, 1f)
+    var hotTint = colorF(1f, 0.2f, 0.1f, 1f)
     var coldTemperature = STANDARD_TEMPERATURE
-    var hotTemperature = Temperature.from(1000.0, ThermalUnits.CELSIUS)
+    var hotTemperature = Temperature.from(800.0, ThermalUnits.CELSIUS)
 
-    fun build(): RadiantBodyColor {
-        return RadiantBodyColor(
+    fun build(): ThermalTint {
+        return ThermalTint(
             coldTint,
             hotTint,
             coldTemperature,
@@ -129,45 +228,52 @@ class RadiantBodyColorBuilder {
     }
 }
 
-fun defaultRadiantBodyColor(): RadiantBodyColor {
+fun defaultRadiantBodyColor(): ThermalTint {
     return RadiantBodyColorBuilder().build()
 }
 
-class RadiantBodyColor(
+class ThermalTint(
     val coldTint: Color,
     val hotTint: Color,
     val coldTemperature: Temperature,
     val hotTemperature: Temperature,
 ) {
-    fun evaluate(t: Temperature): Color {
-        val progress = map(
-            t.kelvin.coerceIn(coldTemperature.kelvin, hotTemperature.kelvin),
-            coldTemperature.kelvin,
-            hotTemperature.kelvin,
-            0.0,
-            1.0
+    fun evaluate(temperature: Temperature) =
+        colorLerp(
+            from = coldTint,
+            to = hotTint,
+            blend = map(
+                temperature.kelvin.coerceIn(
+                    coldTemperature.kelvin,
+                    hotTemperature.kelvin
+                ),
+                coldTemperature.kelvin,
+                hotTemperature.kelvin,
+                0.0,
+                1.0
+            ).toFloat()
         )
 
-        return colorLerp(coldTint, hotTint, progress.toFloat())
-    }
-
-    fun evaluate(t: Double): Color {
-        return evaluate(Temperature(t))
-    }
+    fun evaluate(t: Double) = evaluate(Temperature(t))
 }
 
 @ClientOnly
-class MultipartBlockEntityInstance(val materialManager: MaterialManager, blockEntity: MultipartBlockEntity) :
-    BlockEntityInstance<MultipartBlockEntity>(materialManager, blockEntity),
-    DynamicInstance {
+class MultipartBlockEntityInstance(
+    val materialManager: MaterialManager,
+    blockEntity: MultipartBlockEntity,
+) : BlockEntityInstance<MultipartBlockEntity>(materialManager, blockEntity), DynamicInstance {
 
-    private val parts = ArrayList<Part<*>>()
+    private val parts = HashSet<Part<*>>()
 
     override fun init() {
-        super.init()
-
+        // When this is called on an already initialized renderer (e.g. changing graphics settings),
+        // we will get the parts in handlePartUpdates
         blockEntity.bindRenderer(this)
     }
+
+    fun readBlockBrightness() = world.getBrightness(LightLayer.BLOCK, pos)
+
+    fun readSkyBrightness() = world.getBrightness(LightLayer.SKY, pos)
 
     /**
      * Called by flywheel at the start of each frame.
@@ -176,10 +282,9 @@ class MultipartBlockEntityInstance(val materialManager: MaterialManager, blockEn
     override fun beginFrame() {
         handlePartUpdates()
 
-        parts.forEach { part ->
+        for (part in parts) {
             val renderer = part.renderer
 
-            // todo: maybe get jozufozu to document this?
             if (!renderer.isSetupWith(this)) {
                 renderer.setupRendering(this)
             }
@@ -193,8 +298,8 @@ class MultipartBlockEntityInstance(val materialManager: MaterialManager, blockEn
      * This applies a re-light to all the part renderers.
      * */
     override fun updateLight() {
-        parts.forEach { part ->
-            relightPart(part)
+        for (part in parts) {
+            part.renderer.relight(RelightSource.BlockEvent)
         }
     }
 
@@ -212,13 +317,9 @@ class MultipartBlockEntityInstance(val materialManager: MaterialManager, blockEn
 
             when (update.type) {
                 PartUpdateType.Add -> {
-                    // Parts may already be added, because of the bind method that we called.
-
-                    if (!parts.contains(part)) {
-                        parts.add(part)
-                        part.renderer.setupRendering(this)
-                        relightPart(part)
-                    }
+                    parts.add(part)
+                    part.renderer.setupRendering(this)
+                    part.renderer.relight(RelightSource.Setup)
                 }
 
                 PartUpdateType.Remove -> {
@@ -234,22 +335,36 @@ class MultipartBlockEntityInstance(val materialManager: MaterialManager, blockEn
      * This also calls a cleanup method on the part renderers.
      * */
     override fun remove() {
-        parts.forEach { part ->
+        for (part in parts) {
             part.destroyRenderer()
         }
 
         blockEntity.unbindRenderer()
     }
 
-    /**
-     * This is called by parts when they need to force a re-light.
-     * This may happen when a model is initially created.
-     * */
-    fun relightPart(part: Part<*>) {
-        val models = part.renderer.relightModels()
+    // Nullable for convenience
 
-        if (models != null) {
-            relight(pos, models.stream())
+    /**
+     * Relights the [models] using the block and skylight at this position.
+     * */
+    fun relightModels(models: Iterable<FlatLit<*>?>) {
+        val block = readBlockBrightness()
+        val sky = readSkyBrightness()
+
+        for (it in models) {
+            if(it != null) {
+                it.setBlockLight(block)
+                it.setSkyLight(sky)
+            }
         }
     }
+
+    /**
+     * Relights the [models] using the block and skylight at this position.
+     * */
+    fun relightModels(vararg models: FlatLit<*>?) = relightModels(models.asIterable())
+}
+
+fun interface PartRendererSupplier<T : Part<R>, R : PartRenderer> {
+    fun create(part: T) : R
 }

@@ -1,98 +1,100 @@
 package org.eln2.mc.common.content
 
 import com.jozufozu.flywheel.core.PartialModel
-import com.jozufozu.flywheel.core.materials.FlatLit
 import com.jozufozu.flywheel.core.materials.model.ModelData
-import net.minecraft.resources.ResourceLocation
-import net.minecraft.world.phys.Vec3
-import org.ageseries.libage.sim.Material
+import kotlinx.serialization.Serializable
 import org.ageseries.libage.sim.thermal.Temperature
-import org.ageseries.libage.sim.thermal.ThermalMass
+import org.eln2.mc.NoInj
 import org.eln2.mc.ThermalBody
 import org.eln2.mc.client.render.PartialModels
-import org.eln2.mc.client.render.PartialModels.bbOffset
-import org.eln2.mc.client.render.foundation.*
-import org.eln2.mc.common.cells.foundation.Cell
-import org.eln2.mc.common.cells.foundation.CellCreateInfo
-import org.eln2.mc.common.cells.foundation.SimObject
-import org.eln2.mc.common.cells.foundation.withStandardExplosionBehavior
+import org.eln2.mc.client.render.foundation.ThermalTint
+import org.eln2.mc.client.render.foundation.createPartInstance
+import org.eln2.mc.client.render.foundation.defaultRadiantBodyColor
+import org.eln2.mc.common.cells.foundation.InternalTemperatureConsumer
 import org.eln2.mc.common.events.AtomicUpdate
-import org.eln2.mc.common.parts.foundation.CellPart
-import org.eln2.mc.common.parts.foundation.Part
-import org.eln2.mc.common.parts.foundation.PartPlacementInfo
-import org.eln2.mc.common.parts.foundation.PartRenderer
-import org.eln2.mc.data.withDirectionActualRule
-import org.eln2.mc.mathematics.DirectionMask
+import org.eln2.mc.common.network.serverToClient.PacketHandlerBuilder
+import org.eln2.mc.common.parts.foundation.*
 
-data class RadiatorModel(
-    val destructionTemperature: Double,
-    val surfaceArea: Double,
-    val material: Material,
-    val mass: Double,
-)
+class RadiatorPart(
+    ci: PartCreateInfo,
+    val radiantColor: ThermalTint
+) : CellPart<ThermalWireCell, RadiantBodyRenderer>(ci, Content.THERMAL_RADIATOR_CELL.get()), InternalTemperatureConsumer {
+    override fun createRenderer() = RadiantBodyRenderer(this, PartialModels.RADIATOR, radiantColor, 0.0)
 
-class ThermalRadiatorCell(ci: CellCreateInfo, val model: RadiatorModel) : Cell(ci) {
-    @SimObject
-    val thermalWireObj = ThermalWireObject(this).also {
-        it.body = ThermalBody(ThermalMass(model.material, it.body.energy, model.mass), model.surfaceArea)
+    override fun registerPackets(builder: PacketHandlerBuilder) {
+        builder.withHandler<Sync> {
+            renderer.update(Temperature(it.temperature))
+        }
     }
 
-    init {
-        behaviors.withStandardExplosionBehavior(
-            this,
-            model.destructionTemperature
-        ) { thermalWireObj.body.tempK }
-        ruleSet.withDirectionActualRule(DirectionMask.HORIZONTALS)
+    override fun onInternalTemperatureChanges(dirty: List<ThermalBody>) {
+        sendBulkPacket(Sync(dirty.first().temperatureKelvin))
     }
 
-    val temperature get() = thermalWireObj.body.tempK
+    @Serializable
+    private data class Sync(val temperature: Double)
 }
 
-class RadiatorPart(id: ResourceLocation, placementContext: PartPlacementInfo) :
-    CellPart<BasicPartRenderer>(id, placementContext, Content.THERMAL_WIRE_CELL_COPPER.get()) {
-    override val sizeActual: Vec3
-        get() = Vec3(1.0, 3.0 / 16.0, 1.0)
+class RadiantBodyRenderer(
+    val part: Part<*>,
+    val model: PartialModel,
+    val color: ThermalTint,
+    val yRotation: Double
+) : PartRenderer() {
+    private var bodyInstance: ModelData? = null
+    private val updates = AtomicUpdate<Temperature>()
 
-    override fun createRenderer() = BasicPartRenderer(this, PartialModels.RADIATOR).also {
-        it.downOffset = bbOffset(3.0)
+    fun update(temperature: Temperature) = updates.setLatest(temperature)
+
+    override fun setupRendering() {
+        bodyInstance = createPartInstance(multipart, model, part, yRotation)
+    }
+
+    override fun beginFrame() {
+        if(bodyInstance != null) {
+            updates.consume { temperature ->
+                bodyInstance?.setColor(color.evaluate(temperature))
+            }
+        }
+    }
+
+    override fun relight(source: RelightSource) {
+        multipart.relightModels(bodyInstance)
+    }
+
+    override fun remove() {
+        bodyInstance?.delete()
     }
 }
 
+@NoInj
 class RadiantBipoleRenderer(
     val part: Part<*>,
     val body: PartialModel,
     val left: PartialModel,
     val right: PartialModel,
-    val bodyDownOffset: Double,
-    val bodyRotation: Float,
-    val leftDownOffset: Double,
-    val leftRotation: Float,
-    val rightDownOffset: Double,
-    val rightRotation: Float,
-    val leftColor: RadiantBodyColor,
-    val rightColor: RadiantBodyColor,
-) :
-    PartRenderer {
+    val bodyRotation: Double,
+    val leftRotation: Double,
+    val rightRotation: Double,
+    val leftColor: ThermalTint,
+    val rightColor: ThermalTint,
+) : PartRenderer() {
     constructor(
         part: Part<*>,
         body: PartialModel,
         left: PartialModel,
         right: PartialModel,
-        downOffset: Double,
-        rotation: Float,
-        leftColor: RadiantBodyColor,
-        rightColor: RadiantBodyColor,
+        rotation: Double,
+        leftColor: ThermalTint,
+        rightColor: ThermalTint,
     ) :
         this(
             part,
             body,
             left,
             right,
-            downOffset,
             rotation,
-            downOffset,
             rotation,
-            downOffset,
             rotation,
             leftColor,
             rightColor
@@ -103,52 +105,28 @@ class RadiantBipoleRenderer(
         body: PartialModel,
         left: PartialModel,
         right: PartialModel,
-        downOffset: Double,
-        rotation: Float,
+        rotation: Double,
     ) :
-        this(part, body, left, right, downOffset, rotation, defaultRadiantBodyColor(), defaultRadiantBodyColor())
-
-    override fun isSetupWith(multipartBlockEntityInstance: MultipartBlockEntityInstance): Boolean {
-        return this::multipart.isInitialized && this.multipart == multipartBlockEntityInstance
-    }
+        this(part, body, left, right, rotation, defaultRadiantBodyColor(), defaultRadiantBodyColor())
 
     private var bodyInstance: ModelData? = null
     private var leftInstance: ModelData? = null
     private var rightInstance: ModelData? = null
 
-    private lateinit var multipart: MultipartBlockEntityInstance
-
     private val leftSideUpdate = AtomicUpdate<Temperature>()
     private val rightSideUpdate = AtomicUpdate<Temperature>()
 
-    fun updateLeftSideTemperature(value: Temperature) {
-        leftSideUpdate.setLatest(value)
-    }
+    fun updateLeftSideTemperature(value: Temperature) = leftSideUpdate.setLatest(value)
 
-    fun updateRightSideTemperature(value: Temperature) {
-        rightSideUpdate.setLatest(value)
-    }
+    fun updateRightSideTemperature(value: Temperature) = rightSideUpdate.setLatest(value)
 
-    override fun setupRendering(multipart: MultipartBlockEntityInstance) {
-        this.multipart = multipart
-
-        buildInstance()
-    }
-
-    fun buildInstance() {
-        if (!this::multipart.isInitialized) {
-            error("Multipart not initialized!")
-        }
-
+    override fun setupRendering() {
         bodyInstance?.delete()
         leftInstance?.delete()
         rightInstance?.delete()
-
-        bodyInstance = createPartInstance(multipart, body, part, bodyDownOffset, bodyRotation)
-        leftInstance = createPartInstance(multipart, left, part, leftDownOffset, leftRotation)
-        rightInstance = createPartInstance(multipart, right, part, rightDownOffset, rightRotation)
-
-        multipart.relightPart(part)
+        bodyInstance = createPartInstance(multipart, body, part, bodyRotation)
+        leftInstance = createPartInstance(multipart, left, part, leftRotation)
+        rightInstance = createPartInstance(multipart, right, part, rightRotation)
     }
 
     override fun beginFrame() {
@@ -156,12 +134,8 @@ class RadiantBipoleRenderer(
         rightSideUpdate.consume { rightInstance?.setColor(rightColor.evaluate(it)) }
     }
 
-    override fun relightModels(): List<FlatLit<*>> {
-        return ArrayList<FlatLit<*>>().also {
-            bodyInstance?.apply { it.add(this) }
-            leftInstance?.apply { it.add(this) }
-            rightInstance?.apply { it.add(this) }
-        }
+    override fun relight(source: RelightSource) {
+        multipart.relightModels(bodyInstance, leftInstance, rightInstance)
     }
 
     override fun remove() {

@@ -34,8 +34,7 @@ import kotlin.math.ceil
 
 data class MultiblockDefinition(val requiredBlocksId: Map<BlockPos, ResourceLocation>) {
     val volume = volumeScan()
-    val radius =
-        ceil(listOf(volume.xsize, volume.ysize, volume.zsize).maxOrNull()!! / 2).toInt() // Weird, no max function?
+    val radius = ceil(listOf(volume.xsize, volume.ysize, volume.zsize).maxOrNull()!! / 2).toInt() // Weird, no max function?
 
     private fun volumeScan(): AABB {
         var box = AABB(BlockPos.ZERO)
@@ -49,8 +48,7 @@ data class MultiblockDefinition(val requiredBlocksId: Map<BlockPos, ResourceLoca
 
     companion object {
         fun load(name: String): MultiblockDefinition {
-            val json =
-                Gson().fromJson(getResourceString(resource("multiblocks/$name.json")), JsonMultiblock::class.java)
+            val json = Gson().fromJson(getResourceString(resource("multiblocks/$name.json")), JsonMultiblock::class.java)
 
             return MultiblockDefinition(
                 json.blocks.associate {
@@ -149,7 +147,11 @@ class MultiblockManager(
         }
     }
 
-    override fun handleGameEvent(
+    override fun handleGameEvent(pLevel: ServerLevel, pEventMessage: GameEvent.Message): Boolean {
+        return handleGameEvent(pLevel, pEventMessage.gameEvent(), pEventMessage.context(), pEventMessage.source())
+    }
+
+    private fun handleGameEvent(
         pLevel: ServerLevel,
         pGameEvent: GameEvent,
         pContext: GameEvent.Context,

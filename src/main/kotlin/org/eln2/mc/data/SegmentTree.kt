@@ -58,6 +58,8 @@ data class SegmentTreeNode<T>(
     }
 }
 
+// Use when binary search is boring
+
 class SegmentTree<T>(private val root: SegmentTreeNode<T>) {
     fun queryOrNull(point: Double): T? {
         if (!root.contains(point)) {

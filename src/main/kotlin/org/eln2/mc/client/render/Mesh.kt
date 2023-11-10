@@ -1,7 +1,8 @@
 package org.eln2.mc.client.render
 
-import com.jozufozu.flywheel.api.vertex.VertexList
-import com.jozufozu.flywheel.util.Color
+import it.unimi.dsi.fastutil.doubles.Double2ObjectOpenHashMap
+import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap
+import it.unimi.dsi.fastutil.ints.IntArrayList
 import org.ageseries.libage.data.MutableSetMapMultiMap
 import org.eln2.mc.bind
 import org.eln2.mc.mathematics.*
@@ -65,24 +66,24 @@ data class MeshBuilder<Vertex, Primitive>(val vertices: ArrayList<Vertex>, val e
         edges[b] = a
     }
 
-    fun cycleScan(vert: Int, targetLength: Int): ArrayList<ArrayList<Int>> {
-        val visits = HashMap<Int, Int>()
-        val cycles = ArrayList<ArrayList<Int>>()
+    fun cycleScan(vert: Int, targetLength: Int): ArrayList<IntArrayList> {
+        val visits = Int2IntOpenHashMap()
+        val cycles = ArrayList<IntArrayList>()
 
         fun levelScan(
-            rxRemaining: Int,
+            remaining: Int,
             actualVert: Int,
             actualVertSource: Int,
             cycleVert: Int,
-            user: (ArrayList<Int>) -> Unit,
+            user: (IntArrayList) -> Unit,
         ) {
-            visits[actualVert] = actualVertSource
+            visits.put(actualVert, actualVertSource)
 
-            if (rxRemaining > 0) {
-                edges[actualVert].forEach { actualVertConn ->
-                    if (!visits.contains(actualVertConn)) {
+            if (remaining > 0) {
+                for (actualVertConn in edges[actualVert]) {
+                    if (!visits.containsKey(actualVertConn)) {
                         levelScan(
-                            rxRemaining = rxRemaining - 1,
+                            remaining = remaining - 1,
                             actualVert = actualVertConn,
                             actualVertSource = actualVert,
                             cycleVert,
@@ -95,13 +96,13 @@ data class MeshBuilder<Vertex, Primitive>(val vertices: ArrayList<Vertex>, val e
             }
 
             if (edges[actualVert].contains(cycleVert)) {
-                val pathway = ArrayList<Int>()
+                val pathway = IntArrayList(targetLength)
 
                 var current = actualVert
 
                 while (true) {
                     pathway.add(current)
-                    current = visits[current]!!
+                    current = visits.get(current)
 
                     if (current == cycleVert) {
                         user(pathway)
@@ -114,7 +115,7 @@ data class MeshBuilder<Vertex, Primitive>(val vertices: ArrayList<Vertex>, val e
         }
 
         levelScan(
-            rxRemaining = targetLength - 1,
+            remaining = targetLength - 1,
             actualVert = vert,
             actualVertSource = vert,
             cycleVert = vert,
@@ -125,66 +126,33 @@ data class MeshBuilder<Vertex, Primitive>(val vertices: ArrayList<Vertex>, val e
     }
 }
 
-fun <Vertex> MeshBuilder<Vertex, Quads>.triangulate(): MeshBuilder<Vertex, Triangles> {
-    val result = this.reparam<Triangles>()
-
-    val triangulated = HashSet<IndexedQuad>()
-
-    vertices.indices.forEach { vertIdxMesh ->
-        cycleScan(vertIdxMesh, 4).forEach {
-            val splitTargetMesh = it[1]
-
-            it.add(vertIdxMesh)
-            it.sort()
-
-            val quad = IndexedQuad(it[0], it[1], it[2], it[3])
-
-            if (triangulated.add(quad)) {
-                result.addEdge(vertIdxMesh, splitTargetMesh)
-            }
-        }
-    }
-
-    return result
-}
-
-fun <Vertex> MeshBuilder<Vertex, Quads>.quadScan(): ArrayList<IndexedQuad> {
+fun <Vertex> MeshBuilder<Vertex, Quads>.quadScan(consumer: (IndexedQuad) -> Unit) {
     val visited = HashSet<IndexedQuad>()
-    val result = ArrayList(visited)
+    val buffer = IntArray(4)
 
-    this.vertices.indices.forEach { vertIdx ->
+    for (vertIdx in this.vertices.indices) {
         this.cycleScan(vertIdx, 4).forEach { loop ->
-            val sorted = arrayListOf(loop[0], loop[1], loop[2], vertIdx).apply { sort() }
+            val l0 = loop.getInt(0)
+            val l1 = loop.getInt(1)
+            val l2 = loop.getInt(2)
 
-            if (visited.add(IndexedQuad(sorted[0], sorted[1], sorted[2], sorted[3]))) {
-                result.add(IndexedQuad(vertIdx, loop[0], loop[1], loop[2]))
+            buffer[0] = l0
+            buffer[1] = l1
+            buffer[2] = l2
+            buffer[3] = vertIdx
+
+            buffer.sort()
+
+            if (visited.add(IndexedQuad(buffer[0], buffer[1], buffer[2], buffer[3]))) {
+                consumer(IndexedQuad(vertIdx, l0, l1, l2))
             }
         }
     }
-
-    return result
-}
-
-fun <Vertex> MeshBuilder<Vertex, Triangles>.triScan(): ArrayList<IndexedTri> {
-    val visited = HashSet<IndexedTri>()
-    val result = ArrayList(visited)
-
-    this.vertices.indices.forEach { vertIdx ->
-        this.cycleScan(vertIdx, 3).forEach { loop ->
-            val sorted = arrayListOf(loop[0], loop[1], vertIdx).apply { sort() }
-
-            if (visited.add(IndexedTri(sorted[0], sorted[1], sorted[2]))) {
-                result.add(IndexedTri(vertIdx, loop[0], loop[1]))
-            }
-        }
-    }
-
-    return result
 }
 
 data class Sketch(val vertices: List<Vector2d>)
 
-fun sketchCircle(vertices: Int, r: Double = 1.0): Sketch {
+fun sketchCircle(vertices: Int, radius: Double = 1.0): Sketch {
     require(vertices >= 3)
 
     val results = ArrayList<Vector2d>()
@@ -199,47 +167,58 @@ fun sketchCircle(vertices: Int, r: Double = 1.0): Sketch {
                 dstMax = PI
             )
 
-        results.add(Rotation2d.exp(angle).direction * r)
+        results.add(Rotation2d.exp(angle).direction * radius)
     }
 
     return Sketch(results)
 }
 
-fun extrudeSketch(sketch: Sketch, spline: Spline3d, samples: List<Double>): MeshBuilder<Vector3dParametric, Quads> {
+fun extrudeSketchFrenet(sketch: Sketch, spline: Spline3d, samples: List<Double>): SketchExtrusion {
+    val f0 = spline.frenetPose(samples.first())
+    val f1 = spline.frenetPose(samples.last())
+    return extrudeSketch(sketch, spline, samples, f0, f1)
+}
+// RMF assumes no "twists and turns", fix in the future?
+fun extrudeSketch(sketch: Sketch, spline: Spline3d, samples: List<Double>, f0: Pose3d, f1: Pose3d): SketchExtrusion {
     val builder = MeshBuilder<Vector3dParametric, Quads>()
 
-    // Compute transport (RMF):
-    val initialConfigSpline = spline.evaluatePoseFrenet(samples.first()).rotation
-    val rxTransportIncr = (spline.evaluatePoseFrenet(samples.last()).rotation / initialConfigSpline)
+    val y0 = samples.first()
+    val y1 = samples.last()
 
-    fun extrude(prevMapSketchModel: HashMap<Int, Int>?, t: Double): HashMap<Int, Int> {
-        val mapSketchModel = HashMap<Int, Int>()
+    val increment = f1.rotation / f0.rotation
 
-        val txSketchModel = Pose3d(
+    val rmf = ArrayList<Pose3dParametric>(samples.size)
+    val rmfLookup = Double2ObjectOpenHashMap<Pose3d>(samples.size)
+
+    fun extrude(previousMapSketchModel: Int2IntOpenHashMap?, t: Double): Int2IntOpenHashMap {
+        val mapSketchModel = Int2IntOpenHashMap()
+
+        val pose = Pose3d(
             spline.evaluate(t),
-            initialConfigSpline * rxTransportIncr.scaled(
-                t.mappedTo(
-                    samples.first(),
-                    samples.last(),
-                    snzE(0.0),
-                    1.0
-                )
+            f0.rotation * increment(
+                map(t, y0, y1, 0.0, 1.0)
             )
         )
 
-        sketch.vertices.forEachIndexed { vertIdxSketch, (xSketch, ySketch) ->
-            mapSketchModel[vertIdxSketch] = builder.addVertex(
-                Vector3dParametric(
-                    value = txSketchModel * Vector3d(0.0, xSketch, ySketch),
-                    param = t
+        rmf.add(Pose3dParametric(pose, t))
+        rmfLookup.put(t, pose)
+
+        sketch.vertices.forEachIndexed { vertexIdSketch, (xSketch, ySketch) ->
+            mapSketchModel.put(
+                vertexIdSketch,
+                builder.addVertex(
+                    Vector3dParametric(
+                        value = pose * Vector3d(0.0, xSketch, ySketch),
+                        t = t
+                    )
                 )
             )
 
             // Build edges between consecutive rings:
-            if (prevMapSketchModel != null) {
+            if (previousMapSketchModel != null) {
                 builder.addEdge(
-                    mapSketchModel[vertIdxSketch]!!,
-                    prevMapSketchModel[vertIdxSketch]!!
+                    mapSketchModel.get(vertexIdSketch),
+                    previousMapSketchModel.get(vertexIdSketch)
                 )
             }
         }
@@ -247,80 +226,27 @@ fun extrudeSketch(sketch: Sketch, spline: Spline3d, samples: List<Double>): Mesh
         // Build ring edges:
         sketch.vertices.indices.forEach { vertIdxSketch ->
             builder.addEdge(
-                mapSketchModel[vertIdxSketch]!!,
-                if (vertIdxSketch == sketch.vertices.size - 1) mapSketchModel[0]!! // Loop around to first to complete ring
-                else mapSketchModel[vertIdxSketch + 1]!!
+                mapSketchModel.get(vertIdxSketch),
+                if (vertIdxSketch == sketch.vertices.size - 1) mapSketchModel.get(0) // Loop around to first to complete ring
+                else mapSketchModel.get(vertIdxSketch + 1)
             )
         }
 
         return mapSketchModel
     }
 
-    var previous: HashMap<Int, Int>? = null
+    var previous: Int2IntOpenHashMap? = null
     samples.forEach {
         previous = extrude(previous, it)
     }
 
-    return builder
+    return SketchExtrusion(builder, f0, f1, rmf, rmfLookup)
 }
 
-data class VertPositionColorNormalUv(
-    val position: Vector3d,
-    val color: Color,
-    val normal: Vector3d,
-    val uv: Vector2d,
+data class SketchExtrusion(
+    val mesh: MeshBuilder<Vector3dParametric, Quads>,
+    val f0: Pose3d,
+    val f1: Pose3d,
+    val rmfProgression: ArrayList<Pose3dParametric>,
+    val rmfLookup: Double2ObjectOpenHashMap<Pose3d>
 )
-
-class ListVertexList(val vertices: List<VertPositionColorNormalUv>) : VertexList {
-    override fun getX(index: Int) = vertices[index].position.x.toFloat()
-    override fun getY(index: Int) = vertices[index].position.y.toFloat()
-    override fun getZ(index: Int) = vertices[index].position.z.toFloat()
-
-    override fun getR(index: Int) = Byte.MAX_VALUE
-    override fun getG(index: Int) = Byte.MAX_VALUE
-    override fun getB(index: Int) = Byte.MAX_VALUE
-    override fun getA(index: Int) = Byte.MAX_VALUE
-
-    override fun getU(index: Int) = vertices[index].uv.x.toFloat()
-    override fun getV(index: Int) = vertices[index].uv.y.toFloat()
-
-    override fun getLight(index: Int) = Int.MAX_VALUE
-
-    override fun getNX(index: Int) = vertices[index].normal.x.toFloat()
-    override fun getNY(index: Int) = vertices[index].normal.y.toFloat()
-    override fun getNZ(index: Int) = vertices[index].normal.z.toFloat()
-
-    override fun getVertexCount() = vertices.size
-}
-
-class PackedVertexList(vertices: List<VertPositionColorNormalUv>) : VertexList {
-    private val posX = vertices.map { it.position.x.toFloat() }.toFloatArray()
-    private val posY = vertices.map { it.position.y.toFloat() }.toFloatArray()
-    private val posZ = vertices.map { it.position.z.toFloat() }.toFloatArray()
-    private val nmlX = vertices.map { it.normal.x.toFloat() }.toFloatArray()
-    private val nmlY = vertices.map { it.normal.y.toFloat() }.toFloatArray()
-    private val nmlZ = vertices.map { it.normal.z.toFloat() }.toFloatArray()
-    private val u = vertices.map { it.uv.x.toFloat() }.toFloatArray()
-    private val v = vertices.map { it.uv.y.toFloat() }.toFloatArray()
-    val count = vertices.size
-
-    override fun getX(index: Int) = posX[index]
-    override fun getY(index: Int) = posY[index]
-    override fun getZ(index: Int) = posZ[index]
-
-    override fun getR(index: Int): Byte = Byte.MAX_VALUE
-    override fun getG(index: Int): Byte = Byte.MAX_VALUE
-    override fun getB(index: Int): Byte = Byte.MAX_VALUE
-    override fun getA(index: Int): Byte = Byte.MAX_VALUE
-
-    override fun getU(index: Int) = u[index]
-    override fun getV(index: Int) = v[index]
-
-    override fun getLight(index: Int) = 15
-
-    override fun getNX(index: Int) = nmlX[index]
-    override fun getNY(index: Int) = nmlY[index]
-    override fun getNZ(index: Int) = nmlZ[index]
-
-    override fun getVertexCount() = count
-}

@@ -1,494 +1,14 @@
-@file:Suppress("LocalVariableName")
+@file:Suppress("LocalVariableName", "NOTHING_TO_INLINE")
 
 package org.eln2.mc.mathematics
 
+import net.minecraft.core.BlockPos
+import org.eln2.mc.formatted
 import kotlin.math.*
 
 
 private const val GEOMETRY_COMPARE_EPS = 1e-8
 private const val GEOMETRY_NORMALIZED_EPS = 1e-6
-
-interface KDVector<T> {
-    val size: Int
-
-    /**
-     * Gets the value at the specified [index].
-     * An error will be produced if [index] is out-of-bounds.
-     * */
-    operator fun get(index: Int): T
-}
-
-interface MutableKDVector<T> : KDVector<T> {
-    /**
-     * Sets the element at the specified [index] to [value].
-     * An error will be produced if [index] is out-of-bounds.
-     * */
-    operator fun set(index: Int, value: T)
-}
-
-interface KDVectorI : KDVector<Int> {
-    override val size: Int
-    operator fun iterator(): Iterator<Int>
-    override operator fun get(index: Int): Int
-    fun toArray(): IntArray
-
-    operator fun plus(b: KDVectorI): KDVectorI
-    operator fun minus(b: KDVectorI): KDVectorI
-}
-
-interface KDVectorD : KDVector<Double> {
-    override val size: Int
-
-    operator fun iterator(): Iterator<Double>
-    override operator fun get(index: Int): Double
-
-    /**
-     * Returns an [KDVectorI] with the values in this vector transformed using the [floor] function.
-     * */
-    fun floored(): KDVectorI
-
-    /**
-     * Returns an [KDVectorD] with the values in this vector transformed using the [frac] function.
-     * */
-    fun fraction(): KDVectorD
-
-    operator fun plus(b: KDVectorD): KDVectorD
-    operator fun minus(b: KDVectorD): KDVectorD
-}
-
-interface MutableKDVectorI : KDVectorI, MutableKDVector<Int>
-interface MutableKDVectorD : KDVectorD, MutableKDVector<Double>
-
-class ArrayKDVectorI(val values: IntArray) : MutableKDVectorI {
-    constructor(size: Int) : this(IntArray(size))
-
-    override val size get() = values.size
-
-    override fun iterator(): Iterator<Int> {
-        return values.iterator()
-    }
-
-    override operator fun get(index: Int): Int {
-        return values[index]
-    }
-
-    override fun toArray(): IntArray {
-        return values.copyOf()
-    }
-
-    override operator fun set(index: Int, value: Int) {
-        values[index] = value
-    }
-
-    override operator fun plus(b: KDVectorI): ArrayKDVectorI {
-        val result = ArrayKDVectorI(size)
-
-        for (i in 0 until size) {
-            result[i] = this[i] + b[i]
-        }
-
-        return result
-    }
-
-    override operator fun minus(b: KDVectorI): ArrayKDVectorI {
-        val result = ArrayKDVectorI(size)
-
-        for (i in 0 until size) {
-            result[i] = this[i] - b[i]
-        }
-
-        return result
-    }
-
-    fun bind() = ArrayKDVectorI(values.copyOf())
-
-    fun clamp(min: Int, max: Int) {
-        for (i in 0 until size) {
-            this[i] -= this[i].coerceIn(min, max)
-        }
-    }
-
-    fun clamped(min: Int, max: Int): ArrayKDVectorI {
-        return this.bind().also { it.clamp(min, max) }
-    }
-
-    companion object {
-        fun ofSize(size: Int): ArrayKDVectorI {
-            return ArrayKDVectorI(IntArray(size))
-        }
-    }
-}
-
-fun arrayKDVectorIOf(vararg values: Int) = ArrayKDVectorI(values.asList().toIntArray())
-fun arrayKDVectorIOf(values: List<Int>) = ArrayKDVectorI(values.toIntArray())
-fun kdVectorIOf(values: List<Int>): KDVectorI = KDVectorIImmutable(values)
-fun kdVectorIOf(vararg values: Int): KDVectorI = kdVectorIOf(values.asList())
-
-class KDVectorIImmutable private constructor(private val values: IntArray) : KDVectorI {
-    constructor(values: List<Int>) : this(values.toIntArray())
-
-    override val size get() = values.size
-
-    override fun iterator(): Iterator<Int> {
-        return values.iterator()
-    }
-
-    val isEmpty get() = size == 0
-
-    override operator fun get(index: Int): Int {
-        return values[index]
-    }
-
-    /**
-     * Creates a new IntArray from this vector's values.
-     * */
-    override fun toArray(): IntArray {
-        return values.clone()
-    }
-
-    override fun plus(b: KDVectorI): KDVectorI {
-        val result = IntArray(size)
-
-        for (i in 0 until size) {
-            result[i] = this[i] + b[i]
-        }
-
-        return KDVectorIImmutable(result)
-    }
-
-    override fun minus(b: KDVectorI): KDVectorI {
-        val result = IntArray(size)
-
-        for (i in 0 until size) {
-            result[i] = this[i] - b[i]
-        }
-
-        return KDVectorIImmutable(result)
-    }
-}
-
-class ArrayKDVectorD(val values: DoubleArray) : MutableKDVectorD {
-    constructor(size: Int) : this(DoubleArray(size))
-
-    override val size get() = values.size
-
-    override fun iterator(): Iterator<Double> {
-        return values.iterator()
-    }
-
-    override operator fun get(index: Int): Double {
-        return values[index]
-    }
-
-    override fun floored(): ArrayKDVectorI {
-        val result = ArrayKDVectorI.ofSize(size)
-
-        for (i in 0 until size) {
-            result[i] = floor(this[i]).toInt()
-        }
-
-        return result
-    }
-
-    override fun fraction(): KDVectorD {
-        val result = ofSize(size)
-
-        for (i in 0 until size) {
-            result[i] = frac(this[i])
-        }
-
-        return result
-    }
-
-    override operator fun set(index: Int, value: Double) {
-        values[index] = value
-    }
-
-    override operator fun plus(b: KDVectorD): ArrayKDVectorD {
-        val result = ArrayKDVectorD(size)
-
-        for (i in 0 until size) {
-            result[i] = this[i] + b[i]
-        }
-
-        return result
-    }
-
-    override operator fun minus(b: KDVectorD): ArrayKDVectorD {
-        val result = ArrayKDVectorD(size)
-
-        for (i in 0 until size) {
-            result[i] = this[i] - b[i]
-        }
-
-        return result
-    }
-
-    operator fun plusAssign(other: ArrayKDVectorD) {
-        for (i in 0 until size) {
-            this[i] += other[i]
-        }
-    }
-
-    operator fun minusAssign(other: ArrayKDVectorD) {
-        for (i in 0 until size) {
-            this[i] -= other[i]
-        }
-    }
-
-    /**
-     * @return A copy of this vector.
-     * */
-    fun bind() = ArrayKDVectorD(values.copyOf())
-
-    /**
-     * Clamps the values in this vector to be in the range [min]-[max].
-     * */
-    fun clamp(min: Double, max: Double) {
-        for (i in 0 until size) {
-            this[i] -= this[i].coerceIn(min, max)
-        }
-    }
-
-    /**
-     * @return A copy of this vector, with the values clamped to be in the range [min]-[max].
-     * */
-    fun clamped(min: Double, max: Double): ArrayKDVectorD {
-        return this.bind().also { it.clamp(min, max) }
-    }
-
-    companion object {
-        /**
-         * Create a new vector with [size] values, initialized to 0.
-         * */
-        fun ofSize(size: Int): ArrayKDVectorD {
-            return ArrayKDVectorD(DoubleArray(size))
-        }
-    }
-}
-
-fun kdVectorDOf(values: List<Double>): ArrayKDVectorD {
-    return ArrayKDVectorD(values.toDoubleArray())
-}
-
-fun kdVectorDOf(vararg values: Double): ArrayKDVectorD {
-    return ArrayKDVectorD(values.asList().toDoubleArray())
-}
-
-interface KDGrid<T> {
-    val dimensions: Int
-
-    /**
-     * @return The size of the grid along the specified [dimension].
-     * */
-    fun getSize(dimension: Int): Int
-
-    /**
-     * @param coordinates The coordinates inside this grid. If they are out-of-bounds, an error will be produced.
-     * @return The value in the cell at the specified [coordinates].
-     * */
-    operator fun get(coordinates: KDVectorI): T
-}
-
-interface MutableKDGrid<T> : KDGrid<T> {
-    /**
-     * Sets the [value] at the specified coordinates. If they are out-of-bounds, an error will be produced.
-     * */
-    operator fun set(coordinates: KDVectorI, value: T)
-}
-
-interface KDGridD : KDGrid<Double>
-interface MutableKDGridD : KDGridD, MutableKDGrid<Double>
-
-class ArrayKDGrid<T>(val sizes: KDVectorIImmutable, val grid: Array<T>) : MutableKDGrid<T> {
-    private val strides: IntArray
-
-    override val dimensions get() = sizes.size
-
-    init {
-        validateGrid(sizes, grid.size)
-        strides = computeStrides(sizes)
-    }
-
-    override fun getSize(dimension: Int): Int {
-        return sizes[dimension]
-    }
-
-    private fun computeIndex(coordinates: KDVectorI): Int {
-        return computeIndex(coordinates)
-    }
-
-    override operator fun get(coordinates: KDVectorI): T {
-        return grid[computeIndex(coordinates)]
-    }
-
-    override operator fun set(coordinates: KDVectorI, value: T) {
-        grid[computeIndex(coordinates)] = value
-    }
-
-    companion object {
-        fun computeIndex(coordinates: KDVectorI, strides: IntArray): Int {
-            if (coordinates.size != strides.size) {
-                error("Cannot index ${strides.size}D grid with ${coordinates.size} coordinates")
-            }
-
-            var index = 0
-
-            for (i in strides.indices) {
-                index += strides[i] * coordinates[i]
-            }
-
-            return index
-        }
-
-        fun computeGridSize(sizes: KDVectorI): Int {
-            var result = 1
-
-            for (i in 0 until sizes.size) {
-                result *= sizes[i]
-            }
-
-            return result
-        }
-
-        fun gridFits(sizes: KDVectorI, gridSize: Int): Boolean {
-            if (sizes.size == 0) {
-                error("Grid sizes cannot be empty")
-            }
-
-            for (size in sizes) {
-                if (size <= 0) {
-                    error("Size cannot be negative or 0")
-                }
-            }
-
-            val cells = computeGridSize(sizes)
-
-            return gridSize >= cells
-        }
-
-        fun validateGrid(sizes: KDVectorI, gridSize: Int) {
-            if (!gridFits(sizes, gridSize)) {
-                error("Insufficient space in grid")
-            }
-        }
-
-        fun computeStrides(sizes: KDVectorI): IntArray {
-            val strides = IntArray(sizes.size)
-
-            for (i in 0 until sizes.size) {
-                var pow = 1
-
-                for (j in 0 until i) {
-                    pow *= sizes[j]
-                }
-
-                strides[i] = pow
-            }
-
-            return strides
-        }
-    }
-}
-
-class ArrayKDGridD(val sizes: KDVectorIImmutable, val grid: DoubleArray) : MutableKDGridD {
-    private val strides: IntArray
-
-    override val dimensions get() = sizes.size
-
-    init {
-        ArrayKDGrid.validateGrid(sizes, grid.size)
-        strides = ArrayKDGrid.computeStrides(sizes)
-    }
-
-    override fun getSize(dimension: Int): Int {
-        return sizes[dimension]
-    }
-
-    private fun computeIndex(coordinates: KDVectorI): Int {
-        return ArrayKDGrid.computeIndex(coordinates, strides)
-    }
-
-    override operator fun get(coordinates: KDVectorI): Double {
-        return grid[computeIndex(coordinates)]
-    }
-
-    override operator fun set(coordinates: KDVectorI, value: Double) {
-        grid[computeIndex(coordinates)] = value
-    }
-}
-
-inline operator fun <reified T> KDGrid<T>.get(vararg coordinates: Int): T {
-    return this[arrayKDVectorIOf(coordinates.asList())]
-}
-
-inline operator fun <reified T> MutableKDGrid<T>.set(vararg coordinates: Int, value: T) {
-    this[arrayKDVectorIOf(coordinates.asList())] = value
-}
-
-inline fun <reified T> arrayKDGridOf(sizes: KDVectorIImmutable, default: T): ArrayKDGrid<T> {
-    return ArrayKDGrid(sizes, Array(ArrayKDGrid.computeGridSize(sizes)) { default })
-}
-
-/**
- * @return A [ArrayKDGrid] with the specified [sizes], with all cells initialized to [default].
- * */
-inline fun <reified T> arrayKDGridOf(default: T, vararg sizes: Int): ArrayKDGrid<T> {
-    return arrayKDGridOf(KDVectorIImmutable(sizes.asList()), default)
-}
-
-/**
- * @return A [ArrayKDGridD] with the specified [sizes], with all cells initialized to [default].
- * */
-fun arrayKDGridDOf(sizes: KDVectorIImmutable, default: Double): ArrayKDGridD {
-    return ArrayKDGridD(sizes, DoubleArray(ArrayKDGrid.computeGridSize(sizes)) { default })
-}
-
-/**
- * @return A [ArrayKDGridD] with the specified [sizes], with all cells initialized to [default].
- * */
-fun arrayKDGridDOf(default: Double, vararg sizes: Int): ArrayKDGridD {
-    return arrayKDGridDOf(KDVectorIImmutable(sizes.asList()), default)
-}
-
-/**
- * @return A [ArrayKDGrid] with the specified [sizes], with all cells initialized to 0.
- * */
-fun arrayKDGridDOf(sizes: KDVectorIImmutable): ArrayKDGridD {
-    return arrayKDGridDOf(sizes, 0.0)
-}
-
-fun arrayKDGridDOf(vararg sizes: Int): ArrayKDGridD {
-    return arrayKDGridDOf(KDVectorIImmutable(sizes.asList()))
-}
-
-fun <T> KDGrid<T>.traverse(consumer: ((KDVectorI) -> Unit)) {
-    fun traverseDimension(dimension: Int, coordinates: ArrayKDVectorI) {
-        val size = this.getSize(dimension)
-
-        for (i in 0 until size) {
-            coordinates[dimension] = i
-
-            if (dimension != 0) {
-                traverseDimension(dimension - 1, coordinates.bind())
-            } else {
-                consumer(coordinates)
-            }
-        }
-    }
-
-    traverseDimension(this.dimensions - 1, ArrayKDVectorI.ofSize(this.dimensions))
-}
-
-fun KDVector<Double>.toKDVectorD(): ArrayKDVectorD {
-    val values = DoubleArray(this.size)
-
-    for (i in 0 until this.size) {
-        values[i] = this[i]
-    }
-
-    return ArrayKDVectorD(values)
-}
 
 data class Vector2I(val x: Int, val y: Int) {
     companion object {
@@ -605,6 +125,22 @@ data class Matrix3x3(val c0: Vector3d, val c1: Vector3d, val c2: Vector3d) {
     fun approxEq(other: Matrix3x3, eps: Double = GEOMETRY_COMPARE_EPS) =
         this.c0.approxEq(other.c0, eps) && this.c1.approxEq(other.c1, eps) && this.c2.approxEq(other.c2, eps)
 
+    fun toArray() : DoubleArray {
+        val array = DoubleArray(9)
+
+        array[0] = c0.x
+        array[1] = c1.x
+        array[2] = c2.x
+        array[3] = c0.y
+        array[4] = c1.y
+        array[5] = c2.y
+        array[6] = c0.z
+        array[7] = c1.z
+        array[8] = c2.z
+
+        return array
+    }
+
     companion object {
         fun rows(r0: Vector3d, r1: Vector3d, r2: Vector3d) = Matrix3x3(
             Vector3d(r0.x, r1.x, r2.x),
@@ -613,6 +149,8 @@ data class Matrix3x3(val c0: Vector3d, val c1: Vector3d, val c2: Vector3d) {
         )
 
         val identity = Matrix3x3(Vector3d.unitX, Vector3d.unitY, Vector3d.unitZ)
+
+        inline fun get(array: DoubleArray, c: Int, r: Int) = r * 3 + c
     }
 }
 
@@ -821,25 +359,6 @@ data class Matrix4x4Dual(val c0: Vector4dDual, val c1: Vector4dDual, val c2: Vec
         Vector4dDual(m01, m11, m21, m31),
         Vector4dDual(m02, m12, m22, m32),
         Vector4dDual(m03, m13, m23, m33)
-    )
-
-    constructor(mat: DualArray) : this(
-        mat[0],
-        mat[1],
-        mat[2],
-        mat[3],
-        mat[4],
-        mat[5],
-        mat[6],
-        mat[7],
-        mat[8],
-        mat[9],
-        mat[10],
-        mat[11],
-        mat[12],
-        mat[13],
-        mat[14],
-        mat[15]
     )
 
     constructor(mat: List<Dual>) : this(
@@ -1062,10 +581,9 @@ data class Rotation2d(val re: Double, val im: Double) {
     val inverse get() = Rotation2d(re, -im)
     val direction get() = Vector2d(re, im)
 
-    fun approxEq(other: Rotation2d, eps: Double = GEOMETRY_COMPARE_EPS) =
-        re.approxEq(other.re, eps) && im.approxEq(other.im, eps)
+    fun approxEq(other: Rotation2d, eps: Double = GEOMETRY_COMPARE_EPS) = re.approxEq(other.re, eps) && im.approxEq(other.im, eps)
 
-    override fun toString() = "${Math.toDegrees(log()).rounded()} deg"
+    override fun toString() = "${Math.toDegrees(log()).formatted()} deg"
 
     operator fun not() = this.inverse
     operator fun times(b: Rotation2d) = Rotation2d(this.re * b.re - this.im * b.im, this.re * b.im + this.im * b.re)
@@ -1075,7 +593,7 @@ data class Rotation2d(val re: Double, val im: Double) {
     operator fun minus(b: Rotation2d) = (this / b).log()
 
     companion object {
-        val zero = exp(0.0)
+        val identity = exp(0.0)
 
         fun exp(angleIncr: Double) = Rotation2d(cos(angleIncr), sin(angleIncr))
 
@@ -1210,19 +728,16 @@ data class Pose2dDual(val translation: Vector2dDual, val rotation: Rotation2dDua
     override fun toString() = "$translation $rotation"
 
     operator fun not() = this.inverse
-    operator fun times(b: Pose2dDual) =
-        Pose2dDual(this.translation + this.rotation * b.translation, this.rotation * b.rotation)
+    operator fun times(b: Pose2dDual) = Pose2dDual(this.translation + this.rotation * b.translation, this.rotation * b.rotation)
 
-    operator fun times(b: Pose2d) =
-        Pose2dDual(this.translation + this.rotation * b.translation, this.rotation * b.rotation)
+    operator fun times(b: Pose2d) = Pose2dDual(this.translation + this.rotation * b.translation, this.rotation * b.rotation)
 
     operator fun times(b: Twist2dDual) = Twist2dDual(rotation * b.trVelocity, b.rotVelocity)
     operator fun div(b: Pose2dDual) = b.inverse * this
     operator fun plus(incr: Twist2dIncr) = this * Pose2d.exp(incr)
 
     companion object {
-        fun const(v: Pose2d, n: Int = 1) =
-            Pose2dDual(Vector2dDual.const(v.translation, n), Rotation2dDual.const(v.rotation, n))
+        fun const(v: Pose2d, n: Int = 1) = Pose2dDual(Vector2dDual.const(v.translation, n), Rotation2dDual.const(v.rotation, n))
     }
 }
 
@@ -1242,56 +757,94 @@ data class Vector3di(val x: Int, val y: Int, val z: Int) {
         val unitX = Vector3di(1, 0, 0)
         val unitY = Vector3di(0, 1, 0)
         val unitZ = Vector3di(0, 0, 1)
+
+        fun manhattan(a: Vector3di, b: Vector3di) : Int {
+            val dx = abs(a.x - b.x)
+            val dy = abs(a.y - b.y)
+            val dz = abs(a.z - b.z)
+
+            return dx + dy + dz
+        }
     }
 }
 
 data class Vector3d(val x: Double, val y: Double, val z: Double) {
+    constructor(x: Int, y: Int, z: Int) : this(x.toDouble(), y.toDouble(), z.toDouble())
     constructor(value: Double) : this(value, value, value)
 
-    infix fun o(b: Vector3d) = x * b.x + y * b.y + z * b.z
-    val normSqr get() = this o this
+    infix fun dot(b: Vector3d) = x * b.x + y * b.y + z * b.z
+    val normSqr get() = this dot this
     val norm get() = sqrt(normSqr)
     val isUnit get() = normSqr.approxEq(1.0, GEOMETRY_NORMALIZED_EPS)
-    infix fun distTo(b: Vector3d) = (this - b).norm
-    infix fun distToSqr(b: Vector3d) = (this - b).normSqr
-    infix fun cosAngle(b: Vector3d) = (this o b) / (this.norm * b.norm)
-    infix fun angle(b: Vector3d) = acos(this cosAngle b)
+    infix fun distanceTo(b: Vector3d) = (this - b).norm
+    infix fun distanceToSqr(b: Vector3d) = (this - b).normSqr
+    infix fun cosAngle(b: Vector3d) = (this dot b) / (this.norm * b.norm)
+    infix fun angle(b: Vector3d) = acos((this cosAngle b).coerceIn(-1.0, 1.0))
 
     fun nz() = Vector3d(x.nz(), y.nz(), z.nz())
     fun normalized() = this / norm
     fun normalizedNz() = this.nz() / norm.nz()
 
-    infix fun x(b: Vector3d) = Vector3d(
+    infix fun cross(b: Vector3d) = Vector3d(
         this.y * b.z - this.z * b.y,
         this.z * b.x - this.x * b.z,
         this.x * b.y - this.y * b.x
     )
 
-    fun approxEq(other: Vector3d, eps: Double = GEOMETRY_COMPARE_EPS) =
-        x.approxEq(other.x, eps) && y.approxEq(other.y, eps) && z.approxEq(other.z, eps)
+    fun approxEq(other: Vector3d, eps: Double = GEOMETRY_COMPARE_EPS) = x.approxEq(other.x, eps) && y.approxEq(other.y, eps) && z.approxEq(other.z, eps)
 
     override fun toString() = "x=$x, y=$y, z=$z"
 
-    operator fun rangeTo(b: Vector3d) = this distTo b
+    operator fun not() = if(this.isUnit) {
+        this
+    } else if(this != zero) {
+        this.normalized()
+    } else {
+        this
+    }
+
     operator fun unaryPlus() = this
     operator fun unaryMinus() = Vector3d(-x, -y, -z)
     operator fun plus(b: Vector3d) = Vector3d(x + b.x, y + b.y, z + b.z)
     operator fun minus(b: Vector3d) = Vector3d(x - b.x, y - b.y, z - b.z)
     operator fun times(b: Vector3d) = Vector3d(x * b.x, y * b.y, z * b.z)
     operator fun div(b: Vector3d) = Vector3d(x / b.x, y / b.y, z / b.z)
-    operator fun rem(b: Vector3d) = this angle b
     operator fun times(scalar: Double) = Vector3d(x * scalar, y * scalar, z * scalar)
     operator fun div(scalar: Double) = Vector3d(x / scalar, y / scalar, z / scalar)
-
     operator fun compareTo(other: Vector3d) = this.normSqr.compareTo(other.normSqr)
 
-    fun projectOnPlane(n: Vector3d) = this - n * ((this o n) / n.normSqr)
-    fun projectOnVector(v: Vector3d) = if (this == zero || v == zero) zero else v * (this o v) / v.normSqr
+    fun projectOnPlane(n: Vector3d) = this - n * ((this dot n) / n.normSqr)
+    fun projectOnVector(v: Vector3d) = if (this == zero || v == zero) zero else v * (this dot v) / v.normSqr
 
-    val floor get() = Vector3di(floor(this.x).toInt(), floor(this.y).toInt(), floor(this.z).toInt())
-    val ceiling get() = Vector3di(ceil(this.x).toInt(), ceil(this.y).toInt(), ceil(this.z).toInt())
-    val frac get() = Vector3d(frac(this.x), frac(this.y), frac(this.z))
+    fun frac() = Vector3d(frac(this.x), frac(this.y), frac(this.z))
+    fun floor() = Vector3d(floor(this.x), floor(this.y), floor(this.z))
+    fun ceil() = Vector3d(ceil(this.x), ceil(this.y), ceil(this.z))
+    fun round() = Vector3d(round(this.x), round(this.y), round(this.z))
+    fun floorInt() = Vector3di(floor(this.x).toInt(), floor(this.y).toInt(), floor(this.z).toInt())
+    fun ceilInt() = Vector3di(ceil(this.x).toInt(), ceil(this.y).toInt(), ceil(this.z).toInt())
+    fun roundInt() = Vector3di(round(this.x).toInt(), round(this.y).toInt(), round(this.z).toInt())
+    fun floorBlockPos() = BlockPos(floor(this.x).toInt(), floor(this.y).toInt(), floor(this.z).toInt())
+    fun ceilBlockPos() = BlockPos(ceil(this.x).toInt(), ceil(this.y).toInt(), ceil(this.z).toInt())
+    fun roundBlockPos() = BlockPos(round(this.x).toInt(), round(this.y).toInt(), round(this.z).toInt())
     fun intCast() = Vector3di(x.toInt(), y.toInt(), z.toInt())
+
+    fun perpendicular() : Vector3d {
+        val (x, y, z) = if(!this.isUnit && this != zero) {
+            this.normalized()
+        }
+        else {
+            this
+        }
+
+        val result = if (abs(y + z) > GEOMETRY_NORMALIZED_EPS || abs(x) > GEOMETRY_NORMALIZED_EPS) {
+            Vector3d(-y - z, x, x)
+        }
+        else {
+            Vector3d(z, z, -x - y)
+        }
+
+        return result.normalized()
+    }
 
     companion object {
         val zero = Vector3d(0.0, 0.0, 0.0)
@@ -1300,24 +853,25 @@ data class Vector3d(val x: Double, val y: Double, val z: Double) {
         val unitY = Vector3d(0.0, 1.0, 0.0)
         val unitZ = Vector3d(0.0, 0.0, 1.0)
 
-        val oneN = one.normalized()
-
-        fun lerp(a: Vector3d, b: Vector3d, t: Double) = Vector3d(
-            lerp(a.x, b.x, t),
-            lerp(a.y, b.y, t),
-            lerp(a.z, b.z, t)
+        fun lerp(from: Vector3d, to: Vector3d, t: Double) = Vector3d(
+            lerp(from.x, to.x, t),
+            lerp(from.y, to.y, t),
+            lerp(from.z, to.z, t)
         )
     }
 }
 
+operator fun Vector3d.rangeTo(b: Vector3d) = this distanceTo b
+infix fun Vector3d.o(other: Vector3d) = this dot other
+infix fun Vector3d.x(other: Vector3d) = this cross other
+
 fun min(a: Vector3d, b: Vector3d) = Vector3d(min(a.x, b.x), min(a.y, b.y), min(a.z, b.z))
 fun max(a: Vector3d, b: Vector3d) = Vector3d(max(a.x, b.x), max(a.y, b.y), max(a.z, b.z))
 infix fun Vector3d.directionTo(b: Vector3d) = (b - this).normalized()
-infix fun Vector3d.directionToNz(b: Vector3d) = (b - this).normalizedNz()
-
 
 data class Vector3dDual(val x: Dual, val y: Dual, val z: Dual) {
     constructor(value: Dual) : this(value, value, value)
+
     constructor(values: List<Vector3d>) : this(
         Dual(values.map { it.x }),
         Dual(values.map { it.y }),
@@ -1330,17 +884,31 @@ data class Vector3dDual(val x: Dual, val y: Dual, val z: Dual) {
 
     val size get() = x.size
     val isReal get() = size == 1
-    infix fun o(b: Vector3dDual) = x * b.x + y * b.y + z * b.z
-    val normSqr get() = this o this
+    infix fun dot(b: Vector3d) = x * b.x + y * b.y + z * b.z
+    infix fun dot(b: Vector3dDual) = x * b.x + y * b.y + z * b.z
+    val normSqr get() = this dot this
     val norm get() = sqrt(normSqr)
     fun normalized() = this / norm
+
+    infix fun cross(b: Vector3d) = Vector3dDual(
+        this.y * b.z - this.z * b.y,
+        this.z * b.x - this.x * b.z,
+        this.x * b.y - this.y * b.x
+    )
+
+    infix fun cross(b: Vector3dDual) = Vector3dDual(
+        this.y * b.z - this.z * b.y,
+        this.z * b.x - this.x * b.z,
+        this.x * b.y - this.y * b.x
+    )
+
     val value get() = Vector3d(x.value, y.value, z.value)
     fun head(n: Int = 1) = Vector3dDual(x.head(n), y.head(n), z.head(n))
     fun tail(n: Int = 1) = Vector3dDual(x.tail(n), y.tail(n), z.tail(n))
 
-    fun projectOnPlane(n: Vector3dDual) = this - n * ((this o n) / n.normSqr)
+    fun projectOnPlane(n: Vector3dDual) = this - n * ((this dot n) / n.normSqr)
     fun projectOnPlane(n: Vector3d) = projectOnPlane(const(n, size))
-    fun projectOnVector(v: Vector3dDual) = v * (this o v) / v.normSqr
+    fun projectOnVector(v: Vector3dDual) = v * (this dot v) / v.normSqr
     fun projectOnVector(v: Vector3d) = projectOnVector(const(v, size))
 
     operator fun unaryPlus() = this
@@ -1360,31 +928,45 @@ data class Vector3dDual(val x: Dual, val y: Dual, val z: Dual) {
     operator fun get(n: Int) = Vector3d(x[n], y[n], z[n])
 
     companion object {
-        fun const(x: Double, y: Double, z: Double, n: Int = 1) =
-            Vector3dDual(Dual.const(x, n), Dual.const(y, n), Dual.const(z, n))
-
+        fun const(x: Double, y: Double, z: Double, n: Int = 1) = Vector3dDual(Dual.const(x, n), Dual.const(y, n), Dual.const(z, n))
         fun const(value: Vector3d, n: Int = 1) = const(value.x, value.y, value.z, n)
         fun of(vararg values: Vector3d) = Vector3dDual(values.asList())
+
+        fun lerp(from: Vector3dDual, to: Vector3dDual, t: Dual) = Vector3dDual(
+            lerp(from.x, to.x, t),
+            lerp(from.y, to.y, t),
+            lerp(from.z, to.z, t)
+        )
+
+        fun lerp(from: Vector3d, to: Vector3d, t: Dual) = lerp(
+            const(from, t.size),
+            const(to, t.size),
+            t
+        )
     }
 }
+
+fun Vector3dDual.o(other: Vector3d) = this dot other
+fun Vector3dDual.o(other: Vector3dDual) = this dot other
+fun Vector3dDual.x(other: Vector3d) = this cross other
+fun Vector3dDual.x(other: Vector3dDual) = this cross other
 
 data class Vector4d(val x: Double, val y: Double, val z: Double, val w: Double) {
     constructor(value: Double) : this(value, value, value, value)
 
-    infix fun o(b: Vector4d) = x * b.x + y * b.y + z * b.z + w * b.w
-    val normSqr get() = this o this
+    infix fun dot(b: Vector4d) = x * b.x + y * b.y + z * b.z + w * b.w
+    val normSqr get() = this dot this
     val norm get() = sqrt(normSqr)
     infix fun distTo(b: Vector4d) = (this - b).norm
     infix fun distToSqr(b: Vector4d) = (this - b).normSqr
     infix fun cosAngle(b: Vector4d) = (this o b) / (this.norm * b.norm)
-    infix fun angle(b: Vector4d) = acos(this cosAngle b)
+    infix fun angle(b: Vector4d) = acos((this cosAngle b).coerceIn(-1.0, 1.0))
 
     fun nz() = Vector4d(x.nz(), y.nz(), z.nz(), w.nz())
     fun normalized() = this / norm
     fun normalizedNz() = this.nz() / norm.nz()
 
-    fun approxEq(other: Vector4d, eps: Double = GEOMETRY_COMPARE_EPS) =
-        x.approxEq(other.x, eps) && y.approxEq(other.y, eps) && z.approxEq(other.z, eps) && w.approxEq(other.w, eps)
+    fun approxEq(other: Vector4d, eps: Double = GEOMETRY_COMPARE_EPS) = x.approxEq(other.x, eps) && y.approxEq(other.y, eps) && z.approxEq(other.z, eps) && w.approxEq(other.w, eps)
 
     override fun toString() = "x=$x, y=$y, z=$z, w=$w"
 
@@ -1417,6 +999,8 @@ data class Vector4d(val x: Double, val y: Double, val z: Double, val w: Double) 
         )
     }
 }
+
+infix fun Vector4d.o(other: Vector4d) = this dot other
 
 data class Vector4dDual(val x: Dual, val y: Dual, val z: Dual, val w: Dual) {
     constructor(value: Dual) : this(value, value, value, value)
@@ -1487,8 +1071,6 @@ data class Rotation3d(val x: Double, val y: Double, val z: Double, val w: Double
     val xyz get() = Vector3d(x, y, z)
     val inverse get() = Rotation3d(-x, -y, -z, w) / normSqr
 
-    fun scaled(k: Double) = exp(log() * k)
-
     fun log(): Vector3d {
         val n = xyz.norm
         return xyz * if (n < 1e-9) 2.0 / w - 2.0 / 3.0 * n * n / (w * w * w)
@@ -1503,27 +1085,27 @@ data class Rotation3d(val x: Double, val y: Double, val z: Double, val w: Double
 
     operator fun times(b: Rotation3d) =
         Rotation3d(
-            x * b.w + b.x * w + (y * b.z - z * b.y),
+            x * b.w + b.x * w + (y * b.z - z * b.y), // Could also use FMADD
             y * b.w + b.y * w + (z * b.x - x * b.z),
             z * b.w + b.z * w + (x * b.y - y * b.x),
             w * b.w - (x * b.x + y * b.y + z * b.z)
         )
 
     operator fun times(value: Vector3d): Vector3d {
-        val a = w * x * 2.0
-        val b = w * y * 2.0
-        val c = w * z * 2.0
-        val d = x * x * 2.0
-        val e = x * y * 2.0
-        val f = x * z * 2.0
-        val g = y * y * 2.0
-        val h = y * z * 2.0
-        val i = z * z * 2.0
+        val `2wx` = 2.0 * (w * x)
+        val `2wy` = 2.0 * (w * y)
+        val `2wz` = 2.0 * (w * z)
+        val `2xx` = 2.0 * (x * x)
+        val `2xy` = 2.0 * (x * y)
+        val `2xz` = 2.0 * (x * z)
+        val `2yy` = 2.0 * (y * y)
+        val `2yz` = 2.0 * (y * z)
+        val `2zz` = 2.0 * (z * z)
 
         return Vector3d(
-            (value.x * (1.0 - g - i) + value.y * (e - c) + value.z * (f + b)),
-            (value.x * (e + c) + value.y * (1.0 - d - i) + value.z * (h - a)),
-            (value.x * (f - b) + value.y * (h + a) + value.z * (1.0 - d - g))
+            (value.x * (1.0 - `2yy` - `2zz`) + value.y * (`2xy` - `2wz`) + value.z * (`2xz` + `2wy`)),
+            (value.x * (`2xy` + `2wz`) + value.y * (1.0 - `2xx` - `2zz`) + value.z * (`2yz` - `2wx`)),
+            (value.x * (`2xz` - `2wy`) + value.y * (`2yz` + `2wx`) + value.z * (1.0 - `2xx` - `2yy`))
         )
     }
 
@@ -1531,76 +1113,30 @@ data class Rotation3d(val x: Double, val y: Double, val z: Double, val w: Double
     operator fun plus(w: Vector3d) = this * exp(w)
     operator fun minus(b: Rotation3d) = (this / b).log()
 
-    operator fun invoke() = Matrix3x3(
-        1.0 - 2.0 * (y * y) - 2.0 * (z * z), 2.0 * x * y - 2.0 * z * w, 2.0 * x * z + 2.0 * y * w,
-        2.0 * x * y + 2.0 * z * w, 1.0 - 2.0 * (x * x) - 2.0 * (z * z), 2.0 * y * z - 2.0 * x * w,
-        2.0 * x * z - 2.0 * y * w, 2.0 * y * z + 2.0 * x * w, 1.0 - 2.0 * (x * x) - 2.0 * (y * y)
-    )
+    operator fun invoke() : Matrix3x3 {
+        val `2xx` = 2.0 * (x * x)
+        val `2yy` = 2.0 * (y * y)
+        val `2zz` = 2.0 * (z * z)
+        val `2xy` = 2.0 * (x * y)
+        val `2xz` = 2.0 * (x * z)
+        val `2xw` = 2.0 * (x * w)
+        val `2yz` = 2.0 * (y * z)
+        val `2yw` = 2.0 * (y * w)
+        val `2zw` = 2.0 * (z * w)
 
-    fun approxEq(other: Rotation3d, eps: Double = GEOMETRY_COMPARE_EPS) =
-        x.approxEq(other.x, eps) && y.approxEq(other.y, eps) && z.approxEq(other.z, eps) && w.approxEq(other.w, eps)
+        return Matrix3x3(
+            1.0 - `2yy` - `2zz`, `2xy` - `2zw`, `2xz` + `2yw`,
+            `2xy` + `2zw`, 1.0 - `2xx` - `2zz`, `2yz` - `2xw`,
+            `2xz` - `2yw`, `2yz` + `2xw`, 1.0 - `2xx` - `2yy`
+        )
+    }
+
+    operator fun invoke(k: Double) = exp(log() * k)
+
+    fun approxEq(other: Rotation3d, eps: Double = GEOMETRY_COMPARE_EPS) = x.approxEq(other.x, eps) && y.approxEq(other.y, eps) && z.approxEq(other.z, eps) && w.approxEq(other.w, eps)
 
     companion object {
-        val identity = rma(Matrix3x3.identity)
-
-        fun axisAngle(axis: Vector3d, angle: Double) = exp(axis.normalizedNz() * angle)
-
-        fun rma(m: Matrix3x3): Rotation3d {
-            val t: Double
-            val q: Rotation3d
-
-            if (m[2, 2] < 0) {
-                if (m[0, 0] > m[1, 1]) {
-                    t = 1.0 + m[0, 0] - m[1, 1] - m[2, 2]
-                    q = Rotation3d(
-                        t,
-                        m[0, 1] + m[1, 0],
-                        m[2, 0] + m[0, 2],
-                        m[1, 2] - m[2, 1]
-                    )
-                } else {
-                    t = 1 - m[0, 0] + m[1, 1] - m[2, 2]
-                    q = Rotation3d(
-                        m[0, 1] + m[1, 0],
-                        t,
-                        m[1, 2] + m[2, 1],
-                        m[2, 0] - m[0, 2]
-                    )
-                }
-            } else {
-                if (m[0, 0] < -m[1, 1]) {
-                    t = 1.0 - m[0, 0] - m[1, 1] + m[2, 2]
-                    q = Rotation3d(
-                        m[2, 0] + m[0, 2],
-                        m[1, 2] + m[2, 1],
-                        t,
-                        m[0, 1] - m[1, 0]
-                    )
-                } else {
-                    t = 1.0 + m[0, 0] + m[1, 1] + m[2, 2]
-                    q = Rotation3d(
-                        m[1, 2] - m[2, 1],
-                        m[2, 0] - m[0, 2],
-                        m[0, 1] - m[1, 0],
-                        t
-                    )
-                }
-            }
-
-            return q * 0.5 / sqrt(t)
-        }
-
-        fun forwardUp(forward: Vector3d, up: Vector3d): Rotation3d {
-            val left = up x forward
-
-            return rma(
-                Matrix3x3(
-                    forward,
-                    left,
-                    up
-                )
-            )
-        }
+        val identity = Rotation3d(0.0, 0.0, 0.0, 1.0)
 
         fun exp(w: Vector3d): Rotation3d {
             val t = w.norm
@@ -1613,6 +1149,67 @@ data class Rotation3d(val x: Double, val y: Double, val z: Double, val w: Double
             val s = sin(t / 2.0)
 
             return Rotation3d(axis.x * s, axis.y * s, axis.z * s, cos(t / 2.0))
+        }
+
+        fun fromAxisAngle(axis: Vector3d, angle: Double) = exp(axis.normalizedNz() * angle)
+
+        fun fromRotationMatrix(matrix: Matrix3x3): Rotation3d {
+            val c0 = matrix.c0
+            val c1 = matrix.c1
+            val c2 = matrix.c2
+
+            val m00 = c0.x
+            val m01 = c0.y
+            val m02 = c0.z
+            val m10 = c1.x
+            val m11 = c1.y
+            val m12 = c1.z
+            val m20 = c2.x
+            val m21 = c2.y
+            val m22 = c2.z
+
+            val t: Double
+            val q: Rotation3d
+
+            if (m22 < 0) {
+                if (m00 > m11) {
+                    t = 1.0 + m00 - m11 - m22
+                    q = Rotation3d(
+                        t,
+                        m01 + m10,
+                        m20 + m02,
+                        m12 - m21
+                    )
+                } else {
+                    t = 1.0 - m00 + m11 - m22
+                    q = Rotation3d(
+                        m01 + m10,
+                        t,
+                        m12 + m21,
+                        m20 - m02
+                    )
+                }
+            } else {
+                if (m00 < -m11) {
+                    t = 1.0 - m00 - m11 + m22
+                    q = Rotation3d(
+                        m20 + m02,
+                        m12 + m21,
+                        t,
+                        m01 - m10
+                    )
+                } else {
+                    t = 1.0 + m00 + m11 + m22
+                    q = Rotation3d(
+                        m12 - m21,
+                        m20 - m02,
+                        m01 - m10,
+                        t
+                    )
+                }
+            }
+
+            return q * 0.5 / sqrt(t)
         }
 
         fun alg(w: Vector3d) = Matrix3x3(
@@ -1664,15 +1261,15 @@ data class Rotation3dDual(val x: Dual, val y: Dual, val z: Dual, val w: Dual) {
         )
 
     operator fun times(value: Vector3dDual): Vector3dDual {
-        val a = w * x * 2.0
-        val b = w * y * 2.0
-        val c = w * z * 2.0
-        val d = x * x * 2.0
-        val e = x * y * 2.0
-        val f = x * z * 2.0
-        val g = y * y * 2.0
-        val h = y * z * 2.0
-        val i = z * z * 2.0
+        val a = 2.0 * (w * x)
+        val b = 2.0 * (w * y)
+        val c = 2.0 * (w * z)
+        val d = 2.0 * (x * x)
+        val e = 2.0 * (x * y)
+        val f = 2.0 * (x * z)
+        val g = 2.0 * (y * y)
+        val h = 2.0 * (y * z)
+        val i = 2.0 * (z * z)
 
         return Vector3dDual(
             (value.x * (1.0 - g - i) + value.y * (e - c) + value.z * (f + b)),
@@ -1682,14 +1279,27 @@ data class Rotation3dDual(val x: Dual, val y: Dual, val z: Dual, val w: Dual) {
     }
 
     operator fun div(b: Rotation3dDual) = b.inverse * this
-    operator fun invoke() = Matrix3x3Dual(
-        1.0 - 2.0 * (y * y) - 2.0 * (z * z), 2.0 * x * y - 2.0 * z * w, 2.0 * x * z + 2.0 * y * w,
-        2.0 * x * y + 2.0 * z * w, 1.0 - 2.0 * (x * x) - 2.0 * (z * z), 2.0 * y * z - 2.0 * x * w,
-        2.0 * x * z - 2.0 * y * w, 2.0 * y * z + 2.0 * x * w, 1.0 - 2.0 * (x * x) - 2.0 * (y * y)
-    )
+
+    operator fun invoke() : Matrix3x3Dual {
+        val `2xx` = 2.0 * (x * x)
+        val `2yy` = 2.0 * (y * y)
+        val `2zz` = 2.0 * (z * z)
+        val `2xy` = 2.0 * (x * y)
+        val `2xz` = 2.0 * (x * z)
+        val `2xw` = 2.0 * (x * w)
+        val `2yz` = 2.0 * (y * z)
+        val `2yw` = 2.0 * (y * w)
+        val `2zw` = 2.0 * (z * w)
+
+        return Matrix3x3Dual(
+            1.0 - `2yy` - `2zz`, `2xy` - `2zw`, `2xz` + `2yw`,
+            `2xy` + `2zw`, 1.0 - `2xx` - `2zz`, `2yz` - `2xw`,
+            `2xz` - `2yw`, `2yz` + `2xw`, 1.0 - `2xx` - `2yy`
+        )
+    }
 
     companion object {
-        fun axisAngle(axis: Vector3dDual, angle: Dual) = exp(axis.normalized() * angle)
+        fun fromAxisAngle(axis: Vector3dDual, angle: Dual) = exp(axis.normalized() * angle)
 
         fun exp(w: Vector3dDual): Rotation3dDual {
             val t = w.norm
@@ -2055,6 +1665,10 @@ data class Ray3d(val origin: Vector3d, val direction: Vector3d) {
         return if (tmax >= tmin) IntersectionParametricBi(tmin, tmax)
         else null
     }
+
+    companion object {
+        fun fromSourceAndDestination(source: Vector3d, destination: Vector3d) = Ray3d(source, source directionTo destination)
+    }
 }
 
 data class BoundingSphere(val origin: Vector3d, val radius: Double) {
@@ -2182,18 +1796,27 @@ fun bresenham(
     }
 }
 
-fun dda(ray: Ray3d, distance: Double, user: (Int, Int, Int) -> Boolean) {
+fun dda(ray: Ray3d, withSource: Boolean = true, user: (Int, Int, Int) -> Boolean) {
     var x = floor(ray.origin.x).toInt()
     var y = floor(ray.origin.y).toInt()
     var z = floor(ray.origin.z).toInt()
+
+    if (withSource) {
+        if (!user(x, y, z)) {
+            return
+        }
+    }
 
     val sx = snzi(ray.direction.x)
     val sy = snzi(ray.direction.y)
     val sz = snzi(ray.direction.z)
 
-    val nextBX = x + sx + matchSigni(sx, -1)
-    val nextBY = y + sy + matchSigni(sy, -1)
-    val nextBZ = z + sz + matchSigni(sz, -1)
+    val nextBX = x + sx + if (sx.sign == -1) 1
+    else 0
+    val nextBY = y + sy + if (sy.sign == -1) 1
+    else 0
+    val nextBZ = z + sz + if (sz.sign == -1) 1
+    else 0
 
     var tmx = if (ray.direction.x != 0.0) (nextBX - ray.origin.x) / ray.direction.x else Double.MAX_VALUE
     var tmy = if (ray.direction.y != 0.0) (nextBY - ray.origin.y) / ray.direction.y else Double.MAX_VALUE
@@ -2201,15 +1824,6 @@ fun dda(ray: Ray3d, distance: Double, user: (Int, Int, Int) -> Boolean) {
     val tdx = if (ray.direction.x != 0.0) 1.0 / ray.direction.x * sx else Double.MAX_VALUE
     val tdy = if (ray.direction.y != 0.0) 1.0 / ray.direction.y * sy else Double.MAX_VALUE
     val tdz = if (ray.direction.z != 0.0) 1.0 / ray.direction.z * sz else Double.MAX_VALUE
-
-    val distanceSqr = distance * distance
-
-    fun dispatch() =
-        user(x, y, z) && (Vector3d(x.toDouble(), y.toDouble(), z.toDouble()) distToSqr ray.origin) < distanceSqr
-
-    if (!dispatch()) {
-        return
-    }
 
     while (true) {
         if (tmx < tmy) {
@@ -2230,8 +1844,77 @@ fun dda(ray: Ray3d, distance: Double, user: (Int, Int, Int) -> Boolean) {
             }
         }
 
-        if (!dispatch()) {
+        if (!user(x, y, z)) {
             return
         }
     }
+}
+
+@JvmInline
+value class BlockPosInt(val value: Int) {
+    constructor(x: Int, y: Int, z: Int) : this(pack(x, y, z))
+
+    val x get() = unpackX(value)
+    val y get() = unpackY(value)
+    val z get() = unpackZ(value)
+
+    val isZero get() = value == 0
+
+    fun toBlockPos() = unpackBlockPos(value)
+
+    operator fun not() = value
+
+    companion object {
+        const val MAX_VALUE = +511
+        const val MIN_VALUE = -511
+        const val SIGN_BIT = 1 shl 9
+        const val SIGN_TABLE = (-1L shl 32) or 1
+
+        inline fun packMember(value: Int): Int {
+            val bit = value shr 31
+            val mod = (value + bit) xor bit
+            return ((value ushr 31) shl 9) or mod
+        }
+
+        inline fun unpackMember(value: Int): Int {
+            val idx = (value and SIGN_BIT) ushr 4
+            val sign = (SIGN_TABLE ushr idx).toInt()
+            return sign * (value and MAX_VALUE)
+        }
+
+        inline fun pack(x: Int, y: Int, z: Int): Int {
+            if(x < MIN_VALUE || x > MAX_VALUE || y < MIN_VALUE || y > MAX_VALUE || z < MIN_VALUE || z > MAX_VALUE) {
+                error("XYZ $x $y $z are out of bounds")
+            }
+
+            val i = packMember(x)
+            val j = packMember(y) shl 10
+            val k = packMember(z) shl 20
+
+            return i or j or k
+        }
+
+        inline fun pack(blockPos: BlockPos) = pack(blockPos.x, blockPos.y, blockPos.z)
+
+        inline fun pack(vector: Vector3di) = pack(vector.x, vector.y, vector.z)
+
+        inline fun of(x: Int, y: Int, z: Int) = BlockPosInt(pack(x, y, z))
+
+        inline fun of(blockPos: BlockPos) = BlockPosInt(pack(blockPos.x, blockPos.y, blockPos.z))
+
+        inline fun unpackX(v: Int) = unpackMember(v)
+
+        inline fun unpackY(v: Int) = unpackMember(v shr 10)
+
+        inline fun unpackZ(v: Int) = unpackMember(v shr 20)
+
+        inline fun unpackBlockPos(value: Int) = BlockPos(unpackX(value), unpackY(value), unpackZ(value))
+    }
+}
+
+/**
+ * Computes the surface area of a cylinder with specified [length] and [radius].
+ * */
+fun cylinderSurfaceArea(length: Double, radius: Double): Double {
+    return 2 * PI * radius * length + 2 * PI * radius * radius
 }
