@@ -10,6 +10,7 @@ import net.minecraft.world.level.saveddata.SavedData
 import net.minecraftforge.server.ServerLifecycleHooks
 import org.ageseries.libage.data.MutableMapPairBiMap
 import org.ageseries.libage.sim.electrical.mna.Circuit
+import org.ageseries.libage.sim.electrical.mna.component.PowerVoltageSource
 import org.ageseries.libage.sim.electrical.mna.component.Resistor
 import org.ageseries.libage.sim.electrical.mna.component.VoltageSource
 import org.ageseries.libage.sim.thermal.Simulator
@@ -1782,3 +1783,81 @@ open class VRGeneratorObject<C : Cell>(cell: Cell, val map: PoleMap) : Electrica
         })
     }
 }
+
+open class PVSObject<C : Cell>(cell: Cell, val map: PoleMap) : ElectricalObject<Cell>(cell), WailaEntity, DataContainer {
+    private val source = ComponentHolder {
+        PowerVoltageSource().also {
+            it.potentialMax = potentialMaxExact
+            it.powerIdeal = powerIdealExact
+        }
+    }
+
+    var potentialMaxExact: Double = 0.0
+        set(value) {
+            field = value
+            source.ifPresent { it.potentialMax = value }
+        }
+
+    var powerIdealExact: Double = 0.0
+        set(value) {
+            field = value
+            source.ifPresent { it.powerIdeal = value }
+        }
+
+    fun updatePotentialMax(value: Double, eps: Double = LIBAGE_SET_EPS): Boolean {
+        if(potentialMaxExact.approxEq(value, eps)) {
+            return false
+        }
+
+        potentialMaxExact = value
+
+        return true
+    }
+
+    fun updatePowerIdeal(value: Double, eps: Double = LIBAGE_SET_EPS): Boolean {
+        if(powerIdealExact.approxEq(value, eps)) {
+            return false
+        }
+
+        powerIdealExact = value
+
+        return true
+    }
+
+    fun solve() : Boolean = if(source.isPresent) source.instance.solve() else false
+
+    val hasSource get() = source.isPresent
+    val sourceCurrent get() = if(source.isPresent) source.instance.current else 0.0
+    val sourcePower get() = if (source.isPresent) source.instance.power else 0.0
+
+    override val maxConnections = 2
+
+    /**
+     * Gets the offered component by evaluating the map.
+     * @return The resistor's external pin when the pole evaluates to *plus*. The source's negative pin when the pole evaluates to *minus*.
+     * */
+    override fun offerComponent(neighbour: ElectricalObject<*>): ElectricalComponentInfo =
+        when (map.evaluate(this.cell.locator, neighbour.cell.locator)) {
+            Pole.Plus -> source.offerPositive()
+            Pole.Minus -> source.offerNegative()
+        }
+
+    override fun clearComponents() {
+        source.clear()
+    }
+
+    override val dataNode = data {
+        it.withField(VoltageField {
+            potentialMaxExact
+        })
+
+        it.withField(CurrentField {
+            sourceCurrent
+        })
+
+        it.withField(PowerField {
+            sourcePower
+        })
+    }
+}
+

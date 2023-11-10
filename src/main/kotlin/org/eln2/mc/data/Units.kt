@@ -199,6 +199,9 @@ val MEGAOHM = +KILOOHM
 val GIGAOHM = +MEGAOHM
 val MILLIOHM = -OHM
 
+interface Intensity
+val WATT_PER_M2 = standardScale<Intensity>()
+
 val kWh by ::KW_HOURS
 
 val KG by ::KILOGRAMS

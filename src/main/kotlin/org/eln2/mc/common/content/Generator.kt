@@ -38,6 +38,7 @@ import org.eln2.mc.data.*
 import org.eln2.mc.integration.WailaEntity
 import org.eln2.mc.integration.WailaTooltipBuilder
 import org.eln2.mc.mathematics.*
+import org.joml.Vector4f
 import kotlin.math.*
 
 class HeatGeneratorFuelMass(var fuelAmount: Double, val energyDensity: Double) {
@@ -327,7 +328,7 @@ class HeatGeneratorScreen(menu: HeatGeneratorMenu, playerInventory: Inventory, t
             texture = TEXTURE,
             poseStack = pPoseStack,
             blitOffset = 0,
-            color = vec4fOne(),
+            color = Vector4f(1f, 1f, 1f, 1f),
             position = Vector2I(leftPos, topPos),
             uvSize = BACKGROUND_UV_SIZE,
             uvPosition = Vector2F.zero(),

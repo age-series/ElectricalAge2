@@ -1,17 +1,12 @@
 package org.eln2.mc.client.render
 
 import com.jozufozu.flywheel.core.PartialModel
-import net.minecraftforge.api.distmarker.Dist
-import net.minecraftforge.event.server.ServerLifecycleEvent
-import net.minecraftforge.fml.loading.FMLEnvironment
 import net.minecraftforge.server.ServerLifecycleHooks
 import org.eln2.mc.client.render.foundation.PolarModel
 import org.eln2.mc.client.render.foundation.WireConnectionModelPartial
 import org.eln2.mc.common.content.WireConnectionModel
 import org.eln2.mc.common.content.WirePatchType
 import org.eln2.mc.common.content.WirePolarPatchModel
-import org.eln2.mc.mathematics.bbSize
-import org.eln2.mc.requireIsOnRenderThread
 import org.eln2.mc.resource
 
 typealias RenderTypedPartialModel = DefaultRenderTypePartialModel<PartialModel>

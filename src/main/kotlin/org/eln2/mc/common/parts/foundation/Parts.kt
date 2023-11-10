@@ -160,6 +160,8 @@ abstract class Part<Renderer : PartRenderer>(ci: PartCreateInfo) : DataContainer
     val id = ci.id
     val placement = ci.placement
 
+    private var cachedShape: VoxelShape? = null
+
     companion object {
         fun createPartDropStack(id: ResourceLocation, saveTag: CompoundTag?, count: Int = 1): ItemStack {
             val item = PartRegistry.getPartItem(id)
@@ -209,11 +211,6 @@ abstract class Part<Renderer : PartRenderer>(ci: PartCreateInfo) : DataContainer
             PartMessage(placement.position, placement.face, payload)
         )
     }
-
-    private var cachedShape: VoxelShape? = null
-
-    var brightness: Int = 0
-        private set
 
     /**
      * This gets the relative direction towards the global direction, taking into account the facing of this part.

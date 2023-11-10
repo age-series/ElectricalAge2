@@ -2,18 +2,17 @@ package org.eln2.mc.common.cells.foundation
 
 import mcp.mobius.waila.api.IPluginConfig
 import net.minecraft.server.level.ServerLevel
+import net.minecraft.sounds.SoundEvents
+import net.minecraft.sounds.SoundSource
 import org.ageseries.libage.data.KELVIN
 import org.ageseries.libage.data.Quantity
 import org.ageseries.libage.data.Temp
-import org.eln2.mc.Inj
-import org.eln2.mc.ThermalBody
+import org.eln2.mc.*
 import org.eln2.mc.common.blocks.foundation.MultipartBlockEntity
 import org.eln2.mc.common.events.Scheduler
 import org.eln2.mc.common.events.schedulePre
 import org.eln2.mc.common.parts.foundation.CellPart
 import org.eln2.mc.data.*
-import org.eln2.mc.destroyPart
-import org.eln2.mc.formattedPercentN
 import org.eln2.mc.integration.WailaEntity
 import org.eln2.mc.integration.WailaTooltipBuilder
 
@@ -280,6 +279,17 @@ class TemperatureExplosionBehavior(
                 val level = (part.placement.level as ServerLevel)
 
                 level.destroyPart(part, true)
+
+                level.playSound(
+                    null,
+                    part.placement.position.x + 0.5,
+                    part.placement.position.y + 0.5,
+                    part.placement.position.z + 0.5,
+                    SoundEvents.GENERIC_EXPLODE,
+                    SoundSource.BLOCKS,
+                    randomFloat(0.9f, 1.1f),
+                    randomFloat(0.9f, 1.1f)
+                )
             } else {
                 error("Cannot explode $container")
             }

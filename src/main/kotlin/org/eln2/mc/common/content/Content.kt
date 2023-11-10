@@ -4,6 +4,7 @@ package org.eln2.mc.common.content
 
 import net.minecraft.client.gui.screens.MenuScreens
 import org.ageseries.libage.data.CELSIUS
+import org.ageseries.libage.data.M2
 import org.ageseries.libage.data.Quantity
 import org.ageseries.libage.sim.Material
 import org.eln2.mc.LOG
@@ -166,8 +167,18 @@ object Content {
 
     val PHOTOVOLTAIC_GENERATOR_CELL = cell(
         "photovoltaic_generator",
-        BasicCellProvider {
-            PhotovoltaicGeneratorCell(it, PhotovoltaicModels.test24Volts())
+        BasicCellProvider { ci ->
+            PhotovoltaicGeneratorCell(
+                ci,
+                Quantity(1.0, M2),
+                PhotovoltaicModel(
+                    Quantity(32.0, VOLT),
+                    7000.0,
+                    0.1,
+                    0.8,
+                    1.0,
+                )
+            ) { it.locator.requireLocator<FaceLocator>().toVector3d() }
         }
     )
 
@@ -177,7 +188,7 @@ object Content {
             BasicCellPart(
                 ci,
                 PHOTOVOLTAIC_GENERATOR_CELL.get(),
-                basicPartRenderer(PartialModels.SOLAR_PANEL_ONE_BLOCK,)
+                basicPartRenderer(PartialModels.SOLAR_PANEL_ONE_BLOCK)
             )
         }, Vector3d(1.0, 2.0 / 16.0, 1.0))
     )

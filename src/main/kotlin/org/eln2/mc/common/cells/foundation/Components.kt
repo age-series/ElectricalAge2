@@ -115,7 +115,7 @@ class ComponentHolder<T : Component>(private val factory: () -> T) {
 
     val isNotPresent get() = value == null
 
-    fun ifPresent(action: ((T) -> Unit)): Boolean {
+    inline fun ifPresent(action: ((T) -> Unit)): Boolean {
         if (value == null) {
             return false
         }

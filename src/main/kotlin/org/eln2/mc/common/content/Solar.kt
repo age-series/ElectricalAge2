@@ -1,20 +1,23 @@
 package org.eln2.mc.common.content
 
 import net.minecraft.world.level.Level
+import net.minecraft.core.BlockPos
+import org.ageseries.libage.data.Area
+import org.ageseries.libage.data.Quantity
 import org.eln2.mc.*
 import org.eln2.mc.common.cells.foundation.*
 import org.eln2.mc.data.*
 import org.eln2.mc.mathematics.*
 import kotlin.math.PI
-import kotlin.math.absoluteValue
 import kotlin.math.cos
+import kotlin.math.pow
 
 fun evaluateSunlight(rainLevel: Double, thunderLevel: Double, timeOfDay: Double) : Double {
     val d0 = 1.0 - rainLevel * 5.0 / 16.0
     val d1 = 1.0 - thunderLevel * 5.0 / 16.0
     val d2 = 0.5 + 2.0 * cos((2.0 * PI) * timeOfDay).coerceIn(-0.25, 0.25)
 
-    return (d0 * d1 * d2).nanZero().coerceIn(0.0, 1.0)
+    return (d0 * d1 * d2).coerceIn(0.0, 1.0)
 }
 
 fun Level.evaluateSunlight() = evaluateSunlight(
@@ -37,105 +40,66 @@ fun Level.evaluateDiffuseIrradianceFactor(normal: Vector3d) : Double {
     }
 }
 
-interface IlluminatedBodyView {
-    val sunAngle: Double
-    val isObstructed: Boolean
-    val normal: Vector3d
+fun Level.evaluateDiffuseIrradianceFactor(normal: Vector3d, blockPos: BlockPos) : Double {
+    if(!this.canSeeSky(blockPos)) {
+        return 0.0
+    }
 
-    fun celestialPass() = celestialPass(sunAngle)
+    return this.evaluateDiffuseIrradianceFactor(normal)
 }
 
-abstract class SolarIlluminationBehavior(val cell: Cell) : CellBehavior, IlluminatedBodyView {
+val LEVEL_INTENSITY = Quantity(1000.0, WATT_PER_M2) // evaluate from level
+
+data class PhotovoltaicModel(
+    val idealVoltage: Quantity<Voltage>,
+    val b: Double,
+    val p: Double,
+    val d: Double,
+    val efficiency: Double,
+)
+
+class PhotovoltaicBehavior(
+    val cell: Cell,
+    val source: PVSObject<*>,
+    val surfaceArea: Quantity<Area>,
+    val model: PhotovoltaicModel,
+    val normalSupplier: () -> Vector3d
+) : CellBehavior {
     init {
-        cell.locator.requireLocator<BlockLocator> {
-            "Solar illumination behavior needs block position"
-        }
+        cell.locator.requireLocator<BlockLocator>()
     }
 
-    // Is it fine to access these from our simulation threads?
-    override val sunAngle: Double get() =
-        cell.graph.level.getSunAngle(0f).toDouble()
-
-    override val isObstructed: Boolean
-        get() = !cell.graph.level.canSeeSky(cell.locator.requireLocator<BlockLocator>())
-}
-
-fun interface PhotovoltaicVoltageFunction {
-    fun compute(view: IlluminatedBodyView): Double
-}
-
-data class PhotovoltaicModel(val voltageFunction: PhotovoltaicVoltageFunction, val panelResistance: Double)
-
-object PhotovoltaicModels {
-    // We map angle difference to a voltage coefficient. 0 - directly overhead, 1 - under horizon
-    private val TEST_SPLINE = InterpolatorBuilder()
-        .with(0.0, 1.0)
-        .with(0.95, 0.8)
-        .with(1.0, 0.0)
-        .buildCubic()
-
-    private fun voltageTest(maximumVoltage: Double): PhotovoltaicVoltageFunction {
-        return PhotovoltaicVoltageFunction { view ->
-            if (view.isObstructed) {
-                return@PhotovoltaicVoltageFunction 0.0
-            }
-
-            val pass = celestialPass(view.sunAngle)
-            if(pass.im < 0.0) {
-                return@PhotovoltaicVoltageFunction 0.0
-            }
-
-            val angle = Vector3d(pass.re, pass.im, 0.0) angle view.normal
-
-            val value = TEST_SPLINE.evaluate(
-                map(
-                    angle.absoluteValue.coerceIn(0.0, PI / 2.0),
-                    0.0,
-                    PI / 2.0,
-                    0.0,
-                    1.0
-                )
-            )
-
-            return@PhotovoltaicVoltageFunction value * maximumVoltage
-        }
-    }
-
-    fun test24Volts(): PhotovoltaicModel {
-        //https://www.todoensolar.com/285w-24-volt-AmeriSolar-Solar-Panel
-        return PhotovoltaicModel(voltageTest(32.0), 3.5)
-    }
-}
-
-/**
- * Photovoltaic generator behavior. Works by modulating the voltage of [generator], based on the [model].
- * */
-class PhotovoltaicBehavior(cell: Cell, val generator: VRGeneratorObject<*>, val model: PhotovoltaicModel, normalSupplier: () -> Vector3d) : SolarIlluminationBehavior(cell) {
     override fun subscribe(subscribers: SubscriberCollection) {
-        subscribers.addSubscriber(SubscriberOptions(100, SubscriberPhase.Pre), this::update)
+        subscribers.addPre { a, b -> update(a, b) }
+        subscribers.addPost { a, b -> update(a, b)}
+
     }
 
     private fun update(dt: Double, phase: SubscriberPhase) {
-        generator.updatePotential(model.voltageFunction.compute(this))
-    }
+        val irradiance = !LEVEL_INTENSITY * cell.graph.level.evaluateDiffuseIrradianceFactor(
+            normalSupplier(),
+            cell.locator.requireLocator<BlockLocator>()
+        )
 
-    override val normal = normalSupplier()
+        source.updatePotentialMax(!model.idealVoltage * ((irradiance / model.b).pow(model.p) / model.d))
+        source.updatePowerIdeal(irradiance * !surfaceArea * model.efficiency)
+        source.solve()
+    }
 }
 
-class PhotovoltaicGeneratorCell(ci: CellCreateInfo, model: PhotovoltaicModel) : Cell(ci) {
-    @SimObject
-    @Inspect
-    val generator = VRGeneratorObject<Cell>(
-        this,
-        directionPoleMapPlanar()
-    ).also { it.potentialExact = 0.0 }
+class PhotovoltaicGeneratorCell(
+    ci: CellCreateInfo,
+    surfaceArea: Quantity<Area>,
+    model: PhotovoltaicModel,
+    val normalSupplier: (PhotovoltaicGeneratorCell) -> Vector3d
+) : Cell(ci) {
+    val normal get() = normalSupplier(this)
+
+    @SimObject @Inspect
+    val generator = PVSObject<Cell>(this, directionPoleMapPlanar())
 
     @Behavior
-    val photovoltaic = PhotovoltaicBehavior(this, generator, model) {
-        locator.requireLocator<FaceLocator> {
-            "Photovoltaic behavior requires a face locator"
-        }.toVector3d() // temporary
-    }
+    val photovoltaic = PhotovoltaicBehavior(this, generator, surfaceArea, model, this::normal)
 
     init {
         ruleSet.withDirectionRulePlanar(Base6Direction3d.Front + Base6Direction3d.Back)
