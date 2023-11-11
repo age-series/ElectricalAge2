@@ -23,6 +23,10 @@ import net.minecraft.nbt.ListTag
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.util.RandomSource
 import net.minecraft.world.level.LightLayer
+import net.minecraft.world.phys.AABB
+import net.minecraft.world.phys.shapes.BooleanOp
+import net.minecraft.world.phys.shapes.Shapes
+import net.minecraft.world.phys.shapes.VoxelShape
 import net.minecraftforge.api.distmarker.Dist
 import net.minecraftforge.fml.DistExecutor
 import net.minecraftforge.registries.RegistryObject
@@ -329,6 +333,8 @@ abstract class WireBuilder<C : Cell>(val id: String) {
     var tint = defaultRadiantBodyColor()
     var smokeTemperature: Double? = null
     private var renderInfo: Supplier<WireRenderInfo>? = null
+    var connectionSize = Vector3d(2.0 / 16.0, 1.5 / 16.0, 6.25 / 16.0)
+    var wireShapes : Map<Pair<FaceLocator, Direction>, VoxelShape>? = null
 
     fun renderer(supplier: Supplier<WireRenderInfo>) {
         DistExecutor.safeRunWhenOn(Dist.CLIENT) {
@@ -344,6 +350,44 @@ abstract class WireBuilder<C : Cell>(val id: String) {
     protected fun createMaterialProperties() = WireThermalProperties(material, damageOptions, replicatesInternalTemperature, isIncandescent)
 
     protected fun registerPart(properties: WireThermalProperties, provider: RegistryObject<CellProvider<C>>) {
+        val connections = wireShapes ?: let {
+            val results = HashMap<Pair<FaceLocator, Direction>, VoxelShape>()
+
+            val boundingBox = AABB(
+                (-connectionSize / 2.0).toVec3(),
+                (+connectionSize / 2.0).toVec3()
+            ).move((-Vector3d.unitZ / 2.0 + Vector3d.unitZ * (connectionSize.z / 2.0)).toVec3())
+
+            Base6Direction3dMask.FULL.directionList.forEach { face ->
+                Base6Direction3dMask.HORIZONTALS.directionList.forEach { facing ->
+                    results[
+                        Pair(
+                            face,
+                            incrementFromForwardUp(
+                                facing,
+                                face,
+                                Direction.NORTH
+                            )
+                        )
+                    ] = Shapes.create(
+                        PartGeometry.transform(
+                            boundingBox,
+                            facing,
+                            face
+                        )
+                    )
+                }
+            }
+
+            results
+        }
+
+        val renderInfo = this.renderInfo ?: Supplier {
+            defaultRender()
+        }
+
+        val smokeTemperature = this.smokeTemperature ?: (!properties.damageOptions.temperatureThreshold * 0.9)
+
         PartRegistry.part(
             id,
             BasicPartProvider({ ci ->
@@ -351,10 +395,9 @@ abstract class WireBuilder<C : Cell>(val id: String) {
                     ci,
                     cellProvider = provider.get(),
                     isIncandescent,
-                    smokeTemperature ?: (!properties.damageOptions.temperatureThreshold * 0.9),
-                    renderInfo = renderInfo ?: Supplier {
-                        defaultRender()
-                    }
+                    smokeTemperature,
+                    connections,
+                    renderInfo = renderInfo
                 )
             }, size)
         )
@@ -394,7 +437,12 @@ class ElectricalWireBuilder(id: String) : WireBuilder<ElectricalWireCell>(id) {
         val cell = CellRegistry.cell(
             id,
             BasicCellProvider { ci ->
-                ElectricalWireCell(ci, contactSurfaceArea, material, electrical)
+                ElectricalWireCell(
+                    ci,
+                    contactSurfaceArea,
+                    material,
+                    electrical
+                )
             }
         )
         registerPart(material, cell)
@@ -495,10 +543,58 @@ class WirePart<C : Cell>(
     cellProvider: CellProvider<C>,
     val isIncandescent: Boolean,
     val smokeTemperature: Double,
+    val connectionBounds: Map<Pair<FaceLocator, Direction>, VoxelShape>,
     val renderInfo: Supplier<WireRenderInfo>?,
 ) : CellPart<C, WireRenderer<*>>(ci, cellProvider), InternalTemperatureConsumer, ExternalTemperatureConsumer, AnimatedPart {
     companion object {
         private const val DIRECTIONS = "directions"
+    }
+
+    private fun appendConnectionCollider(shape: VoxelShape, directionPart: Base6Direction3d) : VoxelShape {
+        val connection = connectionBounds[
+            Pair(
+                placement.face,
+                incrementFromForwardUp(
+                    placement.horizontalFacing,
+                    placement.face,
+                    directionPart
+                )
+            )
+        ]
+            ?: return shape
+
+        return Shapes.joinUnoptimized(shape, connection, BooleanOp.OR)
+    }
+
+    @ServerOnly
+    private fun updateShapeServer() {
+        check(!placement.level.isClientSide)
+
+        var result = this.partProviderShape
+
+        if(hasCell) {
+            for (remoteCell in cell.connections) {
+                val solution = getPartConnectionOrNull(cell.locator, remoteCell.locator)
+                    ?: continue
+
+                result = appendConnectionCollider(result, solution.directionPart)
+            }
+        }
+
+        updateShape(result)
+    }
+
+    @ClientOnly
+    private fun updateShapeClient(data: IntArray) {
+        check(placement.level.isClientSide)
+
+        var result = this.partProviderShape
+
+        for (i in data.indices) {
+            result = appendConnectionCollider(result, PartConnectionDirection(data[i]).directionPart)
+        }
+
+        updateShape(result)
     }
 
     @ClientOnly
@@ -560,6 +656,7 @@ class WirePart<C : Cell>(
             }
 
             renderer.acceptConnections(data)
+            updateShapeClient(data)
         }
     }
 
@@ -570,17 +667,9 @@ class WirePart<C : Cell>(
     override fun loadInitialSyncTag(tag: CompoundTag) = handleSyncTag(tag)
 
     @ServerOnly
-    override fun onConnected(remoteCell: Cell) {
+    override fun onConnectivityChanged() {
         setSyncDirty()
-    }
-
-    @ServerOnly
-    override fun onDisconnected(remoteCell: Cell) {
-        if(!cell.isBeingRemoved) {
-            // Don't send updates if we're being removed
-            setSyncDirty()
-            return
-        }
+        updateShapeServer()
     }
 
     @ClientOnly
@@ -653,6 +742,10 @@ class WirePart<C : Cell>(
                sendBulkPacket(ExternalTemperaturesPacket(externalTemperatures))
            }
         }
+    }
+
+    override fun onCellAcquired() {
+        updateShapeServer()
     }
 
     @Serializable
@@ -763,6 +856,17 @@ abstract class WireRenderer<I>(
     private var connectionsUpdate = AtomicUpdate<IntArray>()
     protected var hubInstance: ModelData? = null
     protected var connectionInstances = Int2ObjectOpenHashMap<I>(4)
+
+    fun forEachConnectionInfo(user: (PartConnectionDirection) -> Unit) {
+        if(connectionInstances.isEmpty()) {
+            return
+        }
+
+        val iterator = connectionInstances.keys.intIterator()
+        while (iterator.hasNext()) {
+            user(PartConnectionDirection(iterator.nextInt()))
+        }
+    }
 
     protected fun putUniqueConnection(key: Int, instance: I) {
         require(connectionInstances.put(key, instance) == null) {

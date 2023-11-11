@@ -45,6 +45,11 @@ import org.eln2.mc.common.cells.foundation.CellNeighborInfo
 import org.eln2.mc.mathematics.Base6Direction3dMask
 import org.eln2.mc.mathematics.Vector3d
 
+data class PartOrientation(
+    val face: Direction,
+    val horizontalFacing: Direction
+)
+
 /**
  * Encapsulates all the data associated with a part's placement.
  * */
@@ -56,6 +61,8 @@ data class PartPlacementInfo(
     val multipart: MultipartBlockEntity,
     val provider: PartProvider
 ) {
+    val orientation = PartOrientation(face, horizontalFacing)
+
     fun createLocator() = LocatorSetBuilder().apply {
         withLocator(position)
         withLocator(FacingLocator(horizontalFacing)) // is this right?
@@ -82,33 +89,42 @@ data class PartUpdate(val part: Part<*>, val type: PartUpdateType)
 data class PartUseInfo(val player: Player, val hand: InteractionHand)
 
 object PartGeometry {
-    /**
-     * @see Part.modelBoundingBox
-     * */
-    fun modelBoundingBox(sizeActual: Vector3d, facingWorld: Direction, faceWorld: Direction): AABB {
-        val center = Vec3(0.0, 0.0, 0.0)
-        val sizeActualMc = sizeActual.toVec3()
-        val halfSize = sizeActualMc / 2.0
-        return AABB(center - halfSize, center + halfSize)
-            .transformed(facingRotation(facingWorld))
-            .transformed(faceWorld.rotation.toJoml())
-            .move(faceOffset(sizeActual, faceWorld))
+    fun transform(aabb: AABB, faceWorld: Direction): AABB = aabb
+        .transformed(faceWorld.rotation.toJoml())
+        .move(faceOffset(aabb.size3d(), faceWorld))
+
+    fun transform(aabb: AABB, facing: Direction, faceWorld: Direction): AABB = aabb
+        .transformed(facingRotation(facing))
+        .transformed(faceWorld.rotation.toJoml())
+        .move(faceOffset(aabb.size3d(), faceWorld))
+
+    fun modelBoundingBox(translation: Vector3d, sizeActual: Vector3d, facing: Direction, faceWorld: Direction): AABB {
+        val extent = sizeActual / 2.0
+
+        return transform(
+            AABB(
+                (translation - extent).toVec3(),
+                (translation + extent).toVec3()
+            ),
+            facing,
+            faceWorld
+        )
     }
 
-    fun facingRotationLog(facingWorld: Direction) = when (facingWorld) {
+    fun modelBoundingBox(sizeActual: Vector3d, facing: Direction, faceWorld: Direction) =
+        modelBoundingBox(Vector3d.zero, sizeActual, facing, faceWorld)
+
+    fun facingRotationLog(facing: Direction) = when (facing) {
         Direction.NORTH -> 0.0
         Direction.SOUTH -> PI
         Direction.WEST -> PI / 2.0
         Direction.EAST -> -PI / 2.0
-        else -> error("Invalid horizontal facing $facingWorld")
+        else -> error("Invalid horizontal facing $facing")
     }
 
-    /**
-     * @see Part.facingRotation
-     * */
-    fun facingRotation(facingWorld: Direction) = Quaternionf(
+    fun facingRotation(facing: Direction) = Quaternionf(
         AxisAngle4f(
-            facingRotationLog(facingWorld).toFloat(),
+            facingRotationLog(facing).toFloat(),
             Vector3f(0.0f, 1.0f, 0.0f)
         )
     )
@@ -142,8 +158,11 @@ object PartGeometry {
         }
     }
 
-    fun worldBoundingBox(sizeActual: Vector3d, facingWorld: Direction, faceWorld: Direction, posWorld: BlockPos): AABB =
-        modelBoundingBox(sizeActual, facingWorld, faceWorld).move(posWorld)
+    fun worldBoundingBox(translation: Vector3d, sizeActual: Vector3d, facing: Direction, faceWorld: Direction, posWorld: BlockPos): AABB =
+        modelBoundingBox(translation, sizeActual, facing, faceWorld).move(posWorld)
+
+    fun worldBoundingBox(sizeActual: Vector3d, facing: Direction, faceWorld: Direction, posWorld: BlockPos): AABB =
+        modelBoundingBox(sizeActual, facing, faceWorld).move(posWorld)
 }
 
 data class PartCreateInfo(
@@ -159,8 +178,7 @@ data class PartCreateInfo(
 abstract class Part<Renderer : PartRenderer>(ci: PartCreateInfo) : DataContainer {
     val id = ci.id
     val placement = ci.placement
-
-    private var cachedShape: VoxelShape? = null
+    val partProviderShape = Shapes.create(modelBoundingBox)
 
     companion object {
         fun createPartDropStack(id: ResourceLocation, saveTag: CompoundTag?, count: Int = 1): ItemStack {
@@ -225,50 +243,71 @@ abstract class Part<Renderer : PartRenderer>(ci: PartCreateInfo) : DataContainer
         )
     }
 
-    /**
-     * This is the bounding box of the part, rotated and placed
-     * on the inner face. It is not translated to the position of the part in the world (it is a local frame)
-     * */
-    private val modelBoundingBox: AABB
-        get() = PartGeometry.modelBoundingBox(
-            placement.provider.placementCollisionSize,
+    fun getModelBoundingBox(translation: Vector3d, size: Vector3d) =
+        PartGeometry.modelBoundingBox(
+            translation,
+            size,
             placement.horizontalFacing,
             placement.face
         )
 
-    /**
-     * @return The local Y rotation due to facing.
-     * */
-    val facingRotation: Quaternionf get() = PartGeometry.facingRotation(placement.horizontalFacing)
-
-    /**
-     * @return The offset towards the placement face, calculated using the base size.
-     * */
-    private val faceOffset: Vec3 get() = PartGeometry.faceOffset(placement.provider.placementCollisionSize, placement.face)
-
-    /**
-     * This is the bounding box of the part, in its block position.
-     * */
-    val worldBoundingBox: AABB
-        get() = PartGeometry.worldBoundingBox(
-            placement.provider.placementCollisionSize,
+    fun getWorldBoundingBox(translation: Vector3d, size: Vector3d) =
+        PartGeometry.worldBoundingBox(
+            translation,
+            size,
             placement.horizontalFacing,
             placement.face,
             placement.position
         )
 
     /**
-     * Gets the shape of this part. Used for block highlighting and collisions.
-     * The default implementation creates a shape from the model bounding box and caches it.
+     * Gets the model bounding box of the part, based on the provider's collision size,
      * */
-    open val shape: VoxelShape
-        get() {
-            if (cachedShape == null) {
-                cachedShape = Shapes.create(modelBoundingBox)
-            }
+    val modelBoundingBox: AABB
+        get() = getModelBoundingBox(Vector3d.zero, placement.provider.placementCollisionSize)
 
-            return cachedShape!!
+    /**
+     * This is the bounding box of the part, in its block position.
+     * */
+    val worldBoundingBox: AABB
+        get() = getWorldBoundingBox(Vector3d.zero, placement.provider.placementCollisionSize)
+
+    fun translateShapeWorld(shape: VoxelShape) = shape.move(
+        placement.position.x.toDouble(),
+        placement.position.y.toDouble(),
+        placement.position.z.toDouble()
+    )
+
+    /**
+     * Gets the shape of this part. Used for block highlighting and collisions.
+     * By default, it is set to the [partProviderShape] of the part.
+     * */
+    var modelShape: VoxelShape = partProviderShape
+        private set
+
+    var worldShape: VoxelShape = translateShapeWorld(modelShape)
+        private set
+
+    var worldShapeParts = worldShape.toBoxList()
+        private set
+
+    /**
+     * Updates the shape of the part and updates the multipart collider.
+     * Synchronization is not done automatically. If you wish the changes to be reflected on the client, you must synchronize it yourself.
+     * */
+    fun updateShape(shape: VoxelShape) : Boolean {
+        if(shape == this.modelShape) {
+            return false
         }
+
+        this.modelShape = shape
+        this.worldShape = translateShapeWorld(shape)
+        this.worldShapeParts = this.worldShape.toBoxList()
+
+        placement.multipart.rebuildCollider()
+
+        return true
+    }
 
     /**
      * Called when the part is right-clicked by a living entity.
@@ -829,9 +868,9 @@ private val INCREMENT_FROM_FORWARD_UP = Int2IntOpenHashMap().also { map ->
     }
 }
 
-fun incrementFromForwardUp(facingWorld: Direction, faceWorld: Direction, direction: Direction): Direction {
+fun incrementFromForwardUp(facingPart: Direction, faceWorld: Direction, direction: Direction): Direction {
     val id = BlockPosInt.pack(
-        facingWorld.get3DDataValue(),
+        facingPart.get3DDataValue(),
         faceWorld.get3DDataValue(),
         direction.get3DDataValue()
     )
@@ -839,7 +878,8 @@ fun incrementFromForwardUp(facingWorld: Direction, faceWorld: Direction, directi
     return Direction.from3DDataValue(INCREMENT_FROM_FORWARD_UP.get(id))
 }
 
-fun incrementFromForwardUp(facingWorld: Direction, faceWorld: Direction, direction: Base6Direction3d) = incrementFromForwardUp(facingWorld, faceWorld, direction.alias)
+fun incrementFromForwardUp(facingPart: Direction, faceWorld: Direction, direction: Base6Direction3d) =
+    incrementFromForwardUp(facingPart, faceWorld, direction.alias)
 
 @JvmInline
 value class PartConnectionDirection(val value: Int) {

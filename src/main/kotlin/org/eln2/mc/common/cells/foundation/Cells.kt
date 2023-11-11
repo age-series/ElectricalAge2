@@ -114,12 +114,13 @@ abstract class Cell(val locator: Locator, val id: ResourceLocation, val environm
     private var transientPool: TrackedSubscriberCollection? = null
 
     lateinit var graph: CellGraph
-    lateinit var connections: ArrayList<Cell>
+    var connections: ArrayList<Cell> = ArrayList(0)
 
-    private val ruleSetLazy = lazy { LocatorRelationRuleSet() }
-    val ruleSet get() = ruleSetLazy.value
+    val ruleSet by lazy {
+        LocatorRelationRuleSet()
+    }
 
-    private val servicesLazy = lazy {
+    protected val services by lazy {
         ServiceCollection()
             .withSingleton { dataNode }
             .withSingleton { this }
@@ -129,10 +130,8 @@ abstract class Cell(val locator: Locator, val id: ResourceLocation, val environm
             .also { registerServices(it) }
     }
 
-    protected val services get() = servicesLazy.value
-
     /**
-     * Called when the [servicesLazy] is being initialized, in order to register user services.
+     * Called when the [services] is being initialized, in order to register user services.
      * */
     protected open fun registerServices(services: ServiceCollection) {}
 

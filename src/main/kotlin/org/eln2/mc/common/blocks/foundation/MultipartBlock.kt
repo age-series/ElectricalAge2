@@ -75,7 +75,7 @@ class MultipartBlock : BaseEntityBlock(
         pPos: BlockPos,
         pContext: CollisionContext,
     ): VoxelShape {
-        return getMultipartShape(pLevel, pPos, pContext)
+        return getMultipartShape(pLevel, pPos)
     }
 
     @Deprecated("Deprecated in Java")
@@ -210,7 +210,7 @@ class MultipartBlock : BaseEntityBlock(
 
     //#endregion
 
-    private fun getMultipartShape(level: BlockGetter, pos: BlockPos, context: CollisionContext): VoxelShape {
+    private fun getMultipartShape(level: BlockGetter, pos: BlockPos): VoxelShape {
         val multipart = level.getBlockEntity(pos) as? MultipartBlockEntity ?: return emptyBox
 
         return multipart.collisionShape
@@ -220,7 +220,7 @@ class MultipartBlock : BaseEntityBlock(
         val pickedPart = pickPart(level, pos, context)
             ?: return emptyBox
 
-        return pickedPart.shape
+        return pickedPart.modelShape
     }
 
     private fun pickPart(level: BlockGetter, pos: BlockPos, context: CollisionContext): Part<*>? {
@@ -404,7 +404,15 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
      * Finds the part intersected by the entity's view.
      * */
     fun pickPart(entity: LivingEntity): Part<*>? {
-        return clipScene(entity, { it.worldBoundingBox }, parts.values)
+        return clipScene(
+            entity,
+            { it.first },
+            parts.values.flatMap { part ->
+                part.worldShapeParts.map { aabb ->
+                    Pair(aabb, part)
+                }
+            }
+        )?.second
     }
 
     /**
@@ -575,17 +583,17 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
      * Merges the current multipart collider with the collider of the part.
      * */
     private fun joinCollider(part: Part<*>) {
-        collisionShape = Shapes.join(collisionShape, part.shape, BooleanOp.OR)
+        collisionShape = Shapes.join(collisionShape, part.modelShape, BooleanOp.OR)
     }
 
     /**
      * Builds the collider from the current parts.
      * */
-    private fun rebuildCollider() {
+    fun rebuildCollider() {
         collisionShape = Shapes.empty()
 
-        parts.values.map { it.shape }.forEach {
-            collisionShape = Shapes.joinUnoptimized(collisionShape, it, BooleanOp.OR)
+        parts.values.forEach { part ->
+            collisionShape = Shapes.joinUnoptimized(collisionShape, part.modelShape, BooleanOp.OR)
         }
 
         collisionShape.optimize()

@@ -41,6 +41,7 @@ import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
+import net.minecraft.world.phys.shapes.VoxelShape
 import net.minecraftforge.common.ForgeMod
 import net.minecraftforge.items.ItemStackHandler
 import net.minecraftforge.network.NetworkHooks
@@ -148,6 +149,8 @@ fun AABB.transformed(quaternion: Quaternionf): AABB {
 
     return AABB(min.toVec3(), max.toVec3())
 }
+
+fun AABB.size3d() = Vector3d(this.maxX - this.minX, this.maxY - this.minY, this.maxZ - this.minZ)
 
 fun BlockState.facing(): Direction = this.getValue(HorizontalDirectionalBlock.FACING)
 
@@ -1128,3 +1131,18 @@ fun celestialDeviation(sunAngle: Double, normal: Vector3d) : Double {
 
 fun Level.celestialPass() = celestialPass(this.getSunAngle(1.0f).toDouble())
 fun Level.celestialDeviation(normal: Vector3d) = celestialDeviation(this.getSunAngle(1.0f).toDouble(), normal)
+
+fun VoxelShape.toBoxList() : List<AABB> {
+    val results = ArrayList<AABB>(2)
+
+    this.forAllBoxes { pMinX, pMinY, pMinZ, pMaxX, pMaxY, pMaxZ ->
+        results.add(
+            AABB(
+                pMinX, pMinY, pMinZ,
+                pMaxX, pMaxY, pMaxZ
+            )
+        )
+    }
+
+    return results
+}
