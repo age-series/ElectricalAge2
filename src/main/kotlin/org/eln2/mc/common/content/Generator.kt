@@ -1,6 +1,7 @@
 package org.eln2.mc.common.content
 
 import com.mojang.blaze3d.vertex.PoseStack
+import kotlinx.serialization.Serializable
 import mcp.mobius.waila.api.IPluginConfig
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen
 import net.minecraft.nbt.CompoundTag
@@ -27,12 +28,19 @@ import net.minecraftforge.items.ItemStackHandler
 import net.minecraftforge.items.SlotItemHandler
 import org.ageseries.libage.data.CELSIUS
 import org.ageseries.libage.data.Quantity
+import org.ageseries.libage.sim.thermal.ConnectionParameters
+import org.ageseries.libage.sim.thermal.MassConnection
+import org.ageseries.libage.sim.thermal.Temperature
 import org.eln2.mc.*
+import org.eln2.mc.client.render.PartialModels
 import org.eln2.mc.client.render.foundation.renderTextured
 import org.eln2.mc.common.blocks.foundation.CellBlock
 import org.eln2.mc.common.blocks.foundation.CellBlockEntity
 import org.eln2.mc.common.cells.foundation.*
 import org.eln2.mc.common.events.AtomicUpdate
+import org.eln2.mc.common.network.serverToClient.PacketHandlerBuilder
+import org.eln2.mc.common.parts.foundation.CellPart
+import org.eln2.mc.common.parts.foundation.PartCreateInfo
 import org.eln2.mc.control.PIDController
 import org.eln2.mc.data.*
 import org.eln2.mc.integration.WailaEntity
@@ -365,6 +373,143 @@ class HeatGeneratorBlock : CellBlock<HeatGeneratorCell>() {
     }
 }
 
+data class HeatEngineElectricalModel(
+    val efficiency: Double,
+    val power: Double,
+    val leakageRate: Double,
+    val desiredVoltage: Double = 100.0,
+)
 
-// Best option is to estimate irradiance but maybe in the future
+class HeatEngineElectricalBehavior(
+    val generator: PVSObject<*>,
+    val cold: ThermalBody,
+    val hot: ThermalBody,
+    val efficiency: Double,
+    val maxPower: Double,
+    leakageRate: Double,
+) : CellBehavior {
+    val leakageConnection = MassConnection(hot.thermal, cold.thermal, ConnectionParameters(area = leakageRate))
 
+    override fun subscribe(subscribers: SubscriberCollection) {
+        subscribers.addPre(this::preTick)
+        subscribers.addPost(this::postTick)
+    }
+
+    private fun preTick(dt: Double, phase: SubscriberPhase) {
+        val (leakA, leakB) = leakageConnection.transfer(dt)
+        //hot.energy += leakA
+        //cold.energy += leakB
+
+        val thermalPower = abs(((hot.energy - cold.energy) / dt).coerceIn(-maxPower, maxPower))
+        generator.updatePowerIdeal(thermalPower * efficiency)
+        generator.solve()
+    }
+
+    private fun postTick(dt: Double, phase: SubscriberPhase) {
+        val electricalEnergy = generator.sourcePower * dt
+
+        val electricalDirection = snzi(electricalEnergy)
+        val thermalDirection = snzi((hot.temperatureKelvin - cold.temperatureKelvin))
+
+        if (electricalDirection == thermalDirection) {
+            val thermalEnergy = electricalEnergy / efficiency
+            val wastedEnergy = thermalEnergy * (1.0 - efficiency)
+
+            if (electricalDirection == 1) {
+                hot.energy -= electricalEnergy
+                hot.energy -= wastedEnergy
+                cold.energy += wastedEnergy
+            } else {
+                cold.energy += electricalEnergy
+                cold.energy += wastedEnergy
+                hot.energy -= wastedEnergy
+            }
+        } else {
+            if(electricalDirection == 1) {
+                hot.energy += electricalEnergy / 2.0
+                cold.energy += electricalEnergy / 2.0
+            }
+            else {
+                hot.energy -= electricalEnergy / 2.0
+                cold.energy -= electricalEnergy / 2.0
+            }
+        }
+    }
+}
+
+class HeatEngineElectricalCell(
+    ci: CellCreateInfo,
+    electricalMap: PoleMap,
+    thermalMap: PoleMap,
+    b1Def: ThermalBodyDef,
+    b2Def: ThermalBodyDef,
+    model: HeatEngineElectricalModel
+) : Cell(ci) {
+    constructor(ci: CellCreateInfo, electricalMap: PoleMap, thermalMap: PoleMap, def: ThermalBodyDef, model: HeatEngineElectricalModel) : this(ci, electricalMap, thermalMap, def, def, model)
+
+    @SimObject
+    val generator = PVSObject<HeatEngineElectricalCell>(
+        this,
+        electricalMap
+    ).also { it.potentialMaxExact = model.desiredVoltage }
+
+    @SimObject @Inspect
+    val thermalBipole = ThermalBipoleObject(
+        this,
+        thermalMap,
+        b1Def,
+        b2Def
+    )
+
+    @Behavior
+    val heatEngine = HeatEngineElectricalBehavior(
+        generator,
+        thermalBipole.b1,
+        thermalBipole.b2,
+        model.efficiency,
+        model.power,
+        model.leakageRate
+    )
+
+    @Replicator
+    fun replicator(target: InternalTemperatureConsumer) = InternalTemperatureReplicatorBehavior(
+        listOf(thermalBipole.b1, thermalBipole.b2), target
+    )
+
+    override fun appendWaila(builder: WailaTooltipBuilder, config: IPluginConfig?) {
+        super.appendWaila(builder, config)
+        builder.text("Hot", "${heatEngine.hot.temperature.kelvin.formatted()}K")
+        builder.text("Cold", "${heatEngine.cold.temperature.kelvin.formatted()}K")
+    }
+}
+
+class HeatEngineElectricalPart(ci: PartCreateInfo) : CellPart<HeatEngineElectricalCell, RadiantBipoleRenderer>(ci, Content.HEAT_ENGINE_ELECTRICAL_CELL.get()), InternalTemperatureConsumer {
+    override fun createRenderer() = RadiantBipoleRenderer(
+        this,
+        PartialModels.PELTIER_BODY,
+        PartialModels.PELTIER_LEFT,
+        PartialModels.PELTIER_RIGHT,
+        0.0
+    )
+
+    @ClientOnly
+    override fun registerPackets(builder: PacketHandlerBuilder) {
+        builder.withHandler<SyncPacket> {
+            renderer.updateRightSideTemperature(Temperature(it.b1Temp))
+            renderer.updateLeftSideTemperature(Temperature(it.b2Temp))
+        }
+    }
+
+    @ServerOnly
+    override fun onInternalTemperatureChanges(dirty: List<ThermalBody>) {
+        sendBulkPacket(
+            SyncPacket(
+                cell.thermalBipole.b1.temperatureKelvin,
+                cell.thermalBipole.b2.temperatureKelvin
+            )
+        )
+    }
+
+    @Serializable
+    data class SyncPacket(val b1Temp: Double, val b2Temp: Double)
+}

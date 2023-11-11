@@ -248,14 +248,19 @@ enum class Pole(val conventionalPin: Int) {
 }
 
 fun interface PoleMap {
-    /**
-     * Maps the target location to a pole, when looking from the actual location.
-     * @param sourceLocator The observer's location.
-     * @param targetLocator The target's location.
-     * @return The pole [targetLocator] corresponds to.
-     * */
-    fun evaluate(sourceLocator: Locator, targetLocator: Locator): Pole
+    fun evaluateOrNull(sourceLocator: Locator, targetLocator: Locator): Pole?
 }
+
+/**
+ * Maps the target location to a pole, when looking from the actual location.
+ * @param sourceLocator The observer's location.
+ * @param targetLocator The target's location.
+ * @return The pole [targetLocator] corresponds to.
+ * */
+fun PoleMap.evaluate(sourceLocator: Locator, targetLocator: Locator): Pole =
+    evaluateOrNull(sourceLocator, targetLocator).requireNotNull {
+        "Unhandled pole map direction $sourceLocator $targetLocator $this"
+    }
 
 /**
  * Creates a [PoleMap] that maps [plusDir] to plus and [minusDir] to minus.
@@ -264,10 +269,10 @@ fun interface PoleMap {
  * */
 fun directionPoleMapPlanar(plusDir: Base6Direction3d = Base6Direction3d.Front, minusDir: Base6Direction3d = Base6Direction3d.Back) =
     PoleMap { actualDescr, targetDescr ->
-        when (val dirActual = actualDescr.findDirActualPlanarOrNull(targetDescr)) {
+        when (actualDescr.findDirActualPlanarOrNull(targetDescr)) {
             plusDir -> Pole.Plus
             minusDir -> Pole.Minus
-            else -> error("Unhandled neighbor direction $dirActual")
+            else -> null
         }
     }
 
@@ -278,9 +283,9 @@ fun directionPoleMapPlanar(plusDir: Base6Direction3d = Base6Direction3d.Front, m
  * */
 fun directionPoleMapPart(plusDir: Base6Direction3d = Base6Direction3d.Front, minusDir: Base6Direction3d = Base6Direction3d.Back) =
     PoleMap { actualDescr, targetDescr ->
-        when (val dirActual = actualDescr.findDirActualPartOrNull(targetDescr)) {
+        when (actualDescr.findDirActualPartOrNull(targetDescr)) {
             plusDir -> Pole.Plus
             minusDir -> Pole.Minus
-            else -> error("Unhandled neighbor direction part $dirActual")
+            else -> null
         }
     }

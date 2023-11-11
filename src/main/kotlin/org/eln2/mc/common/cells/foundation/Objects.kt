@@ -49,6 +49,10 @@ abstract class SimulationObject<C : Cell>(val cell: C) {
 
 data class ThermalComponentInfo(val body: ThermalBody)
 
+interface ThermalContactInfo {
+    fun getContactTemperature(other: Locator) : Double?
+}
+
 abstract class ThermalObject<C : Cell>(cell: C) : SimulationObject<C>(cell) {
     var simulation: Simulator? = null
         private set
@@ -312,7 +316,7 @@ class ThermalBipoleObject<C : Cell>(
     val map: PoleMap,
     b1Def: ThermalBodyDef,
     b2Def: ThermalBodyDef
-) : ThermalObject<C>(cell), DataContainer, WailaEntity, ThermalBipole {
+) : ThermalObject<C>(cell), WailaEntity, ThermalBipole, ThermalContactInfo {
     override var b1 = b1Def.create()
     override var b2 = b2Def.create()
 
@@ -335,13 +339,13 @@ class ThermalBipoleObject<C : Cell>(
         simulator.add(b2)
     }
 
-    override val dataNode = HashDataNode().also { root ->
-        root.withChild {
-            it.data.withField(TooltipField { b -> b.text("B1", b1.temperatureKelvin.formatted()) })
-        }
+    override fun getContactTemperature(other: Locator): Double? {
+        val direction = map.evaluateOrNull(this.cell.locator, other)
+            ?: return null
 
-        root.withChild {
-            it.data.withField(TooltipField { b -> b.text("B2", b2.temperatureKelvin.formatted()) })
+        return when(direction) {
+            Pole.Plus -> b1.temperatureKelvin
+            Pole.Minus -> b2.temperatureKelvin
         }
     }
 }

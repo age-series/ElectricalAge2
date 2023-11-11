@@ -122,10 +122,9 @@ class ExternalTemperatureReplicatorBehavior(
 
         val dirty = HashMap<ThermalObject<*>, Double>()
 
-        scanNeighbors(cell) { remoteThermalObject, field ->
+        scanNeighbors(cell) { remoteThermalObject, actualTemperature ->
             unmarked.remove(remoteThermalObject)
 
-            val actualTemperature = field.readKelvin()
             val previousTemperature = tracked[remoteThermalObject]
 
             if(previousTemperature == null || !previousTemperature.approxEq(actualTemperature, tolerance)) {
@@ -146,10 +145,20 @@ class ExternalTemperatureReplicatorBehavior(
     }
 
     companion object {
-        inline fun scanNeighbors(cell: Cell, crossinline consumer: (ThermalObject<*>, TemperatureField) -> Unit) {
+        inline fun scanNeighbors(cell: Cell, crossinline consumer: (ThermalObject<*>, Double) -> Unit) {
             for(remoteCell in cell.connections) {
                 val remoteThermalObject = remoteCell.objects.getObjectOrNull(SimulationObjectType.Thermal) as? ThermalObject
                     ?: continue
+
+                if(remoteThermalObject is ThermalContactInfo) {
+                    val temperature = remoteThermalObject.getContactTemperature(cell.locator)
+
+                    if(temperature != null) {
+                        consumer(remoteThermalObject, temperature)
+                    }
+
+                    continue
+                }
 
                 if (remoteThermalObject !is DataContainer) {
                     continue
@@ -158,7 +167,7 @@ class ExternalTemperatureReplicatorBehavior(
                 val field = remoteThermalObject.dataNode.data.getOrNull<TemperatureField>()
                     ?: continue
 
-                consumer(remoteThermalObject, field)
+                consumer(remoteThermalObject, field.readKelvin())
             }
         }
     }

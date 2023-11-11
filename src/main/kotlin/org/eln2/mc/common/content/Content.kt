@@ -9,7 +9,6 @@ import org.ageseries.libage.data.Quantity
 import org.ageseries.libage.sim.Material
 import org.eln2.mc.LOG
 import org.eln2.mc.ThermalBodyDef
-import org.eln2.mc.WeatherStateType
 import org.eln2.mc.client.render.PartialModels
 import org.eln2.mc.client.render.cutout
 import org.eln2.mc.client.render.foundation.BasicPartRenderer
@@ -296,6 +295,43 @@ object Content {
             ).also { it.energy = GARDEN_LIGHT_INITIAL_CHARGE }
         }, Vector3d(3.0 / 16.0, 15.5 / 16.0, 3.0 / 16.0))
     )
+
+    val HEAT_ENGINE_ELECTRICAL_CELL = cell(
+        "heat_engine_electrical",
+        BasicCellProvider { ci ->
+            HeatEngineElectricalCell(
+                ci,
+                directionPoleMapPlanar(
+                    plusDir = Base6Direction3d.Front,
+                    minusDir = Base6Direction3d.Back
+                ),
+                directionPoleMapPlanar(
+                    plusDir = Base6Direction3d.Left,
+                    minusDir = Base6Direction3d.Right
+                ),
+                ThermalBodyDef(
+                    Material.COPPER,
+                    25.0,
+                    2.0
+                ),
+                HeatEngineElectricalModel(
+                    efficiency = 0.9,
+                    power = 1000.0,
+                    leakageRate = 1e-3,
+                    desiredVoltage = 100.0
+                )
+            ).also {
+                it.generator.ruleSet.withDirectionRulePlanar(Base6Direction3dMask.FRONT + Base6Direction3dMask.BACK)
+                it.thermalBipole.ruleSet.withDirectionRulePlanar(Base6Direction3dMask.LEFT + Base6Direction3dMask.RIGHT)
+            }
+        }
+    )
+
+    val HEAT_ENGINE_ELECTRICAL_PART = part(
+        "heat_engine_electrical",
+        BasicPartProvider({
+        HeatEngineElectricalPart(it)
+    }, Vector3d(0.5, 15.0 / 16.0, 0.5)))
 
     fun clientWork() {
         MenuScreens.register(HEAT_GENERATOR_MENU.get(), ::HeatGeneratorScreen)

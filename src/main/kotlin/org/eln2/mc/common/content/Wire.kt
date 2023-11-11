@@ -731,11 +731,11 @@ class WirePart<C : Cell>(
 
             val externalTemperatures = Int2DoubleOpenHashMap()
 
-            ExternalTemperatureReplicatorBehavior.scanNeighbors(cell) { remoteThermalObject, field ->
+            ExternalTemperatureReplicatorBehavior.scanNeighbors(cell) { remoteThermalObject, temperature ->
                 val solution = getPartConnectionOrNull(this.cell.locator, remoteThermalObject.cell.locator)
                     ?: return@scanNeighbors
 
-                externalTemperatures.put(solution.value, field.readKelvin())
+                externalTemperatures.put(solution.value, temperature)
             }
 
            if(externalTemperatures.isNotEmpty()) {
