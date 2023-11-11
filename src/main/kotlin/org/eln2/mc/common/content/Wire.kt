@@ -1,4 +1,4 @@
-@file:Suppress("NonAsciiCharacters")
+@file:Suppress("NonAsciiCharacters", "MemberVisibilityCanBePrivate")
 
 package org.eln2.mc.common.content
 
@@ -329,12 +329,13 @@ abstract class WireBuilder<C : Cell>(val id: String) {
     var damageOptions = TemperatureExplosionBehaviorOptions()
     var replicatesInternalTemperature = true
     var isIncandescent: Boolean = true
-    var size = Vector3d(3.5 / 16.0, 2.0 / 16.0, 3.5 / 16.0)
+    var hubSize = Vector3d(3.5 / 16.0, 2.0 / 16.0, 3.5 / 16.0)
     var tint = defaultRadiantBodyColor()
     var smokeTemperature: Double? = null
     private var renderInfo: Supplier<WireRenderInfo>? = null
     var connectionSize = Vector3d(2.0 / 16.0, 1.5 / 16.0, 6.25 / 16.0)
     var wireShapes : Map<Pair<FaceLocator, Direction>, VoxelShape>? = null
+    var wireShapesFilled : Map<Pair<FaceLocator, Direction>, VoxelShape>? = null
 
     fun renderer(supplier: Supplier<WireRenderInfo>) {
         DistExecutor.safeRunWhenOn(Dist.CLIENT) {
@@ -350,13 +351,13 @@ abstract class WireBuilder<C : Cell>(val id: String) {
     protected fun createMaterialProperties() = WireThermalProperties(material, damageOptions, replicatesInternalTemperature, isIncandescent)
 
     protected fun registerPart(properties: WireThermalProperties, provider: RegistryObject<CellProvider<C>>) {
-        val connections = wireShapes ?: let {
+        fun createShapes(size: Vector3d) : HashMap<Pair<FaceLocator, Direction>, VoxelShape> {
             val results = HashMap<Pair<FaceLocator, Direction>, VoxelShape>()
 
             val boundingBox = AABB(
-                (-connectionSize / 2.0).toVec3(),
-                (+connectionSize / 2.0).toVec3()
-            ).move((-Vector3d.unitZ / 2.0 + Vector3d.unitZ * (connectionSize.z / 2.0)).toVec3())
+                (-size / 2.0).toVec3(),
+                (+size / 2.0).toVec3()
+            ).move((-Vector3d.unitZ / 2.0 + Vector3d.unitZ * (size.z / 2.0)).toVec3())
 
             Base6Direction3dMask.FULL.directionList.forEach { face ->
                 Base6Direction3dMask.HORIZONTALS.directionList.forEach { facing ->
@@ -379,8 +380,11 @@ abstract class WireBuilder<C : Cell>(val id: String) {
                 }
             }
 
-            results
+            return results
         }
+
+        val connections = wireShapes ?: createShapes(connectionSize)
+        val connectionsFilled = wireShapesFilled ?: createShapes(Vector3d(connectionSize.x, connectionSize.y, 0.5))
 
         val renderInfo = this.renderInfo ?: Supplier {
             defaultRender()
@@ -397,9 +401,10 @@ abstract class WireBuilder<C : Cell>(val id: String) {
                     isIncandescent,
                     smokeTemperature,
                     connections,
+                    connectionsFilled,
                     renderInfo = renderInfo
                 )
-            }, size)
+            }, hubSize)
         )
     }
 }
@@ -544,57 +549,68 @@ class WirePart<C : Cell>(
     val isIncandescent: Boolean,
     val smokeTemperature: Double,
     val connectionBounds: Map<Pair<FaceLocator, Direction>, VoxelShape>,
+    val connectionBoundsFilled: Map<Pair<FaceLocator, Direction>, VoxelShape>,
     val renderInfo: Supplier<WireRenderInfo>?,
 ) : CellPart<C, WireRenderer<*>>(ci, cellProvider), InternalTemperatureConsumer, ExternalTemperatureConsumer, AnimatedPart {
     companion object {
         private const val DIRECTIONS = "directions"
     }
 
-    private fun appendConnectionCollider(shape: VoxelShape, directionPart: Base6Direction3d) : VoxelShape {
-        val connection = connectionBounds[
-            Pair(
-                placement.face,
-                incrementFromForwardUp(
-                    placement.horizontalFacing,
-                    placement.face,
-                    directionPart
-                )
-            )
-        ]
-            ?: return shape
+    private fun updateShape(connectionsInfo: List<Int>) {
+        val isFilled = checkIsFilledVariant(connectionsInfo)
 
-        return Shapes.joinUnoptimized(shape, connection, BooleanOp.OR)
+        var shape = if(isFilled) {
+            Shapes.empty()
+        } else {
+            partProviderShape
+        }
+
+        val shapeSet = if(isFilled) {
+            connectionBoundsFilled
+        } else {
+            connectionBounds
+        }
+
+        for (connectionInfo in connectionsInfo) {
+            val connection = shapeSet[
+                Pair(
+                    placement.face,
+                    incrementFromForwardUp(
+                        placement.horizontalFacing,
+                        placement.face,
+                        PartConnectionDirection(connectionInfo).directionPart
+                    )
+                )
+            ] ?: continue
+
+            shape = Shapes.joinUnoptimized(shape, connection, BooleanOp.OR)
+        }
+
+        updateShape(shape)
     }
 
     @ServerOnly
     private fun updateShapeServer() {
         check(!placement.level.isClientSide)
 
-        var result = this.partProviderShape
-
-        if(hasCell) {
-            for (remoteCell in cell.connections) {
-                val solution = getPartConnectionOrNull(cell.locator, remoteCell.locator)
-                    ?: continue
-
-                result = appendConnectionCollider(result, solution.directionPart)
-            }
+        if(!hasCell) {
+            return
         }
 
-        updateShape(result)
+        updateShape(
+            cell.connections.mapNotNull {
+                getPartConnectionOrNull(cell.locator, it.locator)?.value
+            }
+        )
     }
 
     @ClientOnly
     private fun updateShapeClient(data: IntArray) {
         check(placement.level.isClientSide)
 
-        var result = this.partProviderShape
-
-        for (i in data.indices) {
-            result = appendConnectionCollider(result, PartConnectionDirection(data[i]).directionPart)
-        }
-
-        updateShape(result)
+        updateShape(
+            ImmutableIntArrayView(data)
+        )
     }
 
     @ClientOnly
@@ -849,6 +865,18 @@ fun interface PartConnectionRenderInfoSetConsumer {
     fun acceptConnections(connections: IntArray)
 }
 
+private fun checkIsFilledVariant(connections: IntArray) = if (connections.size == 2) {
+    val c1 = PartConnectionDirection(connections[0])
+    val c2 = PartConnectionDirection(connections[1])
+    c1.directionPart == c2.directionPart.opposite
+} else false
+
+private fun checkIsFilledVariant(connections: List<Int>) = if (connections.size == 2) {
+    val c1 = PartConnectionDirection(connections[0])
+    val c2 = PartConnectionDirection(connections[1])
+    c1.directionPart == c2.directionPart.opposite
+} else false
+
 abstract class WireRenderer<I>(
     val part: WirePart<*>,
     val renderInfo: WireRenderInfo,
@@ -940,17 +968,6 @@ abstract class WireRenderer<I>(
     }
 
     protected abstract fun deleteConnection(instance: I)
-
-    companion object {
-        fun checkIsFilledVariant(connections: IntArray) = if (connections.size == 2) {
-            // Check for full connection:
-
-            val c1 = PartConnectionDirection(connections[0])
-            val c2 = PartConnectionDirection(connections[1])
-
-            c1.directionPart == c2.directionPart.opposite
-        } else false
-    }
 }
 
 /**
