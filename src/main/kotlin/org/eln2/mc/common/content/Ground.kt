@@ -45,6 +45,6 @@ class GroundCell(ci: CellCreateInfo) : Cell(ci) {
     }
 }
 
-class GroundPart(ci: PartCreateInfo) : CellPart<GroundCell, BasicPartRenderer>(ci, Content.GROUND_CELL.get()), RotatablePart {
+class GroundPart(ci: PartCreateInfo) : CellPart<GroundCell, BasicPartRenderer>(ci, Content.GROUND_CELL.get()), WrenchRotatablePart {
     override fun createRenderer() = BasicPartRenderer(this, PartialModels.GROUND)
 }

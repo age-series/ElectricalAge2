@@ -22,6 +22,8 @@ import net.minecraft.nbt.CompoundTag
 import net.minecraft.nbt.ListTag
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.util.RandomSource
+import net.minecraft.world.InteractionResult
+import net.minecraft.world.item.context.UseOnContext
 import net.minecraft.world.level.LightLayer
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.shapes.BooleanOp
@@ -323,7 +325,7 @@ data class ElectricalWireRegistryObject(
     val id: ResourceLocation,
 )
 
-abstract class WireBuilder<C : Cell>(val id: String) {
+abstract class WireBuilder<C : WireCell>(val id: String) {
     var material = ThermalBodyDef(Material.COPPER, 1.0, cylinderSurfaceArea(1.0, 0.05))
     var contactSurfaceArea = PI * (0.05 * 0.05)
     var damageOptions = TemperatureExplosionBehaviorOptions()
@@ -472,7 +474,7 @@ data class WireThermalProperties(
     val thermalDef: ThermalBodyDef,
     val damageOptions: TemperatureExplosionBehaviorOptions,
     val replicatesInternalTemperature: Boolean,
-    val replicatesExternalTemperature: Boolean,
+    val replicatesExternalTemperature: Boolean
 )
 
 /**
@@ -480,18 +482,60 @@ data class WireThermalProperties(
  * @param electricalResistance The electrical resistance.
  * */
 data class WireElectricalProperties(
-    val electricalResistance: Double,
+    val electricalResistance: Double
 )
 
-open class ThermalWireCell(ci: CellCreateInfo, val connectionCrossSection: Double, val thermalProperties: WireThermalProperties) : Cell(ci), CellContactPointSurface {
+interface DirectionBlacklist {
+    fun addToBlacklist(directionPart: Base6Direction3d) : Boolean
+    fun removeFromBlacklist(directionPart: Base6Direction3d) : Boolean
+}
+
+open class WireCell(ci: CellCreateInfo, val connectionCrossSection: Double) : Cell(ci), DirectionBlacklist, CellContactPointSurface {
+    companion object {
+        private const val BLACKLIST = "blacklist"
+    }
+
+    private val blacklist = HashSet<Base6Direction3d>()
+
+    override fun addToBlacklist(directionPart: Base6Direction3d) = blacklist.add(directionPart)
+
+    override fun removeFromBlacklist(directionPart: Base6Direction3d) = blacklist.remove(directionPart)
+
+    override fun saveCellData() = CompoundTag().also { tag ->
+        tag.putIntArray(BLACKLIST, blacklist.map { it.id })
+    }
+
+    override fun loadCellData(tag: CompoundTag) {
+        if(tag.contains(BLACKLIST)) {
+            blacklist.addAll(tag.getIntArray(BLACKLIST).map { Base6Direction3d.byId[it] })
+        }
+    }
+
+    override fun getContactSection(cell: Cell) = connectionCrossSection
+
+    override fun connectionPredicate(remoteCell: Cell): Boolean {
+        if(!super.connectionPredicate(remoteCell)) {
+            return false
+        }
+
+        val solution = getPartConnectionOrNull(this.locator, remoteCell.locator)
+            ?: return true
+
+        return !blacklist.contains(solution.directionPart)
+    }
+}
+
+open class ThermalWireCell(ci: CellCreateInfo, connectionCrossSection: Double, val thermalProperties: WireThermalProperties) : WireCell(ci, connectionCrossSection) {
     @SimObject
-    val thermalWire = ThermalWireObject(this)
+    val thermalWire = ThermalWireObject(
+        self()
+    )
 
     @Behavior
     val explosion = TemperatureExplosionBehavior(
         thermalWire::readTemperature,
         thermalProperties.damageOptions,
-        this
+        self()
     )
 
     init {
@@ -515,13 +559,11 @@ open class ThermalWireCell(ci: CellCreateInfo, val connectionCrossSection: Doubl
         if(thermalProperties.replicatesExternalTemperature)
             ExternalTemperatureReplicatorBehavior(this, consumer)
         else null
-
-    override fun getContactSection(cell: Cell) = connectionCrossSection
 }
 
 open class ElectricalWireCell(ci: CellCreateInfo, contactCrossSection: Double, thermalProperties: WireThermalProperties, val electricalProperties: WireElectricalProperties) : ThermalWireCell(ci, contactCrossSection, thermalProperties) {
     @SimObject
-    val electricalWire = ElectricalWireObject(this).also {
+    val electricalWire = ElectricalWireObject(self()).also {
         it.resistance = electricalProperties.electricalResistance
     }
 
@@ -543,7 +585,7 @@ open class ElectricalWireCell(ci: CellCreateInfo, contactCrossSection: Double, t
     }
 }
 
-class WirePart<C : Cell>(
+class WirePart<C : WireCell>(
     ci: PartCreateInfo,
     cellProvider: CellProvider<C>,
     val isIncandescent: Boolean,
@@ -551,9 +593,105 @@ class WirePart<C : Cell>(
     val connectionBounds: Map<Pair<FaceLocator, Direction>, VoxelShape>,
     val connectionBoundsFilled: Map<Pair<FaceLocator, Direction>, VoxelShape>,
     val renderInfo: Supplier<WireRenderInfo>?,
-) : CellPart<C, WireRenderer<*>>(ci, cellProvider), InternalTemperatureConsumer, ExternalTemperatureConsumer, AnimatedPart {
+) : CellPart<C, WireRenderer<*>>(ci, cellProvider),
+    InternalTemperatureConsumer,
+    ExternalTemperatureConsumer,
+    AnimatedPart,
+    WrenchInteractablePart
+{
     companion object {
         private const val DIRECTIONS = "directions"
+    }
+
+    @ServerOnly
+    private fun getConnectionsInfo() : List<Int> {
+        check(!placement.level.isClientSide)
+
+        if(!hasCell) {
+            return emptyList()
+        }
+
+        return cell.connections.mapNotNull {
+            getPartConnectionOrNull(cell.locator, it.locator)?.value
+        }
+    }
+
+    @ServerOnly
+    private fun getConnectionShapeKey(connectionInfo: Int) = Pair(
+        placement.face,
+        incrementFromForwardUp(
+            placement.horizontalFacing,
+            placement.face,
+            PartConnectionDirection(connectionInfo).directionPart
+        )
+    )
+
+    override fun applyWrench(wrench: WrenchItem, context: UseOnContext): InteractionResult {
+        if(!hasCell) {
+            return InteractionResult.FAIL
+        }
+
+        val connections = getConnectionsInfo()
+
+        val shapeSet = if(checkIsFilledVariant(connections)) {
+            connectionBoundsFilled
+        }
+        else {
+            connectionBounds
+        }
+
+        val boxes = ArrayList<Pair<AABB, Int>>()
+
+        val x = placement.position.x
+        val y = placement.position.y
+        val z = placement.position.z
+
+        for (connectionInfo in connections) {
+            val shape = shapeSet[getConnectionShapeKey(connectionInfo)]
+                ?: continue
+
+            shape.forAllBoxes { x0, y0, z0, x1, y1, z1 ->
+                val aabb = AABB(
+                    x0 + x, y0 + y, z0 + z,
+                    x1 + x, y1 + y, z1 + z
+                )
+
+                boxes.add(Pair(aabb, connectionInfo))
+            }
+        }
+
+        val target = clipScene(context.player!!, { it.first }, boxes)
+
+        if(target != null) {
+            if(cell.addToBlacklist(PartConnectionDirection(target.second).directionPart)) {
+                CellConnections.retopologize(cell, placement.multipart)
+                setSyncDirty()
+                return InteractionResult.SUCCESS
+            }
+
+            // Kind of weird if it fails, how was the connection here?
+            return InteractionResult.FAIL
+        }
+        else {
+            val player = context.player!!
+
+            val hit = modelBoundingBox.viewClipExtra(player, placement.position) ?:
+                return InteractionResult.FAIL
+
+            val directionPart = Base6Direction3d.fromForwardUp(
+                placement.horizontalFacing,
+                placement.face,
+                hit.direction
+            )
+
+            if(cell.removeFromBlacklist(directionPart)) {
+                CellConnections.retopologize(cell, placement.multipart)
+                setSyncDirty()
+                return InteractionResult.SUCCESS
+            }
+
+            return InteractionResult.FAIL
+        }
     }
 
     private fun updateShape(connectionsInfo: List<Int>) {
@@ -572,16 +710,8 @@ class WirePart<C : Cell>(
         }
 
         for (connectionInfo in connectionsInfo) {
-            val connection = shapeSet[
-                Pair(
-                    placement.face,
-                    incrementFromForwardUp(
-                        placement.horizontalFacing,
-                        placement.face,
-                        PartConnectionDirection(connectionInfo).directionPart
-                    )
-                )
-            ] ?: continue
+            val connection = shapeSet[getConnectionShapeKey(connectionInfo)]
+                ?: continue
 
             shape = Shapes.joinUnoptimized(shape, connection, BooleanOp.OR)
         }
@@ -592,25 +722,13 @@ class WirePart<C : Cell>(
     @ServerOnly
     private fun updateShapeServer() {
         check(!placement.level.isClientSide)
-
-        if(!hasCell) {
-            return
-        }
-
-        updateShape(
-            cell.connections.mapNotNull {
-                getPartConnectionOrNull(cell.locator, it.locator)?.value
-            }
-        )
+        updateShape(getConnectionsInfo())
     }
 
     @ClientOnly
     private fun updateShapeClient(data: IntArray) {
         check(placement.level.isClientSide)
-
-        updateShape(
-            ImmutableIntArrayView(data)
-        )
+        updateShape(ImmutableIntArrayView(data))
     }
 
     @ClientOnly

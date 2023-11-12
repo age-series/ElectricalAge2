@@ -184,12 +184,25 @@ abstract class Cell(val locator: Locator, val id: ResourceLocation, val environm
         return instance
     }
 
+    fun allowsConnection(remote: Cell): Boolean {
+        val result = connectionPredicate(remote)
+
+        // Discuss with me if you want more info
+        if(!result && connections.contains(remote)) {
+            LOG.warn("Forcing connection rule")
+            return true
+        }
+
+        return result
+    }
+
     /**
      * Checks if this cell accepts a connection from the remote cell.
+     * **SPECIAL CARE MUST BE TAKEN to ensure that the results are consistent with the actual [connections]**
      * @return True if the connection is accepted. Otherwise, false.
      * */
-    open fun acceptsConnection(remote: Cell): Boolean {
-        return ruleSet.accepts(locator, remote.locator)
+    protected open fun connectionPredicate(remoteCell: Cell) : Boolean {
+        return ruleSet.accepts(locator, remoteCell.locator)
     }
 
     private val replicators = ArrayList<ReplicatorBehavior>()
@@ -474,21 +487,23 @@ abstract class Cell(val locator: Locator, val id: ResourceLocation, val environm
      * */
     fun recordObjectConnections() {
         objects.forEachObject { localObj ->
-            connections.forEach { remoteCell ->
+            for (remoteCell in connections) {
+                require(remoteCell.connections.contains(this)) {
+                    "Mismatched connection set"
+                }
+
                 if (!localObj.acceptsRemoteLocation(remoteCell.locator)) {
-                    return@forEach
+                    continue
                 }
 
                 if (!remoteCell.hasObject(localObj.type)) {
-                    return@forEach
+                    continue
                 }
 
                 val remoteObj = remoteCell.objects[localObj.type]
 
-                require(remoteCell.connections.contains(this)) { "Mismatched connection set" }
-
                 if (!remoteObj.acceptsRemoteLocation(locator)) {
-                    return@forEach
+                    continue
                 }
 
                 // We can form a connection here.
@@ -522,6 +537,10 @@ abstract class Cell(val locator: Locator, val id: ResourceLocation, val environm
      * */
     fun hasObject(type: SimulationObjectType) = objects.hasObject(type)
 }
+
+fun Cell.self() = this
+
+fun isConnectionAccepted(a: Cell, b: Cell) = a.allowsConnection(b) && b.allowsConnection(a)
 
 /**
  * [CellConnections] has all Cell-Cell connection logic and is responsible for building *physical* networks.
@@ -685,12 +704,28 @@ object CellConnections {
             actualCell.notifyRemoving()
         }
 
-        actualNeighborCells.forEach { (neighbor, neighborContainer) ->
-            actualCell.removeConnection(neighbor)
-            neighbor.removeConnection(actualCell)
+        val markedNeighbors = actualCell.connections.toHashSet()
 
-            neighborContainer.onCellDisconnected(neighbor, actualCell)
-            actualContainer.onCellDisconnected(actualCell, neighbor)
+        actualNeighborCells.forEach { (neighbor, neighborContainer) ->
+            val containsA = actualCell.connections.contains(neighbor)
+            val containsB = neighbor.connections.contains(actualCell)
+
+            if(containsA && containsB) {
+                actualCell.removeConnection(neighbor)
+                neighbor.removeConnection(actualCell)
+
+                neighborContainer.onCellDisconnected(neighbor, actualCell)
+                actualContainer.onCellDisconnected(actualCell, neighbor)
+
+                markedNeighbors.remove(neighbor)
+            }
+            else if(containsA != containsB) {
+                error("Mismatched connection vs query result")
+            }
+        }
+
+        if(markedNeighbors.isNotEmpty()) {
+            error("Lingering connections $actualCell $markedNeighbors")
         }
 
         /*
@@ -732,6 +767,11 @@ object CellConnections {
     inline fun retopologize(cell: Cell, container: CellContainer, action: () -> Unit) {
         disconnectCell(cell, container, false)
         action()
+        connectCell(cell, container)
+    }
+
+    fun retopologize(cell: Cell, container: CellContainer) {
+        disconnectCell(cell, container, false)
         connectCell(cell, container)
     }
 
@@ -836,7 +876,7 @@ object CellConnections {
     }
 }
 
-fun planarCellScan(level: Level, actualCell: Cell, searchDirection: Direction, consumer: ((CellNeighborInfo) -> Unit)) {
+inline fun planarCellScan(level: Level, actualCell: Cell, searchDirection: Direction, consumer: ((CellNeighborInfo) -> Unit)) {
     val actualPosWorld = actualCell.locator.requireLocator<BlockLocator> { "Planar Scan requires a block position" }
     val actualFaceTarget = actualCell.locator.requireLocator<FaceLocator> { "Planar Scan requires a face" }
     val remoteContainer = level.getBlockEntity(actualPosWorld + searchDirection) as? CellContainer ?: return
@@ -848,14 +888,14 @@ fun planarCellScan(level: Level, actualCell: Cell, searchDirection: Direction, c
             val targetFaceTarget = targetCell.locator.requireLocator<FaceLocator>()
 
             if (targetFaceTarget == actualFaceTarget) {
-                if (actualCell.acceptsConnection(targetCell) && targetCell.acceptsConnection(actualCell)) {
+                if (isConnectionAccepted(actualCell, targetCell)) {
                     consumer(CellNeighborInfo(targetCell, remoteContainer))
                 }
             }
         }
 }
 
-fun wrappedCellScan(
+inline fun wrappedCellScan(
     level: Level,
     actualCell: Cell,
     searchDirectionTarget: Direction,
@@ -874,7 +914,7 @@ fun wrappedCellScan(
             val targetFaceTarget = targetCell.locator.requireLocator<FaceLocator>()
 
             if (targetFaceTarget == searchDirectionTarget) {
-                if (actualCell.acceptsConnection(targetCell) && targetCell.acceptsConnection(actualCell)) {
+                if (isConnectionAccepted(actualCell, targetCell)) {
                     consumer(CellNeighborInfo(targetCell, remoteContainer))
                 }
             }
@@ -1135,6 +1175,7 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
 
         realizeComponents(SimulationObjectType.Electrical, factory = { set ->
             val circuit = Circuit()
+            set.forEach { it.objects.electricalObject.clear() }
             set.forEach { it.objects.electricalObject.setNewCircuit(circuit) }
             electricalSims.add(circuit)
         })
@@ -1145,6 +1186,7 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
 
         realizeComponents(SimulationObjectType.Thermal, factory = { set ->
             val simulation = Simulator()
+            set.forEach { it.objects.thermalObject.clear() }
             set.forEach { it.objects.thermalObject.setNewSimulation(simulation) }
             thermalSims.add(simulation)
         })
@@ -1547,9 +1589,8 @@ class CellGraphManager(val level: ServerLevel) : SavedData() {
     /**
      * Gets the graph with the specified ID, or throws an exception.
      * */
-    fun getGraph(id: UUID): CellGraph {
-        return graphs[id] ?: error("Graph with id $id not found")
-    }
+    fun getGraph(id: UUID) = graphs[id]
+        ?: error("Graph with id $id not found")
 
     fun serverStop() {
         graphs.values.forEach { it.serverStop() }

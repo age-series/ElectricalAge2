@@ -19,7 +19,6 @@ import net.minecraft.world.item.Item
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.TooltipFlag
 import net.minecraft.world.level.Level
-import net.minecraft.world.level.LightLayer
 import net.minecraft.world.level.block.GlassBlock
 import net.minecraftforge.registries.ForgeRegistries
 import org.ageseries.libage.data.Quantity
@@ -1136,7 +1135,7 @@ private fun loadLightFromBulb(instance: LightVolumeInstance, emitter: LightBulbE
     return result
 }
 
-class PoweredLightPart(ci: PartCreateInfo, cellProvider: CellProvider<LightCell>) : CellPart<LightCell, LightFixtureRenderer>(ci, cellProvider), EventListener, RotatablePart {
+class PoweredLightPart(ci: PartCreateInfo, cellProvider: CellProvider<LightCell>) : CellPart<LightCell, LightFixtureRenderer>(ci, cellProvider), EventListener, WrenchRotatablePart {
     val instance = serverOnlyHolder {
         LightVolumeInstance(
             placement.level as ServerLevel,

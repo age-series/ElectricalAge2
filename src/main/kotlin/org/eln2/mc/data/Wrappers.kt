@@ -1,5 +1,7 @@
 package org.eln2.mc.data
 
+import kotlin.math.sign
+
 class ImmutableBoolArrayView(private val array: BooleanArray) : AbstractList<Boolean>() {
     override val size: Int get() = array.size
     override fun get(index: Int) = array[index]

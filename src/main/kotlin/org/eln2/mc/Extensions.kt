@@ -40,6 +40,7 @@ import net.minecraft.world.level.block.Rotation
 import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.AABB
+import net.minecraft.world.phys.BlockHitResult
 import net.minecraft.world.phys.Vec3
 import net.minecraft.world.phys.shapes.VoxelShape
 import net.minecraftforge.common.ForgeMod
@@ -74,18 +75,16 @@ import java.io.InputStream
 import java.io.OutputStream
 import java.nio.ByteBuffer
 import java.util.*
-import kotlin.collections.ArrayList
 import kotlin.math.PI
 import kotlin.math.abs
-import kotlin.math.absoluteValue
 
-fun AABB.viewClip(entity: LivingEntity): Optional<Vec3> {
-    val viewDirection = entity.lookAngle
+fun Entity.getClipStartEnd() : Pair<Vec3, Vec3> {
+    val viewDirection = this.lookAngle
 
-    val start = Vec3(entity.x, entity.eyeY, entity.z)
+    val start = Vec3(this.x, this.eyeY, this.z)
 
-    val distance = if(entity is Player) {
-        entity.reachDistance
+    val distance = if(this is Player) {
+        this.reachDistance
     }
     else {
         ForgeMod.REACH_DISTANCE.get().defaultValue
@@ -93,7 +92,18 @@ fun AABB.viewClip(entity: LivingEntity): Optional<Vec3> {
 
     val end = start + viewDirection * distance
 
+    return Pair(start, end)
+}
+
+fun AABB.viewClip(entity: LivingEntity): Optional<Vec3> {
+    val (start, end) = entity.getClipStartEnd()
+
     return this.clip(start, end)
+}
+
+fun AABB.viewClipExtra(entity: LivingEntity, blockPos: BlockPos) : BlockHitResult? {
+    val (start, end) = entity.getClipStartEnd()
+    return AABB.clip(listOf(this), start, end, blockPos)
 }
 
 fun AABB.minVec3(): Vec3 {

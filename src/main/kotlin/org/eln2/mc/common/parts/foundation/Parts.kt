@@ -591,17 +591,25 @@ abstract class CellPart<C: Cell, R : PartRenderer>(
         private const val CUSTOM_SIMULATION_DATA = "SimulationData"
     }
 
+    private var cellField : C? = null
+
     /**
      * The actual cell contained within this part.
      * It only exists on the server (it is a simulation-only item)
      * */
     @ServerOnly
-    final override lateinit var cell: C
+    final override var cell: C
+        get() = cellField.requireNotNull {
+            "Tried to get cell before it is set"
+        }
+        set(value) {
+            this.cellField = value
+        }
 
     final override val hasCell: Boolean
-        get() = this::cell.isInitialized
+        get() = cellField != null
 
-    val cellPos = placement.createLocator()
+    val locator = placement.createLocator()
 
     /**
      * Used by the loading procedures.
@@ -619,7 +627,7 @@ abstract class CellPart<C: Cell, R : PartRenderer>(
      * Notifies the cell of the new container.
      * */
     override fun onPlaced() {
-        cell = provider.create(cellPos, BiomeEnvironments.getInformationForBlock(placement.level, cellPos).fieldMap())
+        cell = provider.create(locator, BiomeEnvironments.getInformationForBlock(placement.level, locator).fieldMap())
         cell.container = placement.multipart
         isAlive = true
         acquireCell()
@@ -677,7 +685,7 @@ abstract class CellPart<C: Cell, R : PartRenderer>(
         if (tag.contains(GRAPH_ID)) {
             loadGraphId = tag.getUUID("GraphID")
         } else {
-            LOG.info("Part at $cellPos did not have saved data")
+            LOG.info("Part at $locator did not have saved data")
         }
 
         tag.useSubTagIfPreset(CUSTOM_SIMULATION_DATA) { customSimulationData = it }
@@ -695,11 +703,11 @@ abstract class CellPart<C: Cell, R : PartRenderer>(
         cell = if (!this::loadGraphId.isInitialized) {
             LOG.error("Part cell not initialized!")
             // Should we blow up the game?
-            provider.create(cellPos, BiomeEnvironments.getInformationForBlock(placement.level, cellPos).fieldMap())
+            provider.create(locator, BiomeEnvironments.getInformationForBlock(placement.level, locator).fieldMap())
         } else {
             CellGraphManager.getFor(placement.level as ServerLevel)
                 .getGraph(loadGraphId)
-                .getCellByLocator(cellPos) as C
+                .getCellByLocator(locator) as C
         }
 
         cell.container = placement.multipart
@@ -954,6 +962,13 @@ fun getPartConnectionOrNull(actualCell: Locator, remoteCell: Locator): PartConne
     val actualFaceWorld = actualCell.get<FaceLocator>() ?: return null
     val remoteFaceWorld = remoteCell.get<FaceLocator>() ?: return null
     val remoteFacingWorld = actualCell.get<FacingLocator>() ?: return null
+
+    if (actualPosWorld == remotePosWorld) {
+        if (actualFaceWorld == remoteFaceWorld) {
+            // This is a very weird case, break here
+            return null
+        }
+    }
 
     return getPartConnection(
         actualPosWorld,

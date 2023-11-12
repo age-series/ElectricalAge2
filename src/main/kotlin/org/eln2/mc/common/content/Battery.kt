@@ -382,7 +382,7 @@ class BatteryPart(
     ci: PartCreateInfo,
     provider: CellProvider<BatteryCell>,
     private val rendererSupplier: PartRendererSupplier<BatteryPart, BasicPartRenderer>
-) : CellPart<BatteryCell, BasicPartRenderer>(ci, provider), ItemPersistentPart, RotatablePart {
+) : CellPart<BatteryCell, BasicPartRenderer>(ci, provider), ItemPersistentPart, WrenchRotatablePart {
     companion object {
         private const val BATTERY = "battery"
     }

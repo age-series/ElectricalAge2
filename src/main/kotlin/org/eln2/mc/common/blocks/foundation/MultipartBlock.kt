@@ -1043,37 +1043,39 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
         val level = this.level ?: error("Level null in queryNeighbors")
 
         Base6Direction3dMask.perpendicular(partFace).process { searchDirection ->
-            fun innerScan() {
+            fun innerCellScan() {
                 // Inner scan does not make sense outside multiparts, so I did not move it to CellScanner
 
-                if (part.allowInnerConnections) {
-                    val innerFace = searchDirection.opposite
+                val innerFace = searchDirection.opposite
 
-                    val innerPart = parts[innerFace]
-                        ?: return
+                val innerPart = parts[innerFace]
+                    ?: return
 
-                    if (innerPart !is PartCellContainer<*>) {
-                        return
-                    }
-
-                    if (!innerPart.allowInnerConnections) {
-                        return
-                    }
-
-                    if (!innerPart.cell.acceptsConnection(innerPart.cell)) {
-                        return
-                    }
-
-                    results.add(
-                        CellNeighborInfo(
-                            innerPart.cell,
-                            this
-                        )
-                    )
+                if (innerPart !is PartCellContainer<*>) {
+                    return
                 }
+
+                if (!innerPart.allowInnerConnections) {
+                    return
+                }
+
+                val innerCell = innerPart.cell
+
+                if (!isConnectionAccepted(actualCell, innerCell)) {
+                    return
+                }
+
+                results.add(
+                    CellNeighborInfo(
+                        innerCell,
+                        this
+                    )
+                )
             }
 
-            innerScan()
+            if (part.allowInnerConnections) {
+                innerCellScan()
+            }
 
             if (part.allowPlanarConnections) {
                 planarCellScan(

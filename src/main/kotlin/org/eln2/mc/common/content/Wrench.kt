@@ -8,9 +8,14 @@ import org.eln2.mc.LOG
 import org.eln2.mc.ServerOnly
 import org.eln2.mc.common.blocks.foundation.MultipartBlockEntity
 
-interface RotatablePart {
+interface WrenchRotatablePart {
     @ServerOnly
     fun canRotateWithWrench(wrench: WrenchItem, context: UseOnContext): Boolean = true
+}
+
+interface WrenchInteractablePart {
+    @ServerOnly
+    fun applyWrench(wrench: WrenchItem, context: UseOnContext) : InteractionResult
 }
 
 class WrenchItem : Item(Properties()) {
@@ -25,7 +30,13 @@ class WrenchItem : Item(Properties()) {
 
         val part = multipart.pickPart(player) ?: return InteractionResult.FAIL
 
-        if(part !is RotatablePart || !part.canRotateWithWrench(this, pContext)) {
+        if(part is WrenchInteractablePart) {
+            if(player.isShiftKeyDown) {
+                return part.applyWrench(this, pContext)
+            }
+        }
+
+        if(part !is WrenchRotatablePart || !part.canRotateWithWrench(this, pContext)) {
             return InteractionResult.FAIL
         }
 

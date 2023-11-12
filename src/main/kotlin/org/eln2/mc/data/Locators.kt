@@ -220,6 +220,13 @@ fun LocatorRelationRuleSet.withDirectionRulePlanar(mask: Base6Direction3dMask): 
     }
 }
 
+fun LocatorRelationRuleSet.withDirectionRulePart(mask: Base6Direction3dMask): LocatorRelationRuleSet {
+    return this.with { a, b ->
+        mask.has(a.findDirActualPartOrNull(b) ?: return@with false)
+    }
+}
+
+
 fun Locator.findDirActualPlanarOrNull(other: Locator): Base6Direction3d? {
     val actualPosWorld = this.get<BlockLocator>() ?: return null
     val actualIdWorld = this.get<FacingLocator>() ?: return null
