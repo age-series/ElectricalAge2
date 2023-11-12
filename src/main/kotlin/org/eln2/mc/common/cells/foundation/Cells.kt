@@ -1175,7 +1175,6 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
 
         realizeComponents(SimulationObjectType.Electrical, factory = { set ->
             val circuit = Circuit()
-            set.forEach { it.objects.electricalObject.clear() }
             set.forEach { it.objects.electricalObject.setNewCircuit(circuit) }
             electricalSims.add(circuit)
         })
