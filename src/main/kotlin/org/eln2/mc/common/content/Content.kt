@@ -184,10 +184,9 @@ object Content {
     val PHOTOVOLTAIC_PANEL_PART = part(
         "photovoltaic_panel",
         BasicPartProvider({ ci ->
-            BasicCellPart(
+            PhotovoltaicPanelPart(
                 ci,
-                PHOTOVOLTAIC_GENERATOR_CELL.get(),
-                basicPartRenderer(PartialModels.SOLAR_PANEL_ONE_BLOCK)
+                PHOTOVOLTAIC_GENERATOR_CELL.get()
             )
         }, Vector3d(1.0, 2.0 / 16.0, 1.0))
     )

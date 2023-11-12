@@ -43,7 +43,7 @@ import org.eln2.mc.common.parts.foundation.CellPart
 import org.eln2.mc.common.parts.foundation.PartCreateInfo
 import org.eln2.mc.control.PIDController
 import org.eln2.mc.data.*
-import org.eln2.mc.integration.WailaEntity
+import org.eln2.mc.integration.WailaNode
 import org.eln2.mc.integration.WailaTooltipBuilder
 import org.eln2.mc.mathematics.*
 import org.joml.Vector4f
@@ -80,7 +80,7 @@ object FuelEnergyDensity {
     const val COAL = 24.0 * 1e6
 }
 
-class FuelBurnerBehavior(val cell: Cell, val body: ThermalBody) : CellBehavior, WailaEntity {
+class FuelBurnerBehavior(val cell: Cell, val body: ThermalBody) : CellBehavior, WailaNode {
     companion object {
         private const val FUEL = "fuel"
         private const val PID = "pid"
@@ -402,7 +402,6 @@ class HeatEngineElectricalBehavior(
 
         val thermalPower = abs(((hot.energy - cold.energy) / dt).coerceIn(-maxPower, maxPower))
         generator.updatePowerIdeal(thermalPower * efficiency)
-        generator.solve()
     }
 
     private fun postTick(dt: Double, phase: SubscriberPhase) {
@@ -475,12 +474,6 @@ class HeatEngineElectricalCell(
     fun replicator(target: InternalTemperatureConsumer) = InternalTemperatureReplicatorBehavior(
         listOf(thermalBipole.b1, thermalBipole.b2), target
     )
-
-    override fun appendWaila(builder: WailaTooltipBuilder, config: IPluginConfig?) {
-        super.appendWaila(builder, config)
-        builder.text("Hot", "${heatEngine.hot.temperature.kelvin.formatted()}K")
-        builder.text("Cold", "${heatEngine.cold.temperature.kelvin.formatted()}K")
-    }
 }
 
 class HeatEngineElectricalPart(ci: PartCreateInfo) : CellPart<HeatEngineElectricalCell, RadiantBipoleRenderer>(ci, Content.HEAT_ENGINE_ELECTRICAL_CELL.get()), InternalTemperatureConsumer {

@@ -1,5 +1,6 @@
 package org.eln2.mc.common.content
 
+import mcp.mobius.waila.api.IPluginConfig
 import org.ageseries.libage.sim.electrical.mna.Circuit
 import org.ageseries.libage.sim.electrical.mna.component.Resistor
 import org.eln2.mc.LIBAGE_SET_EPS
@@ -11,12 +12,13 @@ import org.eln2.mc.common.cells.foundation.*
 import org.eln2.mc.common.parts.foundation.CellPart
 import org.eln2.mc.common.parts.foundation.PartCreateInfo
 import org.eln2.mc.data.*
-import org.eln2.mc.integration.WailaEntity
+import org.eln2.mc.integration.WailaNode
+import org.eln2.mc.integration.WailaTooltipBuilder
 import org.eln2.mc.mathematics.Base6Direction3d
 import org.eln2.mc.mathematics.approxEq
 
 @NoInj
-class ResistorObject(cell: Cell, val poleMap: PoleMap) : ElectricalObject<Cell>(cell), DataContainer, WailaEntity {
+class ResistorObject(cell: Cell, val poleMap: PoleMap) : ElectricalObject<Cell>(cell) {
     private val resistor = ComponentHolder {
         Resistor().also { it.resistance = resistanceExact }
     }
@@ -59,20 +61,6 @@ class ResistorObject(cell: Cell, val poleMap: PoleMap) : ElectricalObject<Cell>(
     override fun addComponents(circuit: Circuit) {
         circuit.add(resistor)
     }
-
-    override val dataNode = data {
-        it.withField(ResistanceField {
-            resistanceExact
-        })
-
-        it.withField(CurrentField {
-            current
-        })
-
-        it.withField(PowerField {
-            power
-        })
-    }
 }
 
 class ResistorCell(ci: CellCreateInfo) : Cell(ci) {
@@ -95,7 +83,12 @@ class ResistorCell(ci: CellCreateInfo) : Cell(ci) {
     val heating = PowerHeatingBehavior({ resistor.power }, thermalWire.thermalBody)
 }
 
-class ResistorPart(ci: PartCreateInfo) : CellPart<ResistorCell, BasicPartRenderer>(ci, Content.RESISTOR_CELL.get()) {
-
+class ResistorPart(ci: PartCreateInfo) : CellPart<ResistorCell, BasicPartRenderer>(ci, Content.RESISTOR_CELL.get()), WailaNode {
     override fun createRenderer() = BasicPartRenderer(this, PartialModels.RESISTOR)
+
+    override fun appendWaila(builder: WailaTooltipBuilder, config: IPluginConfig?) {
+        runIfCell {
+            builder.power(cell.resistor.power)
+        }
+    }
 }

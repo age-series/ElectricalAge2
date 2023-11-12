@@ -17,7 +17,6 @@ import org.ageseries.libage.sim.thermal.Simulator
 import org.eln2.mc.*
 import org.eln2.mc.common.cells.CellRegistry
 import org.eln2.mc.data.*
-import org.eln2.mc.integration.WailaEntity
 import org.eln2.mc.mathematics.approxEq
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
@@ -79,7 +78,7 @@ annotation class Inspect
  * Cells create connections with other cells, and objects create connections with other objects of the same simulation type.
  * */
 @ServerOnly
-abstract class Cell(val locator: Locator, val id: ResourceLocation, val environmentData: HashDataTable) : WailaEntity, DataContainer {
+abstract class Cell(val locator: Locator, val id: ResourceLocation, val environmentData: HashDataTable) {
     companion object {
         private val OBJECT_READERS = ConcurrentHashMap<Class<*>, List<FieldInfo<Cell>>>()
         private val BEHAVIOR_READERS = ConcurrentHashMap<Class<*>, List<FieldInfo<Cell>>>()
@@ -93,19 +92,6 @@ abstract class Cell(val locator: Locator, val id: ResourceLocation, val environm
     constructor(ci: CellCreateInfo) : this(ci.locator, ci.id, ci.environment)
 
     val uniqueCellId = ID_ATOMIC.getAndIncrement()
-
-    final override val dataNode = HashDataNode()
-
-    val data get() = dataNode.data
-
-    init {
-        dataNode.data.withField(
-            ObjectField("ID") {
-                if (hasGraph) graph.id
-                else null
-            }
-        )
-    }
 
     // Persistent behaviors are used by cell logic, and live throughout the lifetime of the cell:
     private var persistentPool: TrackedSubscriberCollection? = null
@@ -122,11 +108,9 @@ abstract class Cell(val locator: Locator, val id: ResourceLocation, val environm
 
     protected val services by lazy {
         ServiceCollection()
-            .withSingleton { dataNode }
             .withSingleton { this }
             .withSingleton(this.javaClass) { this }
             .withSingleton { locator }
-            .withExternalResolver { dataNode.data.getOrNull(it) }
             .also { registerServices(it) }
     }
 
@@ -138,22 +122,13 @@ abstract class Cell(val locator: Locator, val id: ResourceLocation, val environm
     /**
      * Instantiates the specified class using dependency injection. Calling this method will initialize the [servicesLazy].
      * By default, the following services are included:
-     * - [dataNode]
      * - this
      * - [javaClass]
      * - [locator]
-     * - data node fields (fields in [dataNode], but not child nodes)
      * - [registerServices] (user-specified services)
      * */
     protected inline fun <reified T> activate(vararg extraParams: Any): T =
         services.activate(extraParams.asList())
-
-    /**
-     * Instantiates the specified class using dependency injection, as per [activate].
-     * Services will also be requested from the specified [entity]
-     * */
-    protected inline fun <reified T> activateWith(entity: DataContainer, vararg extraParams: Any): T =
-        services.activate(extraParams.asList().plus(entity.dataNode.data.values.mapNotNull { it.getValue() }))
 
     /**
      * Instantiates the specified class using dependency injection, as per [activate].
@@ -165,23 +140,6 @@ abstract class Cell(val locator: Locator, val id: ResourceLocation, val environm
         }
 
         services.withService(T::class.java) { it }
-    }
-
-    /**
-     * Instantiates the specified class using dependency injection, as per [activate].
-     * The result will also be added to the service collection.
-     * Services will also be requested from the specified [entity]
-     * */
-    protected inline fun <reified T> activateServiceWith(entity: DataContainer, vararg extraParams: Any): T {
-        if(ReplicatorBehavior::class.java.isAssignableFrom(T::class.java)) {
-            error("Cannot activate replicator behavior as service!")
-        }
-
-        val instance = services.activate<T>(extraParams.asList().plus(entity.dataNode.data.values.mapNotNull { it.getValue() }))
-
-        services.withService(T::class.java) { instance }
-
-        return instance
     }
 
     fun allowsConnection(remote: Cell): Boolean {
@@ -248,7 +206,7 @@ abstract class Cell(val locator: Locator, val id: ResourceLocation, val environm
 
         val fields = HashMap<SimulationObject<*>, FieldInfo<Cell>>()
 
-        val set = SimulationObjectSet(objectFields.mapNotNull {
+        SimulationObjectSet(objectFields.mapNotNull {
             val o = it.reader.get(this) as? SimulationObject<*>
 
             if(o != null) {
@@ -259,31 +217,16 @@ abstract class Cell(val locator: Locator, val id: ResourceLocation, val environm
 
             o
         })
-
-        set.forEachObject { obj ->
-            if (obj is DataContainer && fields[obj]!!.field.isAnnotationPresent(Inspect::class.java)) {
-                dataNode.withChild(obj.dataNode)
-            }
-        }
-
-        set
     }
 
     val objects get() = objectsLazy.value
 
-    private val behaviorsLazy = lazy {
-        createBehaviorContainer().also { container ->
-            dataNode.withChild(container.dataNode)
-        }
-    }
-
     var isBeingRemoved = false
         private set
 
-    /**
-     * Gets the behavior container for this cell. Accessing this will initialize [behaviorsLazy].
-     * */
-    protected val behaviors get() = behaviorsLazy.value
+    protected val behaviors by lazy {
+        createBehaviorContainer()
+    }
 
     open fun createBehaviorContainer() = CellBehaviorContainer(this).also { container ->
         fieldScan(this.javaClass, CellBehavior::class, Behavior::class.java, BEHAVIOR_READERS)
@@ -1711,7 +1654,7 @@ const val NEGATIVE_PIN = INTERNAL_PIN
 /**
  * Generator model consisting of a Voltage Source + Resistor
  * */
-open class VRGeneratorObject<C : Cell>(cell: Cell, val map: PoleMap) : ElectricalObject<Cell>(cell), WailaEntity, DataContainer {
+open class VRGeneratorObject<C : Cell>(cell: Cell, val map: PoleMap) : ElectricalObject<Cell>(cell) {
     private val resistor = ComponentHolder {
         Resistor().also { it.resistance = resistanceExact }
     }
@@ -1803,27 +1746,9 @@ open class VRGeneratorObject<C : Cell>(cell: Cell, val map: PoleMap) : Electrica
         resistor.connectInternal(source.offerPositive())
         super.build()
     }
-
-    override val dataNode = data {
-        it.withField(VoltageField {
-            potentialExact
-        })
-
-        it.withField(CurrentField {
-            sourceCurrent
-        })
-
-        it.withField(ResistanceField {
-            resistanceExact
-        })
-
-        it.withField(PowerField {
-            sourcePower
-        })
-    }
 }
 
-open class PVSObject<C : Cell>(cell: Cell, val map: PoleMap) : ElectricalObject<Cell>(cell), WailaEntity, DataContainer {
+open class PVSObject<C : Cell>(cell: Cell, val map: PoleMap) : ElectricalObject<Cell>(cell) {
     private val source = ComponentHolder {
         PowerVoltageSource().also {
             it.potentialMax = potentialMaxExact
@@ -1863,8 +1788,6 @@ open class PVSObject<C : Cell>(cell: Cell, val map: PoleMap) : ElectricalObject<
         return true
     }
 
-    fun solve() : Boolean = if(source.isPresent) source.instance.solve() else false
-
     val hasSource get() = source.isPresent
     val sourceCurrent get() = if(source.isPresent) source.instance.current else 0.0
     val sourcePower get() = if (source.isPresent) source.instance.power else 0.0
@@ -1883,20 +1806,6 @@ open class PVSObject<C : Cell>(cell: Cell, val map: PoleMap) : ElectricalObject<
 
     override fun clearComponents() {
         source.clear()
-    }
-
-    override val dataNode = data {
-        it.withField(VoltageField {
-            potentialMaxExact
-        })
-
-        it.withField(CurrentField {
-            sourceCurrent
-        })
-
-        it.withField(PowerField {
-            sourcePower
-        })
     }
 }
 

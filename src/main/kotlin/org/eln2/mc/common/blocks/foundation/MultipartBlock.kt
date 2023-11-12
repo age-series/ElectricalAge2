@@ -41,7 +41,7 @@ import org.eln2.mc.common.cells.foundation.*
 import org.eln2.mc.common.parts.PartRegistry
 import org.eln2.mc.common.parts.foundation.*
 import org.eln2.mc.data.*
-import org.eln2.mc.integration.WailaEntity
+import org.eln2.mc.integration.WailaNode
 import org.eln2.mc.integration.WailaTooltipBuilder
 import org.eln2.mc.mathematics.Base6Direction3dMask
 import java.util.*
@@ -315,8 +315,7 @@ class MultipartBlock : BaseEntityBlock(
 class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
     BlockEntity(BlockRegistry.MULTIPART_BLOCK_ENTITY.get(), pos, state),
     CellContainer,
-    WailaEntity,
-    DataContainer {
+    WailaNode {
 
     // Interesting issue.
     // If we try to add tickers before the block receives the first tick,
@@ -363,11 +362,9 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
         val result = parts.remove(face)
             ?: return null
 
-        dataNode.children.removeIf { it == result.dataNode }
-
         tickingParts.removeIf { it == result }
 
-        if(level?.isClientSide != false) {
+        if (level?.isClientSide != false) {
             animatedParts.removeIf { it == result }
         }
 
@@ -378,7 +375,6 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
 
     private fun addPart(face: Direction, part: Part<*>) {
         parts[face] = part
-        dataNode.withChild(part.dataNode)
         part.onAdded()
     }
 
@@ -428,7 +424,7 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
         saveTag: CompoundTag? = null,
         orientation: Direction? = null,
     ): Boolean {
-        if(orientation != null &&! orientation.isHorizontal()) {
+        if (orientation != null && !orientation.isHorizontal()) {
             error("Invalid orientation $orientation")
         }
 
@@ -950,10 +946,10 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
             val part = parts[face]
             val commonTag = savePartCommon(part!!)
 
-            if(initial) {
+            if (initial) {
                 val initialTag = part.getInitialSyncTag()
 
-                if(initialTag != null) {
+                if (initialTag != null) {
                     commonTag.put("Initial", initialTag)
                 }
             }
@@ -980,7 +976,7 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
 
                 val initialTag = partCompoundTag.get("Initial") as? CompoundTag
 
-                if(initialTag != null) {
+                if (initialTag != null) {
                     part.loadInitialSyncTag(initialTag)
                 }
             }
@@ -1111,7 +1107,7 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
     override fun onCellDisconnected(actualCell: Cell, remoteCell: Cell) {
         val part = parts[actualCell.locator.requireLocator<FaceLocator>()] as PartCellContainer<*>
         part.onDisconnected(remoteCell)
-        if(part.hasCell && !part.cell.isBeingRemoved) {
+        if (part.hasCell && !part.cell.isBeingRemoved) {
             part.onConnectivityChanged()
         }
     }
@@ -1147,7 +1143,7 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
 
     }
 
-    fun addTicker(part: TickablePart) : Boolean {
+    fun addTicker(part: TickablePart): Boolean {
         if (level == null) {
             error("Illegal ticker add before level is available")
         }
@@ -1158,7 +1154,7 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
 
         val result = tickingParts.add(part)
 
-        if(!result) {
+        if (!result) {
             return false
         }
 
@@ -1175,13 +1171,13 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
     fun markRemoveTicker(part: TickablePart) = tickingRemoveQueue.add(part)
 
     @ClientOnly
-    fun hasAnimated(part: AnimatedPart) : Boolean {
+    fun hasAnimated(part: AnimatedPart): Boolean {
         requireIsOnRenderThread { "Tried to check if part $part has animate ticker on ${Thread.currentThread()}" }
         return animatedParts.contains(part)
     }
 
     @ClientOnly
-    fun addAnimated(part: AnimatedPart) : Boolean {
+    fun addAnimated(part: AnimatedPart): Boolean {
         requireIsOnRenderThread { "Tried to add part $part as animate on ${Thread.currentThread()}" }
 
         if (!parts.values.any { it == part }) {
@@ -1191,13 +1187,13 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
         return animatedParts.add(part)
     }
 
-    fun markRemoveAnimated(part: AnimatedPart) : Boolean {
+    fun markRemoveAnimated(part: AnimatedPart): Boolean {
         requireIsOnRenderThread { "Tried to remove part $part as animate on ${Thread.currentThread()}" }
         return animationRemoveQueue.add(part)
     }
 
     fun animateTick(randomSource: RandomSource) {
-        for(part in animatedParts) {
+        for (part in animatedParts) {
             part.animationTick(randomSource)
         }
 
@@ -1246,7 +1242,7 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
 
             entity.tickingParts.forEach { it.tick() }
 
-            for(removed in entity.tickingRemoveQueue) {
+            for (removed in entity.tickingRemoveQueue) {
                 entity.tickingParts.remove(removed)
             }
 
@@ -1256,13 +1252,9 @@ class MultipartBlockEntity(var pos: BlockPos, state: BlockState) :
 
     override fun appendWaila(builder: WailaTooltipBuilder, config: IPluginConfig?) {
         parts.values.forEach { part ->
-            if (part !is WailaEntity) {
-                return@forEach
+            if (part is WailaNode) {
+                part.appendWaila(builder, config)
             }
-
-            part.appendWaila(builder, config)
         }
     }
-
-    override val dataNode: HashDataNode = HashDataNode()
 }

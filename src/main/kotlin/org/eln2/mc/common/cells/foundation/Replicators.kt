@@ -1,8 +1,6 @@
 package org.eln2.mc.common.cells.foundation
 
 import org.eln2.mc.ThermalBody
-import org.eln2.mc.data.DataContainer
-import org.eln2.mc.data.TemperatureField
 import org.eln2.mc.mathematics.approxEq
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.reflect.KClass
@@ -156,18 +154,7 @@ class ExternalTemperatureReplicatorBehavior(
                     if(temperature != null) {
                         consumer(remoteThermalObject, temperature)
                     }
-
-                    continue
                 }
-
-                if (remoteThermalObject !is DataContainer) {
-                    continue
-                }
-
-                val field = remoteThermalObject.dataNode.data.getOrNull<TemperatureField>()
-                    ?: continue
-
-                consumer(remoteThermalObject, field.readKelvin())
             }
         }
     }

@@ -1,12 +1,19 @@
 package org.eln2.mc.common.content
 
+import mcp.mobius.waila.api.IPluginConfig
 import net.minecraft.world.level.Level
 import net.minecraft.core.BlockPos
 import org.ageseries.libage.data.Area
 import org.ageseries.libage.data.Quantity
 import org.eln2.mc.*
+import org.eln2.mc.client.render.PartialModels
+import org.eln2.mc.client.render.foundation.BasicPartRenderer
 import org.eln2.mc.common.cells.foundation.*
+import org.eln2.mc.common.parts.foundation.CellPart
+import org.eln2.mc.common.parts.foundation.PartCreateInfo
 import org.eln2.mc.data.*
+import org.eln2.mc.integration.WailaNode
+import org.eln2.mc.integration.WailaTooltipBuilder
 import org.eln2.mc.mathematics.*
 import kotlin.math.PI
 import kotlin.math.cos
@@ -70,9 +77,7 @@ class PhotovoltaicBehavior(
     }
 
     override fun subscribe(subscribers: SubscriberCollection) {
-        subscribers.addPre { a, b -> update(a, b) }
-        subscribers.addPost { a, b -> update(a, b)}
-
+        subscribers.addPre(::update)
     }
 
     private fun update(dt: Double, phase: SubscriberPhase) {
@@ -83,7 +88,6 @@ class PhotovoltaicBehavior(
 
         source.updatePotentialMax(!model.idealVoltage * ((irradiance / model.b).pow(model.p) / model.d))
         source.updatePowerIdeal(irradiance * !surfaceArea * model.efficiency)
-        source.solve()
     }
 }
 
@@ -103,6 +107,17 @@ class PhotovoltaicGeneratorCell(
 
     init {
         ruleSet.withDirectionRulePlanar(Base6Direction3d.Front + Base6Direction3d.Back)
+    }
+}
+
+class PhotovoltaicPanelPart(ci: PartCreateInfo, provider: CellProvider<PhotovoltaicGeneratorCell>) : CellPart<PhotovoltaicGeneratorCell, BasicPartRenderer>(ci, provider), WailaNode {
+    override fun createRenderer() =  BasicPartRenderer(this, PartialModels.SOLAR_PANEL_ONE_BLOCK)
+
+    override fun appendWaila(builder: WailaTooltipBuilder, config: IPluginConfig?) {
+        runIfCell {
+            builder.voltage(cell.generator.potentialMaxExact)
+            builder.power(cell.generator.sourcePower)
+        }
     }
 }
 

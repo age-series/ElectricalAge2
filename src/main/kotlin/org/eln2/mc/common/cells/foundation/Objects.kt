@@ -7,7 +7,6 @@ import org.ageseries.libage.sim.thermal.ConnectionParameters
 import org.ageseries.libage.sim.thermal.Simulator
 import org.eln2.mc.*
 import org.eln2.mc.data.*
-import org.eln2.mc.integration.WailaEntity
 
 /**
  * Represents a discrete simulation unit that participates in one simulation type.
@@ -316,7 +315,7 @@ class ThermalBipoleObject<C : Cell>(
     val map: PoleMap,
     b1Def: ThermalBodyDef,
     b2Def: ThermalBodyDef
-) : ThermalObject<C>(cell), WailaEntity, ThermalBipole, ThermalContactInfo {
+) : ThermalObject<C>(cell), ThermalBipole, ThermalContactInfo {
     override var b1 = b1Def.create()
     override var b2 = b2Def.create()
 

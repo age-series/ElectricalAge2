@@ -36,7 +36,7 @@ import org.eln2.mc.common.events.*
 import org.eln2.mc.common.network.serverToClient.with
 import org.eln2.mc.common.parts.foundation.*
 import org.eln2.mc.data.*
-import org.eln2.mc.integration.WailaEntity
+import org.eln2.mc.integration.WailaNode
 import org.eln2.mc.integration.WailaTooltipBuilder
 import org.eln2.mc.mathematics.*
 import java.nio.ByteBuffer
@@ -641,28 +641,11 @@ interface LightBulbEmitterView {
     fun resetValues()
 }
 
-class LightCell(ci: CellCreateInfo, poleMap: PoleMap) : Cell(ci), DataContainer, WailaEntity, LightView, LightBulbEmitterView {
+class LightCell(ci: CellCreateInfo, poleMap: PoleMap) : Cell(ci), LightView, LightBulbEmitterView {
     companion object {
         private const val RENDER_EPS = 1e-4
         private const val OPEN_CIRCUIT_RESISTANCE = LARGE_RESISTANCE
         private const val RESISTANCE_EPS = 0.1
-    }
-
-    init {
-        data.withField(TooltipField { b ->
-            b.text("Minecraft Brightness", volumeState)
-            b.text("Model Brightness", modelTemperature.formatted())
-
-            val item = this.lightBulb
-
-            if(item == null) {
-                b.text("Bulb", "N/A")
-            }
-            else {
-                b.text("Bulb", ForgeRegistries.ITEMS.getKey(item))
-                b.text("Life", life.formattedPercentN())
-            }
-        })
     }
 
     // The last render brightness sent:
@@ -1135,7 +1118,7 @@ private fun loadLightFromBulb(instance: LightVolumeInstance, emitter: LightBulbE
     return result
 }
 
-class PoweredLightPart(ci: PartCreateInfo, cellProvider: CellProvider<LightCell>) : CellPart<LightCell, LightFixtureRenderer>(ci, cellProvider), EventListener, WrenchRotatablePart {
+class PoweredLightPart(ci: PartCreateInfo, cellProvider: CellProvider<LightCell>) : CellPart<LightCell, LightFixtureRenderer>(ci, cellProvider), EventListener, WrenchRotatablePart, WailaNode {
     val instance = serverOnlyHolder {
         LightVolumeInstance(
             placement.level as ServerLevel,
@@ -1247,6 +1230,14 @@ class PoweredLightPart(ci: PartCreateInfo, cellProvider: CellProvider<LightCell>
             instance().destroyCells()
         }
     }
+
+    override fun appendWaila(builder: WailaTooltipBuilder, config: IPluginConfig?) {
+        runIfCell {
+            builder.current(cell.current)
+            builder.power(cell.power)
+            builder.life(cell.life)
+        }
+    }
 }
 
 data class SolarLightModel(
@@ -1261,7 +1252,7 @@ class SolarLightPart<R : PartRenderer>(
     normalSupplier: (SolarLightPart<R>) -> Vector3d,
     val rendererSupplier: (SolarLightPart<R>) -> R,
     rendererClass: Class<R>,
-) : Part<R>(ci), TickablePart, WailaEntity {
+) : Part<R>(ci), TickablePart, WailaNode {
     val volume = model.volumeProvider.getVolume(placement.createLocator())
     val normal = normalSupplier(this)
 
@@ -1379,7 +1370,7 @@ class SolarLightPart<R : PartRenderer>(
     }
 
     override fun appendWaila(builder: WailaTooltipBuilder, config: IPluginConfig?) {
-        builder.text("Charge", energy.formattedPercentN())
+        builder.charge(energy)
         builder.text("Irradiance", placement.level.evaluateDiffuseIrradianceFactor(normal).formattedPercentN())
     }
 

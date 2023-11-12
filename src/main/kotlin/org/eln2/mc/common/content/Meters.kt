@@ -5,8 +5,6 @@ import net.minecraft.world.InteractionResult
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.item.Item
 import net.minecraft.world.item.context.UseOnContext
-import org.eln2.mc.data.*
-import org.eln2.mc.getDataAccess
 
 abstract class MeterItem : Item(Properties().stacksTo(1)) {
     override fun useOn(pContext: UseOnContext): InteractionResult {
@@ -31,14 +29,13 @@ class UniversalMeter(
     val readTemperature: Boolean = false,
 ) : MeterItem() {
     override fun read(pContext: UseOnContext, player: Player): Component? {
-        val target = pContext.level.getDataAccess(pContext.clickedPos)
-            ?: return null
+        TODO()
 
         class FieldReading(val field: Any, val label: String, val printout: String)
 
         val readings = ArrayList<FieldReading>()
-
-        if (readVoltage) {
+        // todo
+       /* if (readVoltage) {
             target.fieldScan<VoltageField>().forEach {
                 readings.add(FieldReading(it, "Voltage", valueText(it.read(), UnitType.VOLT)))
             }
@@ -54,7 +51,7 @@ class UniversalMeter(
             target.fieldScan<TemperatureField>().forEach {
                 readings.add(FieldReading(it, "Temperature", valueText(it.read().kelvin, UnitType.KELVIN)))
             }
-        }
+        }*/
 
         return if (readings.isEmpty()) null
         else Component.literal(readings.joinToString(", ") { reading ->

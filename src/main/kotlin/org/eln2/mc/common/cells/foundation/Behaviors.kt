@@ -13,7 +13,7 @@ import org.eln2.mc.common.events.Scheduler
 import org.eln2.mc.common.events.schedulePre
 import org.eln2.mc.common.parts.foundation.CellPart
 import org.eln2.mc.data.*
-import org.eln2.mc.integration.WailaEntity
+import org.eln2.mc.integration.WailaNode
 import org.eln2.mc.integration.WailaTooltipBuilder
 
 /**
@@ -78,16 +78,12 @@ operator fun CellBehaviorSource.times(b: CellBehavior) = this.add(b)
 /**
  * Container for multiple [CellBehavior]s. It is a Set. As such, there may be one instance of each behavior type.
  * */
-class CellBehaviorContainer(private val cell: Cell) : DataContainer {
+class CellBehaviorContainer(private val cell: Cell) {
     val behaviors = ArrayList<CellBehavior>()
 
     fun addToCollection(b: CellBehavior) {
         if (behaviors.any { it.javaClass == b.javaClass }) {
             error("Duplicate behavior $b")
-        }
-
-        if (b is DataContainer) {
-            dataNode.withChild(b.dataNode)
         }
 
         behaviors.add(b)
@@ -100,45 +96,16 @@ class CellBehaviorContainer(private val cell: Cell) : DataContainer {
 
     fun destroy(behavior: CellBehavior) {
         require(behaviors.remove(behavior)) { "Illegal behavior remove $behavior" }
-
-        if (behavior is DataContainer) {
-            dataNode.children.removeIf { access -> access == behavior.dataNode }
-        }
-
         behavior.destroy()
     }
 
     fun destroy() {
         behaviors.toList().forEach { destroy(it) }
     }
-
-    override val dataNode: HashDataNode = HashDataNode()
 }
 
 fun interface ElectricalPowerAccessor {
     fun get(): Double
-}
-
-/**
- * Integrates electrical power into energy. Injection is supported using [PowerField].
- * */
-class ElectricalPowerConverterBehavior(private val accessor: ElectricalPowerAccessor) : CellBehavior {
-    @Inj
-    constructor(powerField: PowerField) : this(powerField.read)
-
-    var energy: Double = 0.0
-    var deltaEnergy: Double = 0.0
-
-    override fun onAdded(container: CellBehaviorContainer) {}
-
-    override fun subscribe(subscribers: SubscriberCollection) {
-        subscribers.addPre(this::simulationTick)
-    }
-
-    private fun simulationTick(dt: Double, p: SubscriberPhase) {
-        deltaEnergy = accessor.get() * dt
-        energy += deltaEnergy
-    }
 }
 
 fun interface ThermalBodyAccessor {
@@ -153,9 +120,6 @@ fun ThermalBodyAccessor.temperature(): TemperatureAccessor = TemperatureAccessor
  * Converts dissipated electrical energy to thermal energy.
  * */
 class PowerHeatingBehavior @Inj constructor(private val accessor: ElectricalPowerAccessor, private val body: ThermalBody) : CellBehavior {
-    @Inj
-    constructor(powerField: PowerField, body: ThermalBody) : this(powerField.read, body)
-
     override fun subscribe(subscribers: SubscriberCollection) {
         subscribers.addPre(this::simulationTick)
     }
@@ -206,7 +170,7 @@ class TemperatureExplosionBehavior(
     val temperatureAccessor: TemperatureAccessor,
     val options: TemperatureExplosionBehaviorOptions,
     val consumer: ExplosionConsumer,
-) : CellBehavior, WailaEntity {
+) : CellBehavior, WailaNode {
     private var score = 0.0
     private var enqueued = false
 
@@ -217,15 +181,6 @@ class TemperatureExplosionBehavior(
     @Inj
     constructor(temperatureAccessor: TemperatureAccessor, consumer: ExplosionConsumer) :
         this(temperatureAccessor, TemperatureExplosionBehaviorOptions(), consumer)
-
-    @Inj
-    constructor(temperatureField: TemperatureField, options: TemperatureExplosionBehaviorOptions, cell: Cell) :
-        this(temperatureField::readKelvin, options, cell)
-
-    @Inj
-    constructor(temperatureField: TemperatureField, cell: Cell) :
-        this(temperatureField::readKelvin, TemperatureExplosionBehaviorOptions(), cell)
-
 
     override fun onAdded(container: CellBehaviorContainer) {}
 

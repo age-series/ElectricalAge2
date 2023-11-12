@@ -3,6 +3,7 @@ package org.eln2.mc.common.content
 import com.jozufozu.flywheel.core.PartialModel
 import com.jozufozu.flywheel.core.materials.model.ModelData
 import kotlinx.serialization.Serializable
+import mcp.mobius.waila.api.IPluginConfig
 import org.ageseries.libage.sim.thermal.Temperature
 import org.eln2.mc.NoInj
 import org.eln2.mc.ThermalBody
@@ -14,11 +15,13 @@ import org.eln2.mc.common.cells.foundation.InternalTemperatureConsumer
 import org.eln2.mc.common.events.AtomicUpdate
 import org.eln2.mc.common.network.serverToClient.PacketHandlerBuilder
 import org.eln2.mc.common.parts.foundation.*
+import org.eln2.mc.integration.WailaNode
+import org.eln2.mc.integration.WailaTooltipBuilder
 
 class RadiatorPart(
     ci: PartCreateInfo,
     val radiantColor: ThermalTint
-) : CellPart<ThermalWireCell, RadiantBodyRenderer>(ci, Content.THERMAL_RADIATOR_CELL.get()), InternalTemperatureConsumer {
+) : CellPart<ThermalWireCell, RadiantBodyRenderer>(ci, Content.THERMAL_RADIATOR_CELL.get()), InternalTemperatureConsumer, WailaNode {
     override fun createRenderer() = RadiantBodyRenderer(this, PartialModels.RADIATOR, radiantColor, 0.0)
 
     override fun registerPackets(builder: PacketHandlerBuilder) {
@@ -33,6 +36,12 @@ class RadiatorPart(
 
     @Serializable
     private data class Sync(val temperature: Double)
+
+    override fun appendWaila(builder: WailaTooltipBuilder, config: IPluginConfig?) {
+        runIfCell {
+            builder.temperature(cell.thermalWire.readTemperature())
+        }
+    }
 }
 
 class RadiantBodyRenderer(

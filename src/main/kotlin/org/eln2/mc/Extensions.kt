@@ -374,11 +374,6 @@ inline fun <reified TEntity : BlockEntity> Level.constructMenu(
     }
 }
 
-fun Level.getDataAccess(pos: BlockPos): HashDataNode? {
-    return ((this.getBlockEntity(pos) ?: return null)
-        as? DataContainer ?: return null)
-        .dataNode
-}
 /*
 
 inline fun <reified T : Cell> Level.getCellOrNull(mb: MultiblockManager, cellPosId: BlockPos): T? {

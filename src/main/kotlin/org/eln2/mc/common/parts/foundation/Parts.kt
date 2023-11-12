@@ -2,7 +2,6 @@ package org.eln2.mc.common.parts.foundation
 
 import com.jozufozu.flywheel.core.PartialModel
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap
-import mcp.mobius.waila.api.IPluginConfig
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
 import net.minecraft.core.Vec3i
@@ -30,8 +29,6 @@ import org.eln2.mc.common.network.serverToClient.PacketHandlerBuilder
 import org.eln2.mc.common.network.serverToClient.PartMessage
 import org.eln2.mc.common.parts.PartRegistry
 import org.eln2.mc.data.*
-import org.eln2.mc.integration.WailaEntity
-import org.eln2.mc.integration.WailaTooltipBuilder
 import org.eln2.mc.mathematics.Base6Direction3d
 import org.eln2.mc.mathematics.BlockPosInt
 import org.joml.AxisAngle4f
@@ -175,7 +172,7 @@ data class PartCreateInfo(
  * but up to 6 can exist in the same block space.
  * They are placed on the inner faces of a multipart container block space.
  * */
-abstract class Part<Renderer : PartRenderer>(ci: PartCreateInfo) : DataContainer {
+abstract class Part<Renderer : PartRenderer>(ci: PartCreateInfo) {
     val id = ci.id
     val placement = ci.placement
     val partProviderShape = Shapes.create(modelBoundingBox)
@@ -486,8 +483,6 @@ abstract class Part<Renderer : PartRenderer>(ci: PartCreateInfo) : DataContainer
         cachedRenderer?.remove()
         cachedRenderer = null
     }
-
-    override val dataNode: HashDataNode = HashDataNode()
 }
 
 /**
@@ -585,13 +580,34 @@ interface PartCellContainer<C : Cell> {
 abstract class CellPart<C: Cell, R : PartRenderer>(
     ci: PartCreateInfo,
     final override val provider: CellProvider<C>,
-) : Part<R>(ci), PartCellContainer<C>, WailaEntity {
+) : Part<R>(ci), PartCellContainer<C> {
     companion object {
         private const val GRAPH_ID = "GraphID"
         private const val CUSTOM_SIMULATION_DATA = "SimulationData"
     }
 
-    private var cellField : C? = null
+    private var cellField: C? = null
+
+    fun runIfCell(action: () -> Unit) : Boolean {
+        if(hasCell) {
+            action()
+            return true
+        }
+
+        return false
+    }
+
+    fun runWithCell(action: (C) -> Unit) : Boolean {
+        val cell = this.cellField
+
+        if(cell != null) {
+            action(cell)
+            return true
+        }
+
+        return false
+    }
+
 
     /**
      * The actual cell contained within this part.
@@ -630,7 +646,7 @@ abstract class CellPart<C: Cell, R : PartRenderer>(
         cell = provider.create(locator, BiomeEnvironments.getInformationForBlock(placement.level, locator).fieldMap())
         cell.container = placement.multipart
         isAlive = true
-        acquireCell()
+        onCellAcquired()
     }
 
     /**
@@ -718,7 +734,7 @@ abstract class CellPart<C: Cell, R : PartRenderer>(
         }
 
         isAlive = true
-        acquireCell()
+        onCellAcquired()
 
         if (this.customSimulationData != null) {
             loadCustomSimDataPost(customSimulationData!!)
@@ -745,21 +761,9 @@ abstract class CellPart<C: Cell, R : PartRenderer>(
      * */
     open fun loadCustomSimDataPost(tag: CompoundTag) {}
 
-    override fun appendWaila(builder: WailaTooltipBuilder, config: IPluginConfig?) {
-        if (hasCell) {
-            this.cell.appendWaila(builder, config)
-        }
-    }
-
     override fun onConnected(remoteCell: Cell) {}
 
     override fun onDisconnected(remoteCell: Cell) {}
-
-    private fun acquireCell() {
-        require(!dataNode.children.any { it == cell.dataNode }) { "Duplicate cell set" }
-        dataNode.withChild(cell.dataNode)
-        onCellAcquired()
-    }
 
     open fun onCellAcquired() {}
     open fun onCellReleased() {}

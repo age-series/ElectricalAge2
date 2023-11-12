@@ -2,6 +2,7 @@
 
 package org.eln2.mc.common.content
 
+import mcp.mobius.waila.api.IPluginConfig
 import net.minecraft.nbt.CompoundTag
 import org.ageseries.libage.data.*
 import org.ageseries.libage.sim.Material
@@ -14,6 +15,8 @@ import org.eln2.mc.common.events.AtomicUpdate
 import org.eln2.mc.common.parts.foundation.*
 import org.eln2.mc.data.*
 import org.eln2.mc.data.abs
+import org.eln2.mc.integration.WailaNode
+import org.eln2.mc.integration.WailaTooltipBuilder
 import org.eln2.mc.mathematics.*
 import kotlin.math.abs
 import kotlin.math.pow
@@ -244,23 +247,6 @@ class BatteryCell(
 
     init {
         ruleSet.withDirectionRulePlanar(plusDir + minusDir)
-
-        dataNode.pull<VoltageField>(generator)
-        dataNode.pull<ResistanceField>(generator)
-        dataNode.pull<PowerField>(generator)
-        dataNode.pull<TemperatureField>(thermalWire)
-        dataNode.pull<CurrentField>(generator)
-
-        dataNode.data.withField(EnergyField {
-            !energy
-        })
-
-        dataNode.data.withField(TooltipField { b ->
-            b.text("Charge", safeCharge.formattedPercentN())
-            b.text("Life", life.formattedPercentN())
-            b.text("Cycles", cycles.formatted())
-            b.text("Capacity", capacityCoefficient.formattedPercentN())
-        })
     }
 
     override var totalEnergyTransferred = Quantity<Energy>(0.0)
@@ -382,7 +368,7 @@ class BatteryPart(
     ci: PartCreateInfo,
     provider: CellProvider<BatteryCell>,
     private val rendererSupplier: PartRendererSupplier<BatteryPart, BasicPartRenderer>
-) : CellPart<BatteryCell, BasicPartRenderer>(ci, provider), ItemPersistentPart, WrenchRotatablePart {
+) : CellPart<BatteryCell, BasicPartRenderer>(ci, provider), ItemPersistentPart, WrenchRotatablePart, WailaNode {
     companion object {
         private const val BATTERY = "battery"
     }
@@ -398,4 +384,14 @@ class BatteryPart(
     }
 
     override val order get() = ItemPersistentPartLoadOrder.AfterSim
+
+    override fun appendWaila(builder: WailaTooltipBuilder, config: IPluginConfig?) {
+        runIfCell {
+            builder.voltage(cell.generator.potentialExact)
+            builder.current(cell.generator.sourceCurrent)
+            builder.power(cell.generator.sourcePower)
+            builder.charge(cell.charge)
+            builder.life(cell.life)
+        }
+    }
 }

@@ -214,5 +214,6 @@ class ResistorBundle(var resistance: Double, obj: ElectricalObject<*>) {
         prepared = false
     }
 
+    val totalCurrent get() = resistors.values.sumOf { abs(it.current) }
     val totalPower get() = resistors.values.sumOf { abs(it.power) }
 }

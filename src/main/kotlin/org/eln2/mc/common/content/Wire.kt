@@ -45,7 +45,7 @@ import org.eln2.mc.common.network.serverToClient.PacketHandlerBuilder
 import org.eln2.mc.common.parts.PartRegistry
 import org.eln2.mc.common.parts.foundation.*
 import org.eln2.mc.data.*
-import org.eln2.mc.integration.WailaEntity
+import org.eln2.mc.integration.WailaNode
 import org.eln2.mc.integration.WailaTooltipBuilder
 import org.eln2.mc.mathematics.*
 import java.nio.ByteBuffer
@@ -57,24 +57,10 @@ import kotlin.math.max
 /**
  * Generalized thermal conductor, in the form of a single thermal body that gets connected to all neighbor cells.
  * */
-class ThermalWireObject(cell: Cell, thermalDefinition: ThermalBodyDef) : ThermalObject<Cell>(cell), WailaEntity, DataContainer, PersistentObject {
+class ThermalWireObject(cell: Cell, thermalDefinition: ThermalBodyDef) : ThermalObject<Cell>(cell), PersistentObject {
     companion object {
         // Storing temperature. If I change the properties of the material, it will be the same temperature in game.
         private const val TEMPERATURE = "temperature"
-    }
-
-    override val dataNode = data {
-        it.withField(TemperatureField {
-            thermalBody.temperature
-        })
-
-        it.withField(EnergyField {
-            thermalBody.energy
-        })
-
-        it.withField(MassField {
-            thermalBody.thermal.mass
-        })
     }
 
     constructor(cell: Cell) : this(
@@ -124,17 +110,7 @@ class ThermalWireObject(cell: Cell, thermalDefinition: ThermalBodyDef) : Thermal
  * Generalized electrical wire, created by joining the "internal" pins of a [ResistorBundle].
  * The "external" pins are offered to other cells.
  * */
-class ElectricalWireObject(cell: Cell) : ElectricalObject<Cell>(cell), WailaEntity, DataContainer {
-    override val dataNode = data {
-        it.withField(ResistanceField {
-            resistance
-        })
-
-        it.withField(PowerField {
-            resistors.totalPower
-        })
-    }
-
+class ElectricalWireObject(cell: Cell) : ElectricalObject<Cell>(cell) {
     private val resistors = ResistorBundle(0.05, this)
 
     val totalPower get() = resistors.totalPower
@@ -526,7 +502,7 @@ open class WireCell(ci: CellCreateInfo, val connectionCrossSection: Double) : Ce
 }
 
 open class ThermalWireCell(ci: CellCreateInfo, connectionCrossSection: Double, val thermalProperties: WireThermalProperties) : WireCell(ci, connectionCrossSection) {
-    @SimObject
+    @SimObject @Inspect
     val thermalWire = ThermalWireObject(
         self()
     )
@@ -537,10 +513,6 @@ open class ThermalWireCell(ci: CellCreateInfo, connectionCrossSection: Double, v
         thermalProperties.damageOptions,
         self()
     )
-
-    init {
-        dataNode.pull<TemperatureField>(thermalWire)
-    }
 
     /**
      * Replicates the temperature of [thermalWire] if [WireThermalProperties.replicatesInternalTemperature]
@@ -572,17 +544,6 @@ open class ElectricalWireCell(ci: CellCreateInfo, contactCrossSection: Double, t
         electricalWire::totalPower,
         thermalWire.thermalBody
     )
-
-    init {
-        dataNode.pull<ResistanceField>(electricalWire)
-        dataNode.pull<PowerField>(electricalWire)
-    }
-
-    override fun appendWaila(builder: WailaTooltipBuilder, config: IPluginConfig?) {
-        builder.text("Connections", connections.size)
-
-        super.appendWaila(builder, config)
-    }
 }
 
 class WirePart<C : WireCell>(
@@ -597,7 +558,8 @@ class WirePart<C : WireCell>(
     InternalTemperatureConsumer,
     ExternalTemperatureConsumer,
     AnimatedPart,
-    WrenchInteractablePart
+    WrenchInteractablePart,
+    WailaNode
 {
     companion object {
         private const val DIRECTIONS = "directions"
@@ -859,22 +821,26 @@ class WirePart<C : WireCell>(
     @ServerOnly
     override fun onSyncSuggested() {
         if(isIncandescent) {
-            cell.data.getOrNull<TemperatureField>()?.also {
-                sendBulkPacket(InternalTemperaturePacket(it.readKelvin()))
+            if(hasCell) {
+                val cell = this.cell
+
+                if(cell is ThermalWireCell) {
+                    sendBulkPacket(InternalTemperaturePacket(cell.thermalWire.readTemperature()))
+                }
+
+                val externalTemperatures = Int2DoubleOpenHashMap()
+
+                ExternalTemperatureReplicatorBehavior.scanNeighbors(cell) { remoteThermalObject, temperature ->
+                    val solution = getPartConnectionOrNull(this.cell.locator, remoteThermalObject.cell.locator)
+                        ?: return@scanNeighbors
+
+                    externalTemperatures.put(solution.value, temperature)
+                }
+
+                if(externalTemperatures.isNotEmpty()) {
+                    sendBulkPacket(ExternalTemperaturesPacket(externalTemperatures))
+                }
             }
-
-            val externalTemperatures = Int2DoubleOpenHashMap()
-
-            ExternalTemperatureReplicatorBehavior.scanNeighbors(cell) { remoteThermalObject, temperature ->
-                val solution = getPartConnectionOrNull(this.cell.locator, remoteThermalObject.cell.locator)
-                    ?: return@scanNeighbors
-
-                externalTemperatures.put(solution.value, temperature)
-            }
-
-           if(externalTemperatures.isNotEmpty()) {
-               sendBulkPacket(ExternalTemperaturesPacket(externalTemperatures))
-           }
         }
     }
 
@@ -899,6 +865,14 @@ class WirePart<C : WireCell>(
                 random.nextDouble(0.01, 0.1),
                 random.nextDouble(-0.01, 0.01)
             )
+        }
+    }
+
+    override fun appendWaila(builder: WailaTooltipBuilder, config: IPluginConfig?) {
+        runWithCell {
+            if(it is ThermalWireCell) {
+                builder.temperature(it.thermalWire.readTemperature())
+            }
         }
     }
 }

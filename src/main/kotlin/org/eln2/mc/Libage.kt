@@ -8,7 +8,7 @@ import org.ageseries.libage.sim.electrical.mna.component.Component
 import org.ageseries.libage.sim.thermal.Temperature
 import org.ageseries.libage.sim.thermal.ThermalMass
 import org.eln2.mc.data.HashDataTable
-import org.eln2.mc.integration.WailaEntity
+import org.eln2.mc.integration.WailaNode
 import org.eln2.mc.integration.WailaTooltipBuilder
 
 const val LARGE_RESISTANCE = 1e9
@@ -56,7 +56,7 @@ fun Material.hash(): Int {
     return result
 }
 
-class ThermalBody(var thermal: ThermalMass, var area: Double) : WailaEntity {
+class ThermalBody(var thermal: ThermalMass, var area: Double) : WailaNode {
     var temperature: Temperature
         get() = thermal.temperature
         set(value) {

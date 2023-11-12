@@ -10,9 +10,9 @@ import org.eln2.mc.LARGE_RESISTANCE
 import org.eln2.mc.LOG
 import org.eln2.mc.MODID
 import org.eln2.mc.common.blocks.foundation.MultipartBlockEntity
-import org.eln2.mc.data.DataContainer
 import org.eln2.mc.data.UnitType
 import org.eln2.mc.data.valueText
+import org.eln2.mc.formattedPercentN
 import org.eln2.mc.integration.WailaTooltipEntryType.Companion.getTooltipEntryType
 import org.eln2.mc.integration.WailaTooltipEntryType.Companion.putTooltipEntryType
 import org.eln2.mc.mathematics.approxEq
@@ -25,7 +25,7 @@ class Eln2WailaPlugin : IWailaPlugin {
         }
 
         registrar.addBlockData(IDataProvider { data, accessor, config ->
-            var entity = accessor?.target as? WailaEntity
+            var entity = accessor?.target as? WailaNode
 
             if (data == null || entity == null) {
                 return@IDataProvider
@@ -34,7 +34,7 @@ class Eln2WailaPlugin : IWailaPlugin {
             if(entity is MultipartBlockEntity) {
                 val part = entity.pickPart(accessor.player)
 
-                if(part is WailaEntity) {
+                if(part is WailaNode) {
                     entity = part
                 }
                 else {
@@ -53,7 +53,7 @@ class Eln2WailaPlugin : IWailaPlugin {
             }
 
             builder.build().toNbt(data.raw())
-        }, WailaEntity::class.java)
+        }, WailaNode::class.java)
 
         registrar.addComponent(object : IBlockComponentProvider {
             override fun appendBody(tooltip: ITooltip?, accessor: IBlockAccessor?, config: IPluginConfig?) {
@@ -67,7 +67,7 @@ class Eln2WailaPlugin : IWailaPlugin {
                     entry.write(tooltip)
                 }
             }
-        }, TooltipPosition.BODY, WailaEntity::class.java)
+        }, TooltipPosition.BODY, WailaNode::class.java)
     }
 }
 
@@ -75,18 +75,8 @@ class Eln2WailaPlugin : IWailaPlugin {
  * Implemented by classes that want to export data to WAILA.
  * */
 @FunctionalInterface
-interface WailaEntity {
-    fun appendWaila(builder: WailaTooltipBuilder, config: IPluginConfig?) {
-        if (this is DataContainer) {
-            val node = this.dataNode
-
-            node.valueScan {
-                if (it is WailaEntity) {
-                    it.appendWaila(builder, config)
-                }
-            }
-        }
-    }
+interface WailaNode {
+    fun appendWaila(builder: WailaTooltipBuilder, config: IPluginConfig?)
 }
 
 enum class WailaTooltipEntryType(val id: Int) {
@@ -290,6 +280,20 @@ class WailaTooltipBuilder {
         else value
 
         return translateText("resistance", valueText(adjustedValue, UnitType.OHM))
+    }
+
+    /**
+     * Adds an entry with translated "charge" and the value formatted as a percentage.
+     * */
+    fun charge(value: Double): WailaTooltipBuilder {
+        return translateText("charge", value.formattedPercentN())
+    }
+
+    /**
+     * Adds an entry with translated "life" and the value formatted as a percentage.
+     * */
+    fun life(value: Double): WailaTooltipBuilder {
+        return translateText("life", value.formattedPercentN())
     }
 
     /**

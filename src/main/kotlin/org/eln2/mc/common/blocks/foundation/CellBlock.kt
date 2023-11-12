@@ -26,7 +26,7 @@ import org.eln2.mc.ServerOnly
 import org.eln2.mc.common.cells.CellRegistry
 import org.eln2.mc.common.cells.foundation.*
 import org.eln2.mc.data.*
-import org.eln2.mc.integration.WailaEntity
+import org.eln2.mc.integration.WailaNode
 import org.eln2.mc.integration.WailaTooltipBuilder
 import org.eln2.mc.isHorizontal
 import java.util.*
@@ -80,10 +80,7 @@ abstract class CellBlock<C : Cell>(p : Properties? = null) : HorizontalDirection
 open class CellBlockEntity<C : Cell>(pos: BlockPos, state: BlockState, targetType: BlockEntityType<*>) :
     BlockEntity(targetType, pos, state),
     CellContainer,
-    WailaEntity,
-    DataContainer {
-
-    final override val dataNode: HashDataNode = HashDataNode()
+    WailaNode {
 
     open val cellFace = Direction.UP
 
@@ -93,25 +90,7 @@ open class CellBlockEntity<C : Cell>(pos: BlockPos, state: BlockState, targetTyp
 
     @ServerOnly
     var cell: C? = null
-        private set(value) {
-            fun removeOld() {
-                if (field != null) {
-                    dataNode.children.removeIf { it == field!!.dataNode }
-                }
-            }
-
-            if (value == null) {
-                removeOld()
-            } else {
-                removeOld()
-
-                if (!dataNode.children.any { it == value.dataNode }) {
-                    dataNode.withChild(value.dataNode)
-                }
-            }
-
-            field = value
-        }
+        private set
 
     fun setPlacedBy(level: Level, cellProvider: CellProvider<C>) {
         this.cellProvider = cellProvider
@@ -267,7 +246,7 @@ open class CellBlockEntity<C : Cell>(pos: BlockPos, state: BlockState, targetTyp
     override fun appendWaila(builder: WailaTooltipBuilder, config: IPluginConfig?) {
         val cell = this.cell
 
-        if (cell is WailaEntity) {
+        if (cell is WailaNode) {
             cell.appendWaila(builder, config)
         }
     }

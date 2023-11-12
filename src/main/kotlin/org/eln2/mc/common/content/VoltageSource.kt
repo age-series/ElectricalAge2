@@ -1,5 +1,6 @@
 package org.eln2.mc.common.content
 
+import mcp.mobius.waila.api.IPluginConfig
 import org.ageseries.libage.sim.electrical.mna.Circuit
 import org.ageseries.libage.sim.electrical.mna.component.VoltageSource
 import org.eln2.mc.add
@@ -8,24 +9,16 @@ import org.eln2.mc.client.render.foundation.BasicPartRenderer
 import org.eln2.mc.common.cells.foundation.*
 import org.eln2.mc.common.parts.foundation.CellPart
 import org.eln2.mc.common.parts.foundation.PartCreateInfo
-import org.eln2.mc.data.DataContainer
-import org.eln2.mc.data.VoltageField
-import org.eln2.mc.data.data
 import org.eln2.mc.data.withDirectionRulePlanar
-import org.eln2.mc.integration.WailaEntity
+import org.eln2.mc.integration.WailaNode
+import org.eln2.mc.integration.WailaTooltipBuilder
 import org.eln2.mc.mathematics.Base6Direction3dMask
 
 /**
  * The voltage source object has a bundle of resistors, whose External Pins are exported to other objects, and
  * a voltage source, connected to the Internal Pins of the bundle.
  * */
-class VoltageSourceObject(cell: Cell) : ElectricalObject<Cell>(cell), WailaEntity, DataContainer {
-    override val dataNode = data {
-        it.withField(VoltageField {
-            source.value?.potential ?: 0.0
-        })
-    }
-
+class VoltageSourceObject(cell: Cell) : ElectricalObject<Cell>(cell) {
     private val source = ComponentHolder {
         VoltageSource().also {
             it.potential = potential
@@ -44,6 +37,8 @@ class VoltageSourceObject(cell: Cell) : ElectricalObject<Cell>(cell), WailaEntit
                 source.instance.potential = value
             }
         }
+
+    val current get() = if(source.isPresent) source.instance.current else 0.0
 
     /**
      * Gets or sets the resistance of the bundle.
@@ -83,7 +78,13 @@ class VoltageSourceCell(ci: CellCreateInfo) : Cell(ci) {
     }
 }
 
-class VoltageSourcePart(ci: PartCreateInfo) : CellPart<VoltageSourceCell, BasicPartRenderer>(ci, Content.VOLTAGE_SOURCE_CELL.get()) {
-
+class VoltageSourcePart(ci: PartCreateInfo) : CellPart<VoltageSourceCell, BasicPartRenderer>(ci, Content.VOLTAGE_SOURCE_CELL.get()), WailaNode {
     override fun createRenderer() = BasicPartRenderer(this, PartialModels.VOLTAGE_SOURCE)
+
+    override fun appendWaila(builder: WailaTooltipBuilder, config: IPluginConfig?) {
+        runIfCell {
+            builder.voltage(cell.voltageSource.potential)
+            builder.current(cell.voltageSource.current)
+        }
+    }
 }
