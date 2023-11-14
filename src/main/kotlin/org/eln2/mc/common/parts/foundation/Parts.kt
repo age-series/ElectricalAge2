@@ -896,7 +896,7 @@ fun incrementFromForwardUp(facingPart: Direction, faceWorld: Direction, directio
 @JvmInline
 value class PartConnectionDirection(val value: Int) {
     val mode get() = CellPartConnectionMode.byId[(value and 3)]
-    val directionPart get() = Base6Direction3d.byId[(value shr 2)]
+    val directionPart get() = Base6Direction3d.byId[(value shr 2) and 7]
 
     constructor(mode: CellPartConnectionMode, directionPart: Base6Direction3d) : this(mode.index or (directionPart.id shl 2))
 
