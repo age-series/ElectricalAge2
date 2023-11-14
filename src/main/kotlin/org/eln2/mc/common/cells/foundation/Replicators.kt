@@ -148,12 +148,22 @@ class ExternalTemperatureReplicatorBehavior(
                 val remoteThermalObject = remoteCell.objects.getObjectOrNull(SimulationObjectType.Thermal) as? ThermalObject
                     ?: continue
 
-                if(remoteThermalObject is ThermalContactInfo) {
-                    val temperature = remoteThermalObject.getContactTemperature(cell.locator)
+                val contactInfo: ThermalContactInfo
 
-                    if(temperature != null) {
-                        consumer(remoteThermalObject, temperature)
-                    }
+                if(remoteThermalObject is ThermalContactInfo) {
+                    contactInfo = remoteThermalObject
+                }
+                else if(remoteThermalObject.cell is ThermalContactInfo) {
+                    contactInfo = remoteThermalObject.cell
+                }
+                else {
+                    continue
+                }
+
+                val temperature = contactInfo.getContactTemperature(cell.locator)
+
+                if(temperature != null) {
+                    consumer(remoteThermalObject, temperature)
                 }
             }
         }

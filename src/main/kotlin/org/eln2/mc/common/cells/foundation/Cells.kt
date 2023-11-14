@@ -1128,7 +1128,6 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
 
         realizeComponents(SimulationObjectType.Thermal, factory = { set ->
             val simulation = Simulator()
-            set.forEach { it.objects.thermalObject.clear() }
             set.forEach { it.objects.thermalObject.setNewSimulation(simulation) }
             thermalSims.add(simulation)
         })

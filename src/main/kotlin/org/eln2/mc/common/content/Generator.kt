@@ -146,7 +146,7 @@ class FuelBurnerBehavior(val cell: Cell, val body: ThermalBody) : CellBehavior, 
         .useSubTagIfPreset(PID) { pid.loadFromNbt(it) }
 }
 
-class HeatGeneratorCell(ci: CellCreateInfo, thermalDef: ThermalBodyDef) : Cell(ci) {
+class HeatGeneratorCell(ci: CellCreateInfo, thermalDef: ThermalBodyDef) : Cell(ci), ThermalContactInfo {
     companion object {
         private const val BURNER_BEHAVIOR = "burner"
     }
@@ -172,9 +172,11 @@ class HeatGeneratorCell(ci: CellCreateInfo, thermalDef: ThermalBodyDef) : Cell(c
     override fun saveCellData(): CompoundTag {
         return CompoundTag().withSubTag(BURNER_BEHAVIOR, burner.saveNbt())
     }
+
+    override fun getContactTemperature(other: Locator) = thermalWire.readTemperature()
 }
 
-class HeatGeneratorBlockEntity(pos: BlockPos, state: BlockState) : CellBlockEntity<HeatGeneratorCell>(pos, state, Content.HEAT_GENERATOR_BLOCK_ENTITY.get()) {
+class HeatGeneratorBlockEntity(pos: BlockPos, state: BlockState) : CellBlockEntity<HeatGeneratorCell>(pos, state, Content.HEAT_GENERATOR_BLOCK_ENTITY.get()), WailaNode {
     companion object {
         const val FUEL_SLOT = 0
 
@@ -193,6 +195,15 @@ class HeatGeneratorBlockEntity(pos: BlockPos, state: BlockState) : CellBlockEnti
             if (!pLevel.isClientSide) {
                 pBlockEntity.serverTick()
             }
+        }
+    }
+
+    override fun appendWaila(builder: WailaTooltipBuilder, config: IPluginConfig?) {
+        val cell = this.cell
+
+        if(cell != null) {
+            builder.temperature(cell.thermalWire.readTemperature())
+            builder.energy(cell.burner.availableEnergy)
         }
     }
 
