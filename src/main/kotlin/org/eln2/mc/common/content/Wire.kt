@@ -57,7 +57,7 @@ import kotlin.math.max
 /**
  * Generalized thermal conductor, in the form of a single thermal body that gets connected to all neighbor cells.
  * */
-class ThermalWireObject(cell: Cell, thermalDefinition: ThermalBodyDef) : ThermalObject<Cell>(cell), PersistentObject {
+class ThermalWireObject(cell: Cell, thermalDefinition: ThermalBodyDef) : ThermalObject<Cell>(cell), PersistentObject, ThermalContactInfo {
     companion object {
         // Storing temperature. If I change the properties of the material, it will be the same temperature in game.
         private const val TEMPERATURE = "temperature"
@@ -104,6 +104,8 @@ class ThermalWireObject(cell: Cell, thermalDefinition: ThermalBodyDef) : Thermal
             thermalBody.temperatureKelvin = tag.getDouble(TEMPERATURE)
         }
     }
+
+    override fun getContactTemperature(other: Locator) = readTemperature()
 }
 
 /**
@@ -533,6 +535,7 @@ open class ThermalWireCell(ci: CellCreateInfo, connectionCrossSection: Double, v
         else null
 }
 
+
 open class ElectricalWireCell(ci: CellCreateInfo, contactCrossSection: Double, thermalProperties: WireThermalProperties, val electricalProperties: WireElectricalProperties) : ThermalWireCell(ci, contactCrossSection, thermalProperties) {
     @SimObject
     val electricalWire = ElectricalWireObject(self()).also {
@@ -544,6 +547,9 @@ open class ElectricalWireCell(ci: CellCreateInfo, contactCrossSection: Double, t
         electricalWire::totalPower,
         thermalWire.thermalBody
     )
+
+    override fun connectionPredicate(remoteCell: Cell) =
+        remoteCell.hasObject(SimulationObjectType.Electrical) && super.connectionPredicate(remoteCell)
 }
 
 class WirePart<C : WireCell>(

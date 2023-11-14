@@ -22,7 +22,7 @@ import kotlin.math.pow
 fun evaluateSunlight(rainLevel: Double, thunderLevel: Double, timeOfDay: Double) : Double {
     val d0 = 1.0 - rainLevel * 5.0 / 16.0
     val d1 = 1.0 - thunderLevel * 5.0 / 16.0
-    val d2 = 0.5 + 2.0 * cos((2.0 * PI) * timeOfDay).coerceIn(-0.25, 0.25)
+    val d2 = 0.5 + 2.0 * cos((2.0 * PI) * timeOfDay).coerceIn(-0.25, 0.25) // We are also compounding this with our own calculation. Maybe remove this?
 
     return (d0 * d1 * d2).coerceIn(0.0, 1.0)
 }
