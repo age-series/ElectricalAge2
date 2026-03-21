@@ -1,0 +1,40 @@
+{
+    "parent": "eln2:block/wind_turbine/basic/inventory",
+    "display": {
+        "gui": {
+            "rotation": [30, 225, 0],
+            "translation": [-2, -5, 0],
+            "scale": [0.15, 0.15, 0.15]
+        },
+        "ground": {
+            "rotation": [0, 0, 0],
+            "translation": [0, 2, 0],
+            "scale": [0.1, 0.1, 0.1]
+        },
+        "fixed": {
+            "rotation": [0, 180, 0],
+            "translation": [0, 0, 0],
+            "scale": [0.12, 0.12, 0.12]
+        },
+        "thirdperson_righthand": {
+            "rotation": [75, 45, 0],
+            "translation": [0, 2.5, 0],
+            "scale": [0.1, 0.1, 0.1]
+        },
+        "thirdperson_lefthand": {
+            "rotation": [75, 45, 0],
+            "translation": [0, 2.5, 0],
+            "scale": [0.1, 0.1, 0.1]
+        },
+        "firstperson_righthand": {
+            "rotation": [0, 45, 0],
+            "translation": [0, 0, 0],
+            "scale": [0.1, 0.1, 0.1]
+        },
+        "firstperson_lefthand": {
+            "rotation": [0, 225, 0],
+            "translation": [0, 0, 0],
+            "scale": [0.1, 0.1, 0.1]
+        }
+    }
+}

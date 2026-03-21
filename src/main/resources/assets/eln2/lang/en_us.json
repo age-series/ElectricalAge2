@@ -104,6 +104,9 @@
     "block.eln2.kinetic_rolling_machine": "Kinetic Rolling Machine",
     "block.eln2.vulcanizing_autoclave": "Autoclave",
     "block.eln2.fluid_pipe": "Fluid Pipe",
+    "block.eln2.primitive_kinetic_crusher": "Primitive Kinetic Crusher",
+    "block.eln2.brushed_dc_motor_crusher": "Brushed DC Motor Crusher",
+    "block.eln2.iron_tank": "Iron Tank",
 
     // Wire Parts:
     "item.eln2.standard_uninsulated_copper_thermal_wire": "Standard Uninsulated Copper Thermal Conduit",
@@ -148,6 +151,7 @@
     "item.eln2.voltage_source": "Voltage Source",
     "item.eln2.ground": "Ground Pin",
     "item.eln2.resistor": "Resistor",
+    "item.eln2.diode": "Diode",
     "item.eln2.thermal_radiator": "Thermal Radiator",
     "item.eln2.photovoltaic_panel": "Solar Panel",
     "item.eln2.light_part": "Wall-Mounted Light",
@@ -159,7 +163,15 @@
     "item.eln2.ground_micro_grid": "Micro Grid Ground",
     "item.eln2.micro_grid_dc_to_dc_converter_800w": "800W Micro-Grid Power Converter",
     "item.eln2.potential_probe": "Potential Probe",
-    "item.eln2.basic_two_channel_oscilloscope": "Basic Oscilloscope",
+    "item.eln2.basic_two_channel_oscilloscope": "Basic 2Ch Oscilloscope",
+    "item.eln2.basic_single_channel_oscilloscope": "Basic 1Ch Oscilloscope",
+    "item.eln2.basic_dc_motor": "Basic DC Motor",
+    "item.eln2.tree_tap": "Tree Tap",
+
+    //Kinetics:
+    "item.eln2.primitive_standard_iron_straight_joint": "Primitive Standard Straight Joint",
+    "item.eln2.primitive_standard_iron_hub_joint": "Primitive Standard Hub Joint",
+
 
     // Materials:
     "item.eln2.coke": "Coke",

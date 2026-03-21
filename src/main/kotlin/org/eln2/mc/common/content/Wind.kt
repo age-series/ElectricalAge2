@@ -249,7 +249,7 @@ object WindSystem {
                     maxOf(
                         volumeOfInfluence.width,
                         volumeOfInfluence.height,
-                        volumeOfInfluence.depth)
+                        volumeOfInfluence.depth) + 1.0
                 )
             ).toInt()
         )
@@ -815,6 +815,12 @@ class WindTurbineBlockEntity(pos: BlockPos, state: BlockState) :
 
     override val delegateMap: MultiblockDelegateMap
         get() = (blockState.block as WindTurbineBlock).delegateMap
+
+    override fun setDestroyed() {
+        // Remove all delegate blocks for this multiblock and restore the world
+        destroyDelegates()          // from BigBlockRepresentativeBlockEntity
+        super.setDestroyed()
+    }
 
     override fun setLevel(pLevel: Level) {
         super.setLevel(pLevel)
