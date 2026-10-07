@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "A": {
+      "item": "eln2:asbestos_fiber"
+    },
+    "I": {
+      "tag": "forge:plates/iron"
+    },
+    "M": {
+      "item": "eln2:machine_frame"
+    }
+  },
+  "pattern": [
+    "III",
+    "IMI",
+    "IAI"
+  ],
+  "result": {
+    "item": "eln2:turbine_casing"
+  },
+  "show_notification": true
+}

@@ -28,6 +28,8 @@ import org.ageseries.libage.data.NEWTON_METER
 import org.ageseries.libage.data.Quantity
 import org.ageseries.libage.data.put
 import org.ageseries.libage.data.requireLocator
+import org.ageseries.libage.data.registerHandler
+import net.minecraft.world.level.block.entity.BlockEntity
 import org.ageseries.libage.mathematics.geometry.*
 import org.ageseries.libage.mathematics.lerp
 import org.ageseries.libage.mathematics.map
@@ -70,6 +72,14 @@ import org.eln2.mc.common.network.serverToClient.BulkPacketHandlerBlockEntity
 import org.eln2.mc.common.network.serverToClient.ClientSidePacketHandlerBuilder
 import org.eln2.mc.common.network.serverToClient.sendBulkPacket
 import org.eln2.mc.Locators
+import org.eln2.mc.common.sounds.foundation.SimpleLoopingBlockEntitySoundInstance
+import org.eln2.mc.common.sounds.foundation.SoundInfo
+import org.eln2.mc.common.sounds.foundation.SoundInstanceTickEvent
+import org.ageseries.libage.mathematics.FramerateIndependentSmoother1d
+import net.minecraft.world.level.block.entity.BlockEntityTicker
+import net.minecraft.world.level.block.entity.BlockEntityType
+import net.minecraftforge.client.extensions.common.IClientBlockExtensions
+import org.eln2.mc.common.blocks.foundation.ReplaceVanillaParticlesBlockExtension
 import org.eln2.mc.extensions.cast
 import org.eln2.mc.extensions.loadNbt
 import org.eln2.mc.extensions.minus
@@ -249,7 +259,8 @@ object WindSystem {
                     maxOf(
                         volumeOfInfluence.width,
                         volumeOfInfluence.height,
-                        volumeOfInfluence.depth)
+                        volumeOfInfluence.depth
+                    ) + 1
                 )
             ).toInt()
         )
@@ -786,9 +797,29 @@ class WindTurbineBlock(
     @Deprecated("Deprecated in Java", ReplaceWith("true"))
     override fun skipRendering(pState: BlockState, pAdjacentBlockState: BlockState, pDirection: Direction): Boolean = true
 
+    override fun initializeClient(consumer: Consumer<IClientBlockExtensions?>) {
+        consumer.accept(ReplaceVanillaParticlesBlockExtension)
+    }
+
     override fun getCellProvider() = cellProvider.get()
 
     override fun newBlockEntity(pPos: BlockPos, pState: BlockState) = WindTurbineBlockEntity(pPos, pState)
+
+    override fun <T : BlockEntity?> getTicker(
+        pLevel: Level,
+        pState: BlockState,
+        pBlockEntityType: BlockEntityType<T>
+    ): BlockEntityTicker<T>? {
+        if (pLevel.isClientSide) {
+            return BlockEntityTicker { _, _, _, pBlockEntity ->
+                if (pBlockEntity is WindTurbineBlockEntity) {
+                    pBlockEntity.clientTick()
+                }
+            }
+        }
+
+        return null
+    }
 
     override fun appendLocatorData(state: BlockState, builder: LocatorBuilder) {
         super.appendLocatorData(state, builder)
@@ -801,6 +832,8 @@ class WindTurbineBlock(
     }
 }
 
+private const val WIND_TURBINE_REFERENCE_OMEGA = 10.0
+
 class WindTurbineBlockEntity(pos: BlockPos, state: BlockState) :
     CellBlockEntity<WindTurbineCell>(pos, state, Eln2Kinetic.WIND_TURBINE_BLOCK_ENTITY.get()),
     BigBlockRepresentativeBlockEntity<LampPoleBlockEntity>,
@@ -810,6 +843,15 @@ class WindTurbineBlockEntity(pos: BlockPos, state: BlockState) :
 {
     @ClientOnly
     var renderState: BasicKineticPart.RenderStateImpl? = null
+
+    @ClientOnly
+    private val angularVelocitySmoother = FramerateIndependentSmoother1d(0.2)
+
+    @ClientOnly
+    private var windSound: SimpleLoopingBlockEntitySoundInstance<WindTurbineBlockEntity>? = null
+
+    @ClientOnly
+    private var rotationSound: SimpleLoopingBlockEntitySoundInstance<WindTurbineBlockEntity>? = null
 
     override val clientSidePacketHandlerLazy = createClientSideHandler()
 
@@ -828,6 +870,32 @@ class WindTurbineBlockEntity(pos: BlockPos, state: BlockState) :
     override fun setupPacketsOnClient(handler: ClientSidePacketHandlerBuilder) {
         handler.withHandler<RotatingKineticState>(RotatingKineticState::deserialize) {
             renderState?.load(it)
+        }
+    }
+
+    @ClientOnly
+    fun clientTick() {
+        val state = renderState ?: return
+
+        if (windSound == null) {
+            windSound = SimpleLoopingBlockEntitySoundInstance(this, Eln2Kinetic.WIND_TURBINE_WIND_SOUND.get()).also {
+                it.events.registerHandler<SoundInstanceTickEvent> { _ ->
+                    angularVelocitySmoother.update(state.angularVelocity)
+                    it.soundInfo = SoundInfo.wind(angularVelocitySmoother.value, WIND_TURBINE_REFERENCE_OMEGA)
+                }
+
+                it.registerOnAudioManager()
+            }
+        }
+
+        if (rotationSound == null) {
+            rotationSound = SimpleLoopingBlockEntitySoundInstance(this, Eln2Kinetic.WIND_TURBINE_ROTATION_SOUND.get()).also {
+                it.events.registerHandler<SoundInstanceTickEvent> { _ ->
+                    it.soundInfo = SoundInfo.standardWithKineticScraping(state.angularVelocity, WIND_TURBINE_REFERENCE_OMEGA)
+                }
+
+                it.registerOnAudioManager()
+            }
         }
     }
 
@@ -850,6 +918,11 @@ class WindTurbineBlockEntity(pos: BlockPos, state: BlockState) :
 
         builder.quantity(cell.kinetic.node.angularVelocityQuantity)
         builder.quantityOutput(Quantity(cell.lastWindTorque, NEWTON_METER))
+    }
+
+    override fun setDestroyed() {
+        destroyDelegates()
+        super.setDestroyed()
     }
 }
 

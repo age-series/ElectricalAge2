@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "A": {
+      "item": "eln2:pipe_heat_exchange_assembly"
+    },
+    "F": {
+      "item": "eln2:asbestos_fiber"
+    }
+  },
+  "pattern": [
+    " F ",
+    "FAF",
+    " F "
+  ],
+  "result": {
+    "item": "eln2:insulated_distillation_module"
+  },
+  "show_notification": true
+}

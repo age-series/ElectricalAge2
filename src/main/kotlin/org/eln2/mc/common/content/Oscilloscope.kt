@@ -455,8 +455,7 @@ class OscilloscopeCell(ci: CellCreateInfo, override val electricalMap: MonopoleM
     @Node
     val grid = GridNode(this)
 
-    // For attaching real-time timestamps onto the columns.
-    val timer = Stopwatch()
+    private var simulationTime = 0.0
 
     private var listener: OscilloscopeSampleConsumer? = null
 
@@ -469,13 +468,15 @@ class OscilloscopeCell(ci: CellCreateInfo, override val electricalMap: MonopoleM
         val consumer = listener
             ?: return
 
+        simulationTime += dt
+
         val buffer = FloatArray(oscilloscope.specification.channelCount)
 
         for (i in 0 until oscilloscope.specification.channelCount) {
             buffer[i] = oscilloscope.getPotential(i).toFloat()
         }
 
-        consumer.consume(buffer, !timer.total)
+        consumer.consume(buffer, simulationTime)
     }
 
     fun bind(consumer: OscilloscopeSampleConsumer) {

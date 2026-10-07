@@ -1,0 +1,14 @@
+{
+  "type": "eln2:extruding",
+  "catalyst": {
+    "item": "eln2:extruder_wire_die"
+  },
+  "duration": 10.0,
+  "ingredient": {
+    "item": "eln2:hot_iron_ingot"
+  },
+  "result": {
+    "count": 1,
+    "item": "eln2:iron_wire"
+  }
+}

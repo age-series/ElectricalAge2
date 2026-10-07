@@ -1,6 +1,6 @@
 {
 	"credit": "Made with Blockbench",
-    "parent": "eln2:block/templates/block_small",
+    "parent": "eln2:block/displays/small_block",
     "texture_size": [32, 32],
 	"textures": {
 		"0": "eln2:block/components",

@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "I": {
+      "item": "minecraft:iron_block"
+    },
+    "P": {
+      "tag": "forge:plates/iron"
+    }
+  },
+  "pattern": [
+    "   ",
+    " IP",
+    "   "
+  ],
+  "result": {
+    "item": "eln2:autoclave_door"
+  },
+  "show_notification": true
+}

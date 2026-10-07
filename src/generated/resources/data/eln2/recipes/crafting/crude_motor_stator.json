@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "M": {
+      "item": "eln2:crude_magnet"
+    },
+    "P": {
+      "tag": "forge:plates/iron"
+    }
+  },
+  "pattern": [
+    "PMP",
+    "M M",
+    "PMP"
+  ],
+  "result": {
+    "item": "eln2:crude_motor_stator"
+  },
+  "show_notification": true
+}

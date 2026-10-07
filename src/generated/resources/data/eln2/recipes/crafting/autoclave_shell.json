@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "I": {
+      "item": "minecraft:iron_block"
+    },
+    "W": {
+      "item": "eln2:standard_uninsulated_copper_thermal_wire"
+    }
+  },
+  "pattern": [
+    " I ",
+    "IWI",
+    " I "
+  ],
+  "result": {
+    "item": "eln2:autoclave_shell"
+  },
+  "show_notification": true
+}

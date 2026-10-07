@@ -45,6 +45,7 @@ import org.ageseries.libage.sim.Simulator
 import org.ageseries.libage.sim.ThermalMass
 import org.ageseries.libage.sim.electrical.ElectricalSimulation
 import org.eln2.mc.ClientOnly
+import org.eln2.mc.MODID
 import org.eln2.mc.LOG
 import org.eln2.mc.ServerOnly
 import org.eln2.mc.client.render.foundation.MyColor
@@ -474,7 +475,7 @@ class FurnaceBlock : UprightHorizontalDirectionCellBlock<FurnaceCell>() {
         pHand: InteractionHand,
         pHit: BlockHitResult,
     ): InteractionResult {
-        return pLevel.constructMenuHelper2(pPos, pPlayer, Component.literal("Furnace"), ::FurnaceMenu)
+        return pLevel.constructMenuHelper2(pPos, pPlayer, Component.translatable("menu.$MODID.furnace"), ::FurnaceMenu)
     }
 
     override fun animateTick(pState: BlockState, pLevel: Level, pPos: BlockPos, pRandom: RandomSource) {

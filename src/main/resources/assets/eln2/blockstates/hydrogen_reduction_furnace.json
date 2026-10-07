@@ -1,0 +1,22 @@
+{
+    "variants": {
+        "facing=east": {
+            "model": "eln2:block/hydrogen_reduction_furnace/hydrogen_reduction_furnace",
+            "y": 0
+        },
+        "facing=north": {
+            "model": "eln2:block/hydrogen_reduction_furnace/hydrogen_reduction_furnace",
+            "y": 270
+        },
+
+        "facing=south": {
+            "model": "eln2:block/hydrogen_reduction_furnace/hydrogen_reduction_furnace",
+            "y": 90
+        },
+
+        "facing=west": {
+            "model": "eln2:block/hydrogen_reduction_furnace/hydrogen_reduction_furnace",
+            "y": 180
+        }
+    }
+}

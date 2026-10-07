@@ -2,9 +2,13 @@ package org.eln2.mc.common.content.fluid
 
 import net.minecraft.sounds.SoundEvents
 import net.minecraft.sounds.SoundSource
+import net.minecraft.ChatFormatting
+import net.minecraft.network.chat.Component
 import net.minecraft.world.InteractionResult
 import net.minecraft.world.item.Item
 import net.minecraft.world.item.ItemStack
+import net.minecraft.world.item.TooltipFlag
+import net.minecraft.world.level.Level
 import net.minecraft.world.item.Items
 import net.minecraft.world.item.context.UseOnContext
 import net.minecraftforge.common.capabilities.ForgeCapabilities
@@ -12,9 +16,9 @@ import net.minecraftforge.event.entity.player.PlayerInteractEvent
 import net.minecraftforge.fluids.FluidStack
 import net.minecraftforge.fluids.capability.IFluidHandler
 import org.eln2.mc.LOG
-import org.eln2.mc.common.content.fluid.ChemicalBottleItem.Companion.onRightClickBlockEvent
-import org.eln2.mc.common.content.modules.Eln2ForgeFluids
 import org.eln2.mc.common.fluids.ForgeFluidRegistry
+import org.eln2.mc.common.fluids.foundation.appendThermalFluidTooltip
+import org.eln2.mc.common.content.modules.Eln2ForgeFluids
 
 /**
  * Bottle holding 250mB of fluid. This item can be emptied into tanks, giving a vanilla glass bottle.
@@ -57,7 +61,7 @@ class ChemicalBottleItem(val eln2Fluid: ForgeFluidRegistry.ForgeFluidRegistryIte
                 ?: return
 
             event.isCanceled = true
-            event.cancellationResult = net.minecraft.world.InteractionResult.SUCCESS
+            event.cancellationResult = InteractionResult.SUCCESS
 
             if (level.isClientSide){
                 return
@@ -95,6 +99,16 @@ class ChemicalBottleItem(val eln2Fluid: ForgeFluidRegistry.ForgeFluidRegistryIte
         return ItemStack(Items.GLASS_BOTTLE, 1)
     }
 
+    override fun appendHoverText(
+        pStack: ItemStack,
+        pLevel: Level?,
+        pTooltipComponents: MutableList<Component>,
+        pIsAdvanced: TooltipFlag,
+    ) {
+        super.appendHoverText(pStack, pLevel, pTooltipComponents, pIsAdvanced)
+        appendThermalFluidTooltip(eln2Fluid.get(), pTooltipComponents)
+        pTooltipComponents.add(Component.translatable("tooltip.eln2.fluid_container.deposit").withStyle(ChatFormatting.GRAY))
+    }
     override fun useOn(pContext: UseOnContext): InteractionResult {
         val player = pContext.player
             ?: return InteractionResult.FAIL
@@ -153,5 +167,44 @@ class ChemicalBottleItem(val eln2Fluid: ForgeFluidRegistry.ForgeFluidRegistryIte
         }
 
         return InteractionResult.SUCCESS
+    }
+}
+/**
+ * Durability-based crafting tool that applies a fluid coating (e.g. creosote, enamel) without consuming a full bottle.
+ * Crafting with this item consumes 1 durability instead of the fluid. When durability reaches 0, the brush is destroyed.
+ * @param maxUses The number of crafting operations before the brush breaks.
+ * */
+class BrushItem(val maxUses: Int) : Item(Properties().stacksTo(1).durability(maxUses)) {
+    override fun isEnchantable(stack: ItemStack): Boolean {
+        return false
+    }
+
+    override fun hasCraftingRemainingItem(stack: ItemStack): Boolean {
+        return stack.damageValue < stack.maxDamage - 1
+    }
+
+    override fun getCraftingRemainingItem(stack: ItemStack): ItemStack {
+        val remaining = stack.copy()
+        remaining.damageValue = stack.damageValue + 1
+        return remaining
+    }
+
+    override fun isBarVisible(stack: ItemStack): Boolean {
+        return true
+    }
+
+    override fun appendHoverText(
+        pStack: ItemStack,
+        pLevel: Level?,
+        pTooltipComponents: MutableList<Component>,
+        pIsAdvanced: TooltipFlag,
+    ) {
+        super.appendHoverText(pStack, pLevel, pTooltipComponents, pIsAdvanced)
+        pTooltipComponents.add(
+            Component.translatable("tooltip.eln2.brush.uses_remaining")
+                .append(": ")
+                .append(Component.literal((maxUses - pStack.damageValue).toString()).withStyle(ChatFormatting.GRAY))
+                .withStyle(ChatFormatting.YELLOW)
+        )
     }
 }

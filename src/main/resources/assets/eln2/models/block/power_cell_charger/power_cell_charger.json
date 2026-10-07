@@ -1,0 +1,51 @@
+{
+    "parent": "eln2:block/displays/standard_block",
+    "format_version": "1.9.0",
+	"credit": "Made with Blockbench",
+	"texture_size": [64, 64],
+	"textures": {
+		"0": "eln2:block/power_cell_charger/power_cell_charger",
+		"particle": "eln2:block/power_cell_charger/power_cell_charger"
+	},
+	"elements": [
+		{
+			"name": "cable0",
+			"from": [0, 0, 7],
+			"to": [2, 1.5, 9],
+			"rotation": {"angle": 0, "axis": "y", "origin": [2, 0.75, 8]},
+			"faces": {
+				"north": {"uv": [0, 0, 0.75, 0.25], "rotation": 270, "texture": "#0"},
+				"south": {"uv": [0, 0, 0.75, 0.25], "rotation": 270, "texture": "#0"},
+				"west": {"uv": [0, 0.5, 1.75, 1.75], "texture": "#0"},
+				"up": {"uv": [0, 0.25, 1, 0.5], "rotation": 270, "texture": "#0"},
+				"down": {"uv": [0.75, 0, 1, 0.25], "rotation": 90, "texture": "#0"}
+			}
+		},
+		{
+			"name": "cable1",
+			"from": [14, 0, 7],
+			"to": [16, 1.5, 9],
+			"rotation": {"angle": 0, "axis": "y", "origin": [15, 0.75, 8]},
+			"faces": {
+				"north": {"uv": [0, 0, 0.75, 0.25], "rotation": 270, "texture": "#0"},
+				"east": {"uv": [0, 0.5, 1.75, 1.75], "texture": "#0"},
+				"south": {"uv": [0, 0, 0.75, 0.25], "rotation": 270, "texture": "#0"},
+				"up": {"uv": [0, 0.25, 1, 0.5], "rotation": 90, "texture": "#0"},
+				"down": {"uv": [0.75, 0, 1, 0.25], "rotation": 270, "texture": "#0"}
+			}
+		},
+		{
+			"from": [2, 0, 2],
+			"to": [14, 11, 14],
+			"rotation": {"angle": 0, "axis": "y", "origin": [3, 0, 2]},
+			"faces": {
+				"north": {"uv": [0, 7.25, 9.5, 16], "texture": "#0"},
+				"east": {"uv": [0, 1.75, 6, 7.25], "texture": "#0"},
+				"south": {"uv": [0, 1.75, 6, 7.25], "texture": "#0"},
+				"west": {"uv": [0, 1.75, 6, 7.25], "texture": "#0"},
+				"up": {"uv": [6, 0, 13.25, 7.25], "texture": "#0"},
+				"down": {"uv": [0.75, 0, 1, 0.25], "rotation": 270, "texture": "#0"}
+			}
+		}
+	]
+}

@@ -1,0 +1,32 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": {
+      "item": "eln2:raw_circuit_board"
+    },
+    "C": {
+      "item": "eln2:capacitor"
+    },
+    "I": {
+      "item": "eln2:inductor"
+    },
+    "R": {
+      "item": "eln2:resistor"
+    },
+    "T": {
+      "item": "eln2:vacuum_tube"
+    },
+    "W": {
+      "item": "eln2:copper_wire"
+    }
+  },
+  "pattern": [
+    "TRC",
+    "WIB"
+  ],
+  "result": {
+    "item": "eln2:primitive_circuit"
+  },
+  "show_notification": true
+}

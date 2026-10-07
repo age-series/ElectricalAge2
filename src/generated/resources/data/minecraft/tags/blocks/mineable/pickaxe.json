@@ -2,6 +2,11 @@
   "values": [
     "eln2:magnetite_ore",
     "eln2:lead_ore",
-    "eln2:tin_ore"
+    "eln2:tin_ore",
+    "eln2:sulfur_ore",
+    "eln2:asbestos_ore",
+    "eln2:saltpeter_ore",
+    "eln2:scheelite_ore",
+    "eln2:trona_ore"
   ]
 }

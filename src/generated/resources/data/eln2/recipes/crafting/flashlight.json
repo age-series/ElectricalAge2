@@ -1,0 +1,33 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "key": {
+    "C": {
+      "item": "eln2:primitive_circuit"
+    },
+    "G": {
+      "item": "minecraft:glass_pane"
+    },
+    "I": {
+      "item": "minecraft:iron_ingot"
+    },
+    "L": {
+      "item": "eln2:light_bulb_240v_100w"
+    },
+    "P": {
+      "item": "eln2:power_grid_copper_cable"
+    },
+    "R": {
+      "item": "eln2:rubber"
+    }
+  },
+  "pattern": [
+    "GLG",
+    "ICP",
+    " R "
+  ],
+  "result": {
+    "item": "eln2:flashlight"
+  },
+  "show_notification": true
+}

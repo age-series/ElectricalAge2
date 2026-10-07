@@ -6,7 +6,7 @@
       "item": "eln2:iron_axle_mount"
     },
     "L": {
-      "item": "eln2:creosote_bottle"
+      "item": "eln2:creosote_brush"
     },
     "P": {
       "item": "eln2:iron_plate"
@@ -21,6 +21,7 @@
     " P "
   ],
   "result": {
+    "count": 4,
     "item": "eln2:primitive_standard_iron_straight_joint"
   },
   "show_notification": true

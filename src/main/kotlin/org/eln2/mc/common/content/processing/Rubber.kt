@@ -9,7 +9,6 @@ import dev.engine_room.flywheel.api.visualization.VisualizationContext
 import dev.engine_room.flywheel.lib.instance.InstanceTypes
 import dev.engine_room.flywheel.lib.instance.TransformedInstance
 import dev.engine_room.flywheel.lib.visual.SimpleDynamicVisual
-import kotlinx.serialization.Serializable
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
 import net.minecraft.core.RegistryAccess
@@ -50,13 +49,16 @@ import org.eln2.mc.client.render.FlwMaterials
 import org.eln2.mc.client.render.FlwModels
 import org.eln2.mc.client.render.FlwModels.VULCANIZING_AUTOCLAVE_DOOR
 import org.eln2.mc.client.render.FlwModels.iterateVertexPositions
-import org.eln2.mc.client.render.foundation.*
+import org.eln2.mc.client.render.foundation.FlwInstanceTypes
+import org.eln2.mc.client.render.foundation.PartialModelHelper
+import org.eln2.mc.client.render.foundation.ThermalTint
+import org.eln2.mc.client.render.foundation.TransformedLightOverrideInstance
 import org.eln2.mc.common.blocks.foundation.*
 import org.eln2.mc.common.cells.foundation.*
 import org.eln2.mc.common.content.ThermalWireObject
+import org.eln2.mc.common.content.modules.Eln2Processing
 import org.eln2.mc.common.content.processing.VulcanizingAutoclaveMainBlockEntity.StateMachine
 import org.eln2.mc.common.content.processing.VulcanizingAutoclaveMainBlockEntity.StateMachine.IsProcessingPacket
-import org.eln2.mc.common.content.modules.Eln2Processing
 import org.eln2.mc.common.network.serverToClient.BulkPacketHandlerBlockEntity
 import org.eln2.mc.common.network.serverToClient.ClientSidePacketHandlerBuilder
 import org.eln2.mc.common.network.serverToClient.sendBulkPacket
@@ -65,8 +67,6 @@ import org.eln2.mc.common.recipes.foundation.OUTPUT_SLOT
 import org.eln2.mc.common.sounds.foundation.SimpleLoopingBlockEntitySoundInstance
 import org.eln2.mc.common.sounds.foundation.SoundInfo
 import org.eln2.mc.common.sounds.foundation.SoundInstanceTickEvent
-import org.eln2.mc.Locators
-import org.eln2.mc.MonopoleMap
 import org.eln2.mc.extensions.*
 import org.eln2.mc.integration.ComponentDisplay
 import org.eln2.mc.integration.ComponentDisplayList
@@ -107,11 +107,9 @@ class VulcanizingRecipe(
     val minTemperature: Double,
     val maxTemperature: Double
 ) : Recipe<SimpleContainer> {
-    init {
-        require(input.items.size > 0 && input.items[0].count == 1) {
-            DEBUGGER_BREAK("Autoclave recipe requires exactly one/one input!")
-        }
-    }
+    // WARNING: Do NOT access `input.items` (Ingredient.getItems()) in an init block or during deserialization.
+    // Doing so forces tag resolution before the TagManager has finished loading, caching an empty result
+    // permanently. This causes tag-based ingredients to silently fail until /reload. See: SimpleRecipes.kt.
 
     override fun matches(pContainer: SimpleContainer, pLevel: Level) = input.test(pContainer.getItem(INPUT_SLOT))
     override fun assemble(pContainer: SimpleContainer, pRegistryAccess: RegistryAccess): ItemStack = output.copy()

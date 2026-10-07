@@ -4,7 +4,7 @@
   "cookingtime": 100,
   "experience": 0.5,
   "ingredient": {
-    "item": "minecraft:iron_ingot"
+    "tag": "forge:ingots/iron"
   },
   "result": "eln2:hot_iron_ingot"
 }

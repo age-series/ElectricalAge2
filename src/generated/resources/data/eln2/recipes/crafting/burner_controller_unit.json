@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "C": {
+      "item": "eln2:primitive_circuit"
+    },
+    "R": {
+      "item": "eln2:resistor"
+    },
+    "W": {
+      "item": "eln2:copper_wire"
+    }
+  },
+  "pattern": [
+    " C ",
+    "RWR",
+    " W "
+  ],
+  "result": {
+    "item": "eln2:burner_controller_unit"
+  },
+  "show_notification": true
+}

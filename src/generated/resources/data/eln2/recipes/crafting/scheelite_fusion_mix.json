@@ -1,0 +1,15 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "eln2:scheelite_dust"
+    },
+    {
+      "item": "eln2:sodium_carbonate_dust"
+    }
+  ],
+  "result": {
+    "item": "eln2:scheelite_fusion_mix"
+  }
+}

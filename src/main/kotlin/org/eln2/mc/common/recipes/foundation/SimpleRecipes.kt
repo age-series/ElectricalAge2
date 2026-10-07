@@ -4,10 +4,7 @@ package org.eln2.mc.common.recipes.foundation
 
 import com.google.gson.JsonObject
 import net.minecraft.advancements.Advancement
-import net.minecraft.advancements.AdvancementRewards
 import net.minecraft.advancements.CriterionTriggerInstance
-import net.minecraft.advancements.RequirementsStrategy
-import net.minecraft.advancements.critereon.RecipeUnlockedTrigger
 import net.minecraft.core.RegistryAccess
 import net.minecraft.data.recipes.FinishedRecipe
 import net.minecraft.nbt.CompoundTag
@@ -22,11 +19,7 @@ import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraftforge.items.ItemStackHandler
 import net.minecraftforge.registries.ForgeRegistries
-import org.eln2.mc.CrossThreadAccess
-import org.eln2.mc.DEBUGGER_BREAK
-import org.eln2.mc.LOG
-import org.eln2.mc.OnServerThread
-import org.eln2.mc.ServerOnly
+import org.eln2.mc.*
 import org.eln2.mc.common.recipes.RecipeRegistry
 import org.eln2.mc.extensions.bindToSimpleContainer
 import org.eln2.mc.extensions.eln2Unlock
@@ -104,11 +97,9 @@ class DirectSimpleProcessingRecipe(
     override val duration: Double,
     override val tier: Int
 ) : Eln2SimpleOutputProcessingLoopRecipe, Eln2TieredRecipe {
-    init {
-        require(input.items.size > 0 && input.items[0].count == 1) {
-            DEBUGGER_BREAK("Simple processing recipe requires exactly one/one input!")
-        }
-    }
+    // WARNING: Do NOT access `input.items` (Ingredient.getItems()) in an init block or during deserialization.
+    // Doing so forces tag resolution before the TagManager has finished loading, caching an empty result
+    // permanently. This causes tag-based ingredients to silently fail until /reload.
 
     override fun matches(pContainer: SimpleContainer, pLevel: Level) = input.test(pContainer.getItem(INPUT_SLOT))
     override fun assemble(pContainer: SimpleContainer, pRegistryAccess: RegistryAccess): ItemStack = output.copy()
@@ -257,15 +248,9 @@ class CatalyzedSimpleProcessingRecipe(
     override val duration: Double,
     override val tier: Int
 ) : Eln2SimpleOutputProcessingLoopRecipe, Eln2TieredRecipe {
-    init {
-        require(input.items.size > 0 && input.items.all { it.count == 1 }) {
-            DEBUGGER_BREAK("Simple catalyzed processing recipe requires exactly one/one input!")
-        }
-
-        require(catalyst.items.size > 0 && catalyst.items.all { it.count == 1 }) {
-            DEBUGGER_BREAK("Simple catalyzed processing recipe requires exactly one/one catalyst!")
-        }
-    }
+    // WARNING: Do NOT access `input.items` or `catalyst.items` (Ingredient.getItems()) in an init block or
+    // during deserialization. Doing so forces tag resolution before the TagManager has finished loading,
+    // caching an empty result permanently. This causes tag-based ingredients to silently fail until /reload.
 
     override fun matches(pContainer: SimpleContainer, pLevel: Level) =
         input.test(pContainer.getItem(INPUT_SLOT)) &&

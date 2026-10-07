@@ -1,0 +1,35 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_iron_shaft": {
+      "conditions": {
+        "items": [
+          {
+            "items": [
+              "eln2:iron_shaft"
+            ]
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    },
+    "has_the_recipe": {
+      "conditions": {
+        "recipe": "eln2:crafting/rotor_commutator"
+      },
+      "trigger": "minecraft:recipe_unlocked"
+    }
+  },
+  "requirements": [
+    [
+      "has_iron_shaft",
+      "has_the_recipe"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "eln2:crafting/rotor_commutator"
+    ]
+  },
+  "sends_telemetry_event": false
+}

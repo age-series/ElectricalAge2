@@ -52,6 +52,7 @@ import java.util.concurrent.locks.ReentrantLock
 import kotlin.collections.forEach
 import kotlin.concurrent.Volatile
 import kotlin.contracts.ExperimentalContracts
+import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
 
 /**
@@ -547,6 +548,7 @@ class SimulationExecutionSubgraph(val graph: CellGraph) {
             try {
                 isRunning = false
                 isPaused = false
+                pauseRequested = false
                 pausedSignal.signalAll()
             }
             finally {
@@ -1152,14 +1154,19 @@ class CellGraph(val id: UUID, val manager: CellGraphManager, val level: ServerLe
     }
 
     @OptIn(ExperimentalContracts::class)
-    fun runSuspended(action: (() -> Unit)) {
+    inline fun<T> runSuspended(action: (() -> T)) : T {
         contract {
-            callsInPlace(action)
+            callsInPlace(action, InvocationKind.EXACTLY_ONCE)
         }
 
         executionGraph.suspend()
-        action()
-        executionGraph.resume()
+
+        try {
+            return action()
+        }
+        finally {
+            executionGraph.resume()
+        }
     }
 
     // TODO revamp the schema

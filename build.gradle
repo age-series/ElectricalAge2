@@ -21,7 +21,7 @@ base {
 java.toolchain.languageVersion = JavaLanguageVersion.of(17)
 
 // Enable the Jar-in-Jar system for your mod
-//jarJar.enable()
+jarJar.enable()
 
 println "Java: ${System.getProperty 'java.version'}, JVM: ${System.getProperty 'java.vm.version'} (${System.getProperty 'java.vendor'}), Arch: ${System.getProperty 'os.arch'}"
 minecraft {
@@ -172,8 +172,7 @@ dependencies {
     // Kotlin*
     implementation 'thedarkcolour:kotlinforforge:4.10.0'
 
-    compileOnly(fg.deobf("mezz.jei:jei-${minecraft_version}-forge-api:${jei_version}"))
-    runtimeOnly(fg.deobf("mezz.jei:jei-${minecraft_version}-forge:${jei_version}"))
+    implementation(fg.deobf("mezz.jei:jei-${minecraft_version}-forge:${jei_version}"))
 
     // These `transitive = false` are all necessary. It doesn't work otherwise.
     // Note one of them has `transitive = true`!
@@ -210,6 +209,9 @@ dependencies {
     implementation fg.deobf("curse.maven:jade-324717:4801177")
 
     implementation fg.deobf("dev.engine-room.flywheel:flywheel-forge-${minecraft_version}:${flywheel_version}")
+    jarJar("dev.engine-room.flywheel:flywheel-forge-${minecraft_version}:${flywheel_version}") {
+        jarJar.ranged(it, "[1.0,2.0)")
+    }
 
     implementation fg.deobf("maven.modrinth:embeddium:${embeddium_version}")
 
@@ -219,6 +221,10 @@ dependencies {
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.1'
 
     annotationProcessor "org.spongepowered:mixin:${mixin_version}:processor"
+}
+
+test {
+    useJUnitPlatform()
 }
 
 configurations.shade {
@@ -275,6 +281,30 @@ shadowJar {
 
     finalizedBy("reobfShadowJar")
 }
+
+shadowJar.doLast {
+    def shadowFile = archiveFile.get().asFile
+    def jarJarFile = tasks.jarJar.archiveFile.get().asFile
+
+    ant.jar(destfile: shadowFile, update: true) {
+        zipfileset(src: jarJarFile, includes: "META-INF/jarjar/**")
+    }
+
+    def jarJarZip = new java.util.zip.ZipFile(jarJarFile)
+    def metadataEntry = jarJarZip.getEntry("META-INF/jarjar/metadata.json")
+    def originalMetadata = jarJarZip.getInputStream(metadataEntry).text
+    jarJarZip.close()
+
+    def patchedMetadata = originalMetadata.replace('"isObfuscated": false', '"isObfuscated": true')
+
+    def metadataFile = new File(temporaryDir, "metadata.json")
+    metadataFile.text = patchedMetadata
+
+    ant.jar(destfile: shadowFile, update: true) {
+        zipfileset(dir: temporaryDir, includes: "metadata.json", prefix: "META-INF/jarjar")
+    }
+}
+shadowJar.dependsOn tasks.reobfJarJar
 
 mixin {
     add sourceSets.main, "eln2.refmap.json"

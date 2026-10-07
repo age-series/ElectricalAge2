@@ -2,11 +2,17 @@
 
 package org.eln2.mc
 
+import com.mojang.brigadier.Command
 import net.minecraft.SharedConstants
 import net.minecraft.client.Minecraft
+import net.minecraft.commands.Commands
+import net.minecraft.network.chat.Component
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.packs.resources.Resource
+import net.minecraft.world.item.ItemStack
+import net.minecraft.world.item.crafting.Recipe
 import net.minecraftforge.api.distmarker.Dist
+import net.minecraftforge.client.event.RegisterClientCommandsEvent
 import net.minecraftforge.common.MinecraftForge
 import net.minecraftforge.eventbus.api.EventPriority
 import net.minecraftforge.eventbus.api.IEventBus
@@ -15,6 +21,21 @@ import net.minecraftforge.fml.ModLoadingContext
 import net.minecraftforge.fml.common.Mod
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext
+import net.minecraftforge.registries.ForgeRegistries
+import org.ageseries.libage.data.AUXILIARY_CLASSIFIERS
+import org.ageseries.libage.data.DIMENSION_TYPES
+import org.ageseries.libage.data.AngularVelocity
+import org.ageseries.libage.data.Distance
+import org.ageseries.libage.data.Energy
+import org.ageseries.libage.data.Mass
+import org.ageseries.libage.data.Power
+import org.ageseries.libage.data.Temperature
+import org.ageseries.libage.data.Time
+import org.ageseries.libage.data.Torque
+import org.ageseries.libage.data.Volume
+import org.ageseries.libage.data.classify
+import org.ageseries.libage.data.classifyAuxiliary
+import org.ageseries.libage.sim.ChemicalElement
 import org.ageseries.libage.utils.libageUseValidation
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
@@ -29,8 +50,15 @@ import org.eln2.mc.common.containers.ContainerRegistry
 import org.eln2.mc.common.content.OscilloscopeCopyManager
 import org.eln2.mc.common.content.OscilloscopeShader
 import org.eln2.mc.common.content.ScrewdriverItem
+import org.eln2.mc.common.content.FlashlightItem
+import org.eln2.mc.client.dynamicLight.DynamicLightManager
 import org.eln2.mc.common.content.fluid.ChemicalBottleItem
 import org.eln2.mc.common.content.modules.ContentManager
+import org.eln2.mc.common.content.processing.AlloyingRecipe
+import org.eln2.mc.common.content.processing.AqueousElectrolysisRecipe
+import org.eln2.mc.common.content.processing.BurningRecipe
+import org.eln2.mc.common.content.processing.CokingRecipe
+import org.eln2.mc.common.content.processing.HydrogenReductionRecipe
 import org.eln2.mc.common.entities.EntityRegistry
 import org.eln2.mc.common.fluids.ForgeFluidRegistry
 import org.eln2.mc.common.grids.TerminalHighlightRenderer
@@ -54,6 +82,13 @@ import kotlin.io.path.Path
 val LOG: Logger = LogManager.getLogger()
 
 const val MODID = "eln2"
+
+/**
+ * Conversion factor between Forge Energy (FE/RF) and ELN2 joules.
+ * FE is integer-valued, so this factor is chosen large enough to keep quantization error small for typical per-tick transfers while staying within [Int.MAX_VALUE] for reasonable cell capacities.
+ * A 840 Wh lead-acid cell stores ~30M FE.
+ * */
+const val RF_PER_JOULE = 10
 
 @Mod(MODID)
 class Eln2 {
@@ -102,14 +137,17 @@ class Eln2 {
                 ContentManager.registerSpecVisualizers()
                 ContentManager.setupScreens()
                 ContentManager.setRenderLayers()
+                FlashlightItem.registerClient()
             }
         }
 
         modEventBus.addListener(OverlayRegistry::register)
         modEventBus.addListener(KeyMappingRegistry::register)
         modEventBus.addListener(OscilloscopeShader::register)
+        modEventBus.addListener(DynamicLightManager::register)
 
-        forgeEventBus.addListener(Eln2Config::registerClientCommands);
+        forgeEventBus.addListener(DynamicLightManager::render)
+        forgeEventBus.addListener(::registerClientCommands)
 
         forgeEventBus.addListener(EventPriority.LOWEST, SpecContainerPart::renderHighlightEvent)
         forgeEventBus.addListener(TerminalHighlightRenderer::render)
@@ -173,3 +211,227 @@ fun getResourceStringHelper(resource: String) : String =
 fun getResourceBinaryHelper(resource: String): ByteArray =
     if (!SharedConstants.IS_RUNNING_IN_IDE) getResourceBinary(resource(resource))
     else Files.readAllBytes(Path("./src/main/resources/assets/eln2/$resource"))
+
+fun getMaterialKey(material: String) : String = "material.$MODID.$material"
+fun getChemicalElementKey(element: ChemicalElement) = getMaterialKey(element.label)
+
+fun registerClientCommands(event: RegisterClientCommandsEvent) {
+    /**
+     * Items that are intentionally not craftable and should be excluded from the missing-recipe check.
+     * */
+    val missingRecipeBlacklist = setOf(
+        resource("spec_container"),
+        resource("voltage_source"),
+        resource("burnt_fuse"),
+        resource("burnt_heating_element")
+    )
+
+    val eln2 = Commands.literal("eln2").then(
+        Commands.literal("units").then(
+            Commands.literal("set").also { pSet ->
+                DIMENSION_TYPES.forward.entries.sortedBy { it.value }.forEach { (dimensionType, dimensionName) ->
+                    val auxiliaryUnits = AUXILIARY_CLASSIFIERS[dimensionType]
+                        ?: return@forEach
+
+                    if(auxiliaryUnits.keys.isNotEmpty()) {
+                        pSet.then(
+                            Commands.literal(dimensionName).also { pDimension ->
+                                auxiliaryUnits.keys.forEach { scaleRef ->
+                                    auxiliaryUnits[scaleRef].forEach { identifier ->
+                                        pDimension.then(
+                                            Commands.literal("to").then(
+                                                Commands.literal(identifier).executes {
+                                                    Eln2Config.clientConfig.setScaleOverride(dimensionType, identifier)
+
+                                                    Minecraft.getInstance().player?.also { player ->
+                                                        player.displayClientMessage(
+                                                            Component.literal("$dimensionName -> ${
+                                                                classifyAuxiliary(
+                                                                    scaleRef,
+                                                                    1.0
+                                                                )
+                                                            }"), false)
+                                                    }
+
+                                                    Command.SINGLE_SUCCESS
+                                                }
+                                            )
+                                        )
+                                    }
+                                }
+                            }
+                        )
+                    }
+                }
+            }
+        ).then(
+            Commands.literal("reset").also { pReset ->
+                DIMENSION_TYPES.forward.entries.sortedBy { it.value }.forEach { (dimensionType, dimensionName) ->
+                    val auxiliaryUnits = AUXILIARY_CLASSIFIERS[dimensionType]
+                        ?: return@forEach
+
+                    if(auxiliaryUnits.keys.isNotEmpty()) {
+                        pReset.then(Commands.literal(dimensionName).executes {
+                            Eln2Config.clientConfig.resetScaleOverride(dimensionType)
+
+                            Minecraft.getInstance().player?.also { player ->
+                                player.displayClientMessage(
+                                    Component.literal("$dimensionName -> ${
+                                        classify(
+                                            dimensionType,
+                                            1.0 /*Factor*/
+                                        )
+                                    }"), false)
+                            }
+
+                            Command.SINGLE_SUCCESS
+                        })
+                    }
+                }
+            }
+        ).then(
+            Commands.literal("preset").also { pPreset ->
+                fun definePreset(name: String, buildPreset: (applicator: (Class<*>, String) -> Unit) -> Unit) {
+                    pPreset.then(Commands.literal(name).executes {
+                        fun applicator(dimensionType: Class<*>, alias: String) {
+                            if(alias.isEmpty()) {
+                                Eln2Config.clientConfig.resetScaleOverride(dimensionType)
+                            }
+                            else {
+                                Eln2Config.clientConfig.setScaleOverride(dimensionType, alias)
+                            }
+                        }
+
+                        buildPreset(::applicator)
+
+                        Minecraft.getInstance().player?.also { player ->
+                            player.displayClientMessage(Component.literal("*$name"), false)
+                        }
+
+                        Command.SINGLE_SUCCESS
+                    })
+                }
+
+                definePreset("SI") {
+                    it(Time::class.java, "")
+                    it(Distance::class.java, "")
+                    it(Mass::class.java, "")
+                    it(Energy::class.java, "")
+                    it(Temperature::class.java, "")
+                    it(Power::class.java, "")
+                    it(Volume::class.java, "")
+                    it(AngularVelocity::class.java, "")
+                    it(Torque::class.java, "")
+                }
+
+                definePreset("Metric") {
+                    it(Time::class.java, "")
+                    it(Distance::class.java, "")
+                    it(Mass::class.java, "")
+                    it(Energy::class.java, "")
+                    it(Temperature::class.java, "C")
+                    it(Power::class.java, "")
+                    it(Volume::class.java, "L")
+                    it(AngularVelocity::class.java, "")
+                    it(Torque::class.java, "")
+                }
+
+                definePreset("Imperial") {
+                    it(Time::class.java, "")
+                    it(Distance::class.java, "ft")
+                    it(Mass::class.java, "lb")
+                    it(Energy::class.java, "BTU")
+                    it(Temperature::class.java, "F")
+                    it(Power::class.java, "hp")
+                    it(Volume::class.java, "gal")
+                    it(AngularVelocity::class.java, "rpm")
+                    it(Torque::class.java, "ftlbf")
+                }
+            }
+        )
+    ).then(
+        Commands.literal("recipes").then(
+            Commands.literal("missing").executes {
+                val connection = Minecraft.getInstance().connection
+                val level = Minecraft.getInstance().level
+
+                if(connection == null || level == null) {
+                    LOG.error("Cannot list missing recipes: not connected to a world.")
+                    return@executes Command.SINGLE_SUCCESS
+                }
+
+                val recipeManager = connection.recipeManager
+                val registryAccess = level.registryAccess()
+
+                val eln2ItemIds = ForgeRegistries.ITEMS.entries
+                    .asSequence()
+                    .map { it.key.location() }
+                    .filter { it.namespace == MODID }
+                    .filter { id ->
+                        val path = id.path
+                        !path.endsWith("_bucket") &&
+                            !path.endsWith("_bottle") &&
+                            !path.endsWith("_ore") &&
+                            !path.startsWith("raw_")
+                    }
+                    .filter { it !in missingRecipeBlacklist }
+                    .toMutableSet()
+
+                for(recipe in recipeManager.recipes) {
+                    val resultItem = recipe.getResultItem(registryAccess)
+
+                    if(!resultItem.isEmpty) {
+                        val resultId = ForgeRegistries.ITEMS.getKey(resultItem.item)
+                        if(resultId != null && resultId.namespace == MODID) {
+                            eln2ItemIds.remove(resultId)
+                        }
+                    } else {
+                        for(outputItem in extractNonStandardRecipeOutputs(recipe)) {
+                            val resultId = ForgeRegistries.ITEMS.getKey(outputItem.item)
+                            if(resultId != null && resultId.namespace == MODID) {
+                                eln2ItemIds.remove(resultId)
+                            }
+                        }
+                    }
+                }
+
+                if(eln2ItemIds.isEmpty()) {
+                    LOG.info("All ELN2 items have at least one recipe.")
+                } else {
+                    LOG.info("ELN2 items without any recipe ({} total):", eln2ItemIds.size)
+                    eln2ItemIds.sortedBy { it.path }.forEach {
+                        LOG.info("  {}", it)
+                    }
+                }
+
+                Minecraft.getInstance().player?.displayClientMessage(
+                    Component.literal("Wrote items with missing recipes to logs"), false
+                )
+
+                Command.SINGLE_SUCCESS
+            }
+        )
+    )
+
+    event.dispatcher.register(eln2)
+}
+
+/**
+ * Extracts output [ItemStack]s from non-standard recipes that return [ItemStack.EMPTY] from [Recipe.getResultItem].
+ * These recipes carry their outputs in custom fields.
+ * */
+private fun extractNonStandardRecipeOutputs(recipe: Recipe<*>): List<ItemStack> {
+    return when(recipe) {
+        is AlloyingRecipe -> listOf(recipe.output)
+
+        is HydrogenReductionRecipe -> listOf(recipe.output)
+
+        is BurningRecipe -> listOfNotNull(recipe.outputItem)
+
+        is CokingRecipe -> recipe.outputItems ?: emptyList()
+
+        is AqueousElectrolysisRecipe -> listOfNotNull(recipe.anodeOutputItem, recipe.cathodeOutputItem)
+
+        else -> emptyList()
+    }
+}

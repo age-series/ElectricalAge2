@@ -181,7 +181,7 @@ interface MultiblockRepresentative {
         pHit: BlockHitResult,
     ) = InteractionResult.PASS
 
-    fun onDelegateDestroyed(pDelegate: BlockEntity) { }
+    fun onDelegateDestroyed(pDelegate: BlockEntity, suppressDrops: Boolean = false) { }
 }
 
 interface BigBlockRepresentativeBlockEntity<Self> : MultiblockRepresentative where Self : BigBlockRepresentativeBlockEntity<Self>, Self : BlockEntity {
@@ -247,14 +247,14 @@ interface BigBlockRepresentativeBlockEntity<Self> : MultiblockRepresentative whe
         )
     }*/
 
-    // New logic [!]
-    override fun onDelegateDestroyed(pDelegate: BlockEntity) {
-        destroyDelegates()
-
+    override fun onDelegateDestroyed(pDelegate: BlockEntity, suppressDrops: Boolean) {
+        // Representative is destroyed first so that delegate onRemove calls find no representative and no-op, preventing reentrancy.
         self.level!!.destroyBlock(
             self.blockPos,
-            true
+            !suppressDrops
         )
+
+        destroyDelegates()
     }
 }
 
@@ -301,7 +301,7 @@ open class MultiblockDelegateBlock(properties: Properties? = null) : BaseEntityB
                 ?: pLevel.getBlockState(representativePos).block as? MultiblockRepresentative
 
             return if(representative == null) {
-                LOG.error("Representative is missing $pLevel $pPos $representativePos")
+                LOG.debug("Representative is missing $pLevel $pPos $representativePos")
                 null
             } else {
                 blockEntity to representative
@@ -385,7 +385,6 @@ open class MultiblockDelegateBlock(properties: Properties? = null) : BaseEntityB
     }
     */
 
-    // New logic [!]
     @Suppress("OVERRIDE_DEPRECATION")
     override fun onRemove(
         pState: BlockState,
@@ -398,11 +397,30 @@ open class MultiblockDelegateBlock(properties: Properties? = null) : BaseEntityB
             DEBUGGER_BREAK("Multiblock delegate changed its blockstate, which is illegal")
         }
 
+        // For non-player destruction (explosions, etc.), dispatch from here with drops enabled.
+        // For player-initiated creative breaks, playerWillDestroy already dispatched with suppressDrops=true and destroyed the representative, so getRepresentativeAndDelegate returns null here.
         runWithRepresentativeAndDelegate(pLevel, pPos) { delegate, representative ->
             representative.onDelegateDestroyed(delegate)
         }
 
         super.onRemove(pState, pLevel, pPos, pNewState, pMovedByPiston)
+    }
+
+    @Suppress("OVERRIDE_DEPRECATION")
+    override fun playerWillDestroy(
+        pLevel: Level,
+        pPos: BlockPos,
+        pState: BlockState,
+        pPlayer: Player
+    ) {
+        if (!pLevel.isClientSide && pPlayer.isCreative) {
+            // Dispatch before setBlock so the representative still exists. suppressDrops prevents the item drop in creative.
+            runWithRepresentativeAndDelegate(pLevel, pPos) { delegate, representative ->
+                representative.onDelegateDestroyed(delegate, suppressDrops = true)
+            }
+        }
+
+        super.playerWillDestroy(pLevel, pPos, pState, pPlayer)
     }
 }
 
@@ -442,7 +460,7 @@ abstract class MultiblockDelegateUprightHorizontalDirectionCellBlock<C : Cell>(p
                 ?: pLevel.getBlockState(representativePos).block as? MultiblockRepresentative
 
             return if(representative == null) {
-                LOG.error("Cell representative is missing $pLevel $pPos $representativePos")
+                LOG.debug("Cell representative is missing $pLevel $pPos $representativePos")
                 null
             } else {
                 blockEntity to representative
@@ -487,11 +505,30 @@ abstract class MultiblockDelegateUprightHorizontalDirectionCellBlock<C : Cell>(p
             DEBUGGER_BREAK("Cell Multiblock delegate changed its blockstate, which is illegal")
         }
 
+        // For non-player destruction (explosions, etc.), dispatch from here with drops enabled.
+        // For player-initiated creative breaks, playerWillDestroy already dispatched with suppressDrops=true and destroyed the representative, so getRepresentativeAndDelegate returns null here.
         runWithRepresentativeAndDelegate(pLevel, pPos) { delegate, representative ->
             representative.onDelegateDestroyed(delegate)
         }
 
         super.onRemove(pState, pLevel, pPos, pNewState, pMovedByPiston)
+    }
+
+    @Suppress("OVERRIDE_DEPRECATION")
+    override fun playerWillDestroy(
+        pLevel: Level,
+        pPos: BlockPos,
+        pState: BlockState,
+        pPlayer: Player
+    ) {
+        if (!pLevel.isClientSide && pPlayer.isCreative) {
+            // Dispatch before setBlock so the representative still exists. suppressDrops prevents the item drop in creative.
+            runWithRepresentativeAndDelegate(pLevel, pPos) { delegate, representative ->
+                representative.onDelegateDestroyed(delegate, suppressDrops = true)
+            }
+        }
+
+        super.playerWillDestroy(pLevel, pPos, pState, pPlayer)
     }
 }
 

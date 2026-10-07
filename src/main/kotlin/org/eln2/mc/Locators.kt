@@ -262,6 +262,13 @@ fun monopolarMapPlanar(dir: Base6Direction3d) = MonopoleMap { c1, c2 ->
     }
 }
 
+fun monopolarMapPlanar(dirs: Base6Direction3dMask) = MonopoleMap { c1, c2 ->
+    val dir = c1.locator.findDirActualPlanarOrNull(c2.locator)
+        ?: return@MonopoleMap false
+
+    return@MonopoleMap dirs.has(dir)
+}
+
 fun nullPolarMap() = PoleMap { a, b -> null }
 
 fun nullMonopoleMap() = MonopoleMap { a, b -> false }

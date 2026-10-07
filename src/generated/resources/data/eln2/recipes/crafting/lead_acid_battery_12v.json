@@ -1,0 +1,30 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "A": {
+      "item": "eln2:dilute_sulfuric_acid_bucket"
+    },
+    "B": {
+      "item": "eln2:lead_acid_battery_base_12v"
+    },
+    "G": {
+      "tag": "forge:glue"
+    },
+    "P": {
+      "tag": "forge:plates/copper"
+    },
+    "R": {
+      "item": "eln2:rubber_wood_panel"
+    }
+  },
+  "pattern": [
+    "   ",
+    "GRA",
+    "PBP"
+  ],
+  "result": {
+    "item": "eln2:lead_acid_battery_12v"
+  },
+  "show_notification": true
+}

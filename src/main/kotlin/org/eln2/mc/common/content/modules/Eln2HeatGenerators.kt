@@ -12,38 +12,40 @@ import org.ageseries.libage.data.WATT_PER_KELVIN
 import org.ageseries.libage.data.WATT_PER_METER_KELVIN
 import org.ageseries.libage.sim.ChemicalElement
 import org.ageseries.libage.sim.ConnectionParameters
-import org.ageseries.libage.sim.Material
 import org.ageseries.libage.sim.ThermalMassDefinition
+import org.eln2.mc.PIDGains
 import org.eln2.mc.client.render.foundation.DummyBlockEntityRendererProvider
+import org.eln2.mc.client.screens.BasicProgressScreen
 import org.eln2.mc.common.blocks.BlockRegistry.blockAndItem
 import org.eln2.mc.common.blocks.BlockRegistry.blockEntityOnly
+import org.eln2.mc.common.blocks.BlockRegistry.blockItemOnly
+import org.eln2.mc.common.blocks.BlockRegistry.blockOnly
+import org.eln2.mc.common.blocks.BlockRegistry.defineDelegateMap
+import org.eln2.mc.common.blocks.foundation.BigBlockItem
+import org.eln2.mc.common.blocks.foundation.MultiblockDelegateBlock
 import org.eln2.mc.common.cells.CellRegistry.cellMemoize
 import org.eln2.mc.common.cells.foundation.CellFactory
 import org.eln2.mc.common.containers.ContainerRegistry.menu
-import org.eln2.mc.common.content.BurnerCellOptions
-import org.eln2.mc.common.content.BurnerDeviceDescription
-import org.eln2.mc.common.content.HeatGeneratorBlock
-import org.eln2.mc.common.content.HeatGeneratorBlockEntity
-import org.eln2.mc.common.content.HeatGeneratorCell
-import org.eln2.mc.common.content.HeatGeneratorMenu
-import org.eln2.mc.common.content.HeatGeneratorScreen
-import org.eln2.mc.common.content.PrimitiveBurnerBlock
-import org.eln2.mc.common.content.PrimitiveBurnerBlockEntity
-import org.eln2.mc.common.content.PrimitiveBurnerBlockEntityVisual
-import org.eln2.mc.common.content.PrimitiveBurnerCell
+import org.eln2.mc.common.content.*
 import org.eln2.mc.common.content.modules.ContentManager.withSelfDrop
-import org.eln2.mc.monopolarMapPlanar
+import org.eln2.mc.common.sounds.SoundRegistry.soundEventVariableRange
 import org.eln2.mc.mathematics.Base6Direction3d
+import org.eln2.mc.mathematics.Base6Direction3dMask
+import org.eln2.mc.monopolarMapPlanar
+import org.eln2.mc.resource
 
 object Eln2HeatGenerators : ContentModule() {
-    override fun setupScreens() {
-        MenuScreens.register(HEAT_GENERATOR_MENU.get(), ::HeatGeneratorScreen)
-    }
+    val BURNER_DRAFT_SOUND = soundEventVariableRange("burner.draft")
 
     override fun registerBlockEntityVisualizers() {
         VisualizerRegistry.setVisualizer(
             PRIMITIVE_BURNER_BLOCK_ENTITY.get(),
             SimpleBlockEntityVisualizer(::PrimitiveBurnerBlockEntityVisual) { true }
+        )
+
+        VisualizerRegistry.setVisualizer(
+            ADVANCED_COAL_BURNER_BLOCK_ENTITY.get(),
+            SimpleBlockEntityVisualizer(::AdvancedCoalBurnerMainBlockEntityVisual) { true }
         )
     }
 
@@ -52,9 +54,28 @@ object Eln2HeatGenerators : ContentModule() {
             PRIMITIVE_BURNER_BLOCK_ENTITY.get(),
             DummyBlockEntityRendererProvider()
         )
+
+        event.registerBlockEntityRenderer(
+            ADVANCED_COAL_BURNER_BLOCK_ENTITY.get(),
+            DummyBlockEntityRendererProvider()
+        )
+    }
+
+    override fun setupScreens() {
+        MenuScreens.register(ADVANCED_COAL_BURNER_MENU.get()) { menu, inventory, title ->
+            BasicProgressScreen(
+                menu, inventory, title,
+                resource("textures/gui/container/advanced_coal_burner/base.png"),
+                resource("textures/gui/container/advanced_coal_burner/progress.png"),
+                79.0f,
+                96.0f
+            )
+        }
     }
 
     //#region Primitive Burner
+
+    const val PRIMITIVE_BURNER_MAX_DRAFT = 0.05
 
     val PRIMITIVE_BURNER_CELL = cellMemoize("primitive_burner") {
         val options = BurnerCellOptions(
@@ -62,7 +83,7 @@ object Eln2HeatGenerators : ContentModule() {
                 Quantity(15.0, WATT_PER_METER_KELVIN),
                 Quantity(171.6, WATT_PER_METER_KELVIN),
                 Quantity(0.05, WATT_PER_KELVIN),
-                Quantity(4.617, WATT_PER_METER_KELVIN)
+                Quantity(1.21, WATT_PER_METER_KELVIN)
             ),
             ThermalMassDefinition(
                 ChemicalElement.Iron.asMaterial,
@@ -74,10 +95,9 @@ object Eln2HeatGenerators : ContentModule() {
         )
 
         val map = monopolarMapPlanar(Base6Direction3d.Back)
-        val maxDraft = 0.025
 
         CellFactory {
-            PrimitiveBurnerCell(it, options, map, maxDraft)
+            PrimitiveBurnerCell(it, options, map, PRIMITIVE_BURNER_MAX_DRAFT)
         }
     }
 
@@ -88,31 +108,68 @@ object Eln2HeatGenerators : ContentModule() {
 
     //#endregion
 
-    val HEAT_GENERATOR_CELL = cellMemoize("heat_generator") {
-        val thermalDefinition = ThermalMassDefinition(
-            Material(
-                label = "Heat generator",
-                electricalResistivity = Quantity(Double.POSITIVE_INFINITY),
-                thermalConductivity = Quantity(5000.0, WATT_PER_METER_KELVIN),
-                specificHeat = ChemicalElement.Copper.specificHeat,
-                density = ChemicalElement.Copper.density
+    //#region Advanced Coal Burner
+
+    const val ADVANCED_COAL_BURNER_MAX_DRAFT = 0.15
+
+    val ADVANCED_COAL_BURNER_CELL = cellMemoize("advanced_coal_burner") {
+        val options = BurnerCellOptions(
+            BurnerDeviceDescription(
+                Quantity(15.0, WATT_PER_METER_KELVIN),
+                Quantity(171.6, WATT_PER_METER_KELVIN),
+                Quantity(0.05, WATT_PER_KELVIN),
+                Quantity(1.21, WATT_PER_METER_KELVIN)
             ),
-            mass = Quantity(10.0, KILOGRAM)
+            ThermalMassDefinition(
+                ChemicalElement.Iron.asMaterial,
+                mass = Quantity(30.0, KILOGRAM)
+            ),
+            ConnectionParameters(
+                conductance = Quantity(9.1, WATT_PER_KELVIN)
+            )
         )
 
-        val leakageParameters = ConnectionParameters.DEFAULT.copy(
-            conductance = Quantity(0.001, WATT_PER_KELVIN)
+        val map = monopolarMapPlanar(Base6Direction3dMask.HORIZONTALS)
+
+        val pidGains = PIDGains(
+            kP = 0.002,
+            kI = 0.00001,
+            kD = 0.0001
         )
 
         CellFactory {
-            HeatGeneratorCell(it, thermalDefinition, leakageParameters)
+            AdvancedBurnerCell(it, options, map, ADVANCED_COAL_BURNER_MAX_DRAFT, pidGains)
         }
     }
 
-    val HEAT_GENERATOR_BLOCK = blockAndItem("heat_generator") { HeatGeneratorBlock() }
+    val ADVANCED_COAL_BURNER_DELEGATE_MAP = defineDelegateMap("advanced_coal_burner") {
+        delegateBlock(0, 1, 0)
+    }
+
+    val ADVANCED_COAL_BURNER_DELEGATE_BLOCK_ENTITY = blockEntityOnly(
+        "advanced_coal_burner_delegate",
+        ::AdvancedCoalBurnerDelegateBlockEntity
+    ) {
+        ADVANCED_COAL_BURNER_DELEGATE_MAP.value.getBlocksOfType<MultiblockDelegateBlock>()
+    }
+
+    val ADVANCED_COAL_BURNER_BLOCK = blockOnly("advanced_coal_burner", ::AdvancedCoalBurnerBlock)
         .withSelfDrop()
 
-    val HEAT_GENERATOR_BLOCK_ENTITY = blockEntityOnly("heat_generator", HEAT_GENERATOR_BLOCK, ::HeatGeneratorBlockEntity)
+    val ADVANCED_COAL_BURNER_BLOCK_ENTITY = blockEntityOnly(
+        "advanced_coal_burner",
+        ADVANCED_COAL_BURNER_BLOCK,
+        ::AdvancedCoalBurnerBlockEntity
+    )
 
-    val HEAT_GENERATOR_MENU = menu("heat_generator", ::HeatGeneratorMenu)
+    val ADVANCED_COAL_BURNER_BLOCK_ITEM = blockItemOnly("advanced_coal_burner") {
+        BigBlockItem(
+            ADVANCED_COAL_BURNER_DELEGATE_MAP.value,
+            ADVANCED_COAL_BURNER_BLOCK.get()
+        )
+    }
+
+    val ADVANCED_COAL_BURNER_MENU = menu("advanced_coal_burner", ::AdvancedCoalBurnerMenu)
+
+    //#endregion
 }

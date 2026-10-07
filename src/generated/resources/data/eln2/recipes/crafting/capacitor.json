@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "P": {
+      "item": "eln2:copper_plate"
+    },
+    "S": {
+      "item": "eln2:capacitor_separator"
+    },
+    "W": {
+      "item": "eln2:copper_wire"
+    }
+  },
+  "pattern": [
+    "PP",
+    "WS"
+  ],
+  "result": {
+    "count": 4,
+    "item": "eln2:capacitor"
+  },
+  "show_notification": true
+}

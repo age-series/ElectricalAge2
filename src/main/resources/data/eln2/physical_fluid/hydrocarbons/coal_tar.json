@@ -4,6 +4,6 @@
     "density": 1.18,
     "isGaseous": false,
     "mixabilityTags": [
-        "tar_miscible"
+        "coal_tar_miscible"
     ]
 }

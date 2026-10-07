@@ -1,7 +1,7 @@
 {
     "fluid": "eln2:crude_oil",
     "boiling": {
-        "temperature": 150.0,
+        "temperature": 423.15,
         "enthalpy": 120000.0,
         "resultGas": "eln2:naphtha_gas",
         "resultGasProportion": 400,

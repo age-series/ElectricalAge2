@@ -1,0 +1,6 @@
+{
+  "parent": "forge:item/bucket",
+  "cover_is_mask": false,
+  "fluid": "eln2:liquid_oxygen",
+  "loader": "forge:fluid_container"
+}

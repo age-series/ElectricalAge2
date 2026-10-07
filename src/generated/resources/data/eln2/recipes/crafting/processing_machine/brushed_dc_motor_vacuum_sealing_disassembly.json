@@ -1,0 +1,12 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "eln2:brushed_dc_motor_vacuum_sealing"
+    }
+  ],
+  "result": {
+    "item": "eln2:vacuum_sealing"
+  }
+}

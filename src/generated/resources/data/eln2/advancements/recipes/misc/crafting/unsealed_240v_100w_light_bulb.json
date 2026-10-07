@@ -1,0 +1,35 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_the_recipe": {
+      "conditions": {
+        "recipe": "eln2:crafting/unsealed_240v_100w_light_bulb"
+      },
+      "trigger": "minecraft:recipe_unlocked"
+    },
+    "has_tungsten_filament": {
+      "conditions": {
+        "items": [
+          {
+            "items": [
+              "eln2:tungsten_filament"
+            ]
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "requirements": [
+    [
+      "has_tungsten_filament",
+      "has_the_recipe"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "eln2:crafting/unsealed_240v_100w_light_bulb"
+    ]
+  },
+  "sends_telemetry_event": false
+}

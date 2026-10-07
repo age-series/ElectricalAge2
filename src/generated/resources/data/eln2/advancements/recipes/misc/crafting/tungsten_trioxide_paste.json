@@ -1,0 +1,35 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_the_recipe": {
+      "conditions": {
+        "recipe": "eln2:crafting/tungsten_trioxide_paste"
+      },
+      "trigger": "minecraft:recipe_unlocked"
+    },
+    "has_tungsten_trioxide_dust": {
+      "conditions": {
+        "items": [
+          {
+            "items": [
+              "eln2:tungsten_trioxide_dust"
+            ]
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "requirements": [
+    [
+      "has_tungsten_trioxide_dust",
+      "has_the_recipe"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "eln2:crafting/tungsten_trioxide_paste"
+    ]
+  },
+  "sends_telemetry_event": false
+}

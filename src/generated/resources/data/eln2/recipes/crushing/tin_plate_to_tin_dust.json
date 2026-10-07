@@ -2,7 +2,7 @@
   "type": "eln2:crushing",
   "duration": 18.0,
   "ingredient": {
-    "item": "eln2:tin_plate"
+    "tag": "forge:plates/tin"
   },
   "result": {
     "count": 1,

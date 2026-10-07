@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "R": {
+      "item": "minecraft:redstone"
+    },
+    "W": {
+      "item": "eln2:copper_wire"
+    }
+  },
+  "pattern": [
+    " W ",
+    " R "
+  ],
+  "result": {
+    "count": 8,
+    "item": "eln2:signal_grid_cable"
+  },
+  "show_notification": true
+}

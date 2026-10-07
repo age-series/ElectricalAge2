@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "C": {
+      "tag": "forge:plates/copper"
+    },
+    "D": {
+      "item": "eln2:condenser_distillation_module"
+    },
+    "P": {
+      "item": "eln2:fluid_pipe"
+    }
+  },
+  "pattern": [
+    "PPP",
+    "CDC",
+    "PPP"
+  ],
+  "result": {
+    "item": "eln2:condenser_unit"
+  },
+  "show_notification": true
+}

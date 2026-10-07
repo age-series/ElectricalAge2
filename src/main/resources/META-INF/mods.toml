@@ -39,3 +39,9 @@ description='''${mod_description}'''
     versionRange="[4.10,)"
     ordering="NONE"
     side="BOTH"
+[[dependencies.eln2]]
+    modId="flywheel"
+    mandatory=true
+    versionRange="[1.0,2.0)"
+    ordering="AFTER"
+    side="BOTH"

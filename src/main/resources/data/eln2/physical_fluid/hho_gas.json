@@ -1,0 +1,10 @@
+{
+    "forgeFluid": "eln2:hho_gas",
+    "specificHeatCapacity": 3000.0,
+    "density": 1.0,
+    "isGaseous": true,
+    "mixabilityTags": [
+        "hho_miscible"
+    ],
+    "gasExpansionFactor": 100.0
+}

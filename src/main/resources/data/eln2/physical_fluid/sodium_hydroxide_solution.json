@@ -1,0 +1,7 @@
+{
+    "forgeFluid": "eln2:sodium_hydroxide_solution",
+    "specificHeatCapacity": 4400.0,
+    "density": 1.2,
+    "isGaseous": false,
+    "mixabilityTags": ["water_miscible"]
+}

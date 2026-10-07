@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": {
+      "item": "eln2:bronze_plate"
+    },
+    "C": {
+      "item": "eln2:copper_wire"
+    }
+  },
+  "pattern": [
+    " C ",
+    " B ",
+    " C "
+  ],
+  "result": {
+    "item": "eln2:bronze_fuse_50a"
+  },
+  "show_notification": true
+}

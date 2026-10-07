@@ -1,0 +1,29 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "key": {
+    "C": {
+      "item": "eln2:primitive_circuit"
+    },
+    "D": {
+      "item": "minecraft:diamond"
+    },
+    "I": {
+      "item": "minecraft:iron_ingot"
+    },
+    "M": {
+      "item": "eln2:brushed_dc_motor"
+    },
+    "P": {
+      "item": "eln2:power_grid_copper_cable"
+    }
+  },
+  "pattern": [
+    "DII",
+    "MCP"
+  ],
+  "result": {
+    "item": "eln2:drill"
+  },
+  "show_notification": true
+}

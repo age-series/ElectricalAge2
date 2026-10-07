@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "C": {
+      "item": "eln2:copper_wire"
+    },
+    "W": {
+      "item": "eln2:copper_wire"
+    }
+  },
+  "pattern": [
+    " C ",
+    " W ",
+    " C "
+  ],
+  "result": {
+    "item": "eln2:copper_fuse_100a"
+  },
+  "show_notification": true
+}

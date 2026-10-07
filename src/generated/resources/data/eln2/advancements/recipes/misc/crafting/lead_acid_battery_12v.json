@@ -1,0 +1,35 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_battery_base": {
+      "conditions": {
+        "items": [
+          {
+            "items": [
+              "eln2:lead_acid_battery_base_12v"
+            ]
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    },
+    "has_the_recipe": {
+      "conditions": {
+        "recipe": "eln2:crafting/lead_acid_battery_12v"
+      },
+      "trigger": "minecraft:recipe_unlocked"
+    }
+  },
+  "requirements": [
+    [
+      "has_battery_base",
+      "has_the_recipe"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "eln2:crafting/lead_acid_battery_12v"
+    ]
+  },
+  "sends_telemetry_event": false
+}

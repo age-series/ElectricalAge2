@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "N": {
+      "item": "minecraft:iron_nugget"
+    },
+    "P": {
+      "tag": "minecraft:planks"
+    },
+    "R": {
+      "item": "eln2:copper_rod"
+    }
+  },
+  "pattern": [
+    " R ",
+    " N ",
+    " P "
+  ],
+  "result": {
+    "item": "eln2:ground_micro_grid"
+  },
+  "show_notification": true
+}

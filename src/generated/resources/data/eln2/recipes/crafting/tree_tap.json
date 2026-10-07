@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "P": {
+      "tag": "forge:plates/iron"
+    },
+    "S": {
+      "tag": "minecraft:wooden_slabs"
+    }
+  },
+  "pattern": [
+    "S S",
+    "SPS",
+    "SSS"
+  ],
+  "result": {
+    "item": "eln2:tree_tap"
+  },
+  "show_notification": true
+}

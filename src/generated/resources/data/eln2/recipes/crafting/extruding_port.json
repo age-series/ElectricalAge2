@@ -1,0 +1,22 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "G": {
+      "item": "eln2:iron_gear"
+    },
+    "S": {
+      "item": "eln2:iron_shaft"
+    }
+  },
+  "pattern": [
+    "GSG",
+    "GSG",
+    "   "
+  ],
+  "result": {
+    "count": 2,
+    "item": "eln2:extruding_port"
+  },
+  "show_notification": true
+}

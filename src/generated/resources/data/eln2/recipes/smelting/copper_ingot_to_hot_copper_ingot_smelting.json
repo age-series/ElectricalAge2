@@ -4,7 +4,7 @@
   "cookingtime": 200,
   "experience": 0.5,
   "ingredient": {
-    "item": "minecraft:copper_ingot"
+    "tag": "forge:ingots/copper"
   },
   "result": "eln2:hot_copper_ingot"
 }

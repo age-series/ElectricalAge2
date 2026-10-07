@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "C": {
+      "item": "eln2:micro_grid_copper_cable"
+    },
+    "R": {
+      "item": "eln2:copper_rod"
+    }
+  },
+  "pattern": [
+    " R ",
+    " C "
+  ],
+  "result": {
+    "count": 4,
+    "item": "eln2:micro_grid_interface"
+  },
+  "show_notification": true
+}

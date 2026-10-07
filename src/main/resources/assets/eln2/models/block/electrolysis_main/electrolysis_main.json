@@ -1,0 +1,142 @@
+{
+    "parent": "eln2:block/displays/big_block_3x",
+    "format_version": "1.9.0",
+	"credit": "Made with Blockbench",
+	"texture_size": [64, 64],
+	"textures": {
+		"0": "eln2:block/electrolysis_main/electrolysis_main",
+		"particle": "eln2:block/electrolysis_main/electrolysis_main"
+	},
+	"elements": [
+		{
+			"name": "body",
+			"from": [-12, 0, 2],
+			"to": [28, 14, 14],
+			"rotation": {"angle": 0, "axis": "y", "origin": [8, 7.875, 8]},
+			"faces": {
+				"north": {"uv": [0, 5.25, 10, 8.75], "texture": "#0"},
+				"east": {"uv": [7, 5.25, 10, 8.75], "texture": "#0"},
+				"south": {"uv": [0, 5.25, 10, 8.75], "texture": "#0"},
+				"west": {"uv": [0, 5.25, 3, 8.75], "texture": "#0"},
+				"up": {"uv": [0, 2.25, 10.25, 5.25], "rotation": 180, "texture": "#0"},
+				"down": {"uv": [0, 8.75, 10, 11.75], "rotation": 180, "texture": "#0"}
+			}
+		},
+		{
+			"name": "cable0",
+			"from": [28, 0, 7],
+			"to": [32, 1.5, 9],
+			"rotation": {"angle": 0, "axis": "y", "origin": [8, 7.875, 8]},
+			"faces": {
+				"north": {"uv": [0, 0, 0.75, 0.25], "rotation": 270, "texture": "#0"},
+				"east": {"uv": [0, 0.5, 1.75, 1.75], "texture": "#0"},
+				"south": {"uv": [0, 0, 0.75, 0.25], "rotation": 270, "texture": "#0"},
+				"up": {"uv": [0, 0.25, 1, 0.5], "rotation": 90, "texture": "#0"},
+				"down": {"uv": [0.75, 0, 1, 0.25], "rotation": 270, "texture": "#0"}
+			}
+		},
+		{
+			"name": "cable1",
+			"from": [-16, 0, 7],
+			"to": [-12, 1.5, 9],
+			"rotation": {"angle": 0, "axis": "y", "origin": [8, 7.875, 8]},
+			"faces": {
+				"north": {"uv": [0, 0, 0.75, 0.25], "rotation": 270, "texture": "#0"},
+				"south": {"uv": [0, 0, 0.75, 0.25], "rotation": 270, "texture": "#0"},
+				"west": {"uv": [0, 0.5, 1.75, 1.75], "texture": "#0"},
+				"up": {"uv": [0, 0.25, 1, 0.5], "rotation": 270, "texture": "#0"},
+				"down": {"uv": [0.75, 0, 1, 0.25], "rotation": 90, "texture": "#0"}
+			}
+		},
+		{
+			"name": "fluid_port_0",
+			"from": [21, 4, 0],
+			"to": [27, 10, 2],
+			"rotation": {"angle": 0, "axis": "y", "origin": [8, 7.875, 8]},
+			"faces": {
+				"north": {"uv": [1.75, 0, 4, 2.25], "texture": "#0"},
+				"east": {"uv": [4, 0, 10.25, 2.25], "rotation": 90, "texture": "#0"},
+				"west": {"uv": [4, 0, 10.25, 2.25], "rotation": 270, "texture": "#0"},
+				"up": {"uv": [4, 0, 10.25, 2.25], "texture": "#0"},
+				"down": {"uv": [4, 0, 10.25, 2.25], "rotation": 180, "texture": "#0"}
+			}
+		},
+		{
+			"name": "fluid_port_1",
+			"from": [-11, 4, 0],
+			"to": [-5, 10, 2],
+			"rotation": {"angle": 0, "axis": "y", "origin": [8, 7.875, 8]},
+			"faces": {
+				"north": {"uv": [1.75, 0, 4, 2.25], "texture": "#0"},
+				"east": {"uv": [4, 0, 10.25, 2.25], "rotation": 90, "texture": "#0"},
+				"west": {"uv": [4, 0, 10.25, 2.25], "rotation": 270, "texture": "#0"},
+				"up": {"uv": [4, 0, 10.25, 2.25], "texture": "#0"},
+				"down": {"uv": [4, 0, 10.25, 2.25], "rotation": 180, "texture": "#0"}
+			}
+		},
+		{
+			"name": "fluid_port_2",
+			"from": [-11, 4, 14],
+			"to": [-5, 10, 16],
+			"rotation": {"angle": 0, "axis": "y", "origin": [8, 7.875, 8]},
+			"faces": {
+				"east": {"uv": [4, 0, 10.25, 2.25], "rotation": 90, "texture": "#0"},
+				"south": {"uv": [1.75, 0, 4, 2.25], "texture": "#0"},
+				"west": {"uv": [4, 0, 10.25, 2.25], "rotation": 270, "texture": "#0"},
+				"up": {"uv": [4, 0, 10.25, 2.25], "texture": "#0"},
+				"down": {"uv": [4, 0, 10.25, 2.25], "rotation": 180, "texture": "#0"}
+			}
+		},
+		{
+			"name": "fluid_port_3",
+			"from": [21, 4, 14],
+			"to": [27, 10, 16],
+			"rotation": {"angle": 0, "axis": "y", "origin": [8, 7.875, 8]},
+			"faces": {
+				"east": {"uv": [4, 0, 10.25, 2.25], "rotation": 90, "texture": "#0"},
+				"south": {"uv": [1.75, 0, 4, 2.25], "texture": "#0"},
+				"west": {"uv": [4, 0, 10.25, 2.25], "rotation": 270, "texture": "#0"},
+				"up": {"uv": [4, 0, 10.25, 2.25], "texture": "#0"},
+				"down": {"uv": [4, 0, 10.25, 2.25], "rotation": 180, "texture": "#0"}
+			}
+		},
+		{
+			"name": "fluid_port_4",
+			"from": [21, 14, 5],
+			"to": [27, 16, 11],
+			"rotation": {"angle": 0, "axis": "x", "origin": [8, 7.875, 8]},
+			"faces": {
+				"north": {"uv": [4, 0, 10.25, 2.25], "texture": "#0"},
+				"east": {"uv": [4, 0, 10.25, 2.25], "texture": "#0"},
+				"south": {"uv": [4, 0, 10.25, 2.25], "texture": "#0"},
+				"west": {"uv": [4, 0, 10.25, 2.25], "texture": "#0"},
+				"up": {"uv": [1.75, 0, 4, 2.25], "texture": "#0"}
+			}
+		},
+		{
+			"name": "fluid_port_5",
+			"from": [-11, 14, 5],
+			"to": [-5, 16, 11],
+			"rotation": {"angle": 0, "axis": "x", "origin": [8, 7.875, 8]},
+			"faces": {
+				"north": {"uv": [4, 0, 10.25, 2.25], "texture": "#0"},
+				"east": {"uv": [4, 0, 10.25, 2.25], "texture": "#0"},
+				"south": {"uv": [4, 0, 10.25, 2.25], "texture": "#0"},
+				"west": {"uv": [4, 0, 10.25, 2.25], "texture": "#0"},
+				"up": {"uv": [1.75, 0, 4, 2.25], "texture": "#0"}
+			}
+		}
+	],
+	"groups": [
+		0,
+		1,
+		2,
+		{
+			"name": "fluid_ports",
+			"origin": [-11, 4, 14],
+			"scope": 0,
+			"color": 0,
+			"children": [3, 4, 5, 6, 7, 8]
+		}
+	]
+}

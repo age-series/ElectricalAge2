@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "E": {
+      "item": "eln2:extruding_port"
+    },
+    "P": {
+      "tag": "forge:plates/iron"
+    }
+  },
+  "pattern": [
+    "EPE"
+  ],
+  "result": {
+    "item": "eln2:extruding_assembly"
+  },
+  "show_notification": true
+}

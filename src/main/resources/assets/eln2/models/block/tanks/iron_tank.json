@@ -1,5 +1,6 @@
 {
-	"format_version": "1.9.0",
+    "parent": "eln2:block/displays/standard_block",
+    "format_version": "1.9.0",
 	"credit": "Made with Blockbench",
 	"texture_size": [64, 64],
 	"textures": {

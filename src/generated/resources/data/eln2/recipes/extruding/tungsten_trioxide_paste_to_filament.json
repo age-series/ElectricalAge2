@@ -1,0 +1,14 @@
+{
+  "type": "eln2:extruding",
+  "catalyst": {
+    "item": "eln2:extruder_wire_die"
+  },
+  "duration": 15.0,
+  "ingredient": {
+    "item": "eln2:tungsten_trioxide_paste"
+  },
+  "result": {
+    "count": 1,
+    "item": "eln2:filament_shaped_tungsten_trioxide_paste"
+  }
+}

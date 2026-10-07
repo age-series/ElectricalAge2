@@ -2,7 +2,7 @@
   "type": "eln2:crushing",
   "duration": 30.0,
   "ingredient": {
-    "item": "eln2:coke"
+    "tag": "eln2:coal_equivalent"
   },
   "result": {
     "count": 1,

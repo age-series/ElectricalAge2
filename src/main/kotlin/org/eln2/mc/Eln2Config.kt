@@ -1,10 +1,5 @@
 package org.eln2.mc
 
-import com.mojang.brigadier.Command
-import net.minecraft.client.Minecraft
-import net.minecraft.commands.Commands
-import net.minecraft.network.chat.Component
-import net.minecraftforge.client.event.RegisterClientCommandsEvent
 import net.minecraftforge.common.ForgeConfigSpec
 import net.minecraftforge.common.ForgeConfigSpec.Builder
 import net.minecraftforge.common.ForgeConfigSpec.ConfigValue
@@ -108,6 +103,15 @@ class ClientConfig(builder: Builder) {
         unitOverrides.set(lines)
         unitOverrides.save()
     }
+
+    inline fun <reified T> classifyWithOverride(quantity: Quantity<T>): String {
+        val scale = getScaleOverride(T::class.java)
+        return if (scale != null) {
+            classifyAuxiliary(scale, !quantity)
+        } else {
+            quantity.classify()
+        }
+    }
 }
 
 class ServerConfig(builder: Builder) {
@@ -134,7 +138,7 @@ object Eln2Config {
     val clientConfig: ClientConfig
     private val clientSpec: ForgeConfigSpec
     val serverConfig: ServerConfig
-    private val serverSpec: ForgeConfigSpec
+    val serverSpec: ForgeConfigSpec
 
     init {
         val clientPair = Builder().configure(::ClientConfig)
@@ -151,94 +155,4 @@ object Eln2Config {
         context.registerConfig(ModConfig.Type.SERVER, serverSpec)
     }
 
-    fun registerClientCommands(event: RegisterClientCommandsEvent) {
-        val eln2 = Commands.literal("eln2").then(
-            Commands.literal("units").then(
-                Commands.literal("set").also { pSet ->
-                    DIMENSION_TYPES.forward.entries.sortedBy { it.value }.forEach { (dimensionType, dimensionName) ->
-                        val auxiliaryUnits = AUXILIARY_CLASSIFIERS[dimensionType]
-                            ?: return@forEach
-
-                        if(auxiliaryUnits.keys.isNotEmpty()) {
-                            pSet.then(
-                                Commands.literal(dimensionName).also { pDimension ->
-                                    auxiliaryUnits.keys.forEach { scaleRef ->
-                                        auxiliaryUnits[scaleRef].forEach { identifier ->
-                                            pDimension.then(
-                                                Commands.literal("to").then(
-                                                    Commands.literal(identifier).executes {
-                                                        clientConfig.setScaleOverride(dimensionType, identifier)
-
-                                                        Minecraft.getInstance().player?.also { player ->
-                                                            player.displayClientMessage(Component.literal("$dimensionName -> ${classifyAuxiliary(scaleRef, 1.0)}"), false)
-                                                        }
-
-                                                        Command.SINGLE_SUCCESS
-                                                    }
-                                                )
-                                            )
-                                        }
-                                    }
-                                }
-                            )
-                        }
-                    }
-                }
-            ).then(
-                Commands.literal("reset").also { pReset ->
-                    DIMENSION_TYPES.forward.entries.sortedBy { it.value }.forEach { (dimensionType, dimensionName) ->
-                        val auxiliaryUnits = AUXILIARY_CLASSIFIERS[dimensionType]
-                            ?: return@forEach
-
-                        if(auxiliaryUnits.keys.isNotEmpty()) {
-                            pReset.then(Commands.literal(dimensionName).executes {
-                                clientConfig.resetScaleOverride(dimensionType)
-
-                                Minecraft.getInstance().player?.also { player ->
-                                    player.displayClientMessage(Component.literal("$dimensionName -> ${classify(dimensionType, 1.0 /*Factor*/)}"), false)
-                                }
-
-                                Command.SINGLE_SUCCESS
-                            })
-                        }
-                    }
-                }
-            ).then(
-                Commands.literal("preset").also { pPreset ->
-                    fun definePreset(name: String, buildPreset: (applicator: (Class<*>, String) -> Unit) -> Unit) {
-                        pPreset.then(Commands.literal(name).executes {
-                            fun applicator(dimensionType: Class<*>, alias: String) {
-                                if(alias.isEmpty()) {
-                                    clientConfig.resetScaleOverride(dimensionType)
-                                }
-                                else {
-                                    clientConfig.setScaleOverride(dimensionType, alias)
-                                }
-                            }
-
-                            buildPreset(::applicator)
-
-                            Minecraft.getInstance().player?.also { player ->
-                                player.displayClientMessage(Component.literal("*$name"), false)
-                            }
-
-                            Command.SINGLE_SUCCESS
-                        })
-                    }
-
-                    definePreset("SI") {
-                        it(Time::class.java, "")
-                        it(Distance::class.java, "")
-                        it(Mass::class.java, "")
-                        it(Energy::class.java, "")
-                        it(Temperature::class.java, "")
-                    }
-
-                    // Todo actually add these
-                }
-            )
-        )
-
-        event.dispatcher.register(eln2)
-    }
 }

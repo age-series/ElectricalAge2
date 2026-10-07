@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "G": {
+      "item": "minecraft:iron_trapdoor"
+    },
+    "P": {
+      "item": "eln2:fluid_pipe"
+    }
+  },
+  "pattern": [
+    "PG"
+  ],
+  "result": {
+    "item": "eln2:gas_release"
+  },
+  "show_notification": true
+}

@@ -1,8 +1,0 @@
-{
-    "variants": {
-        "facing=north": { "model": "eln2:block/blacksmithing_station/blacksmithing_station" },
-        "facing=south": { "model": "eln2:block/blacksmithing_station/blacksmithing_station", "y": 180 },
-        "facing=west":  { "model": "eln2:block/blacksmithing_station/blacksmithing_station", "y": 270 },
-        "facing=east":  { "model": "eln2:block/blacksmithing_station/blacksmithing_station", "y": 90 }
-    }
-}

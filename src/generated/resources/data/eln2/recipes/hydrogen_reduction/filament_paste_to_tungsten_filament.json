@@ -1,0 +1,24 @@
+{
+  "type": "eln2:hydrogen_reduction",
+  "energyCost": 10.0,
+  "hydrogenAmount": 5000,
+  "inputItems": [
+    {
+      "options": [
+        {
+          "ingredient": {
+            "item": "eln2:filament_shaped_tungsten_trioxide_paste"
+          },
+          "value": 1
+        }
+      ],
+      "requiredValue": 1
+    }
+  ],
+  "minimumTemperature": 750.0,
+  "optimalTemperature": 900.0000000000001,
+  "result": {
+    "count": 1,
+    "item": "eln2:tungsten_filament"
+  }
+}

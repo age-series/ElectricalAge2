@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "eln2:autoclave_shell"
+    },
+    {
+      "item": "eln2:autoclave_radiator"
+    },
+    {
+      "item": "eln2:autoclave_tray"
+    },
+    {
+      "item": "eln2:autoclave_door"
+    }
+  ],
+  "result": {
+    "item": "eln2:vulcanizing_autoclave"
+  }
+}

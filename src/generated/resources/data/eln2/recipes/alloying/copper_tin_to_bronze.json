@@ -1,0 +1,32 @@
+{
+  "type": "eln2:alloying",
+  "duration": 600,
+  "inputItems": [
+    {
+      "options": [
+        {
+          "ingredient": {
+            "tag": "forge:ingots/copper"
+          },
+          "value": 3
+        }
+      ],
+      "requiredValue": 3
+    },
+    {
+      "options": [
+        {
+          "ingredient": {
+            "tag": "forge:ingots/tin"
+          },
+          "value": 1
+        }
+      ],
+      "requiredValue": 1
+    }
+  ],
+  "result": {
+    "count": 4,
+    "item": "eln2:bronze_ingot"
+  }
+}

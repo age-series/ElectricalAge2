@@ -251,6 +251,26 @@ fun AABB.transformed(quaternion: Quaternionfc): AABB {
     return AABB(min.toVec3(), max.toVec3())
 }
 
+/**
+ * Rotates an [AABB] around [pivot] by [rotation], returning the new axis-aligned bounding box.
+ * */
+fun AABB.rotatedAround(pivot: Vector3f, rotation: Quaternionf): AABB {
+    var min = Vector3f(Float.MAX_VALUE, Float.MAX_VALUE, Float.MAX_VALUE)
+    var max = Vector3f(Float.MIN_VALUE, Float.MIN_VALUE, Float.MIN_VALUE)
+
+    this.corners().forEach { corner ->
+        val point = corner.toJoml()
+        point.sub(pivot)
+        rotation.transform(point)
+        point.add(pivot)
+
+        min = componentMin(min, point)
+        max = componentMax(max, point)
+    }
+
+    return AABB(min.toVec3(), max.toVec3())
+}
+
 fun AABB.size3d() = Vector3d(this.maxX - this.minX, this.maxY - this.minY, this.maxZ - this.minZ)
 fun BlockState.facing(): Direction = this.getValue(HorizontalDirectionalBlock.FACING)
 operator fun BlockPos.plus(displacement: Vec3i): BlockPos {
@@ -392,6 +412,28 @@ fun ServerLevel.addItem(x: Double, y: Double, z: Double, stack: ItemStack) {
 }
 
 fun ServerLevel.addItem(pos: BlockPos, stack: ItemStack) = addItem(pos.x.toDouble(), pos.y.toDouble(), pos.z.toDouble(), stack)
+
+/**
+ * Adds an item to the player's inventory, falling back to dropping it in the world if not possible.
+ * */
+@ServerOnly
+fun ServerPlayer.addItem(x: Double, y: Double, z: Double, stack: ItemStack) {
+    requireIsOnServerThread {
+        "Cannot call org.eln2.mc.extensions.MinecraftExtensionsKt.addItem(net.minecraft.server.level.ServerPlayer, double, double, double, net.minecraft.world.item.ItemStack) on non-server thread"
+    }
+
+    if(!this.addItem(stack)) {
+        (this.level() as ServerLevel).addItem(x, y, z, stack)
+    }
+}
+
+/**
+ * Adds an item to the player's inventory, falling back to dropping it in the world if not possible.
+ * */
+@ServerOnly
+fun ServerPlayer.addItem(fallbackPosition: Vector3d, stack: ItemStack) {
+    this.addItem(fallbackPosition.x, fallbackPosition.y, fallbackPosition.z, stack)
+}
 
 @ServerOnly
 fun ServerLevel.destroyPart(part: Part, dropPart: Boolean) {

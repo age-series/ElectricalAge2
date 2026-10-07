@@ -14,7 +14,7 @@ import kotlin.math.min
  * Represents one valid ingredient for a recipe.
  * The [value] is used to set how many of this specific item are required to substitute into the recipe.
  * */
-data class Eln2WeightedItemIngredient(val ingredient: Ingredient, val value: Int) {
+data class Eln2WeightedItemIngredient(val ingredient: Ingredient, val value: Int = 1) {
     fun toNetwork(buf: FriendlyByteBuf) {
         ingredient.toNetwork(buf)
         buf.writeInt(value)

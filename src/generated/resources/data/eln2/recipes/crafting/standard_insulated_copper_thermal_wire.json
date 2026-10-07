@@ -1,0 +1,22 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "A": {
+      "item": "eln2:asbestos_fiber"
+    },
+    "P": {
+      "item": "eln2:copper_plate"
+    }
+  },
+  "pattern": [
+    "APA",
+    "APA",
+    "APA"
+  ],
+  "result": {
+    "count": 4,
+    "item": "eln2:standard_insulated_copper_thermal_wire"
+  },
+  "show_notification": true
+}

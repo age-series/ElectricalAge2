@@ -1,0 +1,35 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_extruder_rod_die": {
+      "conditions": {
+        "items": [
+          {
+            "items": [
+              "eln2:extruder_rod_die"
+            ]
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    },
+    "has_the_recipe": {
+      "conditions": {
+        "recipe": "eln2:crafting/extruder_shaft_die"
+      },
+      "trigger": "minecraft:recipe_unlocked"
+    }
+  },
+  "requirements": [
+    [
+      "has_extruder_rod_die",
+      "has_the_recipe"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "eln2:crafting/extruder_shaft_die"
+    ]
+  },
+  "sends_telemetry_event": false
+}

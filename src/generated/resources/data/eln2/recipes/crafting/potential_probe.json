@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": {
+      "item": "eln2:probe_body"
+    },
+    "R": {
+      "item": "eln2:resistor"
+    },
+    "W": {
+      "item": "eln2:standard_insulated_copper_electrical_wire"
+    }
+  },
+  "pattern": [
+    " B ",
+    " R ",
+    " W "
+  ],
+  "result": {
+    "item": "eln2:potential_probe"
+  },
+  "show_notification": true
+}

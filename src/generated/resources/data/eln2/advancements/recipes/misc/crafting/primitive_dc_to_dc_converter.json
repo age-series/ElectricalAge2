@@ -1,0 +1,35 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_primitive_circuit": {
+      "conditions": {
+        "items": [
+          {
+            "items": [
+              "eln2:primitive_circuit"
+            ]
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    },
+    "has_the_recipe": {
+      "conditions": {
+        "recipe": "eln2:crafting/primitive_dc_to_dc_converter"
+      },
+      "trigger": "minecraft:recipe_unlocked"
+    }
+  },
+  "requirements": [
+    [
+      "has_primitive_circuit",
+      "has_the_recipe"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "eln2:crafting/primitive_dc_to_dc_converter"
+    ]
+  },
+  "sends_telemetry_event": false
+}

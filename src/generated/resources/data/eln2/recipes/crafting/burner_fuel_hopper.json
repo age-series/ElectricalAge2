@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "G": {
+      "item": "eln2:iron_gear"
+    },
+    "P": {
+      "tag": "forge:plates/iron"
+    }
+  },
+  "pattern": [
+    "P P",
+    "PGP",
+    " P "
+  ],
+  "result": {
+    "item": "eln2:burner_fuel_hopper"
+  },
+  "show_notification": true
+}

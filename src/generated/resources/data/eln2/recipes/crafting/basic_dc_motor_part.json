@@ -1,0 +1,26 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "G": {
+      "tag": "forge:glue"
+    },
+    "M": {
+      "item": "eln2:machine_frame"
+    },
+    "R": {
+      "item": "eln2:brushed_dc_motor"
+    },
+    "W": {
+      "item": "eln2:standard_insulated_copper_electrical_wire"
+    }
+  },
+  "pattern": [
+    "MRW",
+    "G  "
+  ],
+  "result": {
+    "item": "eln2:basic_dc_motor"
+  },
+  "show_notification": true
+}

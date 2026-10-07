@@ -1,0 +1,35 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_pipe_heat_exchange_assembly": {
+      "conditions": {
+        "items": [
+          {
+            "items": [
+              "eln2:pipe_heat_exchange_assembly"
+            ]
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    },
+    "has_the_recipe": {
+      "conditions": {
+        "recipe": "eln2:crafting/condenser_distillation_module"
+      },
+      "trigger": "minecraft:recipe_unlocked"
+    }
+  },
+  "requirements": [
+    [
+      "has_pipe_heat_exchange_assembly",
+      "has_the_recipe"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "eln2:crafting/condenser_distillation_module"
+    ]
+  },
+  "sends_telemetry_event": false
+}

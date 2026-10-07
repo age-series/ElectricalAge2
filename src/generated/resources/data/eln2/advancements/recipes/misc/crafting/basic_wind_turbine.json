@@ -1,0 +1,35 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_the_recipe": {
+      "conditions": {
+        "recipe": "eln2:crafting/basic_wind_turbine"
+      },
+      "trigger": "minecraft:recipe_unlocked"
+    },
+    "has_wind_turbine_core": {
+      "conditions": {
+        "items": [
+          {
+            "items": [
+              "eln2:wind_turbine_core"
+            ]
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "requirements": [
+    [
+      "has_wind_turbine_core",
+      "has_the_recipe"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "eln2:crafting/basic_wind_turbine"
+    ]
+  },
+  "sends_telemetry_event": false
+}

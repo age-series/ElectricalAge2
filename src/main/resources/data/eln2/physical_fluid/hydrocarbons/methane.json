@@ -3,5 +3,8 @@
     "specificHeatCapacity": 924.0,
     "density": 0.42,
     "isGaseous": true,
-    "mixabilityTags": ["lng_miscible"]
+    "mixabilityTags": [
+        "lng_miscible"
+    ],
+    "gasExpansionFactor": 100.0
 }

@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "H": {
+      "item": "eln2:pipe_heat_exchange_assembly"
+    },
+    "P": {
+      "tag": "forge:plates/iron"
+    },
+    "T": {
+      "item": "eln2:iron_tank"
+    }
+  },
+  "pattern": [
+    " P ",
+    "THT",
+    " P "
+  ],
+  "result": {
+    "item": "eln2:steam_injector"
+  },
+  "show_notification": true
+}

@@ -1,0 +1,35 @@
+{
+  "type": "eln2:electrolysis",
+  "anodeElectrode": {
+    "item": "eln2:graphite_electrode"
+  },
+  "anodeInputFluid": {
+    "amount": 1,
+    "fluid": "eln2:sodium_tungstate_solution"
+  },
+  "anodeOutputItem": {
+    "count": 1,
+    "item": "eln2:tungstic_acid"
+  },
+  "cathodeElectrode": {
+    "item": "eln2:graphite_electrode"
+  },
+  "cathodeInputFluid": {
+    "amount": 1,
+    "fluid": "minecraft:water"
+  },
+  "cathodeOutputFluid": {
+    "amount": 1,
+    "fluid": "eln2:sodium_hydroxide_solution"
+  },
+  "cathodeOutputGas": {
+    "amount": 200,
+    "fluid": "eln2:hydrogen"
+  },
+  "energyCost": 12000.0,
+  "resistance": 0.4,
+  "separated": true,
+  "separator": {
+    "item": "eln2:asbestos_separator"
+  }
+}

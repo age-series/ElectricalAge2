@@ -37,6 +37,7 @@ import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.BlockHitResult
 import net.minecraft.world.phys.shapes.CollisionContext
 import net.minecraft.world.phys.shapes.VoxelShape
+import net.minecraftforge.client.extensions.common.IClientBlockExtensions
 import net.minecraftforge.common.capabilities.Capability
 import net.minecraftforge.common.capabilities.ForgeCapabilities
 import net.minecraftforge.common.util.LazyOptional
@@ -61,6 +62,7 @@ import org.eln2.mc.client.render.FlwModels
 import org.eln2.mc.client.render.foundation.PartialModelHelper
 import org.eln2.mc.common.blocks.BlockRegistry
 import org.eln2.mc.common.blocks.foundation.CellBlockEntity
+import org.eln2.mc.common.blocks.foundation.ReplaceVanillaParticlesBlockExtension
 import org.eln2.mc.common.blocks.foundation.UprightHorizontalDirectionCellBlock
 import org.eln2.mc.common.cells.CellRegistry
 import org.eln2.mc.common.cells.foundation.*
@@ -628,6 +630,10 @@ abstract class ProcessingMachineBlock<C : ProcessingCell, BE : ProcessingMachine
 
     @Deprecated("Deprecated in Java", ReplaceWith("true"))
     override fun skipRendering(pState: BlockState, pAdjacentBlockState: BlockState, pDirection: Direction) = true
+
+    override fun initializeClient(consumer: Consumer<IClientBlockExtensions?>) {
+        consumer.accept(ReplaceVanillaParticlesBlockExtension)
+    }
 
     override fun <T : BlockEntity?> getTicker(pLevel: Level, pState: BlockState, pBlockEntityType: BlockEntityType<T?>): BlockEntityTicker<T> {
         return BlockEntityTicker { pLevel: Level?, _: BlockPos?, _: BlockState?, pBlockEntity: BlockEntity? ->

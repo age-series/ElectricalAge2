@@ -1616,7 +1616,11 @@ class LightBulbItem(
 
         val life = getLife(pStack)
 
-        pTooltipComponents.add(Component.literal("Life: ${life.formattedPercentNormalized()}"))
+        pTooltipComponents.add(
+            Component.translatable("tooltip.eln2.light_bulb.life")
+                .append(": ")
+                .append(Component.literal(life.formattedPercentNormalized()))
+        )
     }
 }
 

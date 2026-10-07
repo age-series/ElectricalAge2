@@ -1,10 +1,11 @@
 {
     "forgeFluid": "eln2:naphtha_gas",
     "specificHeatCapacity": 1260.0,
-    "density": 0.70,
+    "density": 0.7,
     "isGaseous": true,
     "mixabilityTags": [
-        "oil_miscible",
+        "naphtha_gas_miscible",
         "solvent_miscible"
-    ]
+    ],
+    "gasExpansionFactor": 100.0
 }

@@ -4,7 +4,7 @@
   "cookingtime": 200,
   "experience": 0.5,
   "ingredient": {
-    "item": "eln2:copper_plate"
+    "tag": "forge:plates/copper"
   },
   "result": "eln2:hot_copper_plate"
 }

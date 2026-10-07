@@ -1,0 +1,29 @@
+{
+    "variants": {
+        "facing=down": {
+            "model": "eln2:block/gas_release/gas_release"
+        },
+        "facing=up": {
+            "model": "eln2:block/gas_release/gas_release",
+            "x": 180
+        },
+        "facing=north": {
+            "model": "eln2:block/gas_release/gas_release",
+            "x": 270
+        },
+        "facing=south": {
+            "model": "eln2:block/gas_release/gas_release",
+            "x": 90
+        },
+        "facing=west": {
+            "model": "eln2:block/gas_release/gas_release",
+            "x": 270,
+            "y": 270
+        },
+        "facing=east": {
+            "model": "eln2:block/gas_release/gas_release",
+            "x": 270,
+            "y": 90
+        }
+    }
+}

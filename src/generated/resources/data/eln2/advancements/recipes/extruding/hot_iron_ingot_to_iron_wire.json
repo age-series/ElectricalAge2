@@ -1,0 +1,35 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_item_for_wire_extrusion": {
+      "conditions": {
+        "items": [
+          {
+            "items": [
+              "eln2:hot_iron_ingot"
+            ]
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    },
+    "has_the_recipe": {
+      "conditions": {
+        "recipe": "eln2:extruding/hot_iron_ingot_to_iron_wire"
+      },
+      "trigger": "minecraft:recipe_unlocked"
+    }
+  },
+  "requirements": [
+    [
+      "has_item_for_wire_extrusion",
+      "has_the_recipe"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "eln2:extruding/hot_iron_ingot_to_iron_wire"
+    ]
+  },
+  "sends_telemetry_event": true
+}

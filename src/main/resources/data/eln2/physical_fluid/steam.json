@@ -3,5 +3,8 @@
     "specificHeatCapacity": 2000.0,
     "density": 1.0,
     "isGaseous": true,
-    "mixabilityTags": ["water_miscible"]
+    "mixabilityTags": [
+        "water_miscible"
+    ],
+    "gasExpansionFactor": 100.0
 }

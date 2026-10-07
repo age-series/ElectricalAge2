@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "G": {
+      "item": "eln2:iron_gear"
+    },
+    "P": {
+      "tag": "forge:plates/iron"
+    },
+    "S": {
+      "item": "eln2:iron_shaft"
+    }
+  },
+  "pattern": [
+    "P P",
+    "S G",
+    "   "
+  ],
+  "result": {
+    "item": "eln2:primitive_kinetic_work_box"
+  },
+  "show_notification": true
+}

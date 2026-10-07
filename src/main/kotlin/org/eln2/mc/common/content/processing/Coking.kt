@@ -198,7 +198,7 @@ class CokingRecipe(
 class CokeOvenDelegateBlock(initialShapes: List<AABB>, val capabilityMaskLocal: Base6Direction3dMask) : MultiblockDelegateBlockWithCustomCollider(initialShapes = initialShapes) {
     override fun newBlockEntity(pPos: BlockPos, pState: BlockState) = CokeOvenDelegateBlockEntity(pPos, pState)
 
-    @Suppress("OVERRIDE_DEPRECATION")
+    @Suppress("OVERRIDE_DEPRECATION", "DEPRECATION")
     override fun use(
         pState: BlockState,
         pLevel: Level,
@@ -212,7 +212,7 @@ class CokeOvenDelegateBlock(initialShapes: List<AABB>, val capabilityMaskLocal: 
 }
 
 class CokeOvenDelegateBlockEntity(pPos: BlockPos, pBlockState: BlockState) : MultiblockDelegateBlockEntity(pPos, pBlockState, Eln2Processing.COKE_OVEN_DELEGATE_BLOCK_ENTITY.get()) {
-    override fun <T : Any?> getCapability(cap: Capability<T>, side: Direction?): LazyOptional<T> {
+    override fun <T> getCapability(cap: Capability<T>, side: Direction?): LazyOptional<T> {
         if(side != null) {
             val sideLocal = MultiblockTransformations.rot(blockState.getValue(HorizontalDirectionalBlock.FACING))
                 .rotate(side)
@@ -306,7 +306,7 @@ class CokeOvenMainBlock : HorizontalDirectionalBlock(eln2StandardBlockProperties
         return BlockEntityTicker(CokeOvenMainBlockEntity::tickServer)
     }
 
-    @Suppress("OVERRIDE_DEPRECATION")
+    @Suppress("OVERRIDE_DEPRECATION", "DEPRECATION")
     override fun onRemove(
         pState: BlockState,
         pLevel: Level,
@@ -397,6 +397,7 @@ class CokeOvenMainBlockEntity(pPos: BlockPos, pState: BlockState) :
     ComponentDisplay
 {
     companion object {
+        @Suppress("unused")
         @ServerOnly
         fun tickServer(pLevel: Level?, pPos: BlockPos?, pState: BlockState?, pBlockEntity: BlockEntity?) {
             if(pBlockEntity !is CokeOvenMainBlockEntity) {
@@ -522,7 +523,7 @@ class CokeOvenMainBlockEntity(pPos: BlockPos, pState: BlockState) :
 
     val tank = EscapingMultipleFractionalFluidTank(
         20,
-        5.0,
+        100.0,
         false
     )
 
@@ -561,7 +562,7 @@ class CokeOvenMainBlockEntity(pPos: BlockPos, pState: BlockState) :
     val fluidHandler = ThermalHandler(PurityBasedMultipleFractionalFluidTank(tank.extractionEnd), this)
     val fluidHandlerLazy: LazyOptional<ThermalHandler> = LazyOptional.of { fluidHandler }
 
-    override fun <T : Any?> getCapability(cap: Capability<T>, side: Direction?): LazyOptional<T> {
+    override fun <T> getCapability(cap: Capability<T>, side: Direction?): LazyOptional<T> {
         if (cap == ForgeCapabilities.ITEM_HANDLER) {
             return inventoryHandlerLazy.cast()
         }
@@ -681,7 +682,7 @@ class CokeOvenMainBlockEntity(pPos: BlockPos, pState: BlockState) :
                 map(
                     noise,
                     -1.0, 1.0,
-                    270.0, 350.0
+                    100.0, 150.0
                 ),
                 CELSIUS
             )

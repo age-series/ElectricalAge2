@@ -1,3 +1,6 @@
 {
-    "parent": "eln2:block/resistor"
+    "parent": "minecraft:item/generated",
+    "textures": {
+        "layer0": "eln2:item/resistor"
+    }
 }

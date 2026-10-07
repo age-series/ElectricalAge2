@@ -1,0 +1,10 @@
+{
+    "forgeFluid": "eln2:oxygen",
+    "specificHeatCapacity": 1050.0,
+    "density": 1.14,
+    "isGaseous": true,
+    "mixabilityTags": [
+        "oxygen_miscible"
+    ],
+    "gasExpansionFactor": 100.0
+}

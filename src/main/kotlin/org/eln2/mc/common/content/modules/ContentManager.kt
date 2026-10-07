@@ -217,15 +217,18 @@ object ContentManager {
         Eln2BasicComponents.initialize()
         Eln2Batteries.initialize()
         Eln2Solar.initialize()
+        Eln2InventoryPower.initialize()
         Eln2Lights.initialize()
         Eln2HeatGenerators.initialize()
         Eln2Thermal.initialize()
         Eln2PowerDevices.initialize()
         Eln2Processing.initialize()
+        Eln2SteamTurbine.initialize()
         Eln2Signal.initialize()
         Eln2Grid.initialize()
         Eln2ForgeFluids.initialize()
         Eln2Ores.initialize()
+        Eln2HeatingElements.initialize()
 
         LOG.info("Content init completed.")
     }
@@ -346,6 +349,51 @@ object ContentManager {
         }
 
         return this
+    }
+
+    /**
+     * Used by [org.eln2.mc.Eln2ItemTagsDatagen].
+     * */
+    val ITEM_TAGS_FOR_DATAGEN = LinkedHashSet<Pair<Supplier<Item>, TagKey<Item>>>()
+
+    /**
+     * Reverse lookup: supplier -> tag, populated by [withItemTagDatagen].
+     * Used by [tagForItem] during recipe datagen to prefer convention tags over concrete items.
+     * */
+    val ITEM_TO_TAG_LOOKUP = HashMap<Supplier<Item>, TagKey<Item>>()
+
+    /**
+     * Returns the convention [TagKey] for [item], or `null` if none exists.
+     * Searches the lookup populated by [withItemTagDatagen] at registration time.
+     * */
+    fun tagForItem(item: Item): TagKey<Item>? {
+        return ITEM_TO_TAG_LOOKUP.entries.firstOrNull { (supplier, _) ->
+            supplier.get() === item
+        }?.value
+    }
+
+    fun<T : Supplier<Item>> T.withItemTagDatagen(tag: TagKey<Item>) : T {
+        initScope.validate()
+
+        ITEM_TAGS_FOR_DATAGEN.addUnique(Pair(this, tag)) {
+            DEBUGGER_BREAK("Duplicate item tag for $this")
+        }
+
+        ITEM_TO_TAG_LOOKUP[this] = tag
+
+        return this
+    }
+
+    /**
+     * Registers a vanilla item's convention tag in [ITEM_TO_TAG_LOOKUP] without generating tag datagen output.
+     * This lets recipe generation prefer the tag over the concrete item for vanilla items.
+     * Must be called during init.
+     * */
+    fun registerVanillaItemTag(item: Item, tag: TagKey<Item>) {
+        initScope.validate()
+        val supplier = Supplier { item }
+        ITEM_TO_TAG_LOOKUP[supplier] = tag
+        ITEM_TAGS_FOR_DATAGEN.add(Pair(supplier, tag))
     }
 
     /**

@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": {
+      "tag": "forge:plates/bronze"
+    },
+    "S": {
+      "item": "eln2:iron_shaft"
+    }
+  },
+  "pattern": [
+    " B ",
+    "BSB",
+    " B "
+  ],
+  "result": {
+    "item": "eln2:turbine_rotor"
+  },
+  "show_notification": true
+}

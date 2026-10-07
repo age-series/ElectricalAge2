@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "A": {
+      "item": "eln2:extruding_assembly"
+    },
+    "B": {
+      "tag": "forge:glue"
+    },
+    "M": {
+      "item": "eln2:machine_frame"
+    }
+  },
+  "pattern": [
+    "MAB",
+    "   ",
+    "   "
+  ],
+  "result": {
+    "item": "eln2:extruder"
+  },
+  "show_notification": true
+}

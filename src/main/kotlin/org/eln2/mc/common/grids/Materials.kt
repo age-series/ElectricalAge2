@@ -137,11 +137,12 @@ object GridMaterials {
     private val materials = MutableMapPairBiMap<GridMaterial, ResourceLocation>()
     private val items = MutableMapPairBiMap<GridMaterial, RegistryObject<GridCableItem>>()
 
-    fun gridAtlasSprite(name: String) = Supplier {
+    @Suppress("UNCHECKED_CAST")
+    fun gridAtlasSprite(name: String) = Supplier<Any> {
         checkNotNull(atlas.apply(resource("grid/$name"))) {
             "Did not find $name"
         }
-    }
+    } as Supplier<TextureAtlasSprite>
 
     fun gridMaterial(id: ResourceLocation, material: GridMaterial) = material.also { materials.add(it, id) }
     fun gridMaterial(id: String, material: GridMaterial) = gridMaterial(resource(id), material)

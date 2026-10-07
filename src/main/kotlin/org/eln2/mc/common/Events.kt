@@ -1,69 +1,77 @@
+@file:Suppress("unused")
+
 package org.eln2.mc.common
 
 import it.unimi.dsi.fastutil.ints.Int2IntMap
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap
+import net.minecraft.ChatFormatting
 import net.minecraft.core.BlockPos
 import net.minecraft.data.loot.LootTableProvider
+import net.minecraft.network.chat.Component
 import net.minecraft.server.level.ServerLevel
+import net.minecraft.server.level.ServerPlayer
 import net.minecraft.world.item.BucketItem
 import net.minecraft.world.item.Item
+import net.minecraft.world.item.Items
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets
 import net.minecraftforge.client.event.EntityRenderersEvent
+import net.minecraftforge.event.entity.player.ItemTooltipEvent
 import net.minecraftforge.client.event.RegisterColorHandlersEvent
 import net.minecraftforge.client.extensions.common.IClientFluidTypeExtensions
 import net.minecraftforge.data.event.GatherDataEvent
 import net.minecraftforge.event.AddReloadListenerEvent
 import net.minecraftforge.event.TickEvent
+import net.minecraftforge.event.entity.player.PlayerEvent
+import net.minecraftforge.event.entity.player.PlayerInteractEvent
 import net.minecraftforge.event.level.BlockEvent
 import net.minecraftforge.event.level.ChunkWatchEvent
 import net.minecraftforge.event.level.LevelEvent
+import net.minecraftforge.event.furnace.FurnaceFuelBurnTimeEvent
 import net.minecraftforge.event.server.ServerStartingEvent
 import net.minecraftforge.event.server.ServerStoppingEvent
+import net.minecraftforge.eventbus.api.EventPriority
 import net.minecraftforge.eventbus.api.SubscribeEvent
 import net.minecraftforge.fml.common.Mod
 import net.minecraftforge.fml.event.lifecycle.FMLLoadCompleteEvent
+import net.minecraftforge.registries.ForgeRegistries
 import net.minecraftforge.server.ServerLifecycleHooks
 import org.ageseries.libage.data.Quantity
 import org.ageseries.libage.data.SECOND
 import org.ageseries.libage.data.classify
 import org.ageseries.libage.utils.Stopwatch
 import org.ageseries.libage.utils.putUnique
-import org.eln2.mc.ELN2_LOG_STATS
-import org.eln2.mc.Eln2BlockOreDropLootDatagen
-import org.eln2.mc.LOG
+import org.eln2.mc.*
 import org.eln2.mc.client.render.DebugVisualizer
+import org.eln2.mc.client.dynamicLight.DynamicLightManager
 import org.eln2.mc.client.render.foundation.MyColor
+import org.eln2.mc.common.ModEvents.registerItemColors
 import org.eln2.mc.common.blocks.BlockRegistry
 import org.eln2.mc.common.blocks.foundation.MultipartBlockEntityLevelRendererProvider
 import org.eln2.mc.common.cells.foundation.CellGraphManager
 import org.eln2.mc.common.cells.foundation.ServerPhase
 import org.eln2.mc.common.cells.foundation.SimulationExecutionSubgraph
-import org.eln2.mc.common.fluids.foundation.FluidTransformationManager
-import org.eln2.mc.common.fluids.foundation.PhysicalFluidManager
-import org.eln2.mc.common.content.ScrewdriverItem
-import org.eln2.mc.common.content.WindSystem
+import org.eln2.mc.common.content.*
+import org.eln2.mc.common.content.fluid.BucketFluidInteraction
 import org.eln2.mc.common.content.fluid.FluidPipeNetworkManager
 import org.eln2.mc.common.content.modules.ContentManager
+import org.eln2.mc.common.content.modules.Eln2Ingredients
+import org.eln2.mc.common.content.modules.Eln2ForgeFluids
+import org.eln2.mc.common.content.processing.LeadChamberExecutionManager
 import org.eln2.mc.common.content.processing.TreeExtractionManager
 import org.eln2.mc.common.events.Scheduler
 import org.eln2.mc.common.events.schedulePost
+import org.eln2.mc.common.fluids.foundation.FluidTransformationManager
 import org.eln2.mc.common.fluids.ForgeFluidRegistry
+import org.eln2.mc.common.fluids.foundation.PhysicalFluidManager
+import org.eln2.mc.common.fluids.foundation.appendThermalFluidTooltip
 import org.eln2.mc.common.grids.GridCollisions
 import org.eln2.mc.common.grids.GridConnectionManagerClient
 import org.eln2.mc.common.grids.GridConnectionManagerServer
 import org.eln2.mc.common.network.serverToClient.BulkMessages
+import org.eln2.mc.common.network.Networking
 import org.eln2.mc.common.parts.PartRegistry
 import org.eln2.mc.common.specs.foundation.SpecPlacementOverlayServer
-import org.eln2.mc.AveragingList
-import org.eln2.mc.DEBUGGER_BREAK
-import org.eln2.mc.ELN2_DEBUG
-import org.eln2.mc.Eln2BlockTagsDatagen
-import org.eln2.mc.Eln2BlockSelfDropLootDatagen
-import org.eln2.mc.Eln2ItemModelProviderDatagen
-import org.eln2.mc.Eln2BlockStateProviderDatagen
-import org.eln2.mc.Eln2RecipeProviderDatagen
-import org.eln2.mc.common.content.modules.Eln2ForgeFluids
 import org.eln2.mc.extensions.formatted
 import java.util.function.Supplier
 
@@ -124,7 +132,7 @@ object ModEvents {
              * - `0` is the bucket
              * - `1` is the fluid
              * */
-            event.register({ stack, tintIndex ->
+            event.register({ _, tintIndex ->
                 if (tintIndex == 1) {
                     return@register IClientFluidTypeExtensions.of(item.fluid).tintColor
                 }
@@ -217,6 +225,11 @@ object ModEvents {
         )
 
         generator.addProvider(
+            event.includeServer(),
+            Eln2ItemTagsDatagen(output, lookupProvider, existingFileHelper)
+        )
+
+        generator.addProvider(
             event.includeClient(),
             Eln2BlockStateProviderDatagen(output, existingFileHelper)
         )
@@ -257,6 +270,37 @@ object ForgeEvents {
         event.addListener(PhysicalFluidManager)
         event.addListener(FluidTransformationManager)
         event.addListener(TreeExtractionManager)
+    }
+
+    @SubscribeEvent @JvmStatic
+    fun onFurnaceFuelBurnTime(event: FurnaceFuelBurnTimeEvent) {
+        when (event.itemStack.item) {
+            Eln2Ingredients.COKE.get() -> event.burnTime = 3200
+            Eln2Ingredients.COKE_DUST.get() -> event.burnTime = 3200
+        }
+    }
+
+    @SubscribeEvent @JvmStatic
+    fun onItemTooltip(event: ItemTooltipEvent) {
+        val item = event.itemStack.item
+
+        if (item is BucketItem) {
+            appendThermalFluidTooltip(item.fluid, event.toolTip)
+
+            if (ForgeRegistries.ITEMS.getKey(item)?.namespace == MODID) {
+                event.toolTip.add(Component.translatable("tooltip.eln2.fluid_container.deposit").withStyle(ChatFormatting.GRAY))
+        }
+    }
+
+        if (item == Items.BUCKET || item == Items.GLASS_BOTTLE) {
+            event.toolTip.add(Component.translatable("tooltip.eln2.fluid_container.load").withStyle(ChatFormatting.GRAY))
+        }
+    }
+
+    @SubscribeEvent(priority = EventPriority.LOWEST)
+    @JvmStatic
+    fun onBucketRightClickBlock(event: PlayerInteractEvent.RightClickBlock) {
+        BucketFluidInteraction.onRightClickBlock(event)
     }
 
     @SubscribeEvent @JvmStatic
@@ -330,6 +374,8 @@ object ForgeEvents {
         if(event.phase == TickEvent.Phase.START) {
             Scheduler.onServerTick(event)
 
+            LeadChamberExecutionManager.dispatch()
+
             // Schedule the simulations after those subscribers ran, so they don't get a torn frame:
             dispatchServerSubscribers(ServerPhase.Start)
             dispatchServerSubscribers(ServerPhase.AfterStart1)
@@ -384,6 +430,8 @@ object ForgeEvents {
         SpecPlacementOverlayServer.clear()
 
         FluidPipeNetworkManager.clear()
+        DrillItem.clearAll()
+        FlashlightItem.clearAll()
     }
 
     private fun scheduleWorldTrackingEventServer(event: BlockEvent, handler: (ServerLevel, BlockPos) -> Unit) {
@@ -420,6 +468,98 @@ object ForgeEvents {
             GhostLightHackClient.clear()
             GridConnectionManagerClient.clear()
             DebugVisualizer.clear()
+            DrillPowerMessage.reset()
+            FlashlightPowerMessage.reset()
+            FlashlightItem.clearClient()
+            DynamicLightManager.clear()
+        }
+    }
+
+    @SubscribeEvent @JvmStatic
+    fun onPlayerTick(event: TickEvent.PlayerTickEvent) {
+        if (event.phase != TickEvent.Phase.END) {
+            return
+        }
+
+        if (!event.player.level().isClientSide) {
+            val player = event.player as? ServerPlayer ?: return
+
+            PlayerPowerManager.tick(player)
+
+            DrillItem.onPlayerTickEnd(player)
+            FlashlightItem.onPlayerTickEnd(player)
+        }
+    }
+
+    @SubscribeEvent @JvmStatic
+    fun onBreakSpeed(event: PlayerEvent.BreakSpeed) {
+        DrillItem.onBreakSpeed(event)
+    }
+
+    @SubscribeEvent @JvmStatic
+    fun onLeftClickBlock(event: PlayerInteractEvent.LeftClickBlock) {
+        if (!event.level.isClientSide) {
+            DrillItem.onLeftClickBlock(event)
+        }
+    }
+
+    @SubscribeEvent @JvmStatic
+    fun onBlockBreak(event: BlockEvent.BreakEvent) {
+        if (!event.level.isClientSide) {
+            DrillItem.onBlockBreak(event)
+        }
+    }
+
+    @SubscribeEvent @JvmStatic
+    fun onPlayerLoggedIn(event: PlayerEvent.PlayerLoggedInEvent) {
+        if (!event.entity.level().isClientSide) {
+            val player = event.entity as? ServerPlayer ?: return
+            PlayerPowerManager.clear(player)
+            DrillItem.clearPlayer(player.uuid)
+            FlashlightItem.clearPlayer(player.uuid)
+        }
+    }
+
+    @SubscribeEvent @JvmStatic
+    fun onPlayerLoggedOut(event: PlayerEvent.PlayerLoggedOutEvent) {
+        if (!event.entity.level().isClientSide) {
+            val player = event.entity as? ServerPlayer ?: return
+            PlayerPowerManager.clear(player)
+            DrillItem.clearPlayer(player.uuid)
+            FlashlightItem.clearPlayer(player.uuid)
+        }
+    }
+
+    @SubscribeEvent @JvmStatic
+    fun onPlayerRespawn(event: PlayerEvent.PlayerRespawnEvent) {
+        if (!event.entity.level().isClientSide) {
+            val player = event.entity as? ServerPlayer ?: return
+            PlayerPowerManager.clear(player)
+            DrillItem.clearPlayer(player.uuid)
+            FlashlightItem.clearPlayer(player.uuid)
+            Networking.send(DrillPowerMessage(0.0f), player)
+        }
+    }
+
+    @SubscribeEvent @JvmStatic
+    fun onPlayerClone(event: PlayerEvent.Clone) {
+        if (!event.entity.level().isClientSide) {
+            val player = event.entity as? ServerPlayer ?: return
+            PlayerPowerManager.clear(player)
+            DrillItem.clearPlayer(player.uuid)
+            FlashlightItem.clearPlayer(player.uuid)
+            Networking.send(DrillPowerMessage(0.0f), player)
+        }
+    }
+
+    @SubscribeEvent @JvmStatic
+    fun onPlayerChangedDimension(event: PlayerEvent.PlayerChangedDimensionEvent) {
+        if (!event.entity.level().isClientSide) {
+            val player = event.entity as? ServerPlayer ?: return
+            PlayerPowerManager.clear(player)
+            DrillItem.clearPlayer(player.uuid)
+            FlashlightItem.clearPlayer(player.uuid)
+            Networking.send(DrillPowerMessage(0.0f), player)
         }
     }
 }

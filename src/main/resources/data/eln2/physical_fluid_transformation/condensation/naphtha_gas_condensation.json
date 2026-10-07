@@ -1,7 +1,7 @@
 {
     "fluid": "eln2:naphtha_gas",
     "condensation": {
-        "temperature": 145.0,
+        "temperature": 350.0,
         "enthalpy": 300000.0,
         "resultLiquid": "eln2:naphtha"
     }

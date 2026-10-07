@@ -1,0 +1,23 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "A": {
+      "item": "eln2:asbestos_fiber"
+    },
+    "P": {
+      "tag": "forge:plates/lead"
+    },
+    "W": {
+      "item": "eln2:enameled_copper_wire"
+    }
+  },
+  "pattern": [
+    "W W",
+    "PAP"
+  ],
+  "result": {
+    "item": "eln2:lead_acid_battery_cell"
+  },
+  "show_notification": true
+}

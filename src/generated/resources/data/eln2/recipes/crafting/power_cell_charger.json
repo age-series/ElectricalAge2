@@ -1,0 +1,30 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "C": {
+      "item": "eln2:primitive_circuit"
+    },
+    "H": {
+      "item": "minecraft:chest"
+    },
+    "M": {
+      "item": "eln2:machine_frame"
+    },
+    "P": {
+      "tag": "forge:plates/iron"
+    },
+    "W": {
+      "item": "eln2:copper_wire"
+    }
+  },
+  "pattern": [
+    "WPW",
+    "MHC",
+    "PPP"
+  ],
+  "result": {
+    "item": "eln2:power_cell_charger"
+  },
+  "show_notification": true
+}

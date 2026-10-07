@@ -1,0 +1,11 @@
+{
+  "type": "eln2:crushing",
+  "duration": 15.0,
+  "ingredient": {
+    "item": "eln2:raw_trona"
+  },
+  "result": {
+    "count": 1,
+    "item": "eln2:sodium_carbonate_dust"
+  }
+}

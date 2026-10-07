@@ -1,0 +1,22 @@
+{
+    "variants": {
+        "facing=east": {
+            "model": "eln2:block/alloying_smelter/alloying_smelter",
+            "y": 0
+        },
+        "facing=north": {
+            "model": "eln2:block/alloying_smelter/alloying_smelter",
+            "y": 270
+        },
+
+        "facing=south": {
+            "model": "eln2:block/alloying_smelter/alloying_smelter",
+            "y": 90
+        },
+
+        "facing=west": {
+            "model": "eln2:block/alloying_smelter/alloying_smelter",
+            "y": 180
+        }
+    }
+}

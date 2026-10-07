@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "G": {
+      "item": "eln2:iron_gear"
+    },
+    "P": {
+      "tag": "forge:plates/iron"
+    },
+    "R": {
+      "item": "minecraft:redstone"
+    },
+    "S": {
+      "item": "minecraft:piston"
+    }
+  },
+  "pattern": [
+    " R ",
+    "PGP",
+    " S "
+  ],
+  "result": {
+    "item": "eln2:fluid_pipe_extraction_valve"
+  },
+  "show_notification": true
+}

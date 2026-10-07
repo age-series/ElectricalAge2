@@ -1,0 +1,192 @@
+{
+	"format_version": "1.9.0",
+	"credit": "Made with Blockbench",
+	"texture_size": [64, 64],
+	"textures": {
+		"0": "eln2:block/signal_clamper/signal_clamper",
+		"particle": "eln2:block/signal_clamper/signal_clamper"
+	},
+	"elements": [
+		{
+			"name": "signal_output_cable",
+			"from": [7.34375, 0.025, 4.04375],
+			"to": [8.64375, 0.775, 5.01875],
+			"rotation": {"angle": 0, "axis": "y", "origin": [7.18437, 0.6625, 4.85313]},
+			"faces": {
+				"north": {"uv": [0.25, 0, 5, 3], "texture": "#0"},
+				"east": {"uv": [0, 0.75, 0.25, 2], "texture": "#0"},
+				"west": {"uv": [0, 0.75, 0.25, 2], "texture": "#0"},
+				"up": {"uv": [0, 2, 0.25, 3.25], "rotation": 270, "texture": "#0"},
+				"down": {"uv": [0, 0.75, 0.25, 1], "rotation": 90, "texture": "#0"}
+			}
+		},
+		{
+			"name": "terminal",
+			"from": [7.84375, 0.775, 4.14375],
+			"to": [8.14375, 1.325, 4.44375],
+			"rotation": {"angle": 0, "axis": "y", "origin": [7.18437, 0.6625, 4.85313]},
+			"faces": {
+				"north": {"uv": [5, 0, 6.25, 1], "texture": "#0"},
+				"east": {"uv": [5, 0, 6.25, 1], "texture": "#0"},
+				"south": {"uv": [5, 0, 6.25, 1], "texture": "#0"},
+				"west": {"uv": [5, 0, 6.25, 1], "texture": "#0"},
+				"up": {"uv": [5, 1, 7.25, 3.25], "rotation": 270, "texture": "#0"},
+				"down": {"uv": [0, 0, 0.075, 0.075], "rotation": 90, "texture": "#0"}
+			}
+		},
+		{
+			"name": "cable_sleeve1_4",
+			"from": [7.54375, 0, 3.69375],
+			"to": [7.69375, 0.55, 4.04375],
+			"rotation": {"angle": 0, "axis": "y", "origin": [7.18437, 0.6625, 4.85313]},
+			"faces": {
+				"north": {"uv": [0, 0.25, 0.25, 0.5], "texture": "#0"},
+				"east": {"uv": [0, 0, 0.25, 0.25], "texture": "#0"},
+				"south": {"uv": [0, 0.25, 0.25, 0.5], "texture": "#0"},
+				"west": {"uv": [0, 0.25, 0.25, 0.5], "texture": "#0"},
+				"up": {"uv": [0, 0, 0.25, 0.25], "rotation": 180, "texture": "#0"},
+				"down": {"uv": [0, 0, 0.25, 0.25], "rotation": 180, "texture": "#0"}
+			}
+		},
+		{
+			"name": "cable_sleeve4_4",
+			"from": [7.69375, 0.4, 3.69375],
+			"to": [8.29375, 0.55, 4.04375],
+			"rotation": {"angle": 0, "axis": "y", "origin": [7.18437, 0.6625, 4.85313]},
+			"faces": {
+				"north": {"uv": [0, 0.25, 0.25, 0.5], "rotation": 90, "texture": "#0"},
+				"east": {"uv": [0, 0, 0.25, 0.25], "rotation": 90, "texture": "#0"},
+				"south": {"uv": [0, 0.25, 0.25, 0.5], "rotation": 270, "texture": "#0"},
+				"west": {"uv": [0, 0, 0.25, 0.25], "rotation": 90, "texture": "#0"},
+				"up": {"uv": [0, 0, 0.25, 0.25], "rotation": 270, "texture": "#0"},
+				"down": {"uv": [0, 0.25, 0.25, 0.5], "rotation": 270, "texture": "#0"}
+			}
+		},
+		{
+			"name": "cable_sleeve0_4",
+			"from": [8.29375, 0, 3.69375],
+			"to": [8.44375, 0.55, 4.04375],
+			"rotation": {"angle": 0, "axis": "y", "origin": [7.18437, 0.6625, 4.85313]},
+			"faces": {
+				"north": {"uv": [0, 0.25, 0.25, 0.5], "texture": "#0"},
+				"east": {"uv": [0, 0.25, 0.25, 0.5], "texture": "#0"},
+				"south": {"uv": [0, 0.25, 0.25, 0.5], "texture": "#0"},
+				"west": {"uv": [0, 0, 0.25, 0.25], "texture": "#0"},
+				"up": {"uv": [0, 0, 0.25, 0.25], "texture": "#0"},
+				"down": {"uv": [0, 0, 0.25, 0.25], "texture": "#0"}
+			}
+		},
+		{
+			"name": "knob_pedestal",
+			"from": [5.75, 0.8, 5.6],
+			"to": [6.25, 0.825, 6.575],
+			"rotation": {"angle": 0, "axis": "y", "origin": [7.18437, 0.6625, 4.85313]},
+			"faces": {
+				"north": {"uv": [0, 0.5, 0.25, 0.75], "rotation": 270, "texture": "#0"},
+				"east": {"uv": [4.25, 0.25, 4.5, 0.5], "rotation": 270, "texture": "#0"},
+				"south": {"uv": [4.25, 0.25, 4.5, 0.5], "rotation": 270, "texture": "#0"},
+				"west": {"uv": [4.25, 0.25, 4.5, 0.5], "rotation": 270, "texture": "#0"},
+				"up": {"uv": [4.25, 0.25, 4.5, 0.5], "rotation": 270, "texture": "#0"}
+			}
+		},
+		{
+			"name": "signal_output_cable",
+			"from": [7.34375, 0.025, 11.00625],
+			"to": [8.64375, 0.775, 11.98125],
+			"rotation": {"angle": 0, "axis": "y", "origin": [7.99375, 0.6625, 11.825]},
+			"faces": {
+				"east": {"uv": [0, 0.75, 0.25, 2], "texture": "#0"},
+				"south": {"uv": [0.25, 0, 5, 3], "texture": "#0"},
+				"west": {"uv": [0, 0.75, 0.25, 2], "texture": "#0"},
+				"up": {"uv": [0, 2, 0.25, 3.25], "rotation": 90, "texture": "#0"},
+				"down": {"uv": [0, 0.75, 0.25, 1], "rotation": 270, "texture": "#0"}
+			}
+		},
+		{
+			"name": "terminal",
+			"from": [7.84375, 0.775, 11.58125],
+			"to": [8.14375, 1.325, 11.88125],
+			"rotation": {"angle": 0, "axis": "y", "origin": [7.99375, 0.6625, 11.825]},
+			"faces": {
+				"north": {"uv": [5, 0, 6.25, 1], "texture": "#0"},
+				"east": {"uv": [5, 0, 6.25, 1], "texture": "#0"},
+				"south": {"uv": [5, 0, 6.25, 1], "texture": "#0"},
+				"west": {"uv": [5, 0, 6.25, 1], "texture": "#0"},
+				"up": {"uv": [5, 1, 7.25, 3.25], "rotation": 90, "texture": "#0"},
+				"down": {"uv": [0, 0, 0.075, 0.075], "rotation": 270, "texture": "#0"}
+			}
+		},
+		{
+			"name": "cable_sleeve1_5",
+			"from": [8.29375, 0, 11.98125],
+			"to": [8.44375, 0.55, 12.33125],
+			"rotation": {"angle": 0, "axis": "y", "origin": [7.99375, 0.6625, 11.825]},
+			"faces": {
+				"north": {"uv": [0, 0.25, 0.25, 0.5], "texture": "#0"},
+				"east": {"uv": [0, 0.25, 0.25, 0.5], "texture": "#0"},
+				"south": {"uv": [0, 0.25, 0.25, 0.5], "texture": "#0"},
+				"west": {"uv": [0, 0, 0.25, 0.25], "texture": "#0"},
+				"up": {"uv": [0, 0, 0.25, 0.25], "texture": "#0"},
+				"down": {"uv": [0, 0, 0.25, 0.25], "texture": "#0"}
+			}
+		},
+		{
+			"name": "cable_sleeve5_5",
+			"from": [7.69375, 0.4, 11.98125],
+			"to": [8.29375, 0.55, 12.33125],
+			"rotation": {"angle": 0, "axis": "y", "origin": [7.99375, 0.6625, 11.825]},
+			"faces": {
+				"north": {"uv": [0, 0.25, 0.25, 0.5], "rotation": 270, "texture": "#0"},
+				"east": {"uv": [0, 0, 0.25, 0.25], "rotation": 90, "texture": "#0"},
+				"south": {"uv": [0, 0.25, 0.25, 0.5], "rotation": 90, "texture": "#0"},
+				"west": {"uv": [0, 0, 0.25, 0.25], "rotation": 90, "texture": "#0"},
+				"up": {"uv": [0, 0, 0.25, 0.25], "rotation": 90, "texture": "#0"},
+				"down": {"uv": [0, 0.25, 0.25, 0.5], "rotation": 90, "texture": "#0"}
+			}
+		},
+		{
+			"name": "cable_sleeve0_5",
+			"from": [7.54375, 0, 11.98125],
+			"to": [7.69375, 0.55, 12.33125],
+			"rotation": {"angle": 0, "axis": "y", "origin": [7.99375, 0.6625, 11.825]},
+			"faces": {
+				"north": {"uv": [0, 0.25, 0.25, 0.5], "texture": "#0"},
+				"east": {"uv": [0, 0, 0.25, 0.25], "texture": "#0"},
+				"south": {"uv": [0, 0.25, 0.25, 0.5], "texture": "#0"},
+				"west": {"uv": [0, 0.25, 0.25, 0.5], "texture": "#0"},
+				"up": {"uv": [0, 0, 0.25, 0.25], "rotation": 180, "texture": "#0"},
+				"down": {"uv": [0, 0, 0.25, 0.25], "rotation": 180, "texture": "#0"}
+			}
+		},
+		{
+			"from": [5.65, 0, 5],
+			"to": [10.325, 0.8, 11],
+			"rotation": {"angle": 0, "axis": "y", "origin": [5.65, 0, 7]},
+			"faces": {
+				"north": {"uv": [9.5, 1, 16, 3], "rotation": 180, "texture": "#0"},
+				"east": {"uv": [9.5, 1, 16, 3], "rotation": 180, "texture": "#0"},
+				"south": {"uv": [9.5, 1, 16, 3], "rotation": 180, "texture": "#0"},
+				"west": {"uv": [9.5, 1, 16, 3], "rotation": 180, "texture": "#0"},
+				"up": {"uv": [0, 3.25, 10, 16], "rotation": 180, "texture": "#0"},
+				"down": {"uv": [0, 0.75, 0.25, 1], "rotation": 180, "texture": "#0"}
+			}
+		}
+	],
+	"groups": [
+		{
+			"name": "input",
+			"origin": [10, 0.025, 4],
+			"scope": 0,
+			"color": 0,
+			"children": [0, 1, 2, 3, 4, 5]
+		},
+		{
+			"name": "input",
+			"origin": [10, 0.025, 4],
+			"scope": 0,
+			"color": 0,
+			"children": [6, 7, 8, 9, 10]
+		},
+		11
+	]
+}

@@ -1,0 +1,73 @@
+{
+	"format_version": "1.9.0",
+	"credit": "Made with Blockbench",
+	"texture_size": [32, 32],
+	"textures": {
+		"0": "eln2:block/fuse_panel/fuse_panel",
+		"particle": "eln2:block/fuse_panel/fuse_panel"
+	},
+	"elements": [
+		{
+			"name": "fuse0",
+			"from": [7, 2, 7],
+			"to": [9, 3, 9],
+			"rotation": {"angle": 0, "axis": "y", "origin": [8, 2.5, 8]},
+			"faces": {
+				"north": {"uv": [12.5, 3.5, 16, 10.5], "rotation": 270, "texture": "#0"},
+				"east": {"uv": [12.5, 3.5, 16, 10.5], "rotation": 270, "texture": "#0"},
+				"south": {"uv": [12.5, 3.5, 16, 10.5], "rotation": 270, "texture": "#0"},
+				"west": {"uv": [12.5, 3.5, 16, 10.5], "rotation": 270, "texture": "#0"},
+				"up": {"uv": [12.5, 0, 16, 3.5], "texture": "#0"}
+			}
+		},
+		{
+			"name": "fuse1",
+			"from": [7, 2, 7],
+			"to": [9, 2.975, 9],
+			"rotation": {"angle": 22.5, "axis": "y", "origin": [8, 2.5, 8]},
+			"faces": {
+				"north": {"uv": [12.5, 3.5, 16, 10.5], "rotation": 270, "texture": "#0"},
+				"east": {"uv": [12.5, 3.5, 16, 10.5], "rotation": 270, "texture": "#0"},
+				"south": {"uv": [12.5, 3.5, 16, 10.5], "rotation": 270, "texture": "#0"},
+				"west": {"uv": [12.5, 3.5, 16, 10.5], "rotation": 270, "texture": "#0"},
+				"up": {"uv": [12.5, 0, 16, 3.5], "texture": "#0"}
+			}
+		},
+		{
+			"name": "fuse2",
+			"from": [7, 2, 7],
+			"to": [9, 2.95, 9],
+			"rotation": {"angle": 45, "axis": "y", "origin": [8, 2.5, 8]},
+			"faces": {
+				"north": {"uv": [12.5, 3.5, 16, 10.5], "rotation": 270, "texture": "#0"},
+				"east": {"uv": [12.5, 3.5, 16, 10.5], "rotation": 270, "texture": "#0"},
+				"south": {"uv": [12.5, 3.5, 16, 10.5], "rotation": 270, "texture": "#0"},
+				"west": {"uv": [12.5, 3.5, 16, 10.5], "rotation": 270, "texture": "#0"},
+				"up": {"uv": [12.5, 0, 16, 3.5], "texture": "#0"}
+			}
+		},
+		{
+			"name": "fuse3",
+			"from": [7, 2, 7],
+			"to": [9, 2.925, 9],
+			"rotation": {"angle": -22.5, "axis": "y", "origin": [8, 2.5, 8]},
+			"faces": {
+				"north": {"uv": [12.5, 3.5, 16, 10.5], "rotation": 270, "texture": "#0"},
+				"east": {"uv": [12.5, 3.5, 16, 10.5], "rotation": 270, "texture": "#0"},
+				"south": {"uv": [12.5, 3.5, 16, 10.5], "rotation": 270, "texture": "#0"},
+				"west": {"uv": [12.5, 3.5, 16, 10.5], "rotation": 270, "texture": "#0"},
+				"up": {"uv": [12.5, 0, 16, 3.5], "rotation": 270, "texture": "#0"}
+			}
+		}
+	],
+	"display": {},
+	"groups": [
+		{
+			"name": "fuse",
+			"origin": [8, 2.5, 8],
+			"scope": 0,
+			"color": 0,
+			"children": [0, 1, 2, 3]
+		}
+	]
+}

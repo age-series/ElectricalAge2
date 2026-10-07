@@ -2,7 +2,7 @@
   "type": "eln2:crushing",
   "duration": 30.0,
   "ingredient": {
-    "item": "eln2:iron_plate"
+    "tag": "forge:plates/iron"
   },
   "result": {
     "count": 1,

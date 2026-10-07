@@ -1,0 +1,5 @@
+{
+    "loader": "forge:obj",
+    "model": "eln2:models/block/steam_turbine/steam_turbine.obj",
+    "flip_v": true
+}

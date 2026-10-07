@@ -12,7 +12,6 @@ import net.minecraft.world.inventory.Slot
 import net.minecraft.world.item.ItemStack
 import net.minecraftforge.items.IItemHandler
 import net.minecraftforge.items.SlotItemHandler
-import java.util.Optional
 import kotlin.math.min
 
 object ContainerHelper {
@@ -194,6 +193,10 @@ object ContainerHelper {
 // Keen Software House much?
 
 abstract class MyAbstractContainerScreen<T : AbstractContainerMenu>(pMenu: T, pPlayerInventory: Inventory, pTitle: Component): AbstractContainerScreen<T>(pMenu, pPlayerInventory, pTitle) {
+    protected override fun renderLabels(pGuiGraphics: GuiGraphics, pMouseX: Int, pMouseY: Int) {
+        pGuiGraphics.drawString(this.font, this.title, this.titleLabelX, this.titleLabelY, 4210752, false)
+    }
+
     override fun render(pGuiGraphics: GuiGraphics, pMouseX: Int, pMouseY: Int, pPartialTick: Float) {
         renderBackground(pGuiGraphics)
         super.render(pGuiGraphics, pMouseX, pMouseY, pPartialTick)

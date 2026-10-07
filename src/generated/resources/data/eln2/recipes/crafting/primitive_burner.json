@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "C": {
+      "item": "eln2:copper_plate"
+    },
+    "S": {
+      "item": "minecraft:stone"
+    }
+  },
+  "pattern": [
+    "SCS",
+    "S S",
+    "SCS"
+  ],
+  "result": {
+    "item": "eln2:primitive_burner"
+  },
+  "show_notification": true
+}

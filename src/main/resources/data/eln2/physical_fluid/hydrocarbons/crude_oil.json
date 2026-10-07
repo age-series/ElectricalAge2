@@ -3,5 +3,5 @@
     "specificHeatCapacity": 1785.0,
     "density": 0.85,
     "isGaseous": false,
-    "mixabilityTags": ["oil_miscible"]
+    "mixabilityTags": ["crude_oil_miscible"]
 }

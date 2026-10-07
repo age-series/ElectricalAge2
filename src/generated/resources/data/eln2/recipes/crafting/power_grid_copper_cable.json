@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "W": {
+      "item": "eln2:enameled_copper_wire"
+    }
+  },
+  "pattern": [
+    "W W",
+    " W "
+  ],
+  "result": {
+    "count": 4,
+    "item": "eln2:power_grid_copper_cable"
+  },
+  "show_notification": true
+}

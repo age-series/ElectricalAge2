@@ -1,0 +1,25 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "G": {
+      "tag": "forge:glue"
+    },
+    "P": {
+      "item": "eln2:copper_plate"
+    },
+    "R": {
+      "item": "eln2:rubber_wood_panel"
+    }
+  },
+  "pattern": [
+    "R",
+    "G",
+    "P"
+  ],
+  "result": {
+    "count": 4,
+    "item": "eln2:raw_circuit_board"
+  },
+  "show_notification": true
+}

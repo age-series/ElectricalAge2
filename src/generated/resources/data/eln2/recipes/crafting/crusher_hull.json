@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "A": {
+      "item": "eln2:crusher_assembly"
+    },
+    "B": {
+      "tag": "forge:glue"
+    },
+    "G": {
+      "item": "eln2:iron_gear"
+    },
+    "M": {
+      "item": "eln2:machine_frame"
+    }
+  },
+  "pattern": [
+    "MAG",
+    "B  ",
+    "   "
+  ],
+  "result": {
+    "item": "eln2:crusher"
+  },
+  "show_notification": true
+}

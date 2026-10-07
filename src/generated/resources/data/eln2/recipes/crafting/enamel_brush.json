@@ -1,0 +1,15 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "eln2:insulating_varnish_bottle"
+    },
+    {
+      "item": "minecraft:brush"
+    }
+  ],
+  "result": {
+    "item": "eln2:enamel_brush"
+  }
+}

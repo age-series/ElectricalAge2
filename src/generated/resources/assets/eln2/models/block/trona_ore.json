@@ -1,0 +1,93 @@
+{
+  "parent": "minecraft:block/block",
+  "elements": [
+    {
+      "faces": {
+        "down": {
+          "cullface": "down",
+          "texture": "#base"
+        },
+        "east": {
+          "cullface": "east",
+          "texture": "#base"
+        },
+        "north": {
+          "cullface": "north",
+          "texture": "#base"
+        },
+        "south": {
+          "cullface": "south",
+          "texture": "#base"
+        },
+        "up": {
+          "cullface": "up",
+          "texture": "#base"
+        },
+        "west": {
+          "cullface": "west",
+          "texture": "#base"
+        }
+      },
+      "from": [
+        0,
+        0,
+        0
+      ],
+      "to": [
+        16,
+        16,
+        16
+      ]
+    },
+    {
+      "faces": {
+        "down": {
+          "cullface": "down",
+          "texture": "#overlay",
+          "tintindex": 1
+        },
+        "east": {
+          "cullface": "east",
+          "texture": "#overlay",
+          "tintindex": 1
+        },
+        "north": {
+          "cullface": "north",
+          "texture": "#overlay",
+          "tintindex": 1
+        },
+        "south": {
+          "cullface": "south",
+          "texture": "#overlay",
+          "tintindex": 1
+        },
+        "up": {
+          "cullface": "up",
+          "texture": "#overlay",
+          "tintindex": 1
+        },
+        "west": {
+          "cullface": "west",
+          "texture": "#overlay",
+          "tintindex": 1
+        }
+      },
+      "from": [
+        0,
+        0,
+        0
+      ],
+      "to": [
+        16,
+        16,
+        16
+      ]
+    }
+  ],
+  "render_type": "minecraft:cutout",
+  "textures": {
+    "base": "minecraft:block/stone",
+    "overlay": "eln2:block/ore_overlay",
+    "particle": "minecraft:block/stone"
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "F": {
+      "item": "eln2:machine_frame"
+    },
+    "P": {
+      "tag": "forge:plates/iron"
+    },
+    "R": {
+      "item": "eln2:rubber"
+    },
+    "W": {
+      "item": "eln2:copper_wire"
+    }
+  },
+  "pattern": [
+    "WPW",
+    "FRF",
+    "PPP"
+  ],
+  "result": {
+    "item": "eln2:electrolysis"
+  },
+  "show_notification": true
+}

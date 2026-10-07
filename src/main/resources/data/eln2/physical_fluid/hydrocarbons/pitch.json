@@ -3,5 +3,5 @@
     "specificHeatCapacity": 1200.0,
     "density": 1.30,
     "isGaseous": false,
-    "mixabilityTags": ["tar_miscible"]
+    "mixabilityTags": ["pitch_miscible"]
 }

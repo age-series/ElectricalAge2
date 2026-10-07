@@ -1,0 +1,7 @@
+{
+    "forgeFluid": "eln2:sodium_tungstate_solution",
+    "specificHeatCapacity": 4500.0,
+    "density": 1.5,
+    "isGaseous": false,
+    "mixabilityTags": ["water_miscible"]
+}

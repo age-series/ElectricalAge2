@@ -1,0 +1,35 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_the_recipe": {
+      "conditions": {
+        "recipe": "eln2:blasting/tungstic_acid_to_tungsten_trioxide_dust"
+      },
+      "trigger": "minecraft:recipe_unlocked"
+    },
+    "has_tungstic_acid": {
+      "conditions": {
+        "items": [
+          {
+            "items": [
+              "eln2:tungstic_acid"
+            ]
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "requirements": [
+    [
+      "has_tungstic_acid",
+      "has_the_recipe"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "eln2:blasting/tungstic_acid_to_tungsten_trioxide_dust"
+    ]
+  },
+  "sends_telemetry_event": false
+}

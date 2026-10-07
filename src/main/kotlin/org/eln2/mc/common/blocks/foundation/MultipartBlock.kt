@@ -12,7 +12,6 @@ import dev.engine_room.flywheel.lib.instance.FlatLit
 import dev.engine_room.flywheel.lib.task.RunnablePlan
 import dev.engine_room.flywheel.lib.visual.AbstractBlockEntityVisual
 import net.minecraft.client.Minecraft
-import net.minecraft.client.multiplayer.ClientLevel
 import net.minecraft.client.renderer.MultiBufferSource
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider
@@ -375,14 +374,14 @@ class MultipartBlock : BaseEntityBlock(
         val entity: LivingEntity
 
         if (context.entity == null) {
-            if (level is ClientLevel && Minecraft.getInstance().player != null) {
-                // What to do?
-                // It doesn't give me the context
-                // Hopefully, this workaround won't screw me
-                entity = Minecraft.getInstance().player!!
-            } else {
+            if (level !is Level || !level.isClientSide) {
                 return null
             }
+
+            // What to do?
+            // It doesn't give me the context
+            // Hopefully, this workaround won't screw me
+            entity = Minecraft.getInstance().player ?: return null
         } else {
             if (context.entity is LivingEntity) {
                 entity = context.entity as LivingEntity

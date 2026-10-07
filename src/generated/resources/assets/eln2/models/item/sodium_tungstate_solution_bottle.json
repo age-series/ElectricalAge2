@@ -1,0 +1,7 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "minecraft:item/glass_bottle",
+    "layer1": "eln2:item/bottle_fluid_overlay"
+  }
+}

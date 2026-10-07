@@ -2,7 +2,7 @@
   "type": "eln2:crushing",
   "duration": 30.0,
   "ingredient": {
-    "item": "minecraft:copper_ingot"
+    "tag": "forge:ingots/copper"
   },
   "result": {
     "count": 1,

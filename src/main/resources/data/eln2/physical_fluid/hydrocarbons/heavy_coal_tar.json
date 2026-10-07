@@ -3,5 +3,5 @@
     "specificHeatCapacity": 1500.0,
     "density": 1.22,
     "isGaseous": false,
-    "mixabilityTags": ["tar_miscible"]
+    "mixabilityTags": ["heavy_coal_tar_miscible"]
 }

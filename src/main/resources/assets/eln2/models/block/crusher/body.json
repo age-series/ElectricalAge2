@@ -1,7 +1,7 @@
 {
-    "parent": "eln2:block/displays/standard_block",
-    "format_version": "1.9.0",
+	"format_version": "1.9.0",
 	"credit": "Made with Blockbench",
+	"parent": "eln2:block/displays/standard_block",
 	"texture_size": [64, 64],
 	"textures": {
 		"0": "eln2:block/crusher/crusher",
@@ -151,32 +151,6 @@
 				"south": {"uv": [0, 2, 3.75, 12], "texture": "#0"},
 				"west": {"uv": [0, 2, 2.25, 12], "texture": "#0"},
 				"down": {"uv": [0, 10, 3.75, 12], "texture": "#0"}
-			}
-		},
-		{
-			"name": "electrical_connection0",
-			"from": [15, 0, 7],
-			"to": [16, 1.5, 9],
-			"rotation": {"angle": 0, "axis": "y", "origin": [15, 0, 7]},
-			"faces": {
-				"north": {"uv": [10, 1, 10.25, 1.75], "texture": "#0"},
-				"east": {"uv": [0.5, 3.5, 3, 5.25], "texture": "#0"},
-				"south": {"uv": [10, 1, 10.25, 1.75], "texture": "#0"},
-				"up": {"uv": [10, 0, 10.25, 1], "texture": "#0"},
-				"down": {"uv": [10, 1.5, 10.25, 1.75], "texture": "#0"}
-			}
-		},
-		{
-			"name": "electrical_connection1",
-			"from": [0, 0, 7],
-			"to": [1, 1.5, 9],
-			"rotation": {"angle": 0, "axis": "y", "origin": [0.5, 0.75, 8]},
-			"faces": {
-				"north": {"uv": [10, 1, 10.25, 1.75], "texture": "#0"},
-				"south": {"uv": [10, 1, 10.25, 1.75], "texture": "#0"},
-				"west": {"uv": [0.5, 3.5, 3, 5.25], "texture": "#0"},
-				"up": {"uv": [10, 0, 10.25, 1], "rotation": 180, "texture": "#0"},
-				"down": {"uv": [10, 1.5, 10.25, 1.75], "rotation": 180, "texture": "#0"}
 			}
 		},
 		{
@@ -423,23 +397,24 @@
 		{
 			"name": "chute",
 			"origin": [9.65933, 14.87262, 2],
+			"scope": 0,
 			"color": 0,
 			"children": [2, 3, 4, 5, 6, 7, 8, 9, 10]
 		},
 		11,
-		12,
-		13,
 		{
 			"name": "item_pipe",
 			"origin": [8, 5, 0],
+			"scope": 0,
 			"color": 0,
-			"children": [14, 15, 16, 17]
+			"children": [12, 13, 14, 15]
 		},
 		{
 			"name": "greeble",
 			"origin": [14, 3, 11],
+			"scope": 0,
 			"color": 0,
-			"children": [18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35]
+			"children": [16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33]
 		}
 	]
 }

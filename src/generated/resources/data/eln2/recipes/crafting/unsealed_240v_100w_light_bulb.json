@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "E": {
+      "item": "eln2:glass_envelope"
+    },
+    "F": {
+      "item": "eln2:tungsten_filament"
+    },
+    "I": {
+      "item": "eln2:copper_wire"
+    },
+    "N": {
+      "item": "minecraft:iron_nugget"
+    }
+  },
+  "pattern": [
+    " E ",
+    " F ",
+    "NIN"
+  ],
+  "result": {
+    "item": "eln2:unsealed_240v_100w_light_bulb"
+  },
+  "show_notification": true
+}

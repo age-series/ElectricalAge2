@@ -1,0 +1,10 @@
+{
+  "type": "minecraft:smelting",
+  "category": "misc",
+  "cookingtime": 200,
+  "experience": 0.5,
+  "ingredient": {
+    "item": "eln2:raw_graphite_electrode"
+  },
+  "result": "eln2:graphite_electrode"
+}

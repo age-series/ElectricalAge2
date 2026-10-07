@@ -1,5 +1,6 @@
 {
     "loader": "forge:obj",
     "model": "eln2:models/block/lamp_pole/inventory.obj",
-    "flip_v": true
+    "flip_v": true,
+    "emissive_ambient": false
 }

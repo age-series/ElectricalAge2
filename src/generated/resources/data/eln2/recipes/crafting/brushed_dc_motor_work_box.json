@@ -1,0 +1,20 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "M": {
+      "item": "eln2:brushed_dc_motor"
+    },
+    "P": {
+      "tag": "forge:plates/iron"
+    }
+  },
+  "pattern": [
+    "P P",
+    "M  "
+  ],
+  "result": {
+    "item": "eln2:brushed_dc_motor_work_box"
+  },
+  "show_notification": true
+}

@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "G": {
+      "item": "minecraft:glass_pane"
+    },
+    "I": {
+      "tag": "forge:plates/iron"
+    }
+  },
+  "pattern": [
+    "IGI"
+  ],
+  "result": {
+    "item": "eln2:fluid_pipe_insertion_valve"
+  },
+  "show_notification": true
+}

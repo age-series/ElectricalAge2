@@ -1,0 +1,28 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "I": {
+      "tag": "forge:plates/iron"
+    },
+    "P": {
+      "tag": "minecraft:planks"
+    },
+    "R": {
+      "item": "eln2:rubber"
+    },
+    "W": {
+      "item": "eln2:standard_insulated_copper_electrical_wire"
+    }
+  },
+  "pattern": [
+    " R ",
+    " P ",
+    "WIW"
+  ],
+  "result": {
+    "count": 4,
+    "item": "eln2:switch"
+  },
+  "show_notification": true
+}

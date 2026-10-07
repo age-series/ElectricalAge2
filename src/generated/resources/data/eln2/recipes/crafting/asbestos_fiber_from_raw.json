@@ -1,0 +1,13 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "eln2:raw_asbestos"
+    }
+  ],
+  "result": {
+    "count": 4,
+    "item": "eln2:asbestos_fiber"
+  }
+}

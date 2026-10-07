@@ -3,5 +3,8 @@
     "specificHeatCapacity": 1054.0,
     "density": 0.62,
     "isGaseous": true,
-    "mixabilityTags": ["acetylene_miscible"]
+    "mixabilityTags": [
+        "acetylene_miscible"
+    ],
+    "gasExpansionFactor": 100.0
 }

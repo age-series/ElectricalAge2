@@ -1,0 +1,35 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_item_to_crush": {
+      "conditions": {
+        "items": [
+          {
+            "items": [
+              "eln2:raw_scheelite"
+            ]
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    },
+    "has_the_recipe": {
+      "conditions": {
+        "recipe": "eln2:crushing/raw_scheelite_to_scheelite_dust"
+      },
+      "trigger": "minecraft:recipe_unlocked"
+    }
+  },
+  "requirements": [
+    [
+      "has_item_to_crush",
+      "has_the_recipe"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "eln2:crushing/raw_scheelite_to_scheelite_dust"
+    ]
+  },
+  "sends_telemetry_event": true
+}

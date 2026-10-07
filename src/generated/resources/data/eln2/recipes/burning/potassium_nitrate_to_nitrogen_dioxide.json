@@ -1,0 +1,45 @@
+{
+  "type": "eln2:burning",
+  "duration": 1800,
+  "gas_output": {
+    "amount": 125,
+    "fluid": "eln2:nitrogen_dioxide"
+  },
+  "inputItems": [
+    {
+      "options": [
+        {
+          "ingredient": {
+            "tag": "eln2:coal_equivalent"
+          },
+          "value": 1
+        }
+      ],
+      "requiredValue": 1
+    },
+    {
+      "options": [
+        {
+          "ingredient": {
+            "item": "eln2:potassium_nitrate_dust"
+          },
+          "value": 1
+        }
+      ],
+      "requiredValue": 1
+    },
+    {
+      "options": [
+        {
+          "ingredient": {
+            "tag": "forge:sand"
+          },
+          "value": 1
+        }
+      ],
+      "requiredValue": 1
+    }
+  ],
+  "maxTemperature": 723.51,
+  "minTemperature": 710.01
+}

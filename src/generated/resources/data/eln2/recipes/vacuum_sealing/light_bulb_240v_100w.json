@@ -1,0 +1,11 @@
+{
+  "type": "eln2:vacuum_sealing",
+  "duration": 60.0,
+  "ingredient": {
+    "item": "eln2:unsealed_240v_100w_light_bulb"
+  },
+  "result": {
+    "count": 1,
+    "item": "eln2:light_bulb_240v_100w"
+  }
+}

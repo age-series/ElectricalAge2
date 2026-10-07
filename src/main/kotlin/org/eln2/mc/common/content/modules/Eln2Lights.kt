@@ -212,21 +212,14 @@ object Eln2Lights : ContentModule() {
         baseRadius
     )
 
-    val LIGHT_BULB_12V_100W = registerLightBulbPP(
-        "light_bulb_12v_100w",
+    val LIGHT_BULB_240V_100W = registerLightBulbPP(
+        "light_bulb_240v_100w",
         powerRating = Quantity(100.0, WATT),
-        potentialRating = Quantity(12.0, VOLT),
+        potentialRating = Quantity(240.0, VOLT),
         damageRate = 1e-6,
         strength = 24.0
     )
 
-    val LIGHT_BULB_800V_100W = registerLightBulbPP(
-        "light_bulb_800v_100w",
-        powerRating = Quantity(100.0, WATT),
-        potentialRating = Quantity(800.0, VOLT),
-        damageRate = 1e-6,
-        strength = 24.0
-    )
 
     private fun gardenLightModel(strength: Double) = SolarLightModel(
         solarScan(Vector3d.unitY),

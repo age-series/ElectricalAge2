@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "P": {
+      "tag": "forge:plates/lead"
+    }
+  },
+  "pattern": [
+    "P P",
+    "   ",
+    "P P"
+  ],
+  "result": {
+    "count": 2,
+    "item": "eln2:lead_chamber"
+  },
+  "show_notification": true
+}

@@ -736,6 +736,7 @@ class PowerVoltageSourceObject<C : Cell>(cell: C, val map: PoleMap) : Electrical
 }
 
 const val SIGNAL_SERIES_RESISTANCE = 1e6
+const val SIGNAL_COMPARE_RESISTANCE = 1e8
 
 fun ElectricalComponentSet.add(signalSource: SignalSource) {
     this.add(signalSource.voltageSource)

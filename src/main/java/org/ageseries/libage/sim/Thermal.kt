@@ -7,12 +7,13 @@ import java.util.*
 import java.util.function.Supplier
 import kotlin.math.PI
 import kotlin.math.pow
-import kotlin.math.sqrt
 
 /**
  * The Stefan-Boltzmann Constant, in W/m^2K^4, the proportionality constant of emission power of a black-body radiator.
  */
 const val STEFAN_BOLTZMANN_CONSTANT: Double = 5.670373e-8
+
+private const val MAX_THERMAL_CONDUCTANCE: Double = 1e10
 
 /**
  * The number of steradians subtended by a sphere--the solid angle of a perfectly-isotropic transmitter.
@@ -74,7 +75,13 @@ val STANDARD_TEMPERATURE = Quantity(273.15, KELVIN)
  * @param energy The initial energy. Leave `null` to set it such that [temperature] is [STANDARD_TEMPERATURE].
  * @param mass The mass of the body.
  * */
-class ThermalMass(var material: Material, energy: Quantity<Energy>? = null, var mass: Quantity<Mass> = Quantity(1.0, KILOGRAM)) {
+class ThermalMass(
+    var material: Material,
+    energy: Quantity<Energy>? = null,
+    var mass: Quantity<Mass> = Quantity(1.0, KILOGRAM),
+    var emissiveSurfaceArea: Quantity<Area> = Quantity(1.0, METER2),
+    var emissivity: Double = 0.0
+) {
     var energy: Quantity<Energy> = energy ?: Quantity(!STANDARD_TEMPERATURE * !mass * !material.specificHeat)
 
     /**
@@ -99,11 +106,17 @@ class ThermalMass(var material: Material, energy: Quantity<Energy>? = null, var 
 /**
  * Factory for [ThermalMass] instances. Includes all information necessary to create a new instance.
  * */
-data class ThermalMassDefinition(val material: Material, val energy: Quantity<Energy>? = null, val mass: Quantity<Mass> = Quantity(1.0, KILOGRAM)) : Supplier<ThermalMass> {
+data class ThermalMassDefinition(
+    val material: Material,
+    val energy: Quantity<Energy>? = null,
+    val mass: Quantity<Mass> = Quantity(1.0, KILOGRAM),
+    var emissiveSurfaceArea: Quantity<Area> = Quantity(1.0, METER2),
+    var emissivity: Double = 0.0
+) : Supplier<ThermalMass> {
     /**
      * Creates a new instance of [ThermalMass] with the properties specified in this definition.
      * */
-    override fun get() = ThermalMass(material, energy, mass)
+    override fun get() = ThermalMass(material, energy, mass, emissiveSurfaceArea, emissivity)
 
     override fun toString() = "Def ${this()}"
 
@@ -115,8 +128,10 @@ data class ThermalMassDefinition(val material: Material, val energy: Quantity<En
 }
 
 data class ConnectionParameters(
-    /** Conductance of the contact point with no distance effect. There is almost always a little loss due to mechanical effects, unless the materials are welded. */
+    /** Conductance to the environment with no distance effect. */
     val conductance: Quantity<ThermalConductance> = Quantity(1.0, WATT_PER_KELVIN),
+    /** Conductance of the contact point between two masses with no distance effect. Infinite means ideal contact. */
+    val contactConductance: Quantity<ThermalConductance> = Quantity(Double.POSITIVE_INFINITY, WATT_PER_KELVIN),
     /** How long the connection is between the two masses--which affects the transfer rate. */
     val distance: Quantity<Distance> = Quantity(1.0, METER),
     /** The "scale" of power conducted along this connection. If constant density is assumed, such that mass and volume are related, this is linear in contact area, thus the name. */
@@ -129,11 +144,45 @@ data class ConnectionParameters(
     val efficiency: Double = 0.99,
 ) {
     override fun toString(): String =
-        "<ConnParam (${contactPoint})${distance}m ${area}m^2 ${conductance}W/mK ~$efficiency>"
+        "<ConnParam (${contactPoint})${distance}m ${area}m^2 ${conductance}W/K contact=${contactConductance}W/K ~$efficiency>"
 
     companion object {
         val DEFAULT = ConnectionParameters()
     }
+}
+
+private val ZERO_TRANSFER: Pair<Quantity<Energy>, Quantity<Energy>> = Quantity(0.0, JOULE) to Quantity(0.0, JOULE)
+
+private fun thermalResistance(length: Double, conductivity: Double, area: Double): Double = when {
+    length <= 0.0 -> 0.0
+    conductivity > 0.0 -> length / (conductivity * area)
+    else -> Double.POSITIVE_INFINITY
+}
+
+private fun contactResistance(conductance: Double): Double = when {
+    conductance == Double.POSITIVE_INFINITY -> 0.0
+    conductance > 0.0 -> 1.0 / conductance
+    else -> Double.POSITIVE_INFINITY
+}
+
+private fun conductanceFromResistance(resistance: Double): Double = when {
+    resistance == 0.0 -> MAX_THERMAL_CONDUCTANCE
+    resistance.isFinite() && resistance > 0.0 -> (1.0 / resistance).coerceAtMost(MAX_THERMAL_CONDUCTANCE)
+    else -> 0.0
+}
+
+private fun heatCapacity(mass: ThermalMass): Double {
+    val capacity = !mass.mass * !mass.material.specificHeat
+
+    return if(capacity.isFinite() && capacity > 0.0) capacity else 0.0
+}
+
+private fun clampEnergyToEquilibrium(unrestrictedEnergy: Double, maxEnergy: Double): Double = when {
+    !maxEnergy.isFinite() -> 0.0
+    !unrestrictedEnergy.isFinite() -> maxEnergy
+    maxEnergy > 0.0 -> unrestrictedEnergy.coerceIn(0.0, maxEnergy)
+    maxEnergy < 0.0 -> unrestrictedEnergy.coerceIn(maxEnergy, 0.0)
+    else -> 0.0
 }
 
 /**
@@ -164,8 +213,6 @@ class MassConnection(
     /** Thermal parameters of this connection. */
     val params: ConnectionParameters = ConnectionParameters.DEFAULT,
 ): Connection {
-    private var prevFlux: Double = 0.0
-
     override fun toString() = "<MassConn $a $b $params>"
 
     /**
@@ -174,21 +221,48 @@ class MassConnection(
      * For this to be stable, [dt] must be held relatively small, since this is a linear approximation to an exponential curve--otherwise, overshoot may be observed.
      */
     override fun transfer(dt: Double): Pair<Quantity<Energy>, Quantity<Energy>> {
-        // Kelvin
+        if(dt <= 0.0 || !dt.isFinite() || params.area <= 0.0 || !params.area.isFinite()) {
+            return ZERO_TRANSFER
+        }
+
+        val distance = !params.distance
+        if(!distance.isFinite()) {
+            return ZERO_TRANSFER
+        }
+
+        val clampedContactPoint = params.contactPoint.coerceIn(0.0, 1.0)
+        val clampedDistance = distance.coerceAtLeast(0.0)
+        val lengthA = clampedContactPoint * clampedDistance
+        val lengthB = (1.0 - clampedContactPoint) * clampedDistance
+
+        val resistanceA = thermalResistance(lengthA, !a.material.thermalConductivity, params.area)
+        val resistanceB = thermalResistance(lengthB, !b.material.thermalConductivity, params.area)
+        val resistanceContact = contactResistance(!params.contactConductance)
+        val totalResistance = resistanceA + resistanceB + resistanceContact
+        val overallCond = conductanceFromResistance(totalResistance)
+
+        if(overallCond <= 0.0 || !overallCond.isFinite()) {
+            return ZERO_TRANSFER
+        }
+
         val deltaT = !b.temperature - !a.temperature
-        // W/K
-        val distCondA = !a.material.thermalConductivity * params.contactPoint * !params.distance
-        val distCondB = !b.material.thermalConductivity * (1.0 - params.contactPoint) * !params.distance
-        val overallCond = params.area * (distCondA * distCondB * !params.conductance).pow(1.0 / 3.0)
-        // W
+        if(!deltaT.isFinite()) {
+            return ZERO_TRANSFER
+        }
+
         val power = deltaT * overallCond
-        // J
-        val energy = power * dt
-        val critDamp = sqrt((!a.mass + !b.mass) / overallCond) * dt
-        val dTerm = prevFlux * critDamp * dt
-        prevFlux = power
-        var toA = energy - dTerm
-        var toB = -energy + dTerm
+        val unrestrictedEnergy = power * dt
+
+        val capacityA = heatCapacity(a)
+        val capacityB = heatCapacity(b)
+        if(capacityA <= 0.0 || capacityB <= 0.0) {
+            return ZERO_TRANSFER
+        }
+
+        val maxEnergy = deltaT * (capacityA * capacityB) / (capacityA + capacityB)
+        val energy = clampEnergyToEquilibrium(unrestrictedEnergy, maxEnergy)
+        var toA = energy
+        var toB = -energy
 
         if(toA > 0.0) {
             toA *= params.efficiency
@@ -213,18 +287,51 @@ class EnvironmentConnection(
     /** The parameters of this contact. Not all fields are meaningful in this application. */
     val params: ConnectionParameters,
 ): Connection {
-    private var prevFlux: Double = 0.0
-
     override fun toString() = "<EnvConn $a $temperature $params>"
 
     override fun transfer(dt: Double): Pair<Quantity<Energy>, Quantity<Energy>> {
-        // See above for comments explaining more of this
+        if(dt <= 0.0 || !dt.isFinite() || params.area <= 0.0 || !params.area.isFinite()) {
+            return ZERO_TRANSFER
+        }
+
+        val distance = !params.distance
+        if(!distance.isFinite()) {
+            return ZERO_TRANSFER
+        }
+
+        val lengthA = distance.coerceAtLeast(0.0)
+        val resistanceA = thermalResistance(lengthA, !a.material.thermalConductivity, params.area)
+        val resistanceLeak = contactResistance(!params.conductance)
+        val totalResistance = resistanceA + resistanceLeak
+        val overallCond = conductanceFromResistance(totalResistance)
+
+        if(overallCond <= 0.0 || !overallCond.isFinite()) {
+            return ZERO_TRANSFER
+        }
+
         val deltaT = !temperature - !a.temperature
-        val overallCond = sqrt(params.area * !a.material.thermalConductivity * !params.conductance)
-        val power = deltaT * overallCond
-        val critDamp = sqrt(!a.mass / overallCond) * dt
-        var energy = (power - prevFlux * critDamp) * dt
-        prevFlux = power
+        if(!deltaT.isFinite()) {
+            return ZERO_TRANSFER
+        }
+
+        val radiativePower = if (a.emissiveSurfaceArea > 0.0 && a.emissivity > 0.0) {
+            val tEnv = !temperature
+            val tMass = !a.temperature
+            a.emissivity * STEFAN_BOLTZMANN_CONSTANT * !a.emissiveSurfaceArea * ((tEnv * tEnv) * (tEnv * tEnv) - (tMass * tMass) * (tMass * tMass))
+        } else {
+            0.0
+        }
+
+        val power = deltaT * overallCond + radiativePower
+        val unrestrictedEnergy = power * dt
+
+        val capacityA = heatCapacity(a)
+        if(capacityA <= 0.0) {
+            return ZERO_TRANSFER
+        }
+
+        val maxEnergy = deltaT * capacityA
+        var energy = clampEnergyToEquilibrium(unrestrictedEnergy, maxEnergy)
         if(energy > 0.0) { energy *= params.efficiency }
         return Quantity(energy, JOULE) to Quantity(0.0, JOULE)
     }

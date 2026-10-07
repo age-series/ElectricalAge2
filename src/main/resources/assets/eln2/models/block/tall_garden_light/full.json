@@ -1,5 +1,5 @@
 {
-    "parent": "eln2:block/templates/block",
+    "parent": "eln2:block/displays/standard_block",
     "credit": "Made with Blockbench",
 	"texture_size": [32, 32],
 	"textures": {

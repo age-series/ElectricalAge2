@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "eln2:rotor_coil_assembly"
+    },
+    {
+      "item": "eln2:rotor_commutator"
+    },
+    {
+      "item": "eln2:iron_gear"
+    }
+  ],
+  "result": {
+    "item": "eln2:copper_rotor"
+  }
+}

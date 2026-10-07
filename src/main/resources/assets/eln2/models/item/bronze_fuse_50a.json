@@ -1,0 +1,19 @@
+{
+    "loader": "forge:separate_transforms",
+    "gui_light": "front",
+    "ambientocclusion": false,
+    "base": {
+        "parent": "minecraft:item/generated",
+        "textures": {
+            "layer0": "eln2:item/fuses/fuse_base"
+        }
+    },
+    "perspectives": {
+        "gui": {
+            "parent": "minecraft:item/generated",
+            "textures": {
+                "layer0": "eln2:item/fuses/fuse_50a"
+            }
+        }
+    }
+}

@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": {
+      "item": "eln2:wind_turbine_blade"
+    },
+    "C": {
+      "item": "eln2:wind_turbine_core"
+    }
+  },
+  "pattern": [
+    " B ",
+    "BCB",
+    " B "
+  ],
+  "result": {
+    "item": "eln2:basic_wind_turbine"
+  },
+  "show_notification": true
+}

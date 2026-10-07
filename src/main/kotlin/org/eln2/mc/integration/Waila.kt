@@ -4,8 +4,6 @@ import net.minecraft.nbt.CompoundTag
 import net.minecraft.nbt.ListTag
 import net.minecraft.network.chat.Component
 import net.minecraft.network.chat.contents.LiteralContents
-import net.minecraft.world.InteractionHand
-import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.phys.Vec2
@@ -13,13 +11,10 @@ import org.ageseries.libage.data.*
 import org.ageseries.libage.utils.sourceName
 import org.eln2.mc.*
 import org.eln2.mc.common.blocks.foundation.*
-import org.eln2.mc.common.content.processing.BlacksmithingStationBlock
-import org.eln2.mc.common.content.processing.BlacksmithingStationBlockEntity
-import org.eln2.mc.common.fluids.foundation.PhysicalFluidManager
-import org.eln2.mc.common.content.processing.PhaseChangeModuleBlock
-import org.eln2.mc.common.content.processing.PhaseChangeModuleBlockEntity
+import org.eln2.mc.common.content.processing.*
 import org.eln2.mc.common.fluids.foundation.FractionalFluidStack
 import org.eln2.mc.common.fluids.foundation.MultipleFractionalFluidTank
+import org.eln2.mc.common.fluids.foundation.PhysicalFluidManager
 import org.eln2.mc.common.parts.foundation.CellPart
 import org.eln2.mc.common.specs.foundation.CellSpec
 import org.eln2.mc.common.specs.foundation.GridSpec
@@ -37,32 +32,35 @@ import kotlin.math.absoluteValue
 class Eln2WailaPlugin : IWailaPlugin {
     override fun register(registration: IWailaCommonRegistration) {
         registration.registerBlockDataProvider(DistillationFluidProvider, PhaseChangeModuleBlockEntity::class.java)
-        registration.registerBlockDataProvider(BlacksmithingStationProvider, BlacksmithingStationBlockEntity::class.java)
+        registration.registerBlockDataProvider(ElectrolysisProxyProvider, ElectrolysisProxyBlockEntity::class.java)
         registration.registerBlockDataProvider(ComponentDisplayProvider, BlockEntity::class.java)
     }
 
     override fun registerClient(registration: IWailaClientRegistration) {
         registration.registerBlockComponent(DistillationFluidProvider, PhaseChangeModuleBlock::class.java)
-        registration.registerBlockComponent(BlacksmithingStationProvider, BlacksmithingStationBlock::class.java)
+        registration.registerBlockComponent(ElectrolysisProxyProvider, ElectrolysisProxyBlock::class.java)
         registration.registerBlockComponent(ComponentDisplayProvider, Block::class.java)
 
         registration.addRayTraceCallback { _, accessor, _ ->
             if (accessor is BlockAccessor) {
                 val representativePos = when {
-                    accessor.block is MultiblockDelegateBlock -> {
-                        val delegateBlockEntity = accessor.blockEntity
+                    accessor.block is ElectrolysisProxyBlock -> null
+                    else -> when {
+                        accessor.block is MultiblockDelegateBlock -> {
+                            val delegateBlockEntity = accessor.blockEntity
                                 as? MultiblockDelegateBlockEntity
 
-                        delegateBlockEntity?.representativePos
-                    }
-                    accessor.block is MultiblockDelegateUprightHorizontalDirectionCellBlock<*> -> {
-                        val delegateBlockEntity = accessor.blockEntity
+                            delegateBlockEntity?.representativePos
+                        }
+                        accessor.block is MultiblockDelegateUprightHorizontalDirectionCellBlock<*> -> {
+                            val delegateBlockEntity = accessor.blockEntity
                                 as? MultiblockDelegateCellBlockEntity<*>
 
-                        delegateBlockEntity?.representativePos
-                    }
-                    else -> {
-                        null
+                            delegateBlockEntity?.representativePos
+                        }
+                        else -> {
+                            null
+                        }
                     }
                 }
 
@@ -272,50 +270,107 @@ class Eln2WailaPlugin : IWailaPlugin {
     }
 
     /**
-     * Shows the result of applying the recipe.
+     * Shows input liquids, output liquids and output gases.
      * */
-    private object BlacksmithingStationProvider : IBlockComponentProvider, IServerDataProvider<BlockAccessor> {
-        override fun getUid() = resource("blacksmithing_help")
+    private object ElectrolysisProxyProvider : IBlockComponentProvider, IServerDataProvider<BlockAccessor> {
+        override fun getUid() = resource("electrolysis")
 
-        override fun appendServerData(p0: CompoundTag, p1: BlockAccessor) {
-            val blockEntity = p1.blockEntity as? BlacksmithingStationBlockEntity
+        override fun appendServerData(data: CompoundTag, accessor: BlockAccessor) {
+            val module = accessor.blockEntity as? ElectrolysisProxyBlockEntity
                 ?: return
 
-            val stack = blockEntity.inventoryHandler.getStackInSlot(0)
-
-            if(stack.isEmpty) {
+            if(!accessor.level.isLoaded(module.representativePos)) {
                 return
             }
 
-            p0.put("stationInventory", stack.serializeNBT())
+            val representative = accessor.level.getBlockEntity(module.representativePos) as? ElectrolysisMainBlockEntity
+                ?: return
+
+            fun addTank(tag: ListTag, tank: MultipleFractionalFluidTank) {
+                tank.fluids.forEach { stack ->
+                    if (!stack.isEmpty) {
+                        tag.add(stack.toNbt())
+                    }
+                }
+            }
+
+            val fluidSide = if(!representative.inventoryHandler.hasSeparator() || module.isLeftDelegate()) {
+                representative.fluidHandler.anode
+            } else {
+                representative.fluidHandler.cathode
+            }
+
+            val inputLiquids = ListTag()
+            val outputLiquids = ListTag()
+            val outputGases = ListTag()
+
+            addTank(inputLiquids, fluidSide.inputLiquidTank)
+            addTank(outputLiquids, fluidSide.outputLiquidTank)
+            addTank(outputGases, fluidSide.outputGasTank)
+
+            val fluids = CompoundTag()
+            fluids.put("inputLiquids", inputLiquids)
+            fluids.put("outputLiquids", outputLiquids)
+            fluids.put("outputGases", outputGases)
+
+            data.put("electrolysis_fluids", fluids)
         }
 
-        override fun appendTooltip(p0: ITooltip, p1: BlockAccessor, p2: IPluginConfig) {
-            if(!p1.serverData.contains("stationInventory")) {
+        override fun appendTooltip(tooltip: ITooltip, accessor: BlockAccessor, config: IPluginConfig) {
+            if (!accessor.serverData.contains("electrolysis_fluids")) {
                 return
             }
 
-            val blockEntity = p1.blockEntity as? BlacksmithingStationBlockEntity
-                ?: return
+            val fluids = accessor.serverData.getCompound("electrolysis_fluids")
+            val inputLiquids = fluids.getListTag("inputLiquids").map { FractionalFluidStack.fromNbt(it as CompoundTag) }
+            val outputLiquids = fluids.getListTag("outputLiquids").map { FractionalFluidStack.fromNbt(it as CompoundTag) }
+            val outputGases = fluids.getListTag("outputGases").map { FractionalFluidStack.fromNbt(it as CompoundTag) }
 
-            val player = p1.player
-                ?: return
+            val helper = tooltip.elementHelper
+            val scale = Eln2Config.clientConfig.getScaleOverride(Volume::class.java)
 
-            val stationInventory = ItemStack.of(p1.serverData.getCompound("stationInventory"))
+            fun renderRow(stack: FractionalFluidStack) {
+                tooltip.add(
+                    helper
+                        .fluid(JadeFluidObject.of(stack.fluid, stack.unit().amount.toLong()))
+                        .size(Vec2(12.0f, 12.0f)))
 
-            val toolStack = player.getItemInHand(InteractionHand.MAIN_HAND)
-            val recipeOptional = blockEntity.searchForRecipe(stationInventory, toolStack)
+                tooltip.append(
+                    helper.text(stack.unit().displayName).apply {
+                        translate(Vec2(2.0f, 3.0f))
+                    }
+                )
 
-            if(recipeOptional.isEmpty) {
-                return
+                val quantity = if(scale == null) {
+                    Quantity(stack.amount, LITER).classify()
+                }
+                else {
+                    classifyAuxiliary(scale, !Quantity(stack.amount, LITER))
+                }
+
+                tooltip.append(
+                    helper.text(Component.literal(quantity)).apply {
+                        translate(Vec2(4.0f, 3.0f))
+                    }
+                )
             }
 
-            val recipe = recipeOptional.get()
+            fun renderCollection(fluids: List<FractionalFluidStack>) {
+                if(fluids.isEmpty()) {
+                    return
+                }
 
-            val helper = p0.elementHelper
-            p0.add(helper.text(Component.translatable("blacksmithing.eln2.result")))
-            p0.append(helper.smallItem(recipe.output))
-            p0.append(helper.text(recipe.output.displayName))
+                fluids.forEach {
+                    renderRow(it)
+                    tooltip.add(helper.spacer(0, 2))
+                }
+
+                tooltip.add(helper.spacer(0, 5))
+            }
+
+            renderCollection(inputLiquids)
+            renderCollection(outputLiquids)
+            renderCollection(outputGases)
         }
     }
 }
@@ -425,6 +480,7 @@ class ComponentDisplayList(private val entries: MutableList<Component>) {
      * */
     fun debugInIDE(supplier: Supplier<String>) {
         if(ELN2_DEBUG) {
+            @Suppress("DEPRECATION")
             debug("*" + supplier.get()) // another star to indicate [debugInIDE] was called and not just [debug]
         }
     }
@@ -528,6 +584,10 @@ class ComponentDisplayList(private val entries: MutableList<Component>) {
 
     fun hotTemperature(temperature: Quantity<Temperature>, eps: Double = EPS) {
         translateQuantityRow("hot_temperature", temperature, eps)
+    }
+
+    fun signalInput(value: Double, eps: Double = EPS) {
+        translateQuantityRow("signal_input", Quantity(value, VOLT), eps)
     }
 
     fun signalOutput(value: Double, eps: Double = EPS) {

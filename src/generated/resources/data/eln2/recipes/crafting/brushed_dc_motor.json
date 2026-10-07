@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": {
+      "item": "eln2:carbon_brush"
+    },
+    "C": {
+      "item": "eln2:copper_rotor"
+    },
+    "G": {
+      "item": "eln2:iron_gear"
+    },
+    "S": {
+      "item": "eln2:crude_motor_stator"
+    }
+  },
+  "pattern": [
+    "BCB",
+    " S ",
+    " G "
+  ],
+  "result": {
+    "item": "eln2:brushed_dc_motor"
+  },
+  "show_notification": true
+}

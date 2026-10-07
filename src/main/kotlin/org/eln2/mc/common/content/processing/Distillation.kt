@@ -1,3 +1,5 @@
+@file:Suppress("unused")
+
 package org.eln2.mc.common.content.processing
 
 import dev.engine_room.flywheel.api.instance.Instance
@@ -10,6 +12,8 @@ import dev.engine_room.flywheel.lib.visual.SimpleDynamicVisual
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
 import net.minecraft.nbt.CompoundTag
+import net.minecraft.network.FriendlyByteBuf
+import net.minecraft.network.chat.Component
 import net.minecraft.world.InteractionResult
 import net.minecraft.world.item.context.UseOnContext
 import net.minecraft.world.level.Level
@@ -49,10 +53,18 @@ import org.eln2.mc.common.fluids.foundation.*
 import org.eln2.mc.common.network.serverToClient.BulkPacketHandlerBlockEntity
 import org.eln2.mc.common.network.serverToClient.ClientSidePacketHandlerBuilder
 import org.eln2.mc.common.network.serverToClient.sendBulkPacket
+import org.eln2.mc.common.sounds.foundation.SimpleLoopingBlockEntitySoundInstance
+import org.eln2.mc.common.sounds.foundation.SoundInfo
+import org.eln2.mc.common.sounds.foundation.SoundInstanceTickEvent
+import org.ageseries.libage.mathematics.FramerateIndependentSmoother1d
+import org.ageseries.libage.mathematics.approxEq
+import net.minecraft.world.level.block.entity.BlockEntity
+import net.minecraft.world.level.block.entity.BlockEntityTicker
 import org.eln2.mc.Locators
 import org.eln2.mc.extensions.*
 import org.eln2.mc.integration.ComponentDisplay
 import org.eln2.mc.integration.ComponentDisplayList
+import org.eln2.mc.client.overlays.HoverDetailSupplier
 import org.eln2.mc.mathematics.Base6Direction3dMask
 import java.util.function.Consumer
 import java.util.function.Supplier
@@ -187,7 +199,7 @@ class DistillationColumnBlockEntity(pos: BlockPos, state: BlockState) : CellBloc
  *
  * @param allowExternalConnections If false, refuses cell connections to anything that isn't a distillation module that also has [allowExternalConnections] set to false.
  * */
-class PhaseChangeModuleCell(ci: CellCreateInfo, leakage: ConnectionParameters, val maxTemperature: Quantity<Temperature>, val replicatesTemperature: Boolean, val allowExternalConnections: Boolean) :
+class PhaseChangeModuleCell(ci: CellCreateInfo, leakage: ConnectionParameters, val maxTemperature: Quantity<Temperature>, val allowExternalConnections: Boolean) :
     Cell(ci),
     SidedThermalFLBR<PhaseChangeModuleCell>,
     SimulationExecutionSubgraph.SynchronizationPointCell<PhaseChangeModuleCell>
@@ -236,13 +248,13 @@ class PhaseChangeModuleCell(ci: CellCreateInfo, leakage: ConnectionParameters, v
     //#endregion
 
     @Replicator
-    fun replicator(target: InternalTemperatureConsumer) = if(replicatesTemperature) {
-        InternalTemperatureReplicatorBehavior(target) {
-            !wire.thermalBody.temperature
-        }
+    fun replicator(target: InternalTemperatureConsumer) =  InternalTemperatureReplicatorBehavior(target) {
+        !wire.thermalBody.temperature
     }
-    else {
-        null
+
+    @Replicator
+    fun activityReplicator(target: DistillationActivityConsumer) = DistillationActivityReplicatorBehavior(target) {
+        distillation.activity
     }
 
     override fun saveCellData() : CompoundTag {
@@ -254,7 +266,7 @@ class PhaseChangeModuleCell(ci: CellCreateInfo, leakage: ConnectionParameters, v
 
     override fun loadCellData(tag: CompoundTag) {
         wire.thermalBody.material = tag.getCompound("material").getMaterial()
-        wire.thermalBody.mass = tag.getQuantity<Mass>("mass")
+        wire.thermalBody.mass = tag.getQuantity("mass")
     }
 
     /**
@@ -338,7 +350,7 @@ class PhaseChangeModuleCell(ci: CellCreateInfo, leakage: ConnectionParameters, v
             const val MAX_PHASE_CHANGE_RATE = 1.0
             const val DAMPENING_CONSTANT = 1.0 / 6.0
             const val MAX_LIQUID_FLOW_RATE = 10.0
-            const val MAX_GAS_FLOW_RATE = 15.0
+            const val MAX_GAS_FLOW_RATE = 1500.0
         }
 
         //#region Setup State
@@ -417,6 +429,26 @@ class PhaseChangeModuleCell(ci: CellCreateInfo, leakage: ConnectionParameters, v
          * Set when transfers occur. Marks that a recalculation of the composition is needed.
          * */
         var hasTransferred = false
+
+        /**
+         * Total amount boiled this step, in [PhaseChangeSimulation.MAX_PHASE_CHANGE_RATE] units.
+         * Reset by [phaseChange].
+         * */
+        var boiledAmount = 0.0
+            private set
+
+        /**
+         * Total amount condensed this step, in [PhaseChangeSimulation.MAX_PHASE_CHANGE_RATE] units.
+         * Reset by [phaseChange].
+         * */
+        var condensedAmount = 0.0
+            private set
+
+        /**
+         * Normalized phase-change activity in [0, 1], combining evaporation and condensation.
+         * */
+        val activity: Double
+            get() = ((boiledAmount + condensedAmount) / (2.0 * MAX_PHASE_CHANGE_RATE)).coerceIn(0.0, 1.0)
 
         /**
          * Fetches the block entity associated with [cell] into [blockEntity] and, if that's all good and in scope, fetches the target block entities that are in scope and loads them into [targetBlockEntities].
@@ -525,16 +557,19 @@ class PhaseChangeModuleCell(ci: CellCreateInfo, leakage: ConnectionParameters, v
                  * */
                 amountToBoil = min(amountToBoil, dT * !body.mass * !body.material.specificHeat / !boiling.enthalpy)
 
+                val gasProperties = PhysicalFluidManager.requireProperties(boiling.resultGas)
+                val gasExpansionFactor = gasProperties.gasExpansionFactor
+
                 /**
                  * Constrain by the remaining capacity in the gas tank:
                  * */
-                amountToBoil = min(amountToBoil, gasTank.remainingCapacity * 1000.0 / boiling.resultGasProportion)
+                amountToBoil = min(amountToBoil, gasTank.remainingCapacity * 1000.0 / boiling.resultGasProportion / gasExpansionFactor)
 
                 if (amountToBoil < FractionalFluidStack.EPSILON) {
                     continue
                 }
 
-                val gasGenerated = amountToBoil * boiling.resultGasProportion / 1000.0
+                val gasGenerated = amountToBoil * boiling.resultGasProportion / 1000.0 * gasExpansionFactor
 
                 if(gasGenerated < FractionalFluidStack.EPSILON) {
                     /**
@@ -545,7 +580,7 @@ class PhaseChangeModuleCell(ci: CellCreateInfo, leakage: ConnectionParameters, v
 
                 var residueStack: FractionalFluidStack? = null
                 if(boiling.resultLiquidResidue != null) {
-                    val residue = amountToBoil - gasGenerated
+                    val residue = amountToBoil * (1000.0 - boiling.resultGasProportion) / 1000.0
 
                     if(residue >= FractionalFluidStack.EPSILON) {
                         /**
@@ -557,10 +592,9 @@ class PhaseChangeModuleCell(ci: CellCreateInfo, leakage: ConnectionParameters, v
                 }
 
                 val liquidProperties = PhysicalFluidManager.requireProperties(target.fluid)
-                val gasProperties = PhysicalFluidManager.requireProperties(boiling.resultGas)
 
                 val liquidCapacity = amountToBoil * !liquidProperties.specificHeatCapacity
-                val gasCapacity = gasGenerated * !gasProperties.specificHeatCapacity
+                val gasCapacity = gasGenerated * !gasProperties.specificHeatCapacity / gasExpansionFactor
 
                 val residueCapacity = if (residueStack != null) {
                     val residueProperties = PhysicalFluidManager.requireProperties(residueStack.fluid)
@@ -578,10 +612,11 @@ class PhaseChangeModuleCell(ci: CellCreateInfo, leakage: ConnectionParameters, v
                 }
 
                 val sensibleCorrection = ((gasCapacity + residueCapacity) - liquidCapacity) * !temperature
-                val latentHeat = !boiling.enthalpy * gasGenerated
+                val latentHeat = !boiling.enthalpy * amountToBoil
 
                 body.energy += Quantity(sensibleCorrection - latentHeat, JOULE)
                 remainingEvaporation -= amountToBoil
+                boiledAmount += amountToBoil
 
                 cell.setChanged()
                 blockEntity.setChanged()
@@ -640,7 +675,9 @@ class PhaseChangeModuleCell(ci: CellCreateInfo, leakage: ConnectionParameters, v
                 /**
                  * Calculates the total gas to condense by applying constraints:
                  * */
-                var amountToCondense = remainingCondensation
+                val gasProperties = PhysicalFluidManager.requireProperties(target.fluid)
+                val gasExpansionFactor = gasProperties.gasExpansionFactor
+                var amountToCondense = remainingCondensation * gasExpansionFactor
 
                 /**
                  * Constrain by available gas:
@@ -650,18 +687,18 @@ class PhaseChangeModuleCell(ci: CellCreateInfo, leakage: ConnectionParameters, v
                 /**
                  * Constrain by the energy limit:
                  * */
-                amountToCondense = min(amountToCondense, dT * !body.mass * !body.material.specificHeat / !condensation.enthalpy)
+                amountToCondense = min(amountToCondense, dT * !body.mass * !body.material.specificHeat * gasExpansionFactor / !condensation.enthalpy)
 
                 /**
                  * Constrain by remaining capacity in the liquid tank:
                  * */
-                amountToCondense = min(amountToCondense, liquidTank.remainingCapacity * 1000.0 / condensation.resultLiquidProportion)
+                amountToCondense = min(amountToCondense, liquidTank.remainingCapacity * 1000.0 / condensation.resultLiquidProportion * gasExpansionFactor)
 
                 if(amountToCondense < FractionalFluidStack.EPSILON) {
                     continue
                 }
 
-                val liquidGenerated = amountToCondense * condensation.resultLiquidProportion / 1000.0
+                val liquidGenerated = amountToCondense * condensation.resultLiquidProportion / 1000.0 / gasExpansionFactor
 
                 if(liquidGenerated < FractionalFluidStack.EPSILON) {
                     /**
@@ -673,7 +710,7 @@ class PhaseChangeModuleCell(ci: CellCreateInfo, leakage: ConnectionParameters, v
                 var residueStack: FractionalFluidStack? = null
 
                 if(condensation.resultGasResidue != null) {
-                    val residue = amountToCondense - liquidGenerated
+                    val residue = amountToCondense * (1000.0 - condensation.resultLiquidProportion) / 1000.0
 
                     if(residue >= FractionalFluidStack.EPSILON) {
                         /**
@@ -684,15 +721,14 @@ class PhaseChangeModuleCell(ci: CellCreateInfo, leakage: ConnectionParameters, v
                     }
                 }
 
-                val gasProperties = PhysicalFluidManager.requireProperties(target.fluid)
                 val liquidProperties = PhysicalFluidManager.requireProperties(condensation.resultLiquid)
 
-                val gasCapacity = amountToCondense * !gasProperties.specificHeatCapacity
+                val gasCapacity = amountToCondense * !gasProperties.specificHeatCapacity / gasExpansionFactor
                 val liquidCapacity = liquidGenerated * !liquidProperties.specificHeatCapacity
 
                 val residueCapacity = if (residueStack != null) {
                     val residueProperties = PhysicalFluidManager.requireProperties(residueStack.fluid)
-                    residueStack.amount * !residueProperties.specificHeatCapacity
+                    residueStack.amount * !residueProperties.specificHeatCapacity / residueProperties.gasExpansionFactor
                 }
                 else {
                     0.0
@@ -706,10 +742,10 @@ class PhaseChangeModuleCell(ci: CellCreateInfo, leakage: ConnectionParameters, v
                 }
 
                 val sensibleCorrection = ((liquidCapacity + residueCapacity) - gasCapacity) * !temperature
-                val latentHeat = !condensation.enthalpy * liquidGenerated
-
+                val latentHeat = !condensation.enthalpy * (amountToCondense / gasExpansionFactor)
                 body.energy += Quantity(sensibleCorrection + latentHeat, JOULE)
-                remainingCondensation -= amountToCondense
+                remainingCondensation -= amountToCondense / gasExpansionFactor
+                condensedAmount += amountToCondense / gasExpansionFactor
 
                 cell.setChanged()
                 blockEntity.setChanged()
@@ -723,6 +759,9 @@ class PhaseChangeModuleCell(ci: CellCreateInfo, leakage: ConnectionParameters, v
          * Executes evaporation and condensation.
          * */
         fun phaseChange() {
+            boiledAmount = 0.0
+            condensedAmount = 0.0
+
             if(skipSimulation) {
                 return
             }
@@ -1000,7 +1039,7 @@ class PhaseChangeModuleCell(ci: CellCreateInfo, leakage: ConnectionParameters, v
                      * Execute energy transfer:
                      * */
                     val fluidProperties = PhysicalFluidManager.requireProperties(resource.fluid)
-                    val energy = Quantity(amount * !fluidProperties.specificHeatCapacity * !neighbor.cell.distillation.transferTemperature, JOULE)
+                    val energy = Quantity(amount * !fluidProperties.specificHeatCapacity * !neighbor.cell.distillation.transferTemperature / fluidProperties.gasExpansionFactor, JOULE)
                     thermalBody.energy += energy
                     neighbor.cell.wire.thermalBody.energy -= energy
 
@@ -1145,6 +1184,22 @@ class PhaseChangeModuleBlock(
 
     override fun newBlockEntity(pPos: BlockPos, pState: BlockState) = PhaseChangeModuleBlockEntity(pPos, pState)
 
+    override fun <T : BlockEntity?> getTicker(
+        pLevel: Level,
+        pState: BlockState,
+        pBlockEntityType: BlockEntityType<T>
+    ): BlockEntityTicker<T>? {
+        if (pLevel.isClientSide) {
+            return BlockEntityTicker { _, _, _, pBlockEntity ->
+                if (pBlockEntity is PhaseChangeModuleBlockEntity) {
+                    pBlockEntity.clientTick()
+                }
+            }
+        }
+
+        return null
+    }
+
     /**
      * Adds the vertical neighbor modules (we excluded verticals from the thermal connections, see the cell as for why), and adds the columns.
      * */
@@ -1178,7 +1233,9 @@ class PhaseChangeModuleBlockEntity(pos: BlockPos, state: BlockState) :
     ComponentDisplay,
     WrenchInteractable,
     InternalTemperatureConsumer,
-    BulkPacketHandlerBlockEntity
+    DistillationActivityConsumer,
+    BulkPacketHandlerBlockEntity,
+    HoverDetailSupplier
 {
     //#region Capability
 
@@ -1188,7 +1245,8 @@ class PhaseChangeModuleBlockEntity(pos: BlockPos, state: BlockState) :
     @Suppress("unused")
     val capacityConstraint = FractionalFluidTankCapacityConstraint(
         (state.block as PhaseChangeModuleBlock).capacity.toDouble(),
-        arrayOf(liquidTank, gasTank)
+        arrayOf(liquidTank, gasTank),
+        doubleArrayOf((state.block as PhaseChangeModuleBlock).capacity.toDouble() * 0.9, (state.block as PhaseChangeModuleBlock).capacity.toDouble() * 0.9)
     )
 
     init {
@@ -1330,7 +1388,7 @@ class PhaseChangeModuleBlockEntity(pos: BlockPos, state: BlockState) :
     val sideHandler = ThermalLayer(this, SideHandler(liquidTank, gasTank))
     val sideHandlerLazy: LazyOptional<ThermalLayer<SideHandler>> = LazyOptional.of { sideHandler }
 
-    override fun <T : Any?> getCapability(cap: Capability<T>, side: Direction?): LazyOptional<T?> {
+    override fun <T> getCapability(cap: Capability<T>, side: Direction?): LazyOptional<T?> {
         if(cap == ForgeCapabilities.FLUID_HANDLER) {
             if(side != null) {
                 return when(side) {
@@ -1349,6 +1407,17 @@ class PhaseChangeModuleBlockEntity(pos: BlockPos, state: BlockState) :
         bottomFaceHandlerLazy.invalidate()
         topFaceHandlerLazy.invalidate()
         sideHandlerLazy.invalidate()
+    }
+
+    override fun getHoverDetail(side: Direction?): Component? {
+        val key = when(side) {
+            Direction.DOWN -> "hover.eln2.phase_change.bottom"
+            Direction.UP -> "hover.eln2.phase_change.top"
+            null -> return null
+            else -> "hover.eln2.phase_change.side"
+        }
+
+        return Component.translatable(key)
     }
 
     //#endregion
@@ -1402,6 +1471,10 @@ class PhaseChangeModuleBlockEntity(pos: BlockPos, state: BlockState) :
 
     class RenderState {
         var temperature = 0.0
+        var activity = 0.0
+
+        val activitySmoother = FramerateIndependentSmoother1d(0.5)
+        var soundInstance: SimpleLoopingBlockEntitySoundInstance<PhaseChangeModuleBlockEntity>? = null
     }
 
     @ClientOnly
@@ -1424,6 +1497,26 @@ class PhaseChangeModuleBlockEntity(pos: BlockPos, state: BlockState) :
         handler.withHandler<InternalTemperatureReplicatorBehavior.InternalTemperaturePacket>(InternalTemperatureReplicatorBehavior.InternalTemperaturePacket::deserialize) { packet ->
             renderState!!.temperature = packet.temperature
         }
+
+        handler.withHandler<DistillationActivityReplicatorBehavior.ActivityPacket>(DistillationActivityReplicatorBehavior.ActivityPacket::deserialize) { packet ->
+            renderState!!.activity = packet.activity
+        }
+    }
+
+    @ClientOnly
+    fun clientTick() {
+        val state = renderState ?: return
+
+        if (state.soundInstance == null) {
+            state.soundInstance = SimpleLoopingBlockEntitySoundInstance(this, Eln2Processing.DISTILLATION_SOUND.get()).also {
+                it.events.registerHandler<SoundInstanceTickEvent> { _ ->
+                    state.activitySmoother.update(state.activity)
+                    it.soundInfo = SoundInfo.distillation(state.activitySmoother.value)
+                }
+
+                it.registerOnAudioManager()
+            }
+        }
     }
 
     @ServerOnly @OnSimulationThread
@@ -1434,12 +1527,26 @@ class PhaseChangeModuleBlockEntity(pos: BlockPos, state: BlockState) :
         )
     }
 
+    @OnSimulationThread
+    override fun onDistillationActivityChange(activity: Double) {
+        sendBulkPacket(
+            DistillationActivityReplicatorBehavior.ActivityPacket::serialize,
+            DistillationActivityReplicatorBehavior.ActivityPacket(activity)
+        )
+    }
+
     // onSyncSuggested
     override fun getUpdateTag(): CompoundTag {
         sendBulkPacket(
             InternalTemperatureReplicatorBehavior.InternalTemperaturePacket::serialize,
             InternalTemperatureReplicatorBehavior.InternalTemperaturePacket(!cell.wire.thermalBody.temperature)
         )
+
+        sendBulkPacket(
+            DistillationActivityReplicatorBehavior.ActivityPacket::serialize,
+            DistillationActivityReplicatorBehavior.ActivityPacket(cell.distillation.activity)
+        )
+
         return super.getUpdateTag()
     }
 
@@ -1520,5 +1627,56 @@ class PhaseChangeModuleBlockEntityVisual(ctx: VisualizationContext, blockEntity:
 
     override fun _delete() {
         instance.delete()
+    }
+}
+
+/**
+ * Consumer for the distillation phase-change activity, used to drive client-side effects like sound.
+ * */
+fun interface DistillationActivityConsumer {
+    fun onDistillationActivityChange(activity: Double)
+}
+
+/**
+ * Replicates the normalized distillation phase-change activity to the client, where 0 is idle and 1 is maximal boiling and condensation.
+ * @param consumer The consumer for the changes.
+ * @param supplier The activity supplier.
+ * */
+class DistillationActivityReplicatorBehavior(val consumer: DistillationActivityConsumer, val supplier: Supplier<Double>) : ReplicatorBehavior {
+    var scanInterval = 5
+    var scanPhase = SimulationPhase.Pre
+    var tolerance = 0.0025
+
+    private var tracked = 0.0
+
+    override fun subscribe(subscribers: SubscriberCollection<SimulationPhase>) {
+        subscribers.addSubscriber(SubscriberOptions(scanInterval, scanPhase), this::scan)
+    }
+
+    private fun scan(dt: Double, phase: SimulationPhase) {
+        var activity = supplier.get()
+
+        if(activity < tolerance) {
+            activity = 0.0
+        }
+
+        if(activity.approxEq(tracked, tolerance)) {
+            return
+        }
+
+        tracked = activity
+        consumer.onDistillationActivityChange(activity)
+    }
+
+    class ActivityPacket(val activity: Double) {
+        companion object {
+            fun serialize(packet: ActivityPacket, writer: FriendlyByteBuf) {
+                writer.writeDouble(packet.activity)
+            }
+
+            fun deserialize(reader: FriendlyByteBuf) = ActivityPacket(
+                reader.readDouble()
+            )
+        }
     }
 }

@@ -4,7 +4,7 @@
   "cookingtime": 200,
   "experience": 0.5,
   "ingredient": {
-    "item": "eln2:bronze_ingot"
+    "tag": "forge:ingots/bronze"
   },
   "result": "eln2:hot_bronze_ingot"
 }

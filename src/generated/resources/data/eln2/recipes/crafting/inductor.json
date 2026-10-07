@@ -1,0 +1,22 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "I": {
+      "item": "minecraft:iron_nugget"
+    },
+    "W": {
+      "item": "eln2:copper_wire"
+    }
+  },
+  "pattern": [
+    " W ",
+    " I ",
+    " W "
+  ],
+  "result": {
+    "count": 4,
+    "item": "eln2:inductor"
+  },
+  "show_notification": true
+}

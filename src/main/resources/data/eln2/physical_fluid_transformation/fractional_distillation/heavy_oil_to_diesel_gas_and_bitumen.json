@@ -1,7 +1,7 @@
 {
     "fluid": "eln2:heavy_oil",
     "boiling": {
-        "temperature": 300.0,
+        "temperature": 573.15,
         "enthalpy": 180000.0,
         "resultGas": "eln2:diesel_gas",
         "resultGasProportion": 600,

@@ -5,7 +5,7 @@
   },
   "duration": 10.0,
   "ingredient": {
-    "item": "eln2:lead_ingot"
+    "tag": "forge:ingots/lead"
   },
   "result": {
     "count": 1,

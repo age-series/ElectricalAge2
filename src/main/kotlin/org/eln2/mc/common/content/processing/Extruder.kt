@@ -136,6 +136,12 @@ class ExtruderBlockEntityVisual<C : ProcessingCell, BE : ExtruderBlockEntity<C>>
             relight(die)
         }
     }
+
+    override fun _delete() {
+        super._delete()
+
+        die?.delete()
+    }
 }
 
 class ExtruderMenu(

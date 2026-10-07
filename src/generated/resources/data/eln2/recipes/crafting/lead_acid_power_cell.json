@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "A": {
+      "item": "eln2:dilute_sulfuric_acid_bucket"
+    },
+    "B": {
+      "item": "eln2:lead_acid_battery_cell"
+    },
+    "P": {
+      "tag": "forge:plates/lead"
+    }
+  },
+  "pattern": [
+    "PBP",
+    "BAB",
+    "PBP"
+  ],
+  "result": {
+    "item": "eln2:lead_acid_power_cell"
+  },
+  "show_notification": true
+}

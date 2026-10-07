@@ -1,0 +1,25 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "C": {
+      "item": "minecraft:clay_ball"
+    },
+    "P": {
+      "item": "eln2:carbon_putty"
+    },
+    "W": {
+      "item": "eln2:copper_wire"
+    }
+  },
+  "pattern": [
+    " C ",
+    "WPW",
+    " C "
+  ],
+  "result": {
+    "count": 4,
+    "item": "eln2:unfired_resistor"
+  },
+  "show_notification": true
+}

@@ -1,0 +1,26 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "F": {
+      "item": "eln2:tungsten_filament"
+    },
+    "G": {
+      "item": "eln2:glass_envelope"
+    },
+    "P": {
+      "item": "eln2:iron_plate"
+    },
+    "W": {
+      "item": "eln2:copper_wire"
+    }
+  },
+  "pattern": [
+    "FWW",
+    "PG "
+  ],
+  "result": {
+    "item": "eln2:unsealed_vacuum_tube"
+  },
+  "show_notification": true
+}

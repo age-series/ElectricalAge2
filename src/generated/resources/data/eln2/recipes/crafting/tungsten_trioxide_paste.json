@@ -1,0 +1,22 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": {
+      "item": "eln2:pitch_bottle"
+    },
+    "T": {
+      "item": "eln2:tungsten_trioxide_dust"
+    }
+  },
+  "pattern": [
+    "TTT",
+    "TBT",
+    "TTT"
+  ],
+  "result": {
+    "count": 8,
+    "item": "eln2:tungsten_trioxide_paste"
+  },
+  "show_notification": true
+}

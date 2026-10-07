@@ -1,0 +1,23 @@
+{
+  "type": "eln2:burning",
+  "duration": 1800,
+  "gas_output": {
+    "amount": 250,
+    "fluid": "eln2:sulfur_dioxide"
+  },
+  "inputItems": [
+    {
+      "options": [
+        {
+          "ingredient": {
+            "tag": "forge:dusts/sulfur"
+          },
+          "value": 1
+        }
+      ],
+      "requiredValue": 1
+    }
+  ],
+  "maxTemperature": 698.0,
+  "minTemperature": 648.0
+}

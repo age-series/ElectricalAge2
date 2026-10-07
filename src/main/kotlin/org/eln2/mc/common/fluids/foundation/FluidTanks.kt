@@ -605,7 +605,8 @@ open class GravityBasedMultipleFluidTank(val parent: MultipleFluidTank) : IFluid
             var volume = 0.0
 
             phase.forEach { stack ->
-                mass += !PhysicalFluidManager.requireProperties(stack.fluid).density * stack.amount
+                val properties = PhysicalFluidManager.requireProperties(stack.fluid)
+                mass += !properties.density * stack.amount / properties.gasExpansionFactor
                 volume += stack.amount
             }
 
@@ -1162,8 +1163,11 @@ open class MultipleFractionalFluidTank(var capacity: Double, val requireThermalF
 /**
  * Limits the capacity of multiple fluid tanks, so their total capacity is constrained by [capacity].
  * Useful for e.g. separating the gas phase and liquid phase fluids in separate tanks, but limiting the total capacity of the machine.
+ * @param maxima If non-null, each entry caps the corresponding tank's capacity (in addition to the shared [capacity]).
+ *  A tank with a maximum cannot consume the remaining shared capacity beyond its own maximum, leaving that headroom for the other tanks.
+ *  If null, all tanks share the full [capacity] freely.
  * */
-class FractionalFluidTankCapacityConstraint(val capacity: Double, val tanks: Array<MultipleFractionalFluidTank>) {
+class FractionalFluidTankCapacityConstraint(val capacity: Double, val tanks: Array<MultipleFractionalFluidTank>, val maxima: DoubleArray? = null) {
     init {
         tanks.forEach { tank ->
             tank.onVersionChanged += this::update
@@ -1205,7 +1209,8 @@ class FractionalFluidTankCapacityConstraint(val capacity: Double, val tanks: Arr
 
             for(i in 0 until tanks.size) {
                 val tank = tanks[i]
-                tank.capacity = tank.amount + remainingCapacity
+                val maximum = maxima?.getOrNull(i) ?: Double.POSITIVE_INFINITY
+                tank.capacity = min(tank.amount + remainingCapacity, maximum)
             }
         }
     }
@@ -1621,7 +1626,8 @@ open class GravityBasedMultipleFractionalFluidTank(val parent: MultipleFractiona
             var volume = 0.0
 
             phase.forEach { stack ->
-                mass += !PhysicalFluidManager.requireProperties(stack.fluid).density * stack.amount
+                val properties = PhysicalFluidManager.requireProperties(stack.fluid)
+                mass += !properties.density * stack.amount / properties.gasExpansionFactor
                 volume += stack.amount
             }
 
@@ -1939,10 +1945,11 @@ object ThermalFluidHandlerHelper {
             }
 
             val properties = PhysicalFluidManager.getPropertiesWithFallback(fluid)
-            val mass = amount * !properties.density
+            val expansionFactor = properties.gasExpansionFactor
+            val mass = amount * !properties.density / expansionFactor
 
             totalFluidMass += mass
-            totalFluidCp += amount * !properties.specificHeatCapacity
+            totalFluidCp += amount * !properties.specificHeatCapacity / expansionFactor
         }
 
         if(totalFluidMass.approxEq(0.0)) {
@@ -2063,7 +2070,7 @@ interface ThermalObjectBasedFractionalFluidHandlerThermalExpansion : FractionalF
             }
 
             val properties = PhysicalFluidManager.getPropertiesWithFallback(resource.fluid)
-            val energy = filled * !properties.specificHeatCapacity * incomingTemperature
+            val energy = filled * !properties.specificHeatCapacity * incomingTemperature / properties.gasExpansionFactor
             val (newMaterial, newMass) = calculateDerivativeMaterialAndMass()
 
             val thermalBody = handle.acquire()
@@ -2093,7 +2100,7 @@ interface ThermalObjectBasedFractionalFluidHandlerThermalExpansion : FractionalF
 
             val body = handle.acquire()
             exportTemperature = !body.temperature
-            body.energy -= Quantity(amount * !properties.specificHeatCapacity * exportTemperature, JOULE)
+            body.energy -= Quantity(amount * !properties.specificHeatCapacity * exportTemperature / properties.gasExpansionFactor, JOULE)
             body.material = newMaterial
             body.mass = newMass
             onMutated()
@@ -2122,7 +2129,7 @@ interface ThermalObjectBasedFractionalFluidHandlerThermalExpansion : FractionalF
 
             val body = handle.acquire()
             exportTemperature = !body.temperature
-            body.energy -= Quantity( amount * !properties.specificHeatCapacity * exportTemperature, JOULE)
+            body.energy -= Quantity( amount * !properties.specificHeatCapacity * exportTemperature / properties.gasExpansionFactor, JOULE)
             body.material = newMaterial
             body.mass = newMass
             onMutated()

@@ -1,7 +1,7 @@
 {
     "fluid": "eln2:creosote_gas",
     "condensation": {
-        "temperature": 331.1,
+        "temperature": 470.0,
         "enthalpy": 350000.0,
         "resultLiquid": "eln2:creosote"
     }

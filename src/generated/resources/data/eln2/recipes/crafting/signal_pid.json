@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "C": {
+      "item": "eln2:primitive_circuit"
+    },
+    "R": {
+      "item": "minecraft:redstone"
+    },
+    "W": {
+      "item": "eln2:copper_wire"
+    }
+  },
+  "pattern": [
+    "CC",
+    "CW",
+    "RR"
+  ],
+  "result": {
+    "item": "eln2:signal_pid"
+  },
+  "show_notification": true
+}

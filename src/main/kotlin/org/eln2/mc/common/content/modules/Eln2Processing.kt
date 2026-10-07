@@ -22,6 +22,7 @@ import org.ageseries.libage.utils.addUnique
 import org.eln2.mc.NodeFrictionDescription
 import org.eln2.mc.client.render.FlwModels
 import org.eln2.mc.client.render.foundation.DummyBlockEntityRendererProvider
+import org.eln2.mc.client.render.foundation.SimpleBigBlockEntityVisual
 import org.eln2.mc.client.screens.BasicProgressScreen
 import org.eln2.mc.common.blocks.BlockRegistry
 import org.eln2.mc.common.blocks.BlockRegistry.blockAndItem
@@ -35,6 +36,7 @@ import org.eln2.mc.common.cells.CellRegistry.cellImmediate
 import org.eln2.mc.common.cells.CellRegistry.cellMemoize
 import org.eln2.mc.common.cells.foundation.CellFactory
 import org.eln2.mc.common.cells.foundation.CellProvider
+import org.eln2.mc.common.cells.foundation.ElectricalSize
 import org.eln2.mc.common.cells.foundation.ThermalSize
 import org.eln2.mc.common.containers.ContainerRegistry.menu
 import org.eln2.mc.common.content.*
@@ -45,7 +47,6 @@ import org.eln2.mc.common.content.modules.Eln2Processing.registerBlockEntityVisu
 import org.eln2.mc.common.content.modules.Eln2Processing.registerMachine
 import org.eln2.mc.common.content.modules.Eln2Processing.registerMachineHull
 import org.eln2.mc.common.content.processing.*
-import org.eln2.mc.common.items.ItemRegistry
 import org.eln2.mc.common.items.ItemRegistry.item
 import org.eln2.mc.common.items.ItemRegistry.itemNoStack
 import org.eln2.mc.common.parts.PartRegistry.partAndItemWithProvider
@@ -117,7 +118,7 @@ object Eln2Processing : ContentModule() {
      * Registers the machine hull item, which is then used in the [registerMachine] API.
      * */
     private fun registerMachineHull(hullName: String) : MachineHullRegistryItem {
-        val hullItem = ItemRegistry.item(hullName) {
+        val hullItem = item(hullName) {
             Item(Item.Properties())
         }
 
@@ -237,6 +238,13 @@ object Eln2Processing : ContentModule() {
             CONDENSER_DISTILLATION_MODULE_BLOCK_ENTITY.get(),
             SimpleBlockEntityVisualizer(::PhaseChangeModuleBlockEntityVisual) { true }
         )
+
+        VisualizerRegistry.setVisualizer(
+            ELECTROLYSIS_MAIN_BLOCK_ENTITY.get(),
+            SimpleBlockEntityVisualizer({ ctx, be, pt ->
+                SimpleBigBlockEntityVisual(ctx, be, pt, FlwModels.ELECTROLYSIS)}
+            ) { true }
+        )
     }
 
     override fun registerBlockEntityRenderers(event: EntityRenderersEvent.RegisterRenderers) {
@@ -244,11 +252,6 @@ object Eln2Processing : ContentModule() {
          * Registers processing machine dummy renderers:
          * */
         registerWorkBoxMachineBlockEntityRenderers(event)
-
-        event.registerBlockEntityRenderer(
-            BLACKSMITHING_STATION_BLOCK_ENTITY.get(),
-            BlacksmithingStationBlockEntityRenderer.Provider()
-        )
 
         event.registerBlockEntityRenderer(
             COKE_OVEN_MAIN_BLOCK_ENTITY.get(),
@@ -267,6 +270,11 @@ object Eln2Processing : ContentModule() {
 
         event.registerBlockEntityRenderer(
             CONDENSER_DISTILLATION_MODULE_BLOCK_ENTITY.get(),
+            DummyBlockEntityRendererProvider()
+        )
+
+        event.registerBlockEntityRenderer(
+            ELECTROLYSIS_MAIN_BLOCK_ENTITY.get(),
             DummyBlockEntityRendererProvider()
         )
     }
@@ -294,55 +302,50 @@ object Eln2Processing : ContentModule() {
                 54.0f,
                 129.0f
             )
-       }
-    }
+        }
 
-    //#region Blacksmithing
-
-    val BLACKSMITHING_RECIPE = RecipeRegistry.register<BlacksmithingRecipe>("blacksmithing") {
-        BlacksmithingRecipe.Serializer(it)
-    }
-
-    val BLACKSMITHING_HAMMER_MANY_HITS_SOUND = soundEventVariableRange("blacksmithing/hammer_many_hits")
-
-    val BLACKSMITHING_STATION_BLOCK = blockAndItem("blacksmithing_station", ::BlacksmithingStationBlock)
-        .withSelfDrop()
-
-    val BLACKSMITHING_STATION_BLOCK_ENTITY = blockEntityOnly(
-        "blacksmithing_station",
-        BLACKSMITHING_STATION_BLOCK.block,
-        ::BlacksmithingStationBlockEntity
-    )
-
-    const val BLACKSMITHING_HAMMER_FLATTENING = "flattening"
-    const val BLACKSMITHING_HAMMER_TWO_SIDE_FLATTENING = "two_side_flattening"
-
-    val BLACKSMITHING_HAMMER_ITEM = item("blacksmithing_hammer") {
-        BlacksmithingToolItem(
-            30,
-            listOf(
-                BLACKSMITHING_HAMMER_FLATTENING,
-                BLACKSMITHING_HAMMER_TWO_SIDE_FLATTENING
+        MenuScreens.register(ALLOYING_SMELTER_MENU.get()) { menu, inventory, title ->
+            BasicProgressScreen(
+                menu, inventory, title,
+                resource("textures/gui/container/alloying_smelter/base.png"),
+                resource("textures/gui/container/alloying_smelter/progress.png"),
+                71.0f,
+                114.0f
             )
-        )
+        }
+
+        MenuScreens.register(BURNER_MENU.get()) { menu, inventory, title ->
+            BasicProgressScreen(
+                menu, inventory, title,
+                resource("textures/gui/container/burner_reactor/base.png"),
+                resource("textures/gui/container/burner_reactor/progress.png"),
+                72.0f,
+                110.0f
+            )
+        }
+
+        MenuScreens.register(HYDROGEN_REDUCTION_FURNACE_MENU.get(), ::HydrogenReductionFurnaceScreen)
+
+        MenuScreens.register(ELECTROLYSIS_MENU.get()) { menu, inventory, title ->
+            BasicProgressScreen(
+                menu, inventory, title,
+                resource("textures/gui/container/electrolysis/base.png"),
+                resource("textures/gui/container/electrolysis/progress.png"),
+                39.0f,
+                117.0f
+            )
+        }
+
+        MenuScreens.register(VACUUM_SEALING_MENU.get()) { menu, inventory, title ->
+            BasicProgressScreen(
+                menu, inventory, title,
+                resource("textures/gui/container/vacuum_sealing/base.png"),
+                resource("textures/gui/container/vacuum_sealing/progress.png"),
+                55.0f,
+                125.0f
+            )
+        }
     }
-
-    val BLACKSMITHING_FILE_ITEM = item("blacksmithing_file") {
-        BlacksmithingToolItem(14,
-            listOf()
-        )
-    }
-
-    const val BLACKSMITHING_CHISEL_AND_HAMMER_SLICING = "slicing"
-
-    val BLACKSMITHING_CHISEL_AND_HAMMER_ITEM = item("blacksmithing_chisel_and_hammer") {
-        BlacksmithingToolItem(
-            50,
-            listOf(BLACKSMITHING_CHISEL_AND_HAMMER_SLICING)
-        )
-    }
-
-    //#endregion
 
     //#region Coking
 
@@ -445,6 +448,8 @@ object Eln2Processing : ContentModule() {
 
     //#region Distillation
 
+    val DISTILLATION_SOUND = soundEventVariableRange("distillation")
+
     val DISTILLATION_COLUMN_CELL = cellImmediate("distillation_column", ::DistillationColumnCell)
 
     val DISTILLATION_COLUMN_BLOCK = blockAndItem("distillation_column", ::DistillationColumnBlock)
@@ -457,25 +462,24 @@ object Eln2Processing : ContentModule() {
     )
 
     val INSULATED_DISTILLATION_MODULE_CELL = cellMemoize("insulated_distillation_module") {
-        val leakage = ConnectionParameters(conductance = Quantity(0.1, WATT_PER_KELVIN))
-        val maxTemperature = Quantity(500.0, CELSIUS)
+        val leakage = ConnectionParameters(conductance = Quantity(0.015, WATT_PER_KELVIN))
+        val maxTemperature = Quantity(600.0, CELSIUS)
 
         CellFactory {
-            PhaseChangeModuleCell(it, leakage, maxTemperature, replicatesTemperature = false, allowExternalConnections = true)
+            PhaseChangeModuleCell(it, leakage, maxTemperature, allowExternalConnections = true)
         }
     }
 
     val INSULATED_DISTILLATION_MODULE_BLOCK = blockAndItem("insulated_distillation_module") {
         PhaseChangeModuleBlock(
             INSULATED_DISTILLATION_MODULE_CELL,
-            500,
+            5000,
             INSULATED_DISTILLATION_MODULE_BLOCK_ENTITY,
             PhaseChangeModuleModel(false) {
                 FlwModels.INSULATED_DISTILLATION_MODULE
             }
         )
-    }
-        .withSelfDrop()
+    }.withSelfDrop()
 
     val INSULATED_DISTILLATION_MODULE_BLOCK_ENTITY: RegistryObject<BlockEntityType<PhaseChangeModuleBlockEntity>> = blockEntityOnly(
         "insulated_distillation_module",
@@ -484,18 +488,18 @@ object Eln2Processing : ContentModule() {
     )
 
     val CONDENSER_DISTILLATION_MODULE_CELL = cellMemoize("condenser_distillation_module") {
-        val leakage = ConnectionParameters(conductance = Quantity(5.0, WATT_PER_KELVIN))
-        val maxTemperature = Quantity(500.0, CELSIUS)
+        val leakage = ConnectionParameters(conductance = Quantity(50.0, WATT_PER_KELVIN))
+        val maxTemperature = Quantity(700.0, CELSIUS)
 
         CellFactory {
-            PhaseChangeModuleCell(it, leakage, maxTemperature, replicatesTemperature = true, allowExternalConnections = true)
+            PhaseChangeModuleCell(it, leakage, maxTemperature, allowExternalConnections = true)
         }
     }
 
     val CONDENSER_DISTILLATION_MODULE_BLOCK = blockAndItem("condenser_distillation_module") {
         PhaseChangeModuleBlock(
             CONDENSER_DISTILLATION_MODULE_CELL,
-            500,
+            5000,
             CONDENSER_DISTILLATION_MODULE_BLOCK_ENTITY,
             PhaseChangeModuleModel(true) {
                 FlwModels.CONDENSER_DISTILLATION_MODULE
@@ -762,6 +766,214 @@ object Eln2Processing : ContentModule() {
             VULCANIZING_AUTOCLAVE_MAIN_BLOCK.get()
         )
     }
+
+    //#endregion
+
+    //#region Alloying
+
+    val ALLOYING_RECIPE = RecipeRegistry.register<AlloyingRecipe>("alloying") {
+        AlloyingRecipe.Serializer(it)
+    }
+
+    val ALLOYING_SMELTER_BLOCK = blockAndItem("alloying_smelter", ::AlloyingSmelterBlock)
+        .withSelfDrop()
+
+    val ALLOYING_SMELTER_BLOCK_ENTITY = blockEntityOnly(
+        "alloying_smelter",
+        ALLOYING_SMELTER_BLOCK.block,
+        ::AlloyingSmelterBlockEntity
+    )
+
+    val ALLOYING_SMELTER_MENU = menu("alloying_smelter", ::AlloyingSmelterMenu)
+
+    //#endregion
+
+    //#region Burner Reactor
+
+    val BURNING_RECIPE = RecipeRegistry.register<BurningRecipe>("burning") {
+        BurningRecipe.Serializer(it)
+    }
+
+    val BURNER_BLOCK = blockAndItem("burner_reactor", ::BurnerBlock)
+        .withSelfDrop()
+
+    val BURNER_BLOCK_ENTITY = blockEntityOnly(
+        "burner_reactor",
+        BURNER_BLOCK.block,
+        ::BurnerBlockEntity
+    )
+
+    val BURNER_MENU = menu("burner_reactor", ::BurnerMenu)
+
+    //#endregion
+
+    //#region Lead Chamber
+
+    val LEAD_CHAMBER_BLOCK = blockAndItem("lead_chamber", ::LeadChamberBlock)
+        .withSelfDrop()
+
+    val LEAD_CHAMBER_BLOCK_ENTITY = blockEntityOnly(
+        "lead_chamber",
+        LEAD_CHAMBER_BLOCK.block,
+        ::LeadChamberBlockEntity
+    )
+
+    //#endregion
+
+    //#region Hydrogen Reduction Furnace
+
+    val HYDROGEN_REDUCTION_RECIPE = RecipeRegistry.register<HydrogenReductionRecipe>("hydrogen_reduction") {
+        HydrogenReductionRecipe.Serializer(it)
+    }
+    val HYDROGEN_REDUCTION_FURNACE_SOUND = soundEventVariableRange("furnace.hydrogen_reduction")
+
+    val HYDROGEN_REDUCTION_FURNACE_CELL = cellMemoize("hydrogen_reduction_furnace_cell") {
+        val map = directionPoleMapPlanar(Base6Direction3d.Left, Base6Direction3d.Right)
+
+        val thermalDef = ThermalMassDefinition(
+            ChemicalElement.Iron.asMaterial,
+            mass = Quantity(1.1, KILOGRAM),
+            emissiveSurfaceArea = Quantity(0.0016, METER2),
+            emissivity = 0.85
+        )
+
+        val leakage = ConnectionParameters(
+            conductance = Quantity(0.25, WATT_PER_KELVIN)
+        )
+
+        CellFactory {
+            ElectricalFurnaceCell(
+                it,
+                map,
+                thermalDef,
+                leakage,
+                Quantity(2000.0, CELSIUS),
+            )
+        }
+    }
+
+    val HYDROGEN_REDUCTION_FURNACE_BLOCK = blockAndItem("hydrogen_reduction_furnace") { HydrogenReductionFurnaceBlock() }
+        .withSelfDrop()
+
+    val HYDROGEN_REDUCTION_FURNACE_BLOCK_ENTITY = blockEntityOnly(
+        "hydrogen_reduction_furnace",
+        HYDROGEN_REDUCTION_FURNACE_BLOCK.block,
+        ::HydrogenReductionFurnaceBlockEntity
+    )
+
+    val HYDROGEN_REDUCTION_FURNACE_MENU = menu("hydrogen_reduction_furnace", ::HydrogenReductionFurnaceMenu)
+
+    //#endregion
+
+    //#region Electrolysis
+
+    val RAW_GRAPHITE_ELECTRODE = item("raw_graphite_electrode") {
+        Item(Item.Properties())
+    }
+
+    val GRAPHITE_ELECTRODE = item("graphite_electrode") {
+        ElectrodeItem()
+    }
+
+    val ASBESTOS_SEPARATOR = item("asbestos_separator") {
+        SeparatorItem()
+    }
+
+    val ELECTROLYSIS_RECIPE = RecipeRegistry.register<AqueousElectrolysisRecipe>("electrolysis") {
+        AqueousElectrolysisRecipe.Serializer(it)
+    }
+
+    val ELECTROLYSIS_MAP = directionPoleMapPlanar(Base6Direction3d.Left, Base6Direction3d.Right)
+
+    val ELECTROLYSIS_PROXY_CELL = cellImmediate("electrolysis_proxy") {
+        ElectrolysisProxyCell(it, ELECTROLYSIS_MAP, ElectricalSize.Any)
+    }
+
+    val ELECTROLYSIS_MAIN_CELL = cellMemoize("electrolysis") {
+        val thermalDef = ThermalMassDefinition(
+            ChemicalElement.Iron.asMaterial,
+            mass = Quantity(10.0, KILOGRAM),
+        )
+
+        val leakage = ConnectionParameters(
+            conductance = Quantity(0.5, WATT_PER_KELVIN),
+        )
+
+        CellFactory {
+            ElectrolysisCell(
+                it,
+                ELECTROLYSIS_MAP,
+                ElectricalSize.Any,
+                cellCount = 36,
+                thermalMassDef = thermalDef,
+                leakageParameters = leakage,
+                maxBreakdownTemperature = Quantity(2000.0, CELSIUS),
+            )
+        }
+    }
+
+    val ELECTROLYSIS_PROXY_BLOCK = blockOnly("electrolysis_proxy", ::ElectrolysisProxyBlock)
+
+    val ELECTROLYSIS_PROXY_BLOCK_ENTITY = blockEntityOnly(
+        "electrolysis_proxy",
+        ELECTROLYSIS_PROXY_BLOCK,
+        ::ElectrolysisProxyBlockEntity,
+    )
+
+    val ELECTROLYSIS_MAIN_BLOCK = blockOnly("electrolysis_main", ::ElectrolysisMainBlock)
+        .withSelfDrop()
+
+    val ELECTROLYSIS_MAIN_BLOCK_ENTITY = blockEntityOnly(
+        "electrolysis_main",
+        ELECTROLYSIS_MAIN_BLOCK,
+        ::ElectrolysisMainBlockEntity,
+    )
+
+    val ELECTROLYSIS_DELEGATE_MAP = defineDelegateMap("electrolysis") {
+        principal(-1, 0, 0, ELECTROLYSIS_PROXY_BLOCK)
+        principal(+1, 0, 0, ELECTROLYSIS_PROXY_BLOCK)
+    }
+
+    val ELECTROLYSIS_BLOCK_ITEM = blockItemOnly("electrolysis") {
+        BigBlockItem(
+            ELECTROLYSIS_DELEGATE_MAP.value,
+            ELECTROLYSIS_MAIN_BLOCK.get(),
+        )
+    }
+
+    val ELECTROLYSIS_MENU = menu("electrolysis", ::ElectrolysisMenu)
+
+    //#endregion
+
+    //#region Vacuum Sealing
+
+    val VACUUM_SEALING_RECIPE = registerDirectRecipe("vacuum_sealing")
+
+    val VACUUM_SEALING_SOUND = soundEventVariableRange("vacuum_sealing")
+
+    val VACUUM_SEALING_MODEL = lazy {
+        ProcessingMachineCompositeModel(FlwModels.VACUUM_SEALING) {
+        }
+    }
+
+    val VACUUM_SEALING_HULL = registerMachineHull("vacuum_sealing")
+
+    val VACUUM_SEALING_BRUSHED_DC_MOTOR = registerMachine(
+        VACUUM_SEALING_HULL, BRUSHED_DC_MOTOR_WORK_BOX,
+        {
+            VacuumSealingBlock(
+                it,
+                Quantity(200.0, WATT),
+                1.0,
+                0
+            )
+        },
+        ::VacuumSealingBlockEntity,
+        VACUUM_SEALING_MODEL,
+        ::ProcessingMachineBlockEntityVisual
+    )
+
+    val VACUUM_SEALING_MENU = menu("vacuum_sealing", ::VacuumSealingMenu)
 
     //#endregion
 }

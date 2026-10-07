@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "I": {
+      "tag": "forge:ingots/iron"
+    },
+    "N": {
+      "item": "minecraft:iron_nugget"
+    }
+  },
+  "pattern": [
+    " N ",
+    "NIN",
+    " N "
+  ],
+  "result": {
+    "item": "eln2:iron_gear"
+  },
+  "show_notification": true
+}

@@ -44,6 +44,15 @@ object FlwModels {
         "wire/thermal/standard/uninsulated/copper/connection_full"
     )
 
+    val INSULATED_THERMAL_WIRE_HUB = partialBlock(
+        "wire/thermal/standard/insulated/copper/hub"
+    )
+
+    val INSULATED_THERMAL_WIRE_CONNECTION = wireConnection(
+        "wire/thermal/standard/insulated/copper/connection_hub",
+        "wire/thermal/standard/insulated/copper/connection_full"
+    )
+
     //#endregion
 
     //#region Shafts
@@ -66,7 +75,6 @@ object FlwModels {
     //#endregion
 
     val VOLTAGE_SOURCE = partialBlock("voltage_source")
-    val RESISTOR = partialBlock("resistor")
     val GROUND = partialBlock("ground_pin")
     val GROUND_MICRO_GRID = partialBlock("ground_pin_micro_grid")
 
@@ -130,6 +138,27 @@ object FlwModels {
     val POTENTIAL_PROBE_KNOB_OUTPUT_RANGE_MIN = partialBlock("probes/potential/knob_output_range_min")
     val POTENTIAL_PROBE_KNOB_OUTPUT_RANGE_MAX = partialBlock("probes/potential/knob_output_range_max")
 
+    val CURRENT_PROBE_BODY = partialBlock("probes/current/body")
+
+    //#endregion
+
+    //#region Signal Ops
+
+    val OPAMP_BODY = partialBlock("signal_opamp/body")
+    val OPAMP_GAIN_KNOB = partialBlock("signal_opamp/gain_knob")
+
+    val SIGNAL_REFERENCE_BODY = partialBlock("signal_reference/body")
+    val SIGNAL_REFERENCE_VALUE_KNOB = partialBlock("signal_reference/value_knob")
+
+    val SIGNAL_CLAMPER_BODY = partialBlock("signal_clamper/body")
+    val SIGNAL_CLAMPER_MIN_KNOB = partialBlock("signal_clamper/min_knob")
+    val SIGNAL_CLAMPER_MAX_KNOB = partialBlock("signal_clamper/max_knob")
+
+    val SIGNAL_PID_BODY = partialBlock("signal_pid/body")
+    val SIGNAL_PID_KP_KNOB = partialBlock("signal_pid/kp_knob")
+    val SIGNAL_PID_KI_KNOB = partialBlock("signal_pid/ki_knob")
+    val SIGNAL_PID_KD_KNOB = partialBlock("signal_pid/kd_knob")
+
     //#endregion
 
     val WORK_BOX_COMPOSITE_SHAFT = partialBlock("work_box_machine_composite/kinetic_shaft")
@@ -167,6 +196,14 @@ object FlwModels {
     //#endregion
 
     val DIODE = partialBlock("diode/diode")
+    val SWITCH_BASE = partialBlock("switch/base")
+    val SWITCH_LEVER = partialBlock("switch/lever")
+
+    val FUSE_BASE = partialBlock("fuse/base")
+    val FUSE_FUSE = partialBlock("fuse/fuse")
+
+    val RELAY_BODY = partialBlock("relay/body")
+    val RELAY_CONTACT = partialBlock("relay/contact")
 
     //#region Wind Turbines
 
@@ -184,6 +221,8 @@ object FlwModels {
     val PRIMITIVE_COAL_BURNER_HULL = partialBlock("primitive_coal_burner/hull_tintable")
     val PRIMITIVE_COAL_BURNER_CONDUIT = polarBlock("primitive_coal_burner/conduit")
     val PRIMITIVE_COAL_BURNER_DOOR = partialBlock("primitive_coal_burner/airflow_door")
+
+    val ADVANCED_COAL_BURNER = partialBlock("advanced_coal_burner/advanced_coal_burner")
 
     //#endregion
 
@@ -220,6 +259,18 @@ object FlwModels {
     val IRON_TANK = partialBlock("tanks/iron_tank")
 
     //#endregion
+
+    //#region Vacuum Sealing
+
+    val VACUUM_SEALING = partialBlock("vacuum_sealing/vacuum_sealing")
+
+    //#endregion
+
+    val STEAM_TURBINE = partialBlock("steam_turbine/steam_turbine")
+
+    val ELECTROLYSIS = partialBlock("electrolysis_main/electrolysis_main")
+
+    val PRIMITIVE_DC_TO_DC_CONVERTER = partialBlock("primitive_dc_to_dc_converter/primitive_dc_to_dc_converter")
 
     fun partialBlock(path: String): PartialModel = PartialModel.of(resource("block/$path"))
     fun polarBlock(path: String): PolarModel = PolarModel(resource("block/$path"))
@@ -259,7 +310,7 @@ object FlwModels {
     private val modelCentersCache = ConcurrentHashMap<BakedModel, Vector3d>()
 
     fun iterateVertexPositions(model: BakedModel, consumer: (Vector3d) -> Unit) {
-        @Suppress("NULLABILITY_MISMATCH_BASED_ON_JAVA_ANNOTATIONS")
+        @Suppress("NULLABILITY_MISMATCH_BASED_ON_JAVA_ANNOTATIONS", "DEPRECATION")
         model.getQuads(null, null, null).forEach { quad ->
             require(quad.vertices.size == 32)
 

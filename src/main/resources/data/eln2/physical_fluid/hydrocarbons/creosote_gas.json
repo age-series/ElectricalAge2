@@ -3,5 +3,8 @@
     "specificHeatCapacity": 1620.0,
     "density": 1.08,
     "isGaseous": true,
-    "mixabilityTags": ["creosote_miscible"]
+    "mixabilityTags": [
+        "creosote_miscible"
+    ],
+    "gasExpansionFactor": 100.0
 }

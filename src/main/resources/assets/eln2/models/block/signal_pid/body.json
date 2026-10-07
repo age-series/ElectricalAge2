@@ -1,0 +1,269 @@
+{
+	"format_version": "1.9.0",
+	"credit": "Made with Blockbench",
+	"texture_size": [64, 64],
+	"textures": {
+		"0": "eln2:block/signal_pid/signal_pid",
+		"particle": "eln2:block/signal_pid/signal_pid"
+	},
+	"elements": [
+		{
+			"name": "signal_output_cable",
+			"from": [10.325, 0.025, 7.35],
+			"to": [11.3, 0.775, 8.65],
+			"rotation": {"angle": 0, "axis": "y", "origin": [11.14375, 0.6625, 8]},
+			"faces": {
+				"north": {"uv": [0, 0.75, 0.25, 2], "texture": "#0"},
+				"east": {"uv": [0.25, 0, 5, 3], "texture": "#0"},
+				"south": {"uv": [0, 0.75, 0.25, 2], "texture": "#0"},
+				"up": {"uv": [0, 2, 0.25, 3.25], "texture": "#0"},
+				"down": {"uv": [0, 0.75, 0.25, 1], "texture": "#0"}
+			}
+		},
+		{
+			"name": "terminal",
+			"from": [10.9, 0.775, 7.85],
+			"to": [11.2, 1.325, 8.15],
+			"rotation": {"angle": 0, "axis": "y", "origin": [11.14375, 0.6625, 8]},
+			"faces": {
+				"north": {"uv": [5, 0, 6.25, 1], "texture": "#0"},
+				"east": {"uv": [5, 0, 6.25, 1], "texture": "#0"},
+				"south": {"uv": [5, 0, 6.25, 1], "texture": "#0"},
+				"west": {"uv": [5, 0, 6.25, 1], "texture": "#0"},
+				"up": {"uv": [5, 1, 7.25, 3.25], "texture": "#0"},
+				"down": {"uv": [0, 0, 0.075, 0.075], "texture": "#0"}
+			}
+		},
+		{
+			"name": "cable_sleeve1_2",
+			"from": [11.3, 0, 7.55],
+			"to": [11.65, 0.55, 7.7],
+			"rotation": {"angle": 0, "axis": "y", "origin": [11.14375, 0.6625, 8]},
+			"faces": {
+				"north": {"uv": [0, 0.25, 0.25, 0.5], "texture": "#0"},
+				"east": {"uv": [0, 0.25, 0.25, 0.5], "texture": "#0"},
+				"south": {"uv": [0, 0, 0.25, 0.25], "texture": "#0"},
+				"west": {"uv": [0, 0.25, 0.25, 0.5], "texture": "#0"},
+				"up": {"uv": [0, 0, 0.25, 0.25], "rotation": 270, "texture": "#0"},
+				"down": {"uv": [0, 0, 0.25, 0.25], "rotation": 90, "texture": "#0"}
+			}
+		},
+		{
+			"name": "cable_sleeve2_2",
+			"from": [11.3, 0.4, 7.7],
+			"to": [11.65, 0.55, 8.3],
+			"rotation": {"angle": 0, "axis": "y", "origin": [11.14375, 0.6625, 8]},
+			"faces": {
+				"north": {"uv": [0, 0, 0.25, 0.25], "rotation": 90, "texture": "#missing"},
+				"east": {"uv": [0, 0.25, 0.25, 0.5], "rotation": 90, "texture": "#0"},
+				"south": {"uv": [0, 0, 0.25, 0.25], "rotation": 90, "texture": "#missing"},
+				"west": {"uv": [0, 0.25, 0.25, 0.5], "rotation": 270, "texture": "#0"},
+				"up": {"uv": [0, 0, 0.25, 0.25], "texture": "#0"},
+				"down": {"uv": [0, 0.25, 0.25, 0.5], "rotation": 180, "texture": "#0"}
+			}
+		},
+		{
+			"name": "cable_sleeve0_2",
+			"from": [11.3, 0, 8.3],
+			"to": [11.65, 0.55, 8.45],
+			"rotation": {"angle": 0, "axis": "y", "origin": [11.14375, 0.6625, 8]},
+			"faces": {
+				"north": {"uv": [0, 0, 0.25, 0.25], "texture": "#0"},
+				"east": {"uv": [0, 0.25, 0.25, 0.5], "texture": "#0"},
+				"south": {"uv": [0, 0.25, 0.25, 0.5], "texture": "#0"},
+				"west": {"uv": [0, 0.25, 0.25, 0.5], "texture": "#0"},
+				"up": {"uv": [0, 0, 0.25, 0.25], "rotation": 90, "texture": "#0"},
+				"down": {"uv": [0, 0, 0.25, 0.25], "rotation": 270, "texture": "#0"}
+			}
+		},
+		{
+			"name": "signal_output_cable",
+			"from": [4.6875, 0.025, 7.35],
+			"to": [5.6625, 0.775, 8.65],
+			"rotation": {"angle": 0, "axis": "y", "origin": [4.84375, 0.6625, 8]},
+			"faces": {
+				"north": {"uv": [0, 0.75, 0.25, 2], "texture": "#0"},
+				"south": {"uv": [0, 0.75, 0.25, 2], "texture": "#0"},
+				"west": {"uv": [0.25, 0, 5, 3], "texture": "#0"},
+				"up": {"uv": [0, 2, 0.25, 3.25], "rotation": 180, "texture": "#0"},
+				"down": {"uv": [0, 0.75, 0.25, 1], "rotation": 180, "texture": "#0"}
+			}
+		},
+		{
+			"name": "terminal",
+			"from": [4.7875, 0.775, 7.85],
+			"to": [5.0875, 1.325, 8.15],
+			"rotation": {"angle": 0, "axis": "y", "origin": [4.84375, 0.6625, 8]},
+			"faces": {
+				"north": {"uv": [5, 0, 6.25, 1], "texture": "#0"},
+				"east": {"uv": [5, 0, 6.25, 1], "texture": "#0"},
+				"south": {"uv": [5, 0, 6.25, 1], "texture": "#0"},
+				"west": {"uv": [5, 0, 6.25, 1], "texture": "#0"},
+				"up": {"uv": [5, 1, 7.25, 3.25], "rotation": 180, "texture": "#0"},
+				"down": {"uv": [0, 0, 0.075, 0.075], "rotation": 180, "texture": "#0"}
+			}
+		},
+		{
+			"name": "cable_sleeve1_3",
+			"from": [4.3375, 0, 8.3],
+			"to": [4.6875, 0.55, 8.45],
+			"rotation": {"angle": 0, "axis": "y", "origin": [4.84375, 0.6625, 8]},
+			"faces": {
+				"north": {"uv": [0, 0, 0.25, 0.25], "texture": "#0"},
+				"east": {"uv": [0, 0.25, 0.25, 0.5], "texture": "#0"},
+				"south": {"uv": [0, 0.25, 0.25, 0.5], "texture": "#0"},
+				"west": {"uv": [0, 0.25, 0.25, 0.5], "texture": "#0"},
+				"up": {"uv": [0, 0, 0.25, 0.25], "rotation": 90, "texture": "#0"},
+				"down": {"uv": [0, 0, 0.25, 0.25], "rotation": 270, "texture": "#0"}
+			}
+		},
+		{
+			"name": "cable_sleeve3_3",
+			"from": [4.3375, 0.4, 7.7],
+			"to": [4.6875, 0.55, 8.3],
+			"rotation": {"angle": 0, "axis": "y", "origin": [4.84375, 0.6625, 8]},
+			"faces": {
+				"north": {"uv": [0, 0, 0.25, 0.25], "rotation": 90, "texture": "#missing"},
+				"east": {"uv": [0, 0.25, 0.25, 0.5], "rotation": 270, "texture": "#0"},
+				"south": {"uv": [0, 0, 0.25, 0.25], "rotation": 90, "texture": "#missing"},
+				"west": {"uv": [0, 0.25, 0.25, 0.5], "rotation": 90, "texture": "#0"},
+				"up": {"uv": [0, 0, 0.25, 0.25], "rotation": 180, "texture": "#0"},
+				"down": {"uv": [0, 0.25, 0.25, 0.5], "texture": "#0"}
+			}
+		},
+		{
+			"name": "cable_sleeve0_3",
+			"from": [4.3375, 0, 7.55],
+			"to": [4.6875, 0.55, 7.7],
+			"rotation": {"angle": 0, "axis": "y", "origin": [4.84375, 0.6625, 8]},
+			"faces": {
+				"north": {"uv": [0, 0.25, 0.25, 0.5], "texture": "#0"},
+				"east": {"uv": [0, 0.25, 0.25, 0.5], "texture": "#0"},
+				"south": {"uv": [0, 0, 0.25, 0.25], "texture": "#0"},
+				"west": {"uv": [0, 0.25, 0.25, 0.5], "texture": "#0"},
+				"up": {"uv": [0, 0, 0.25, 0.25], "rotation": 270, "texture": "#0"},
+				"down": {"uv": [0, 0, 0.25, 0.25], "rotation": 90, "texture": "#0"}
+			}
+		},
+		{
+			"name": "signal_output_cable",
+			"from": [7.34375, 0.025, 4.04375],
+			"to": [8.64375, 0.775, 5.01875],
+			"rotation": {"angle": 0, "axis": "y", "origin": [7.99375, 0.6625, 4.2]},
+			"faces": {
+				"north": {"uv": [0.25, 0, 5, 3], "texture": "#0"},
+				"east": {"uv": [0, 0.75, 0.25, 2], "texture": "#0"},
+				"west": {"uv": [0, 0.75, 0.25, 2], "texture": "#0"},
+				"up": {"uv": [0, 2, 0.25, 3.25], "rotation": 270, "texture": "#0"},
+				"down": {"uv": [0, 0.75, 0.25, 1], "rotation": 90, "texture": "#0"}
+			}
+		},
+		{
+			"name": "terminal",
+			"from": [7.84375, 0.775, 4.14375],
+			"to": [8.14375, 1.325, 4.44375],
+			"rotation": {"angle": 0, "axis": "y", "origin": [7.99375, 0.6625, 4.2]},
+			"faces": {
+				"north": {"uv": [5, 0, 6.25, 1], "texture": "#0"},
+				"east": {"uv": [5, 0, 6.25, 1], "texture": "#0"},
+				"south": {"uv": [5, 0, 6.25, 1], "texture": "#0"},
+				"west": {"uv": [5, 0, 6.25, 1], "texture": "#0"},
+				"up": {"uv": [5, 1, 7.25, 3.25], "rotation": 270, "texture": "#0"},
+				"down": {"uv": [0, 0, 0.075, 0.075], "rotation": 90, "texture": "#0"}
+			}
+		},
+		{
+			"name": "cable_sleeve1_4",
+			"from": [7.54375, 0, 3.69375],
+			"to": [7.69375, 0.55, 4.04375],
+			"rotation": {"angle": 0, "axis": "y", "origin": [7.99375, 0.6625, 4.2]},
+			"faces": {
+				"north": {"uv": [0, 0.25, 0.25, 0.5], "texture": "#0"},
+				"east": {"uv": [0, 0, 0.25, 0.25], "texture": "#0"},
+				"south": {"uv": [0, 0.25, 0.25, 0.5], "texture": "#0"},
+				"west": {"uv": [0, 0.25, 0.25, 0.5], "texture": "#0"},
+				"up": {"uv": [0, 0, 0.25, 0.25], "rotation": 180, "texture": "#0"},
+				"down": {"uv": [0, 0, 0.25, 0.25], "rotation": 180, "texture": "#0"}
+			}
+		},
+		{
+			"name": "cable_sleeve4_4",
+			"from": [7.69375, 0.4, 3.69375],
+			"to": [8.29375, 0.55, 4.04375],
+			"rotation": {"angle": 0, "axis": "y", "origin": [7.99375, 0.6625, 4.2]},
+			"faces": {
+				"north": {"uv": [0, 0.25, 0.25, 0.5], "rotation": 90, "texture": "#0"},
+				"east": {"uv": [0, 0, 0.25, 0.25], "rotation": 90, "texture": "#missing"},
+				"south": {"uv": [0, 0.25, 0.25, 0.5], "rotation": 270, "texture": "#0"},
+				"west": {"uv": [0, 0, 0.25, 0.25], "rotation": 90, "texture": "#missing"},
+				"up": {"uv": [0, 0, 0.25, 0.25], "rotation": 270, "texture": "#0"},
+				"down": {"uv": [0, 0.25, 0.25, 0.5], "rotation": 270, "texture": "#0"}
+			}
+		},
+		{
+			"name": "cable_sleeve0_4",
+			"from": [8.29375, 0, 3.69375],
+			"to": [8.44375, 0.55, 4.04375],
+			"rotation": {"angle": 0, "axis": "y", "origin": [7.99375, 0.6625, 4.2]},
+			"faces": {
+				"north": {"uv": [0, 0.25, 0.25, 0.5], "texture": "#0"},
+				"east": {"uv": [0, 0.25, 0.25, 0.5], "texture": "#0"},
+				"south": {"uv": [0, 0.25, 0.25, 0.5], "texture": "#0"},
+				"west": {"uv": [0, 0, 0.25, 0.25], "texture": "#0"},
+				"up": {"uv": [0, 0, 0.25, 0.25], "texture": "#0"},
+				"down": {"uv": [0, 0, 0.25, 0.25], "texture": "#0"}
+			}
+		},
+		{
+			"from": [5.65, 0, 5],
+			"to": [10.325, 0.8, 11],
+			"rotation": {"angle": 0, "axis": "y", "origin": [5.65, 0, 7]},
+			"faces": {
+				"north": {"uv": [9.5, 1, 16, 3], "rotation": 180, "texture": "#0"},
+				"east": {"uv": [9.5, 1, 16, 3], "rotation": 180, "texture": "#0"},
+				"south": {"uv": [9.5, 1, 16, 3], "rotation": 180, "texture": "#0"},
+				"west": {"uv": [9.5, 1, 16, 3], "rotation": 180, "texture": "#0"},
+				"up": {"uv": [0, 3.25, 10, 16], "rotation": 180, "texture": "#0"},
+				"down": {"uv": [0, 0.75, 0.25, 1], "rotation": 180, "texture": "#0"}
+			}
+		},
+		{
+			"name": "knob_pedestal",
+			"from": [5.75, 0.8, 5.6],
+			"to": [6.25, 0.825, 7.075],
+			"rotation": {"angle": 0, "axis": "y", "origin": [4.225, 2.8, 7.55]},
+			"faces": {
+				"north": {"uv": [0, 0.5, 0.25, 0.75], "rotation": 270, "texture": "#0"},
+				"east": {"uv": [4.25, 0.25, 4.5, 0.5], "rotation": 270, "texture": "#0"},
+				"south": {"uv": [4.25, 0.25, 4.5, 0.5], "rotation": 270, "texture": "#0"},
+				"west": {"uv": [4.25, 0.25, 4.5, 0.5], "rotation": 270, "texture": "#0"},
+				"up": {"uv": [4.25, 0.25, 4.5, 0.5], "rotation": 270, "texture": "#0"}
+			}
+		}
+	],
+	"groups": [
+		{
+			"name": "inputA",
+			"origin": [10, 0.025, 4],
+			"scope": 0,
+			"color": 0,
+			"children": [0, 1, 2, 3, 4]
+		},
+		{
+			"name": "inputB",
+			"origin": [10, 0.025, 4],
+			"scope": 0,
+			"color": 0,
+			"children": [5, 6, 7, 8, 9]
+		},
+		{
+			"name": "output",
+			"origin": [10, 0.025, 4],
+			"scope": 0,
+			"color": 0,
+			"children": [10, 11, 12, 13, 14]
+		},
+		15,
+		16
+	]
+}

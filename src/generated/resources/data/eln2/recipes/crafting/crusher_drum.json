@@ -1,0 +1,25 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "O": {
+      "item": "minecraft:obsidian"
+    },
+    "P": {
+      "tag": "forge:plates/iron"
+    },
+    "S": {
+      "item": "eln2:iron_shaft"
+    }
+  },
+  "pattern": [
+    "POP",
+    "OSO",
+    "POP"
+  ],
+  "result": {
+    "count": 2,
+    "item": "eln2:crusher_drum"
+  },
+  "show_notification": true
+}

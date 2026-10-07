@@ -1,0 +1,10 @@
+{
+  "type": "minecraft:smelting",
+  "category": "misc",
+  "cookingtime": 200,
+  "experience": 0.7,
+  "ingredient": {
+    "item": "eln2:tungstic_acid"
+  },
+  "result": "eln2:tungsten_trioxide_dust"
+}

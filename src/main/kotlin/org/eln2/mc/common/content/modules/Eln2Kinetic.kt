@@ -235,6 +235,9 @@ object Eln2Kinetic : ContentModule() {
     val MOTOR_KINETIC_SOUND = soundEventVariableRange("motor.kinetic")
     val MOTOR_ELECTROMAGNETIC_SOUND = soundEventVariableRange("motor.electromagnetic")
 
+    val WIND_TURBINE_WIND_SOUND = soundEventVariableRange("turbine.wind")
+    val WIND_TURBINE_ROTATION_SOUND = soundEventVariableRange("turbine.wind_rotation")
+
     val BASIC_DC_MOTOR_CELL_DIRECTION = Base6Direction3d.Front
 
     val BASIC_DC_MOTOR_CELL = cellMemoize("basic_dc_motor") {

@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "P": {
+      "item": "eln2:rubber_wood_panel"
+    }
+  },
+  "pattern": [
+    "P P",
+    "P P",
+    "PPP"
+  ],
+  "result": {
+    "item": "eln2:lead_acid_battery_chassis"
+  },
+  "show_notification": true
+}

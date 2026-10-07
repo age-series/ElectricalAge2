@@ -5,7 +5,7 @@
   },
   "duration": 10.0,
   "ingredient": {
-    "item": "eln2:tin_ingot"
+    "tag": "forge:ingots/tin"
   },
   "result": {
     "count": 1,

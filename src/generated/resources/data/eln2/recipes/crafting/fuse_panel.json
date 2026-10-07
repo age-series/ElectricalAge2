@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "C": {
+      "item": "eln2:copper_wire"
+    },
+    "P": {
+      "item": "eln2:rubber_wood_panel"
+    }
+  },
+  "pattern": [
+    " C ",
+    " P ",
+    " C "
+  ],
+  "result": {
+    "item": "eln2:fuse_panel"
+  },
+  "show_notification": true
+}

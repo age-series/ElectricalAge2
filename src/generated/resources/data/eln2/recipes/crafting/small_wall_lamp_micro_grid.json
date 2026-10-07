@@ -1,0 +1,25 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "G": {
+      "item": "minecraft:glass_pane"
+    },
+    "P": {
+      "tag": "forge:plates/iron"
+    },
+    "W": {
+      "item": "eln2:copper_wire"
+    }
+  },
+  "pattern": [
+    " G ",
+    "W W",
+    " P "
+  ],
+  "result": {
+    "count": 4,
+    "item": "eln2:small_wall_lamp_micro_grid"
+  },
+  "show_notification": true
+}

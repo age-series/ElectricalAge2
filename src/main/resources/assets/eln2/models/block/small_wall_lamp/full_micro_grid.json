@@ -1,6 +1,6 @@
 {
 	"credit": "Made with Blockbench",
-	"parent": "eln2:block/templates/block_medium",
+	"parent": "eln2:block/displays/medium_block",
 	"texture_size": [32, 32],
 	"textures": {
 		"0": "eln2:block/smallwalllamp",

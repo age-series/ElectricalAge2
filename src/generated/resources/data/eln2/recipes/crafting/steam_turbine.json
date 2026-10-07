@@ -1,0 +1,33 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": {
+      "item": "eln2:bearing_assembly"
+    },
+    "C": {
+      "item": "eln2:turbine_casing"
+    },
+    "R": {
+      "item": "eln2:turbine_rotor"
+    },
+    "S": {
+      "item": "eln2:steam_injector"
+    },
+    "U": {
+      "item": "eln2:condenser_unit"
+    },
+    "X": {
+      "item": "eln2:turbine_controller"
+    }
+  },
+  "pattern": [
+    "BSB",
+    "CRC",
+    "UXU"
+  ],
+  "result": {
+    "item": "eln2:steam_turbine"
+  },
+  "show_notification": true
+}

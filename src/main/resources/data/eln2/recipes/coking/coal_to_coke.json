@@ -19,7 +19,7 @@
     ],
     "outputFluid": {
         "fluid": "eln2:coke_gas",
-        "amount": 1000
+        "amount": 10000
     },
     "duration": 24000
 }

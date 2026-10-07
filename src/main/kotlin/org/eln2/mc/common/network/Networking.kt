@@ -5,10 +5,13 @@ package org.eln2.mc.common.network
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.level.ServerPlayer
 import net.minecraftforge.network.NetworkDirection
+import net.minecraftforge.network.PacketDistributor
 import net.minecraftforge.network.NetworkRegistry
 import org.eln2.mc.LOG
 import org.eln2.mc.MODID
 import org.eln2.mc.common.*
+import org.eln2.mc.common.content.DrillPowerMessage
+import org.eln2.mc.common.content.FlashlightPowerMessage
 import org.eln2.mc.common.content.ScrewdriverItem
 import org.eln2.mc.common.grids.GridConnectionCreateMessage
 import org.eln2.mc.common.grids.GridConnectionDeleteMessage
@@ -122,6 +125,33 @@ object Networking {
             Optional.of(NetworkDirection.PLAY_TO_SERVER)
         )
 
+        channel.registerMessage(
+            id(),
+            ScrewdriverItem.SetConfigValue::class.java,
+            ScrewdriverItem.SetConfigValue::encode,
+            ScrewdriverItem.SetConfigValue::decode,
+            ScrewdriverItem.SetConfigValue::handle,
+            Optional.of(NetworkDirection.PLAY_TO_SERVER)
+        )
+
+        channel.registerMessage(
+            id(),
+            DrillPowerMessage::class.java,
+            DrillPowerMessage::encode,
+            DrillPowerMessage::decode,
+            DrillPowerMessage::handle,
+            Optional.of(NetworkDirection.PLAY_TO_CLIENT)
+        )
+
+        channel.registerMessage(
+            id(),
+            FlashlightPowerMessage::class.java,
+            FlashlightPowerMessage::encode,
+            FlashlightPowerMessage::decode,
+            FlashlightPowerMessage::handle,
+            Optional.of(NetworkDirection.PLAY_TO_CLIENT)
+        )
+
         LOG.info("Network packets registered")
     }
 
@@ -131,6 +161,13 @@ object Networking {
      */
     fun send(message: Any?, player: ServerPlayer) {
         channel.sendTo(message, player.connection.connection, NetworkDirection.PLAY_TO_CLIENT)
+    }
+
+    /**
+     * Sends a message from the server to all players tracking [entity] (and [entity] itself if it is a player).
+     * */
+    fun sendToTrackingAndSelf(message: Any?, entity: net.minecraft.world.entity.Entity) {
+        channel.send(PacketDistributor.TRACKING_ENTITY_AND_SELF.with { entity }, message)
     }
 
     /**

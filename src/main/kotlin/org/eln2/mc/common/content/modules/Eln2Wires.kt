@@ -31,7 +31,7 @@ object Eln2Wires : ContentModule() {
     val UNINSULATED_WIRE_LIGHT_FIELD = LightFieldPrimitives.sourceOnlyStart(15)
 
     val STANDARD_UNINSULATED_COPPER_THERMAL_WIRE = ThermalWireBuilder("standard_uninsulated_copper_thermal_wire").applyAndRegister {
-        temperatureThreshold = Quantity(1000.0, CELSIUS)
+        temperatureThreshold = Quantity(800.0, CELSIUS)
 
         material = ThermalMassDefinition(
             ChemicalElement.Copper.asMaterial.copy(
@@ -52,6 +52,31 @@ object Eln2Wires : ContentModule() {
             WireRenderModel(
                 FlwModels.UNINSULATED_THERMAL_WIRE_HUB,
                 FlwModels.UNINSULATED_THERMAL_WIRE_CONNECTION,
+                ThermalTint.DEFAULT
+            )
+        }
+    }
+
+    val STANDARD_INSULATED_COPPER_THERMAL_WIRE = ThermalWireBuilder("standard_insulated_copper_thermal_wire").applyAndRegister {
+        isIncandescent = false
+
+        temperatureThreshold = Quantity(700.0, CELSIUS)
+
+        material = ThermalMassDefinition(
+            ChemicalElement.Copper.asMaterial.copy(
+                label = "Copper Thermal Conductor",
+                thermalConductivity = Quantity(3500.0, WATT_PER_METER_KELVIN),
+            )
+        )
+
+        leakageParameters = ConnectionParameters.DEFAULT.copy(
+            conductance = Quantity(0.01, WATT_PER_KELVIN) // Asbestos insulation
+        )
+
+        renderer {
+            WireRenderModel(
+                FlwModels.INSULATED_THERMAL_WIRE_HUB,
+                FlwModels.INSULATED_THERMAL_WIRE_CONNECTION,
                 ThermalTint.DEFAULT
             )
         }
@@ -114,6 +139,7 @@ object Eln2Wires : ContentModule() {
             replicatesExternalTemperature = true,
             null, // TODO maybe it does radiate?
             leakageParameters = ConnectionParameters(
+                conductance = Quantity(25.0, WATT_PER_KELVIN),
                 area = 5.0
             )
         )
@@ -129,5 +155,4 @@ object Eln2Wires : ContentModule() {
     }
 
     val THERMAL_RADIATOR_PART = partImmediateBB("thermal_radiator", 16.0, 3.0, 16.0, ::RadiatorPart)
-
 }

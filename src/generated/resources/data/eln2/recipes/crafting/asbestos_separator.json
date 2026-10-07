@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "A": {
+      "item": "eln2:asbestos_fiber"
+    },
+    "R": {
+      "item": "eln2:rubber"
+    }
+  },
+  "pattern": [
+    "RAR",
+    "AAA",
+    "RAR"
+  ],
+  "result": {
+    "item": "eln2:asbestos_separator"
+  },
+  "show_notification": true
+}

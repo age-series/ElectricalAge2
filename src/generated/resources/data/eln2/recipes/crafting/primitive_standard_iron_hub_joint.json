@@ -5,6 +5,9 @@
     "G": {
       "item": "eln2:iron_gear"
     },
+    "L": {
+      "item": "eln2:creosote_brush"
+    },
     "M": {
       "item": "eln2:iron_axle_mount"
     },
@@ -13,11 +16,12 @@
     }
   },
   "pattern": [
-    " M ",
+    "LM ",
     "RGR",
     " M "
   ],
   "result": {
+    "count": 4,
     "item": "eln2:primitive_standard_iron_hub_joint"
   },
   "show_notification": true

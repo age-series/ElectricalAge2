@@ -1,0 +1,48 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_hull": {
+      "conditions": {
+        "items": [
+          {
+            "items": [
+              "eln2:vacuum_sealing"
+            ]
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    },
+    "has_the_recipe": {
+      "conditions": {
+        "recipe": "eln2:crafting/processing_machine/brushed_dc_motor_vacuum_sealing_assembly"
+      },
+      "trigger": "minecraft:recipe_unlocked"
+    },
+    "has_work_box": {
+      "conditions": {
+        "items": [
+          {
+            "items": [
+              "eln2:brushed_dc_motor_work_box"
+            ]
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "requirements": [
+    [
+      "has_hull",
+      "has_work_box",
+      "has_the_recipe"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "eln2:crafting/processing_machine/brushed_dc_motor_vacuum_sealing_assembly"
+    ]
+  },
+  "sends_telemetry_event": false
+}

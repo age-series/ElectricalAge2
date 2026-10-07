@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "P": {
+      "tag": "forge:plates/iron"
+    },
+    "R": {
+      "item": "eln2:copper_rod"
+    }
+  },
+  "pattern": [
+    " R ",
+    " P "
+  ],
+  "result": {
+    "count": 4,
+    "item": "eln2:micro_grid_anchor"
+  },
+  "show_notification": true
+}

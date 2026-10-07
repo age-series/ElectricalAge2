@@ -553,6 +553,7 @@ val METER2 = standardScale<Area>()
 @DimensionClassifier("m³") interface Volume
 val METER3 = standardScale<Volume>()
 @ScaleClassifier("L") val LITER = METER3.sourceSub()
+@ScaleClassifier("gal") val GALLON = METER3 sourceAmplify 0.003785411784
 
 @DimensionClassifier("Bq") interface Radioactivity
 val BECQUEREL = standardScale<Radioactivity>()
@@ -671,8 +672,14 @@ val RADIAN_PER_SECOND2 = standardScale<AngularAcceleration>()
 @DimensionClassifier("Nm") interface Torque
 val NEWTON_METER = standardScale<Torque>()
 
+@ScaleClassifier("ft·lbf", "ftlbf")
+val FOOT_POUND = NEWTON_METER sourceAmplify 1.3558179483314003
+
 @ScaleClassifier("rps")
 val REVOLUTION_PER_SECOND = RADIAN_PER_SECOND sourceAmplify 1.0 / 0.1591549430919
+
+@ScaleClassifier("rpm")
+val REVOLUTION_PER_MINUTE = RADIAN_PER_SECOND sourceAmplify 1.0 / 9.549296585513721
 
 @DimensionClassifier("K/s") interface TemperatureRate
 val KELVIN_PER_SECOND = standardScale<TemperatureRate>()

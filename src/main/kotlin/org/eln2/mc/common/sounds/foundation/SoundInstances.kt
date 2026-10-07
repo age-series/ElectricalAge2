@@ -63,17 +63,101 @@ data class SoundInfo(val pitch: Double, val volume: Double) {
             val saturation = p / (1.0 + p)
             val pitch = (basePitch + pitchRange * saturation.pow(powExponent)).coerceIn(0.4, 4.0)
 
-            val quietDb = -48.0
-            val loudDb  = -6.0
-            val db = quietDb * (1.0 - saturation) + loudDb * saturation
-            val amplitude = (10.0).pow(db / 20.0)
-
-            val masterScale = 1.0
-            val volume = (amplitude * masterScale).coerceIn(0.0, 3.0)
+            val volume = p.pow(0.7).coerceIn(0.0, 3.0)
 
             return SoundInfo(
                 pitch = pitch,
                 volume = volume
+            )
+        }
+
+        fun steamFlow(flow: Double, maxFlow: Double): SoundInfo {
+            if (flow <= 1e-9 || maxFlow <= 0.0) {
+                return QUIET
+            }
+
+            val ratio = (flow / maxFlow).coerceIn(0.0, 1.0)
+
+            if (ratio < 0.01) {
+                return QUIET
+            }
+
+            return SoundInfo(
+                pitch = (0.7 + ratio * 0.5).coerceIn(0.5, 2.0),
+                volume = (ratio * 0.8 + 0.2).coerceIn(0.0, 2.5)
+            )
+        }
+
+        fun turbineFriction(omega: Double, refOmega: Double): SoundInfo {
+            val speed = abs(omega) / abs(refOmega)
+
+            if (speed < 0.01) {
+                return QUIET
+            }
+
+            val clamped = speed.coerceIn(0.0, 2.0)
+
+            return SoundInfo(
+                pitch = (0.5 + clamped * 0.8).coerceIn(0.0, 2.5),
+                volume = (0.3 * clamped.coerceIn(0.0, 1.0) + 0.1 * clamped).coerceIn(0.0, 2.0)
+            )
+        }
+
+        fun wind(angularVelocity: Double, refAngularVelocity: Double): SoundInfo {
+            val speed = abs(angularVelocity) / abs(refAngularVelocity)
+
+            if (speed < 0.01) {
+                return QUIET
+            }
+
+            val clamped = speed.coerceIn(0.0, 1.5)
+
+            return SoundInfo(
+                pitch = (0.6 + clamped * 0.6).coerceIn(0.4, 2.0),
+                volume = ((clamped.pow(1.5) * 0.5 + 0.1)).coerceIn(0.0, 1.0)
+            )
+        }
+
+        fun burning(intensity: Double): SoundInfo {
+            if (intensity <= 1e-6) {
+                return QUIET
+            }
+
+            val clamped = intensity.coerceIn(0.0, 1.0)
+
+            return SoundInfo(
+                pitch = (0.8 + clamped * 0.4).coerceIn(0.6, 1.5),
+                volume = (clamped * 1.2 + 0.15).coerceIn(0.0, 2.0)
+            )
+        }
+
+        fun draft(draftStrength: Double, maxDraft: Double): SoundInfo {
+            if (draftStrength <= 1e-9 || maxDraft <= 0.0) {
+                return QUIET
+            }
+
+            val ratio = (draftStrength / maxDraft).coerceIn(0.0, 1.0)
+
+            if (ratio < 0.01) {
+                return QUIET
+            }
+
+            return SoundInfo(
+                pitch = 1.0,
+                volume = (ratio * 0.15 + 0.05).coerceIn(0.0, 1.5)
+            )
+        }
+
+        fun distillation(activity: Double): SoundInfo {
+            if (activity <= 0.01) {
+                return QUIET
+            }
+
+            val clamped = activity.coerceIn(0.0, 1.0)
+
+            return SoundInfo(
+                pitch = (0.7 + clamped * 0.3).coerceIn(0.5, 1.5),
+                volume = (clamped * 0.6).coerceIn(0.0, 1.0)
             )
         }
     }

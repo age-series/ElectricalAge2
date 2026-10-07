@@ -1,7 +1,7 @@
 {
     "fluid": "eln2:diesel_gas",
     "condensation": {
-        "temperature": 295.0,
+        "temperature": 450.0,
         "enthalpy": 300000.0,
         "resultLiquid": "eln2:diesel"
     }

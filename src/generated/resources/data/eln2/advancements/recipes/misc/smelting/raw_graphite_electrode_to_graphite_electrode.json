@@ -1,0 +1,35 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_raw_graphite_electrode": {
+      "conditions": {
+        "items": [
+          {
+            "items": [
+              "eln2:raw_graphite_electrode"
+            ]
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    },
+    "has_the_recipe": {
+      "conditions": {
+        "recipe": "eln2:smelting/raw_graphite_electrode_to_graphite_electrode"
+      },
+      "trigger": "minecraft:recipe_unlocked"
+    }
+  },
+  "requirements": [
+    [
+      "has_raw_graphite_electrode",
+      "has_the_recipe"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "eln2:smelting/raw_graphite_electrode_to_graphite_electrode"
+    ]
+  },
+  "sends_telemetry_event": false
+}

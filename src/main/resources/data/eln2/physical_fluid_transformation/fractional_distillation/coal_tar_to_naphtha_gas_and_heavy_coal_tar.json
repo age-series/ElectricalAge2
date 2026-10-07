@@ -1,10 +1,10 @@
 {
     "fluid": "eln2:coal_tar",
     "boiling": {
-        "temperature": 179.18,
+        "temperature": 452.33,
         "enthalpy": 35000.0,
         "resultGas": "eln2:naphtha_gas",
-        "resultGasProportion": 100,
+        "resultGasProportion": 333,
         "resultLiquidResidue": "eln2:heavy_coal_tar"
     }
 }

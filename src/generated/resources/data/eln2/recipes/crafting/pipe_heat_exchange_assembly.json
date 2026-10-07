@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "C": {
+      "tag": "forge:plates/copper"
+    },
+    "P": {
+      "item": "eln2:fluid_pipe"
+    }
+  },
+  "pattern": [
+    "CPC",
+    "CPC",
+    "CPC"
+  ],
+  "result": {
+    "item": "eln2:pipe_heat_exchange_assembly"
+  },
+  "show_notification": true
+}

@@ -1,0 +1,35 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_the_recipe": {
+      "conditions": {
+        "recipe": "eln2:smelting/unfired_resistor_to_resistor"
+      },
+      "trigger": "minecraft:recipe_unlocked"
+    },
+    "has_unfired_resistor": {
+      "conditions": {
+        "items": [
+          {
+            "items": [
+              "eln2:unfired_resistor"
+            ]
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "requirements": [
+    [
+      "has_unfired_resistor",
+      "has_the_recipe"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "eln2:smelting/unfired_resistor_to_resistor"
+    ]
+  },
+  "sends_telemetry_event": false
+}

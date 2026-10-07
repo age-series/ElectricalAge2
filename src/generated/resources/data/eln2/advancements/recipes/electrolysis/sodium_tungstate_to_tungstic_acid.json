@@ -1,0 +1,61 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_asbestos_separator": {
+      "conditions": {
+        "items": [
+          {
+            "items": [
+              "eln2:asbestos_separator"
+            ]
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    },
+    "has_graphite_electrode": {
+      "conditions": {
+        "items": [
+          {
+            "items": [
+              "eln2:graphite_electrode"
+            ]
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    },
+    "has_sodium_tungstate_solution": {
+      "conditions": {
+        "items": [
+          {
+            "items": [
+              "eln2:sodium_tungstate_solution_bucket"
+            ]
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    },
+    "has_the_recipe": {
+      "conditions": {
+        "recipe": "eln2:electrolysis/sodium_tungstate_to_tungstic_acid"
+      },
+      "trigger": "minecraft:recipe_unlocked"
+    }
+  },
+  "requirements": [
+    [
+      "has_sodium_tungstate_solution",
+      "has_graphite_electrode",
+      "has_asbestos_separator",
+      "has_the_recipe"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "eln2:electrolysis/sodium_tungstate_to_tungstic_acid"
+    ]
+  },
+  "sends_telemetry_event": true
+}

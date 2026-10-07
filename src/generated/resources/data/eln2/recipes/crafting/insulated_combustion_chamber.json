@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "A": {
+      "item": "eln2:asbestos_fiber"
+    },
+    "I": {
+      "tag": "forge:plates/iron"
+    }
+  },
+  "pattern": [
+    "AIA",
+    "I I",
+    "AIA"
+  ],
+  "result": {
+    "item": "eln2:insulated_combustion_chamber"
+  },
+  "show_notification": true
+}

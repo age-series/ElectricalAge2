@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "eln2:raw_latex"
+    },
+    {
+      "item": "eln2:sulfur_dust"
+    }
+  ],
+  "result": {
+    "count": 4,
+    "item": "eln2:rubber_compound"
+  }
+}

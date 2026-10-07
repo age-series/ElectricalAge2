@@ -1,0 +1,30 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "eln2:lead_acid_battery_chassis"
+    },
+    {
+      "item": "eln2:lead_acid_battery_cell"
+    },
+    {
+      "item": "eln2:lead_acid_battery_cell"
+    },
+    {
+      "item": "eln2:lead_acid_battery_cell"
+    },
+    {
+      "item": "eln2:lead_acid_battery_cell"
+    },
+    {
+      "item": "eln2:lead_acid_battery_cell"
+    },
+    {
+      "item": "eln2:lead_acid_battery_cell"
+    }
+  ],
+  "result": {
+    "item": "eln2:lead_acid_battery_base_12v"
+  }
+}

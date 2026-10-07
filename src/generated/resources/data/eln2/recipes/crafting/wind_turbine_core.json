@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "P": {
+      "tag": "forge:plates/iron"
+    },
+    "W": {
+      "tag": "minecraft:planks"
+    }
+  },
+  "pattern": [
+    " W ",
+    " W ",
+    "PWP"
+  ],
+  "result": {
+    "item": "eln2:wind_turbine_core"
+  },
+  "show_notification": true
+}

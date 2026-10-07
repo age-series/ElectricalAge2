@@ -1,0 +1,68 @@
+{
+    "blend": {
+        "func": "add",
+        "srcrgb": "one",
+        "dstrgb": "1-srcalpha",
+        "srcalpha": "one",
+        "dstalpha": "1-srcalpha"
+    },
+    "vertex": "eln2:dynamic_light",
+    "fragment": "eln2:dynamic_light",
+    "attributes": [ "Position" ],
+    "samplers": [
+        { "name": "SceneDepthSampler" },
+        { "name": "SceneColorSampler" },
+        { "name": "AlbedoSampler" },
+        { "name": "ShadowDepthSampler" },
+        { "name": "ShadowCompareSampler" }
+    ],
+    "uniforms": [
+        {
+            "name": "InverseViewProjectionMatrix",
+            "type": "matrix4x4",
+            "count": 16,
+            "values": [
+                1.0, 0.0, 0.0, 0.0,
+                0.0, 1.0, 0.0, 0.0,
+                0.0, 0.0, 1.0, 0.0,
+                0.0, 0.0, 0.0, 1.0
+            ]
+        },
+        {
+            "name": "ViewProjectionMatrix",
+            "type": "matrix4x4",
+            "count": 16,
+            "values": [
+                1.0, 0.0, 0.0, 0.0,
+                0.0, 1.0, 0.0, 0.0,
+                0.0, 0.0, 1.0, 0.0,
+                0.0, 0.0, 0.0, 1.0
+            ]
+        },
+        {
+            "name": "LightViewMatrix",
+            "type": "matrix4x4",
+            "count": 16,
+            "values": [
+                1.0, 0.0, 0.0, 0.0,
+                0.0, 1.0, 0.0, 0.0,
+                0.0, 0.0, 1.0, 0.0,
+                0.0, 0.0, 0.0, 1.0
+            ]
+        },
+        { "name": "LightPosition", "type": "float", "count": 3, "values": [ 0.0, 0.0, 0.0 ] },
+        { "name": "LightDirection", "type": "float", "count": 3, "values": [ 0.0, 0.0, -1.0 ] },
+        { "name": "LightColor", "type": "float", "count": 3, "values": [ 1.0, 1.0, 1.0 ] },
+        { "name": "LightIntensity", "type": "float", "count": 1, "values": [ 1.0 ] },
+        { "name": "LightRange", "type": "float", "count": 1, "values": [ 24.0 ] },
+        { "name": "LightHalfAngle", "type": "float", "count": 1, "values": [ 0.5 ] },
+        { "name": "LightSourceRadius", "type": "float", "count": 1, "values": [ 0.04 ] },
+        { "name": "LightScattering", "type": "float", "count": 1, "values": [ 0.0 ] },
+        { "name": "ShadowTanHalfFieldOfView", "type": "float", "count": 1, "values": [ 0.6 ] },
+        { "name": "ShadowNear", "type": "float", "count": 1, "values": [ 0.1 ] },
+        { "name": "ShadowFar", "type": "float", "count": 1, "values": [ 24.0 ] },
+        { "name": "ShadowMapSize", "type": "float", "count": 1, "values": [ 2048.0 ] },
+        { "name": "ScreenSize", "type": "float", "count": 2, "values": [ 1.0, 1.0 ] },
+        { "name": "FogParameters", "type": "float", "count": 4, "values": [ 100000000.0, 100000000.0, 0.0, 0.0 ] }
+    ]
+}

@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "R": {
+      "item": "minecraft:redstone"
+    }
+  },
+  "pattern": [
+    " R ",
+    " R "
+  ],
+  "result": {
+    "count": 4,
+    "item": "eln2:signal_grid_anchor"
+  },
+  "show_notification": true
+}

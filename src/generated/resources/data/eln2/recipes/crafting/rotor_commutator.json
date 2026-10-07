@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "C": {
+      "tag": "forge:plates/copper"
+    },
+    "S": {
+      "item": "eln2:iron_shaft"
+    },
+    "V": {
+      "item": "eln2:insulating_varnish_bottle"
+    },
+    "W": {
+      "item": "eln2:copper_wire"
+    }
+  },
+  "pattern": [
+    "VC ",
+    " S ",
+    "WWW"
+  ],
+  "result": {
+    "item": "eln2:rotor_commutator"
+  },
+  "show_notification": true
+}

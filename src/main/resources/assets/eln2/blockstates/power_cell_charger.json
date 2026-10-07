@@ -1,0 +1,19 @@
+{
+    "variants": {
+        "facing=east": {
+            "model": "eln2:block/power_cell_charger/power_cell_charger",
+            "y": 90
+        },
+        "facing=north": {
+            "model": "eln2:block/power_cell_charger/power_cell_charger"
+        },
+        "facing=south": {
+            "model": "eln2:block/power_cell_charger/power_cell_charger",
+            "y": 180
+        },
+        "facing=west": {
+            "model": "eln2:block/power_cell_charger/power_cell_charger",
+            "y": 270
+        }
+    }
+}

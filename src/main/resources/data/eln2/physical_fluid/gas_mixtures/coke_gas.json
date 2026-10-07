@@ -3,5 +3,8 @@
     "specificHeatCapacity": 900.0,
     "density": 0.45,
     "isGaseous": true,
-    "mixabilityTags": ["coke_gas_miscible"]
+    "mixabilityTags": [
+        "coke_gas_miscible"
+    ],
+    "gasExpansionFactor": 100.0
 }

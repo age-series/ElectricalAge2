@@ -1,10 +1,10 @@
 {
     "fluid": "eln2:heavy_coal_tar",
     "boiling": {
-        "temperature": 351.0,
+        "temperature": 624.15,
         "enthalpy": 87500.0,
         "resultGas": "eln2:creosote_gas",
-        "resultGasProportion": 250,
+        "resultGasProportion": 500,
         "resultLiquidResidue": "eln2:pitch"
     }
 }

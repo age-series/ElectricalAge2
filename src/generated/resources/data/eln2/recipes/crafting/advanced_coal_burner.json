@@ -1,0 +1,30 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "C": {
+      "item": "eln2:insulated_combustion_chamber"
+    },
+    "H": {
+      "item": "eln2:burner_fuel_hopper"
+    },
+    "M": {
+      "item": "eln2:machine_frame"
+    },
+    "U": {
+      "item": "eln2:burner_controller_unit"
+    },
+    "W": {
+      "item": "eln2:standard_uninsulated_copper_thermal_wire"
+    }
+  },
+  "pattern": [
+    "WCW",
+    "HMU",
+    "WCW"
+  ],
+  "result": {
+    "item": "eln2:advanced_coal_burner"
+  },
+  "show_notification": true
+}

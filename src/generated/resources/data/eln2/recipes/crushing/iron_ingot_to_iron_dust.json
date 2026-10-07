@@ -2,7 +2,7 @@
   "type": "eln2:crushing",
   "duration": 30.0,
   "ingredient": {
-    "item": "minecraft:iron_ingot"
+    "tag": "forge:ingots/iron"
   },
   "result": {
     "count": 1,

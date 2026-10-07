@@ -1,0 +1,20 @@
+{
+  "type": "eln2:electrolysis",
+  "anodeElectrode": {
+    "item": "eln2:graphite_electrode"
+  },
+  "cathodeElectrode": {
+    "item": "eln2:graphite_electrode"
+  },
+  "energyCost": 10000.0,
+  "inputFluid": {
+    "amount": 1,
+    "fluid": "minecraft:water"
+  },
+  "outputGas": {
+    "amount": 100,
+    "fluid": "eln2:hho_gas"
+  },
+  "resistance": 0.3,
+  "separated": false
+}

@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "W": {
+      "item": "eln2:standard_uninsulated_copper_thermal_wire"
+    }
+  },
+  "pattern": [
+    "   ",
+    " W ",
+    "WWW"
+  ],
+  "result": {
+    "item": "eln2:autoclave_radiator"
+  },
+  "show_notification": true
+}

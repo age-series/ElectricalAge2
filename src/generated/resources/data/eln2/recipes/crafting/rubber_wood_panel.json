@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "G": {
+      "tag": "forge:glue"
+    },
+    "L": {
+      "tag": "minecraft:logs"
+    },
+    "R": {
+      "item": "eln2:rubber"
+    }
+  },
+  "pattern": [
+    " R ",
+    " LG",
+    " R "
+  ],
+  "result": {
+    "item": "eln2:rubber_wood_panel"
+  },
+  "show_notification": true
+}

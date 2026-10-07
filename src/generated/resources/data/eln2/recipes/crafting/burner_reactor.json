@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": {
+      "item": "minecraft:bricks"
+    },
+    "I": {
+      "item": "minecraft:furnace"
+    },
+    "P": {
+      "tag": "forge:plates/iron"
+    },
+    "V": {
+      "item": "eln2:fluid_pipe_extraction_valve"
+    }
+  },
+  "pattern": [
+    "PIP",
+    "BVB",
+    "PPP"
+  ],
+  "result": {
+    "item": "eln2:burner_reactor"
+  },
+  "show_notification": true
+}

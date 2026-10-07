@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "C": {
+      "item": "eln2:power_grid_copper_cable"
+    },
+    "G": {
+      "item": "minecraft:glass"
+    },
+    "W": {
+      "tag": "minecraft:planks"
+    }
+  },
+  "pattern": [
+    " G ",
+    " W ",
+    "CWC"
+  ],
+  "result": {
+    "item": "eln2:lamp_pole"
+  },
+  "show_notification": true
+}

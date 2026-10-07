@@ -1,4 +1,22 @@
-# Made in Blockbench 5.0.4
+# Blender 5.1.0 MTL File: 'None'
+# www.blender.org
+
 newmtl m_38ca7076-efe0-7f1e-9512-a34bf5488c27
+Ns 0.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.000000 0.000000 0.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 1
 map_Kd eln2:block/wind_turbine/basic/basic_wind_turbine
+
 newmtl none
+Ns 0.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.000000 0.000000 0.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 1

@@ -1,6 +1,7 @@
 package org.eln2.mc.common.grids
 
 import net.minecraft.core.particles.ParticleTypes
+import net.minecraft.ChatFormatting
 import net.minecraft.core.particles.SimpleParticleType
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.nbt.ListTag
@@ -13,8 +14,9 @@ import net.minecraft.world.InteractionHand
 import net.minecraft.world.InteractionResult
 import net.minecraft.world.InteractionResultHolder
 import net.minecraft.world.entity.player.Player
-import net.minecraft.world.item.Item
 import net.minecraft.world.item.ItemStack
+import net.minecraft.world.item.Item
+import net.minecraft.world.item.TooltipFlag
 import net.minecraft.world.level.Level
 import org.ageseries.libage.data.*
 import org.ageseries.libage.mathematics.approxEq
@@ -884,6 +886,16 @@ open class GridCableItem(val material: GridMaterial, val itemsPerMeter: Int) : I
 }
 
 open class GridCablePliersItem : Item(Properties()) {
+    override fun appendHoverText(
+        pStack: ItemStack,
+        pLevel: Level?,
+        pTooltipComponents: MutableList<Component>,
+        pIsAdvanced: TooltipFlag,
+    ) {
+        super.appendHoverText(pStack, pLevel, pTooltipComponents, pIsAdvanced)
+        pTooltipComponents.add(Component.translatable("tooltip.eln2.grid_pliers.use").withStyle(ChatFormatting.GRAY))
+    }
+
     override fun use(pLevel: Level, pPlayer: Player, pUsedHand: InteractionHand): InteractionResultHolder<ItemStack> {
         val itemStack = pPlayer.getItemInHand(pUsedHand)
 

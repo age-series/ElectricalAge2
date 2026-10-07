@@ -8,15 +8,13 @@ import dev.engine_room.flywheel.api.layout.IntegerRepr
 import dev.engine_room.flywheel.api.layout.LayoutBuilder
 import dev.engine_room.flywheel.api.material.Material
 import dev.engine_room.flywheel.api.model.Model
-import dev.engine_room.flywheel.api.visual.DynamicVisual
-import dev.engine_room.flywheel.api.visual.ShaderLightVisual
-import dev.engine_room.flywheel.api.visual.TickableVisual
-import dev.engine_room.flywheel.api.visual.Visual
+import dev.engine_room.flywheel.api.visual.*
 import dev.engine_room.flywheel.api.visualization.VisualizationContext
 import dev.engine_room.flywheel.api.visualization.VisualizerRegistry
 import dev.engine_room.flywheel.lib.instance.InstanceTypes
 import dev.engine_room.flywheel.lib.instance.SimpleInstanceType
 import dev.engine_room.flywheel.lib.instance.TransformedInstance
+import dev.engine_room.flywheel.lib.material.SimpleMaterial
 import dev.engine_room.flywheel.lib.model.Models
 import dev.engine_room.flywheel.lib.model.baked.BakedModelBuilder
 import dev.engine_room.flywheel.lib.model.baked.PartialModel
@@ -29,58 +27,44 @@ import dev.engine_room.flywheel.lib.visual.SimpleDynamicVisual
 import dev.engine_room.flywheel.lib.visualization.SimpleBlockEntityVisualizer
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap
 import it.unimi.dsi.fastutil.ints.IntArrayList
-import kotlinx.serialization.Serializable
 import net.minecraft.client.renderer.block.model.BakedQuad
 import net.minecraft.client.resources.model.BakedModel
 import net.minecraft.core.Direction
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.nbt.ListTag
 import net.minecraft.network.FriendlyByteBuf
+import net.minecraft.network.chat.Component
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.level.ServerPlayer
+import net.minecraft.world.level.block.HorizontalDirectionalBlock
 import net.minecraft.world.level.block.entity.BlockEntity
+import org.ageseries.libage.data.OptionalDouble
 import org.ageseries.libage.data.Quantity
 import org.ageseries.libage.data.Temperature
-import org.ageseries.libage.mathematics.geometry.BoundingBox3d
-import org.ageseries.libage.mathematics.geometry.OrientedBoundingBox3d
-import org.ageseries.libage.mathematics.geometry.Rotation2d
-import org.ageseries.libage.mathematics.geometry.Rotation3d
-import org.ageseries.libage.mathematics.geometry.Vector3d
+import org.ageseries.libage.mathematics.geometry.*
 import org.ageseries.libage.utils.putUnique
-import org.eln2.mc.ClientOnly
-import org.eln2.mc.DEBUGGER_BREAK
-import org.eln2.mc.LOG
-import org.eln2.mc.ServerOnly
-import org.eln2.mc.buildDirectionTable
+import org.eln2.mc.*
 import org.eln2.mc.client.render.FlwMaterials
 import org.eln2.mc.client.render.FlwModels
 import org.eln2.mc.client.render.foundation.PartWithKnobsVisual.Companion.createKnobList
 import org.eln2.mc.client.render.foundation.PartWithKnobsVisual.Companion.transformKnobList
-import org.eln2.mc.client.render.foundation.WirePatchType.Inner
-import org.eln2.mc.client.render.foundation.WirePatchType.Wrapped
 import org.eln2.mc.common.blocks.BlockRegistry
+import org.eln2.mc.common.blocks.foundation.BigBlockRepresentativeBlockEntity
 import org.eln2.mc.common.blocks.foundation.MultipartBlockEntityVisual
 import org.eln2.mc.common.blocks.foundation.MultipartVisualizationContext
 import org.eln2.mc.common.cells.foundation.KineticInterpolatorClient
 import org.eln2.mc.common.cells.foundation.RotatingKineticState
-import org.eln2.mc.common.content.*
+import org.eln2.mc.common.content.PartConnectionRenderInfo
+import org.eln2.mc.common.content.WireConnectionModelPartial
+import org.eln2.mc.common.content.WirePart
+import org.eln2.mc.common.content.getPartConnectionAsContactSectionConnectionOrNull
 import org.eln2.mc.common.grids.GridConnectionCell
 import org.eln2.mc.common.parts.foundation.*
 import org.eln2.mc.common.specs.foundation.*
-import org.eln2.mc.common.specs.foundation.SpecGeometry
-import org.eln2.mc.extensions.bind
-import org.eln2.mc.extensions.cast
-import org.eln2.mc.extensions.getListTag
-import org.eln2.mc.extensions.getViewRay
-import org.eln2.mc.extensions.readDoubleArray
-import org.eln2.mc.extensions.rotationFast
-import org.eln2.mc.extensions.vector3d
-import org.eln2.mc.extensions.writeDoubleArray
+import org.eln2.mc.extensions.*
 import org.eln2.mc.mathematics.Axis3d
 import org.eln2.mc.mathematics.Base6Direction3d
 import org.eln2.mc.mathematics.maskXY
-import org.eln2.mc.requireIsOnServerThread
-import org.eln2.mc.resource
 import org.joml.Quaternionf
 import org.lwjgl.system.MemoryUtil
 import java.nio.ByteBuffer
@@ -1032,10 +1016,49 @@ fun<T : Affine<T>> T.specTransformation(parent: SpecContainerPartVisual, spec: S
         .translate(-0.5, 0.0, -0.5)
 }
 
-/**
- * @param changedNotifier Called when the state changes and needs both saving and syncing.
- * */
 class KnobMap(val changedNotifier: (() -> Unit)?) {
+    /**
+     * Holds optional configuration for a [Knob], such as bounds and screwdriver-settable metadata.
+     * */
+    class KnobConfiguration {
+        var lowerBound: Double? = null
+            private set
+
+        var upperBound: Double? = null
+            private set
+
+        var interactableTranslationKey: String? = null
+            private set
+
+        fun setLowerBound(value: Double) {
+            lowerBound = value
+        }
+
+        fun setUpperBound(value: Double) {
+            upperBound = value
+        }
+
+        fun setLimits(lower: Double, upper: Double) {
+            lowerBound = lower
+            upperBound = upper
+        }
+
+        fun makeInteractable(translationKey: String) {
+            interactableTranslationKey = translationKey
+        }
+
+        fun clamp(value: Double): Double {
+            val lo = lowerBound
+            val hi = upperBound
+            return when {
+                lo != null && hi != null -> value.coerceIn(lo, hi)
+                lo != null -> value.coerceAtLeast(lo)
+                hi != null -> value.coerceAtMost(hi)
+                else -> value
+            }
+        }
+    }
+
     /**
      * Holds the rotation state of a knob ([rotation]).
      * @param model The partial model. Safe to exist on the server side as long as the underlying data isn't accessed.
@@ -1050,13 +1073,29 @@ class KnobMap(val changedNotifier: (() -> Unit)?) {
         initialRotation: Double,
         private val boundingBoxSupplier: (Double) -> OrientedBoundingBox3d
     ) {
+        var configuration: KnobConfiguration? = null
+            private set
+
+        /**
+         * Configures this knob's bounds and interactability.
+         * */
+        fun configure(action: KnobConfiguration.() -> Unit): Knob {
+            val config = configuration ?: KnobConfiguration().also { configuration = it }
+            config.action()
+            return this
+        }
+
+        val isInteractable: Boolean get() = configuration?.interactableTranslationKey != null
+
         /**
          * The turn state of the knob. Changing the value will mark the state as changed, for synchronization.
+         * If bounds are configured, the value is clamped to them.
          * */
         var rotation : Double = initialRotation
             set(value) {
-                if(field != value) {
-                    field = value
+                val clamped = configuration?.clamp(value) ?: value
+                if(field != clamped) {
+                    field = clamped
                     map.knobChanged()
                 }
             }
@@ -1181,18 +1220,18 @@ class KnobMap(val changedNotifier: (() -> Unit)?) {
     }
 
     /**
-     * Handles rotating a knob using the screwdriver.
+     * Finds the knob the player is looking at, or null if none.
      * */
     @ServerOnly
-    fun screwdriverInteraction(player: ServerPlayer, delta: Double) : Boolean {
+    fun pickKnob(player: ServerPlayer) : Knob? {
         requireIsOnServerThread {
-            "Tried to scroll knob on non-server side"
+            "Tried to pick knob on non-server side"
         }
 
         val ray = player.getViewRay()
 
         var minDistance = Double.POSITIVE_INFINITY
-        var knob: Knob? = null
+        var result: Knob? = null
 
         for (it in mapInternal) {
             val obb = it.computeOBB()
@@ -1205,11 +1244,21 @@ class KnobMap(val changedNotifier: (() -> Unit)?) {
                 if(t > 0.0) {
                     if(t < minDistance) {
                         minDistance = t
-                        knob = it
+                        result = it
                     }
                 }
             }
         }
+
+        return result
+    }
+
+    /**
+     * Handles rotating a knob using the screwdriver scroll.
+     * */
+    @ServerOnly
+    fun screwdriverInteraction(player: ServerPlayer, delta: Double) : Boolean {
+        val knob = pickKnob(player)
 
         if(knob != null) {
             knob.rotation += delta
@@ -1217,6 +1266,34 @@ class KnobMap(val changedNotifier: (() -> Unit)?) {
         }
 
         return false
+    }
+
+    /**
+     * Handles setting a knob to an exact value using the screwdriver.
+     * If [value] is empty, sends the player a chat message with the knob name (if interactable).
+     * If [value] is present, clamps and applies it, then sends a confirmation chat message.
+     * Returns false if no interactable knob was found.
+     * */
+    @ServerOnly
+    fun screwdriverConfigure(player: ServerPlayer, value: OptionalDouble) : Boolean {
+        val knob = pickKnob(player) ?: return false
+
+        val key = knob.configuration?.interactableTranslationKey ?: return false
+
+        if(!value.isPresent) {
+            player.sendSystemMessage(Component.translatable(key))
+            return true
+        }
+
+        val raw = value.unwrap()
+        val clamped = knob.configuration?.clamp(raw) ?: raw
+        knob.rotation = clamped
+
+        player.sendSystemMessage(
+            Component.translatable(key).append(": ").append(String.format("%.3f", clamped))
+        )
+
+        return true
     }
 
     fun getSyncPacket() : SyncPacket {
@@ -1410,7 +1487,7 @@ class PartWithKnobsVisual<T>(
     }
 }
 
-class ConnectedPartWithKnobsVisual<P>(
+open class ConnectedPartWithKnobsVisual<P>(
     ctx: MultipartVisualizationContext,
     part: P,
     body: PartialModel,
@@ -1470,5 +1547,46 @@ class TestBlockEntityVisual<T : BlockEntity>(
 
     override fun _delete() {
         instance.delete()
+    }
+}
+
+class SimpleBigBlockEntityVisual<TBlockEntity>(
+    ctx: VisualizationContext,
+    blockEntity: TBlockEntity,
+    partialTick: Float,
+    model: PartialModel,
+    material: SimpleMaterial = FlwMaterials.SMOOTH_LIT
+) : AbstractBlockEntityVisual<TBlockEntity>(ctx, blockEntity, partialTick), ShaderLightVisual where TBlockEntity : BigBlockRepresentativeBlockEntity<TBlockEntity>, TBlockEntity : BlockEntity {
+    val body: TransformedInstance = visualizationContext.instancerProvider()
+        .instancer(InstanceTypes.TRANSFORMED, PartialModelHelper.applyMaterial(model, material))
+        .createInstance()
+        .also {
+            it.translate(visualPosition)
+            it.center()
+            it.rotateToFace(blockEntity.representativeFacing.opposite)
+            it.uncenter()
+        }
+
+    override fun updateLight(p0: Float) {
+        // NOOP (shader light)
+    }
+
+    override fun setSectionCollector(sectionCollector: SectionTrackedVisual.SectionCollector) {
+        this.lightSections = sectionCollector
+
+        sectionCollector.sections(
+            blockEntity.delegateMap.getTotalSpannedSectionsFat(
+                blockState.getValue(HorizontalDirectionalBlock.FACING),
+                pos
+            )
+        )
+    }
+
+    override fun collectCrumblingInstances(p0: Consumer<Instance?>) {
+        p0.accept(body)
+    }
+
+    override fun _delete() {
+        body.delete()
     }
 }

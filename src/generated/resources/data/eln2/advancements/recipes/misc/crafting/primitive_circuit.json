@@ -1,0 +1,35 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_the_recipe": {
+      "conditions": {
+        "recipe": "eln2:crafting/primitive_circuit"
+      },
+      "trigger": "minecraft:recipe_unlocked"
+    },
+    "has_vacuum_tube": {
+      "conditions": {
+        "items": [
+          {
+            "items": [
+              "eln2:vacuum_tube"
+            ]
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "requirements": [
+    [
+      "has_vacuum_tube",
+      "has_the_recipe"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "eln2:crafting/primitive_circuit"
+    ]
+  },
+  "sends_telemetry_event": false
+}

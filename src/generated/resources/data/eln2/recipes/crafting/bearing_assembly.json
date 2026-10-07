@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "A": {
+      "item": "eln2:iron_axle_mount"
+    },
+    "I": {
+      "item": "minecraft:iron_block"
+    },
+    "S": {
+      "item": "eln2:iron_shaft"
+    }
+  },
+  "pattern": [
+    "I I",
+    "S S",
+    "A A"
+  ],
+  "result": {
+    "item": "eln2:bearing_assembly"
+  },
+  "show_notification": true
+}

@@ -9,16 +9,18 @@ import org.ageseries.libage.utils.addUnique
 import org.ageseries.libage.utils.putUnique
 import org.eln2.mc.client.render.foundation.MyColor
 import org.eln2.mc.common.ModEvents
-import org.eln2.mc.common.items.ItemRegistry
+import org.eln2.mc.common.content.modules.ContentManager.withItemTagDatagen
+import org.eln2.mc.common.content.modules.world.Eln2Ores
 import org.eln2.mc.common.items.ItemRegistry.item
 import org.eln2.mc.common.items.ItemRegistry.itemDefault
+import org.eln2.mc.common.content.fluid.BrushItem
 import java.util.function.Supplier
 
 object Eln2Ingredients : ContentModule() {
     //#region Registration Helpers
 
     /**
-     * Item with a data-generated model (consisting of a base texture and a tint registered in [ITEMS_FOR_TINT]).
+     * Item with a data-generated model (consisting of a base texture and a tint).
      * @param id The item registry path.
      * @param tint The color of the item.
      * @param item The item itself.
@@ -40,12 +42,12 @@ object Eln2Ingredients : ContentModule() {
         val itemsForModelDatagen = LinkedHashSet<IngredientInfo<Type>>()
 
         /**
-         * Registers an item with the ID [name], and adds it to [ITEMS_FOR_TINT] (picked up automatically by a generic routine) and to [itemsForModelDatagen] (needs a specific implementation in [org.eln2.mc.Eln2ItemModelProviderDatagen]).
+         * Registers an item with the ID [name], and adds it to the items for tint (picked up automatically by a generic routine) and to [itemsForModelDatagen] (needs a specific implementation in [org.eln2.mc.Eln2ItemModelProviderDatagen]).
          * */
         fun register(name: String, tint: MyColor) : IngredientInfo<Type> {
             ContentManager.requireInit()
 
-            val ingredientItem = ItemRegistry.itemDefault(name)
+            val ingredientItem = itemDefault(name)
             val obj = IngredientInfo<Type>(name, tint, ingredientItem)
 
             ContentManager.addItemForTint(obj)
@@ -100,15 +102,8 @@ object Eln2Ingredients : ContentModule() {
         var sourceItemForRolling: Supplier<Item>? = null
         var rollingDuration = 100.0
 
-        /**
-         * Registers a blacksmithing hammer (flattening mode) recipe that turns [sourceItemForFlattening] into [info] with cooldown [blacksmithingDuration].
-         * */
-        var sourceItemForFlattening: Supplier<Item>? = null
-        var blacksmithingDuration = 40
-
         fun allRecipes(sourceItem: Supplier<Item>) {
             sourceItemForRolling = sourceItem
-            sourceItemForFlattening = sourceItem
         }
     }
 
@@ -137,12 +132,6 @@ object Eln2Ingredients : ContentModule() {
     val WIRES = IngredientSetWithRecipes(::WireBuilder)
 
     class WireBuilder(val info: IngredientInfo<Wire>) {
-        /**
-         * Registers blacksmithing chisel and hammer recipe (slicing mode) that turns [sourceItemForSlicing] into [info].
-         * */
-        var sourceItemForSlicing: Supplier<Item>? = null
-        var blacksmithingDuration = 60
-
         /**
          * Registers extruding recipe that turns [sourceItemForExtruding] into [info].
          * */
@@ -186,14 +175,24 @@ object Eln2Ingredients : ContentModule() {
     //#endregion
 
     val COKE = itemDefault("coke")
+        .withItemTagDatagen(Eln2ConventionTags.COAL_EQUIVALENT)
 
     val COKE_DUST = DUSTS.build("coke_dust", MyColor(127, 127, 127)) {
         fromCrushing(COKE)
-    }
+    }.withItemTagDatagen(Eln2ConventionTags.COAL_EQUIVALENT)
 
     val CARBON_PUTTY = itemDefault("carbon_putty")
     val RAW_CARBON_BRUSH = itemDefault("raw_carbon_brush")
     val CARBON_BRUSH = itemDefault("carbon_brush")
+
+    val UNFIRED_RESISTOR = itemDefault("unfired_resistor")
+    val RESISTOR = itemDefault("resistor")
+
+    val CAPACITOR_SEPARATOR = itemDefault("capacitor_separator")
+    val CAPACITOR = itemDefault("capacitor")
+
+    val RAW_CIRCUIT_BOARD = itemDefault("raw_circuit_board")
+    val PRIMITIVE_CIRCUIT = itemDefault("primitive_circuit")
 
     //#region Crushed Ores
 
@@ -206,13 +205,13 @@ object Eln2Ingredients : ContentModule() {
     //#region Lead
 
     val LEAD_INGOT = INGOTS.register("lead_ingot", MyColor(150, 150, 160))
+        .withItemTagDatagen(Eln2ConventionTags.INGOT_LEAD)
 
     val LEAD_PLATE = PLATES.build("lead_plate", MyColor(165, 165, 180)) {
         allRecipes(LEAD_INGOT)
-    }
+    }.withItemTagDatagen(Eln2ConventionTags.PLATE_LEAD)
 
     val LEAD_WIRE = WIRES.build("lead_wire", MyColor(110, 110, 130)) {
-        sourceItemForSlicing = LEAD_PLATE
         sourceItemForExtruding = LEAD_INGOT
     }
 
@@ -220,20 +219,20 @@ object Eln2Ingredients : ContentModule() {
         fromCrushing(LEAD_INGOT, duration = 15.0)
         fromCrushing(LEAD_PLATE, duration = 12.5)
         fromCrushing(LEAD_WIRE, duration = 8.0)
-    }
+    }.withItemTagDatagen(Eln2ConventionTags.DUST_LEAD)
 
     //#endregion
 
     //#region Tin
 
     val TIN_INGOT = INGOTS.register("tin_ingot", MyColor(244, 235, 231))
+        .withItemTagDatagen(Eln2ConventionTags.INGOT_TIN)
 
     val TIN_PLATE = PLATES.build("tin_plate", TIN_INGOT.tint) {
         allRecipes(TIN_INGOT)
-    }
+    }.withItemTagDatagen(Eln2ConventionTags.PLATE_TIN)
 
     val TIN_WIRE = WIRES.build("tin_wire", TIN_INGOT.tint) {
-        sourceItemForSlicing = TIN_PLATE
         sourceItemForExtruding = TIN_INGOT
     }
 
@@ -241,7 +240,7 @@ object Eln2Ingredients : ContentModule() {
         fromCrushing(TIN_INGOT, duration = 20.0)
         fromCrushing(TIN_PLATE, duration = 18.0)
         fromCrushing(TIN_WIRE, duration = 15.0)
-    }
+    }.withItemTagDatagen(Eln2ConventionTags.DUST_TIN)
 
     //#endregion
 
@@ -253,11 +252,15 @@ object Eln2Ingredients : ContentModule() {
 
     val IRON_PLATE = PLATES.build("iron_plate", MyColor.WHITE) {
         allRecipes(HOT_IRON_INGOT)
-    }
+    }.withItemTagDatagen(Eln2ConventionTags.PLATE_IRON)
 
     val IRON_DUST = DUSTS.build("iron_dust", MyColor(200, 200, 200)) {
         fromCrushing(Items::IRON_INGOT)
         fromCrushing(IRON_PLATE)
+    }.withItemTagDatagen(Eln2ConventionTags.DUST_IRON)
+
+    val IRON_WIRE = WIRES.build("iron_wire", MyColor(180, 180, 190)) {
+        sourceItemForExtruding = HOT_IRON_INGOT
     }
 
     //#endregion
@@ -270,14 +273,13 @@ object Eln2Ingredients : ContentModule() {
 
     val COPPER_PLATE = PLATES.build("copper_plate", MyColor(184, 115, 51)) {
         allRecipes(HOT_COPPER_INGOT)
-    }
+    }.withItemTagDatagen(Eln2ConventionTags.PLATE_COPPER)
 
     val HOT_COPPER_PLATE = HOT_PLATES.build("hot_copper_plate", MyColor(240, 110, 70)) {
         sourceItemForVanillaHeating = COPPER_PLATE
     }
 
     val COPPER_WIRE = WIRES.build("copper_wire", MyColor(284, 185, 135)) {
-        sourceItemForSlicing = HOT_COPPER_PLATE
         sourceItemForExtruding = HOT_COPPER_INGOT
     }
 
@@ -288,13 +290,14 @@ object Eln2Ingredients : ContentModule() {
         fromCrushing(COPPER_PLATE)
         fromCrushing(COPPER_WIRE)
         fromCrushing(ENAMELED_COPPER_WIRE)
-    }
+    }.withItemTagDatagen(Eln2ConventionTags.DUST_COPPER)
 
     //#endregion
 
     //#region Bronze
 
     val BRONZE_INGOT = INGOTS.register("bronze_ingot", MyColor(206, 137, 70))
+        .withItemTagDatagen(Eln2ConventionTags.INGOT_BRONZE)
 
     val HOT_BRONZE_INGOT = HOT_INGOTS.build("hot_bronze_ingot", BRONZE_INGOT.tint) {
         sourceItemForVanillaHeating = BRONZE_INGOT
@@ -302,9 +305,52 @@ object Eln2Ingredients : ContentModule() {
 
     val BRONZE_PLATE = PLATES.build("bronze_plate", BRONZE_INGOT.tint) {
         allRecipes(HOT_BRONZE_INGOT)
-    }
+    }.withItemTagDatagen(Eln2ConventionTags.PLATE_BRONZE)
 
     //#endregion
+    val SULFUR_DUST = DUSTS.build("sulfur_dust", MyColor(200, 180, 50)) {
+        fromCrushing(Eln2Ores.SULFUR_ORE.rawOreItem, duration = 15.0)
+    }.withItemTagDatagen(Eln2ConventionTags.DUST_SULFUR)
+
+    val POTASSIUM_NITRATE_DUST = DUSTS.build("potassium_nitrate_dust", MyColor(255, 230, 200)) {
+        fromCrushing(Eln2Ores.SALTPETER_ORE.rawOreItem, duration = 15.0)
+    }
+
+    val MAGNETITE_DUST = DUSTS.build("magnetite_dust", MyColor(50, 50, 55)) {
+        fromCrushing(Eln2Ores.MAGNETITE_ORE.rawOreItem, duration = 15.0)
+    }
+
+    val SCHEELITE_DUST = DUSTS.build("scheelite_dust", MyColor(255, 240, 180)) {
+        fromCrushing(Eln2Ores.SCHEELITE_ORE.rawOreItem, duration = 15.0)
+    }
+
+    val SODIUM_CARBONATE_DUST = DUSTS.build("sodium_carbonate_dust", MyColor(240, 235, 230)) {
+        fromCrushing(Eln2Ores.TRONA_ORE.rawOreItem, duration = 15.0)
+    }
+
+    val TUNGSTEN_TRIOXIDE_DUST = DUSTS.build("tungsten_trioxide_dust", MyColor(220, 200, 50))
+
+    val TUNGSTEN_TRIOXIDE_PASTE = itemDefault("tungsten_trioxide_paste")
+    val FILAMENT_SHAPED_TUNGSTEN_TRIOXIDE_PASTE = itemDefault("filament_shaped_tungsten_trioxide_paste")
+    val TUNGSTEN_FILAMENT = itemDefault("tungsten_filament")
+
+    val GLASS_ENVELOPE = itemDefault("glass_envelope")
+    val UNSEALED_VACUUM_TUBE = itemDefault("unsealed_vacuum_tube")
+    val VACUUM_TUBE = itemDefault("vacuum_tube")
+    val UNSEALED_240V_100W_LIGHT_BULB = itemDefault("unsealed_240v_100w_light_bulb")
+
+    val SCHEELITE_FUSION_MIX = DUSTS.build("scheelite_fusion_mix", MyColor(245, 235, 195))
+    val SODIUM_TUNGSTENATE_MELT = DUSTS.build("sodium_tungstenate_melt", MyColor(215, 210, 200))
+    val TUNGSTIC_ACID = DUSTS.build("tungstic_acid", MyColor(235, 230, 215))
+
+    val CRUDE_MAGNET = itemDefault("crude_magnet")
+    val COPPER_COIL = itemDefault("copper_coil")
+    val INDUCTOR = itemDefault("inductor")
+    val ROTOR_COIL_ASSEMBLY = itemDefault("rotor_coil_assembly")
+    val ROTOR_COMMUTATOR = itemDefault("rotor_commutator")
+    val COPPER_ROTOR = itemDefault("copper_rotor")
+    val CRUDE_MOTOR_STATOR = itemDefault("crude_motor_stator")
+    val BRUSHED_DC_MOTOR = itemDefault("brushed_dc_motor")
 
     val IRON_SHAFT = itemDefault("iron_shaft")
 
@@ -314,10 +360,25 @@ object Eln2Ingredients : ContentModule() {
 
     val IRON_GEAR = itemDefault("iron_gear")
 
+    val CRUSHER_DRUM = itemDefault("crusher_drum")
+
+    val CRUSHER_ASSEMBLY = itemDefault("crusher_assembly")
+
+    val MACHINE_FRAME = itemDefault("machine_frame")
+
+    val EXTRUDING_PORT = itemDefault("extruding_port")
+
+    val EXTRUDING_ASSEMBLY = itemDefault("extruding_assembly")
+
+    val ROLLING_ASSEMBLY = itemDefault("rolling_assembly")
+
+    val PIPE_HEAT_EXCHANGE_ASSEMBLY = itemDefault("pipe_heat_exchange_assembly")
+
     //#region Tree Extraction
 
     val RAW_LATEX = itemDefault("raw_latex")
     val RAW_RESIN = itemDefault("raw_resin")
+        .withItemTagDatagen(Eln2ConventionTags.GLUE)
 
     //#endregion
 
@@ -326,6 +387,65 @@ object Eln2Ingredients : ContentModule() {
     val RUBBER_COMPOUND = item("rubber_compound") { Item(Item.Properties().stacksTo(8)) }
     val RUBBER = itemDefault("rubber")
     val BURNT_RUBBER = itemDefault("burnt_rubber")
+
+    //#endregion
+
+    //#region Asbestos
+
+    val ASBESTOS_FIBER = itemDefault("asbestos_fiber")
+
+    //#endregion
+
+    val AUTOCLAVE_TRAY = itemDefault("autoclave_tray")
+    val AUTOCLAVE_RADIATOR = itemDefault("autoclave_radiator")
+    val AUTOCLAVE_SHELL = itemDefault("autoclave_shell")
+    val AUTOCLAVE_DOOR = itemDefault("autoclave_door")
+    val WIND_TURBINE_BLADE = itemDefault("wind_turbine_blade")
+    val WIND_TURBINE_CORE = itemDefault("wind_turbine_core")
+
+    //#region Lead-Acid Battery
+
+    val LEAD_ACID_BATTERY_CELL = itemDefault("lead_acid_battery_cell")
+    val LEAD_ACID_BATTERY_CHASSIS = itemDefault("lead_acid_battery_chassis")
+    val LEAD_ACID_BATTERY_BASE_12V = itemDefault("lead_acid_battery_base_12v")
+
+    //#endregion
+
+    //#region Rubber-Wood Panel
+
+    val RUBBER_WOOD_PANEL = itemDefault("rubber_wood_panel")
+
+    //#endregion
+
+    //#region Advanced Coal Burner
+
+    val INSULATED_COMBUSTION_CHAMBER = itemDefault("insulated_combustion_chamber")
+    val BURNER_CONTROLLER_UNIT = itemDefault("burner_controller_unit")
+    val BURNER_FUEL_HOPPER = itemDefault("burner_fuel_hopper")
+
+    //#endregion
+
+    //#region Probes
+
+    val PROBE_BODY = itemDefault("probe_body")
+
+    //#endregion
+
+    //#region Steam Turbine
+
+    val TURBINE_ROTOR = itemDefault("turbine_rotor")
+    val STEAM_INJECTOR = itemDefault("steam_injector")
+    val CONDENSER_UNIT = itemDefault("condenser_unit")
+    val BEARING_ASSEMBLY = itemDefault("bearing_assembly")
+    val TURBINE_CASING = itemDefault("turbine_casing")
+    val TURBINE_CONTROLLER = itemDefault("turbine_controller")
+
+    //#endregion
+
+    //#region Brushes
+
+    val CREOSOTE_BRUSH = item("creosote_brush") { BrushItem(32) }
+    val ENAMEL_BRUSH = item("enamel_brush") { BrushItem(32) }
 
     //#endregion
 }

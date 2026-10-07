@@ -1,0 +1,35 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_the_recipe": {
+      "conditions": {
+        "recipe": "eln2:crafting/tin_fuse_5a"
+      },
+      "trigger": "minecraft:recipe_unlocked"
+    },
+    "has_tin_wire": {
+      "conditions": {
+        "items": [
+          {
+            "items": [
+              "eln2:tin_wire"
+            ]
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "requirements": [
+    [
+      "has_tin_wire",
+      "has_the_recipe"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "eln2:crafting/tin_fuse_5a"
+    ]
+  },
+  "sends_telemetry_event": false
+}

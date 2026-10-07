@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "E": {
+      "item": "eln2:extruding_port"
+    }
+  },
+  "pattern": [
+    "E E"
+  ],
+  "result": {
+    "item": "eln2:rolling_assembly"
+  },
+  "show_notification": true
+}

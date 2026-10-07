@@ -1,12 +1,12 @@
 {
   "parent": "minecraft:recipes/root",
   "criteria": {
-    "has_insulating_varnish_bottle": {
+    "has_enamel_brush": {
       "conditions": {
         "items": [
           {
             "items": [
-              "eln2:insulating_varnish_bottle"
+              "eln2:enamel_brush"
             ]
           }
         ]
@@ -22,7 +22,7 @@
   },
   "requirements": [
     [
-      "has_insulating_varnish_bottle",
+      "has_enamel_brush",
       "has_the_recipe"
     ]
   ],

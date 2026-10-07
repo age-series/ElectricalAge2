@@ -1,0 +1,11 @@
+{
+  "type": "eln2:crushing",
+  "duration": 15.0,
+  "ingredient": {
+    "tag": "forge:raw_materials/sulfur"
+  },
+  "result": {
+    "count": 1,
+    "item": "eln2:sulfur_dust"
+  }
+}

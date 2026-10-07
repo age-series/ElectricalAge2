@@ -1,5 +1,6 @@
 package org.eln2.mc
 
+import com.google.gson.JsonObject
 import com.mojang.blaze3d.systems.RenderSystem
 import net.minecraft.client.server.IntegratedServer
 import net.minecraft.core.BlockPos
@@ -8,6 +9,7 @@ import net.minecraft.core.Vec3i
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.player.Player
+import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.ClipContext
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.entity.BlockEntity
@@ -15,23 +17,26 @@ import net.minecraft.world.level.block.entity.BlockEntityTicker
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.BlockHitResult
+import net.minecraft.world.phys.HitResult
 import net.minecraft.world.phys.Vec3
 import net.minecraftforge.api.distmarker.Dist
+import net.minecraftforge.fluids.FluidStack
+import net.minecraftforge.registries.ForgeRegistries
 import net.minecraftforge.server.ServerLifecycleHooks
-import org.ageseries.libage.data.*
-import org.ageseries.libage.mathematics.*
+import org.ageseries.libage.data.classify
+import org.ageseries.libage.mathematics.geometry.Vector3d
+import org.ageseries.libage.mathematics.map
 import org.eln2.mc.common.ForgeEvents
+import org.eln2.mc.common.blocks.foundation.MultipartBlockEntity
+import org.eln2.mc.common.specs.foundation.SpecContainerPart
 import org.eln2.mc.extensions.minus
+import org.eln2.mc.extensions.toVector3d
 import org.eln2.mc.extensions.viewClip
 import org.eln2.mc.mathematics.FacingDirection
 import org.joml.Vector3f
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
-import kotlin.math.PI
-import kotlin.math.cos
-import kotlin.math.max
-import kotlin.math.min
-import kotlin.math.sin
+import kotlin.math.*
 import kotlin.random.Random
 
 fun randomFloat(min: Float, max: Float) = map(Random.nextFloat(), 0f, 1f, min, max)
@@ -244,6 +249,59 @@ fun getPlayerPOVHitResult(pLevel: Level, pPlayer: Player): BlockHitResult {
     )
 }
 
+/**
+ * Result of picking a game object under the player's crosshair.
+ * @param target The picked object (block entity, part, or spec).
+ * @param position A representative world position for the object (used for sound playback, etc).
+ * @param side The world-space face the crosshair hit, or null if the pick didn't resolve to a face (e.g. a spec picked by its oriented bounding box rather than a block face).
+ * */
+data class GameObjectPick<T>(val target: T, val position: Vector3d, val side: Direction?)
+
+/**
+ * Picks the game object under the player's crosshair, resolving through block entities, multipart parts, and specs.
+ * Generic so callers can request a specific type (e.g. [org.eln2.mc.client.overlays.HoverDetailSupplier]).
+ * Returns null if nothing under the crosshair matches [T].
+ * */
+inline fun <reified T> pickGameObject(player: Player?): GameObjectPick<T>? {
+    if(player == null) {
+        return null
+    }
+
+    val level = player.level() ?: return null
+
+    val hit = getPlayerPOVHitResult(level, player)
+
+    if(hit.type != HitResult.Type.BLOCK) {
+        return null
+    }
+
+    val side = hit.direction
+    val targetBlockEntity = level.getBlockEntity(hit.blockPos) ?: return null
+
+    if(targetBlockEntity is T) {
+        return GameObjectPick(targetBlockEntity, targetBlockEntity.blockPos.toVector3d() + Vector3d.one * 0.5, side)
+    }
+
+    val multipart = targetBlockEntity as? MultipartBlockEntity ?: return null
+
+    val part = multipart.pickPart(player) ?: return null
+
+    if(part is T) {
+        val center = part.worldBoundingBox.center
+        return GameObjectPick(part, Vector3d(center.x, center.y, center.z), side)
+    }
+
+    val specContainer = part as? SpecContainerPart ?: return null
+
+    val spec = specContainer.pickSpec(player)?.second ?: return null
+
+    if(spec is T) {
+        return GameObjectPick(spec, spec.placement.orientedBoundingBoxWorld.center, side)
+    }
+
+    return null
+}
+
 class PIDController(var kP: Double, var kI: Double, var kD: Double) {
     constructor() : this(1.0, 0.0, 0.0)
 
@@ -258,7 +316,7 @@ class PIDController(var kP: Double, var kI: Double, var kD: Double) {
     /**
      * Gets or sets the minimum control signal returned by [update]
      * */
-    var minControl = Double.MIN_VALUE
+    var minControl = -Double.MAX_VALUE
 
     /**
      * Gets or sets the maximum control signal returned by [update]
@@ -267,18 +325,41 @@ class PIDController(var kP: Double, var kI: Double, var kD: Double) {
 
     fun update(value: Double, dt: Double): Double {
         val error = setPoint - value
-
-        errorSum += (error + lastError) * 0.5 * dt
-
         val derivative = (error - lastError) / dt
+
+        val prospectiveErrorSum = errorSum + (error + lastError) * 0.5 * dt
+        val output = kP * error + kI * prospectiveErrorSum + kD * derivative
+
+        val windup = (output > maxControl && error > 0.0) ||
+            (output < minControl && error < 0.0)
+
+        if (!windup) {
+            errorSum = prospectiveErrorSum
+        }
 
         lastError = error
 
-        return (kP * error + kI * errorSum + kD * derivative).coerceIn(minControl, maxControl)
+        return output.coerceIn(minControl, maxControl)
     }
 
     fun reset() {
         errorSum = 0.0
         lastError = 0.0
+    }
+}
+
+data class PIDGains(val kP: Double, val kI: Double, val kD: Double)
+
+fun fluidStackToJson(fluid: FluidStack): JsonObject {
+    return JsonObject().also { obj ->
+        obj.addProperty("fluid", ForgeRegistries.FLUIDS.getKey(fluid.fluid)!!.toString())
+        obj.addProperty("amount", fluid.amount)
+    }
+}
+
+fun itemStackToJson(stack: ItemStack): JsonObject {
+    return JsonObject().also { obj ->
+        obj.addProperty("item", ForgeRegistries.ITEMS.getKey(stack.item)!!.toString())
+        obj.addProperty("count", stack.count)
     }
 }

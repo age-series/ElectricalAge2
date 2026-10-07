@@ -91,6 +91,8 @@ object TreeExtractionManager : SimpleJsonResourceReloadListener(GsonBuilder().cr
 
     fun getExtractionByLog(log: Block) = refs.entries[log]
 
+    fun getEntries(): Collection<Entry> = refs.entries.values
+
     /**
      * @param log The log block.
      * @param leaves The leaves block, used to validate the structure of the tree.

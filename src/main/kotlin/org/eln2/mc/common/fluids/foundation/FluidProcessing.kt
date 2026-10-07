@@ -4,26 +4,31 @@ import com.google.gson.GsonBuilder
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import it.unimi.dsi.fastutil.longs.Long2BooleanOpenHashMap
+import net.minecraft.ChatFormatting
+import net.minecraft.network.chat.Component
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.packs.resources.ResourceManager
 import net.minecraft.server.packs.resources.SimpleJsonResourceReloadListener
 import net.minecraft.util.profiling.ProfilerFiller
 import net.minecraft.world.level.material.Fluid
-import net.minecraft.world.level.material.Fluids
 import net.minecraftforge.registries.ForgeRegistries
-import org.ageseries.libage.data.CELSIUS
+import net.minecraft.world.level.material.Fluids
 import org.ageseries.libage.data.Quantity
 import org.ageseries.libage.data.Temperature
+import org.ageseries.libage.data.classify
+import org.ageseries.libage.data.KELVIN
 import org.ageseries.libage.utils.putUnique
 import org.eln2.mc.*
 import org.eln2.mc.extensions.*
+private const val PROPERTY_SCALAR = 1.0 / 10.0
 
 /**
  * Extra properties attached to a Forge Fluid.
  * @param cacheId Unique ID chosen by the [PhysicalFluidManager].
- * @param specificHeatCapacity The specific heat capacity.
- * @param density The density of the fluid. Used for gravity separation.
+ * @param specificHeatCapacity The specific heat capacity, in liquid-equivalent J/(mB*K). For gases, the effective heat capacity per gas mB is this value divided by [gasExpansionFactor].
+ * @param density The density of the fluid, in liquid-equivalent kg/mB. Used for gravity separation. For gases, the effective mass per gas mB is this value divided by [gasExpansionFactor].
  * @param isGaseous Indicates if this fluid is treated as gaseous (usually for fluid handler routing).
+ * @param gasExpansionFactor The expansion factor applied when this fluid is in gas phase. Liquids use 1.0, gases use 100.0. This means 1 mB of liquid boils into [gasExpansionFactor] mB of gas, and each gas mB carries 1/[gasExpansionFactor] of the liquid mass and heat capacity.
  * @param mixabilityTags If this fluid shares any of the [mixabilityTags] with another fluid, these two fluids mix and cannot be separated by gravity.
  *  */
 class PhysicalFluid(
@@ -33,6 +38,7 @@ class PhysicalFluid(
     val specificHeatCapacity: Quantity<ForgeFluidSpecificHeatCapacity>,
     val density: Quantity<ForgeFluidDensity>,
     val isGaseous: Boolean,
+    val gasExpansionFactor: Double,
     val mixabilityTags: List<String>
 ) {
     override fun equals(other: Any?): Boolean {
@@ -76,9 +82,10 @@ object PhysicalFluidManager : SimpleJsonResourceReloadListener(GsonBuilder().cre
 
             val forgeFluidId = json.getResourceLocation("forgeFluid")
             val forgeFluid = resolveForgeFluid(forgeFluidId)
-            val specificHeatCapacity = Quantity(json.getDouble("specificHeatCapacity"), JOULE_PER_MILLIBUCKET_KELVIN)
+            val specificHeatCapacity = Quantity(json.getDouble("specificHeatCapacity") * PROPERTY_SCALAR, JOULE_PER_MILLIBUCKET_KELVIN)
             val density = Quantity(json.getDouble("density"), KILOGRAM_PER_MILLIBUCKET)
             val isGaseous = json.getBool("isGaseous")
+            val gasExpansionFactor = if(json.has("gasExpansionFactor")) json.get("gasExpansionFactor").asDouble else 1.0
             val mixabilityTags = if(json.has("mixabilityTags")) json.getAsJsonArray("mixabilityTags").map { it.asString } else emptyList<String>()
 
             val result = PhysicalFluid(
@@ -88,6 +95,7 @@ object PhysicalFluidManager : SimpleJsonResourceReloadListener(GsonBuilder().cre
                 specificHeatCapacity,
                 density,
                 isGaseous,
+                gasExpansionFactor,
                 mixabilityTags
             )
 
@@ -228,8 +236,8 @@ object FluidTransformationManager : SimpleJsonResourceReloadListener(GsonBuilder
             val fluid = resolveForgeFluid(fluidId)
 
             val boilingTransformation = json.mapNullable("boiling") {
-                val temperature = Quantity(it.getDouble("temperature"), CELSIUS)
-                val enthalpy = Quantity(it.getDouble("enthalpy"), JOULE_PER_MILLIBUCKET)
+                val temperature = Quantity(it.getDouble("temperature"), KELVIN)
+                val enthalpy = Quantity(it.getDouble("enthalpy") * PROPERTY_SCALAR, JOULE_PER_MILLIBUCKET)
                 val resultGas = resolveForgeFluid(it.getResourceLocation("resultGas"))
                 val resultGasProportion = it.getInt("resultGasProportion", 1000)
                 val resultLiquidResidue = it.getNullable("resultLiquidResidue") { _ ->
@@ -240,8 +248,8 @@ object FluidTransformationManager : SimpleJsonResourceReloadListener(GsonBuilder
             }
 
             val condensationTransformation = json.mapNullable("condensation") {
-                val temperature = Quantity(it.getDouble("temperature"), CELSIUS)
-                val enthalpy = Quantity(it.getDouble("enthalpy"), JOULE_PER_MILLIBUCKET)
+                val temperature = Quantity(it.getDouble("temperature"), KELVIN)
+                val enthalpy = Quantity(it.getDouble("enthalpy") * PROPERTY_SCALAR, JOULE_PER_MILLIBUCKET)
                 val resultLiquid = resolveForgeFluid(it.getResourceLocation("resultLiquid"))
                 val resultLiquidProportion = it.getInt("resultLiquidProportion", 1000)
                 val resultGasResidue = it.getNullable("resultGasResidue") { _ ->
@@ -268,4 +276,72 @@ object FluidTransformationManager : SimpleJsonResourceReloadListener(GsonBuilder
     }
 
     fun getTransformations(fluid: Fluid) = transformationsByFluid[fluid]
+}
+
+/**
+ * Appends thermal fluid properties and phase-change information to [tooltips] for the given [fluid].
+ * Shows specific heat capacity, density, state (gas/liquid), and boiling/condensation points with enthalpies.
+ * Only adds lines for fluids that have [PhysicalFluid] data; non-thermal fluids are skipped.
+ * */
+fun appendThermalFluidTooltip(fluid: Fluid, tooltips: MutableList<Component>) {
+    val properties = PhysicalFluidManager.getProperties(fluid) ?: return
+
+    val yellow = ChatFormatting.YELLOW
+    val gray = ChatFormatting.GRAY
+    val aqua = ChatFormatting.AQUA
+
+    tooltips.add(
+        Component.translatable("tooltip.eln2.fluid.state")
+            .append(": ")
+            .append(Component.translatable(if (properties.isGaseous) "tooltip.eln2.fluid.gaseous" else "tooltip.eln2.fluid.liquid").withStyle(aqua))
+            .withStyle(yellow)
+    )
+
+    tooltips.add(
+        Component.translatable("tooltip.eln2.fluid.specific_heat")
+            .append(": ")
+            .append(Component.literal(properties.specificHeatCapacity.classify()).withStyle(gray))
+            .withStyle(yellow)
+    )
+
+    tooltips.add(
+        Component.translatable("tooltip.eln2.fluid.density")
+            .append(": ")
+            .append(Component.literal(properties.density.classify()).withStyle(gray))
+            .withStyle(yellow)
+    )
+
+    val transformation = FluidTransformationManager.getTransformations(fluid)
+
+    transformation?.boiling?.let { boiling ->
+        tooltips.add(
+            Component.translatable("tooltip.eln2.fluid.boiling_point")
+                .append(": ")
+                .append(Component.literal(boiling.temperature.classify()).withStyle(gray))
+                .withStyle(yellow)
+        )
+
+        tooltips.add(
+            Component.translatable("tooltip.eln2.fluid.vaporization_enthalpy")
+                .append(": ")
+                .append(Component.literal(boiling.enthalpy.classify()).withStyle(gray))
+                .withStyle(yellow)
+        )
+    }
+
+    transformation?.condensation?.let { condensation ->
+        tooltips.add(
+            Component.translatable("tooltip.eln2.fluid.condensation_point")
+                .append(": ")
+                .append(Component.literal(condensation.temperature.classify()).withStyle(gray))
+                .withStyle(yellow)
+        )
+
+        tooltips.add(
+            Component.translatable("tooltip.eln2.fluid.condensation_enthalpy")
+                .append(": ")
+                .append(Component.literal(condensation.enthalpy.classify()).withStyle(gray))
+                .withStyle(yellow)
+        )
+    }
 }

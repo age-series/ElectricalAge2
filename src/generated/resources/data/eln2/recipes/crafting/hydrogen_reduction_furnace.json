@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "A": {
+      "item": "eln2:asbestos_fiber"
+    },
+    "B": {
+      "item": "minecraft:bricks"
+    },
+    "P": {
+      "tag": "forge:plates/iron"
+    },
+    "W": {
+      "item": "eln2:copper_wire"
+    }
+  },
+  "pattern": [
+    "AAA",
+    "WBW",
+    "PPP"
+  ],
+  "result": {
+    "item": "eln2:hydrogen_reduction_furnace"
+  },
+  "show_notification": true
+}

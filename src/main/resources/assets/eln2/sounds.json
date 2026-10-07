@@ -39,6 +39,14 @@
             }
         ]
     },
+    "power.electromagnetic": {
+        "sounds": [
+            {
+                "name": "eln2:electromagnetic_hum",
+                "stream": false
+            }
+        ]
+    },
     "steam.release0": {
         "sounds": [
             {
@@ -75,6 +83,86 @@
         "sounds": [
             {
                 "name": "eln2:blacksmithing/hammer_many_hits",
+                "stream": false
+            }
+        ]
+    },
+    "vacuum_sealing": {
+        "sounds": [
+            {
+                "name": "eln2:compressor/compressor",
+                "stream": false
+            }
+        ]
+    },
+    "furnace.hydrogen_reduction": {
+        "sounds": [
+            {
+                "name": "eln2:electromagnetic_hum",
+                "stream": false
+            }
+        ]
+    },
+    "turbine.steam": {
+        "sounds": [
+            {
+                "name": "eln2:continuous_pressure_release/continuous_pressure_release",
+                "stream": false
+            }
+        ]
+    },
+    "turbine.friction": {
+        "sounds": [
+            {
+                "name": "eln2:shaft/shaft",
+                "stream": false
+            }
+        ]
+    },
+    "turbine.wind": {
+        "sounds": [
+            {
+                "name": "eln2:wind/wind",
+                "stream": false
+            }
+        ]
+    },
+    "turbine.wind_rotation": {
+        "sounds": [
+            {
+                "name": "eln2:shaft/shaft",
+                "stream": false
+            }
+        ]
+    },
+    "burner.draft": {
+        "sounds": [
+            {
+                "name": "eln2:burner_flow/burner_flow",
+                "stream": false
+            }
+        ]
+    },
+    "distillation": {
+        "sounds": [
+            {
+                "name": "eln2:distillation/distillation",
+                "stream": false
+            }
+        ]
+    },
+    "switch.scrape": {
+        "sounds": [
+            {
+                "name": "eln2:switch/switch0",
+                "stream": false
+            }
+        ]
+    },
+    "gas_release": {
+        "sounds": [
+            {
+                "name": "eln2:continuous_pressure_release/continuous_pressure_release",
                 "stream": false
             }
         ]

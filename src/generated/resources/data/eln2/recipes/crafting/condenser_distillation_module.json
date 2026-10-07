@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "A": {
+      "item": "eln2:pipe_heat_exchange_assembly"
+    },
+    "P": {
+      "tag": "forge:plates/iron"
+    }
+  },
+  "pattern": [
+    " P ",
+    "PAP",
+    " P "
+  ],
+  "result": {
+    "item": "eln2:condenser_distillation_module"
+  },
+  "show_notification": true
+}

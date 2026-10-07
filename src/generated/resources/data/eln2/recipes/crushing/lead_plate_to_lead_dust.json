@@ -2,7 +2,7 @@
   "type": "eln2:crushing",
   "duration": 12.5,
   "ingredient": {
-    "item": "eln2:lead_plate"
+    "tag": "forge:plates/lead"
   },
   "result": {
     "count": 1,

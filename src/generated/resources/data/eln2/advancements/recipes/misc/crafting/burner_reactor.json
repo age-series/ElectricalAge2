@@ -1,0 +1,35 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_fluid_extraction_valve": {
+      "conditions": {
+        "items": [
+          {
+            "items": [
+              "eln2:fluid_pipe_extraction_valve"
+            ]
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    },
+    "has_the_recipe": {
+      "conditions": {
+        "recipe": "eln2:crafting/burner_reactor"
+      },
+      "trigger": "minecraft:recipe_unlocked"
+    }
+  },
+  "requirements": [
+    [
+      "has_fluid_extraction_valve",
+      "has_the_recipe"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "eln2:crafting/burner_reactor"
+    ]
+  },
+  "sends_telemetry_event": false
+}
